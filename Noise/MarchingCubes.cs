@@ -4,8 +4,10 @@ using UnityEngine;
 
 public static class MarchingCubes
 {
-    public static float[,,] GenerateRoundMap(Vector3Int size, Vector3Int chunkPos, Vector3 centerPos, float radius)
+    public static float[,,] GenerateRoundMap(int chunkSize, Vector3Int chunkPos, Vector3 centerPos, float radius)
     {
+        Vector3Int size = new Vector3Int(chunkSize, chunkSize, chunkSize);
+
         // Create a density map with an extra layer of padding for marching cubes
         float[,,] densityMap = new float[size.x + 1, size.y + 1, size.z + 1];
 

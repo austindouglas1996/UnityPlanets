@@ -1,53 +1,79 @@
+using System.Threading.Tasks;
 using UnityEngine;
 
+[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class PlanetChunk : MonoBehaviour
 {
-    public Vector3Int Coordinates = new Vector3Int(0, 0, 0);
-    public Vector3 Position = new Vector3(0, 0, 0);
-    public Vector3Int Size = new Vector3Int(0, 0, 0);
-    private float[,,] DensityMap;
-    private PlanetGenerator PlanetGenerator;
+    public Vector3Int Coordinates;
+    public Planet Planet;
 
-    public void Generate(PlanetGenerator generator, Vector3Int coordinates, int size)
+    private PlanetChunkThreadData threadData;
+
+    public int RenderDetail { get; set; } = -1;
+
+    public async Task Generate(Planet owner, Vector3Int coordinates)
     {
-        this.PlanetGenerator = generator;
+        this.Planet = owner;
         this.Coordinates = coordinates;
-        this.Position = new Vector3(coordinates.x * size, coordinates.y * size, coordinates.z * size);
-        this.Size = new Vector3Int(size, size, size);
 
-        this.name = $"Chunk X:{coordinates.x} Y:{coordinates.y} Z: {coordinates.z}";
+        this.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        this.GetComponent<MeshRenderer>().material.SetFloat("_Smoothness", 0f);
 
-        DensityMap = MarchingCubes.GenerateRoundMap(this.Size, coordinates, generator.WorldCenter, generator.Radius);
-
-        this.GenerateTerrain();
+        this.name = $"Chunk X:{coordinates.x} Y:{coordinates.y} Z:{coordinates.z}";
+        await this.UpdateAsync(true);
     }
 
-    public void UpdateMap(Vector3 hitPoint, float radius, float intensity, bool adding = true)
+    public void ModifyMap(Vector3 hitPoint, float radius, float intensity, bool adding = true)
     {
-        MarchingCubes.ModifyMapWithBrush(ref DensityMap, this.Coordinates, hitPoint, radius, intensity, adding);
-
-        this.GenerateTerrain();
+        MarchingCubes.ModifyMapWithBrush(ref threadData.MapData.DensityMap, this.Coordinates, hitPoint, radius, intensity, adding);
     }
 
-    public void GenerateTerrain()
+    public async Task UpdateAsync(bool initial = false)
     {
-        var cube = new MarchingCube();
-        cube.Process(DensityMap, 0.5f, new Vector3(0, 0, 0));
+        await Task.Run(() =>
+        {
+            PlanetMapData mapData;
 
-        GetComponent<MeshFilter>().mesh = MeshGenerator.GenerateMarchingCubeMesh(cube);
+            if (initial || threadData == null)
+                mapData = this.Planet.GenerateMap(this.Coordinates);
+            else
+                mapData = threadData.MapData;
 
-        GetComponent<FoliageGenerator>().ApplyMap(PlanetGenerator.Store, cube);
+            MarchingCube cubeProcesor = new MarchingCube();
+            cubeProcesor.Process(mapData.DensityMap, this.Planet.Threshold, new Vector3(0, 0, 0));
 
-        UpdateCollider();
-    }
+            threadData = new PlanetChunkThreadData(mapData, cubeProcesor);
+        });
 
-    private void UpdateCollider()
-    {
+        if (threadData == null)
+        {
+            return;
+        }
+
+        this.GetComponent<MeshFilter>().sharedMesh = MeshGenerator.GenerateMarchingCubeMesh(threadData.Cube);
+
         if (GetComponent<MeshCollider>() != null)
         {
             Destroy(GetComponent<MeshCollider>());
         }
 
         this.gameObject.AddComponent<MeshCollider>();
+    }
+
+    public void SetVisible(bool visible)
+    {
+        this.gameObject.SetActive(visible);
+    }
+
+    public class PlanetChunkThreadData
+    {
+        public PlanetChunkThreadData(PlanetMapData mapData, MarchingCube cube)
+        {
+            this.MapData = mapData;
+            this.Cube = cube;
+        }
+
+        public PlanetMapData MapData { get; set; }
+        public MarchingCube Cube { get; set; }
     }
 }

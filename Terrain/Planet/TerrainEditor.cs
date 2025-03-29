@@ -5,7 +5,8 @@ public class TerrainEditor : MonoBehaviour
     public float brushRadius = 5f;
     public float brushIntensity = 0.1f;
     public float isolevel = 0.5f;
-    public PlanetGenerator generator;
+    public Universe universe;
+    public Planet planet;
 
     void Update()
     {
@@ -31,20 +32,16 @@ public class TerrainEditor : MonoBehaviour
 
             Bounds brushBounds = new Bounds(worldPos, Vector3.one * brushRadius * 2);
 
-            foreach (var pair in generator.Chunks)
+            foreach (var chunk in planet.Renderer.ActiveChunks)
             {
-                PlanetChunk chunk = pair.Value;
-
                 // Each chunk's world bounds
-                Bounds chunkBounds = new Bounds(
-                    chunk.transform.position + new Vector3(generator.ChunkSize, generator.ChunkSize, generator.ChunkSize) * 0.5f,
-                    new Vector3(generator.ChunkSize, generator.ChunkSize, generator.ChunkSize)
-                );
+                Vector3 chunkSize = new Vector3(universe.PlanetChunkSize, universe.PlanetChunkSize, universe.PlanetChunkSize);
+                Bounds chunkBounds = new Bounds(chunk.transform.position + chunkSize * 0.5f, chunkSize);
 
                 if (brushBounds.Intersects(chunkBounds))
                 {
                     // Modify this chunk using world-space brush
-                    chunk.UpdateMap(worldPos, brushRadius, brushIntensity, adding);
+                    chunk.ModifyMap(worldPos, brushRadius, brushIntensity, adding);
                 }
             }
 
