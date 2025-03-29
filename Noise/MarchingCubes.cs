@@ -69,6 +69,19 @@ public static class MarchingCubes
         return densityMap;
     }
 
+    public static Mesh GenerateMesh(MarchingCube cube)
+    {
+        // Build final mesh
+        Mesh mesh = new Mesh();
+        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // In case large chunk
+        mesh.SetVertices(cube.vertices);
+        mesh.SetTriangles(cube.triangles, 0);
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+
+        return mesh;
+    }
+
     public static void ModifyMapWithBrush(ref float[,,] densityMap, Vector3Int chunkPos, Vector3 hitPoint, float radius, float intensity, bool add)
     {
         // IMPORTANT:

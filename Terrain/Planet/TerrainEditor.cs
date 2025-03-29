@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using UnityEngine;
 
 public class TerrainEditor : MonoBehaviour
@@ -32,7 +33,7 @@ public class TerrainEditor : MonoBehaviour
 
             Bounds brushBounds = new Bounds(worldPos, Vector3.one * brushRadius * 2);
 
-            foreach (var chunk in planet.Renderer.ActiveChunks)
+            foreach (var chunk in planet.ActiveChunks)
             {
                 // Each chunk's world bounds
                 Vector3 chunkSize = new Vector3(universe.PlanetChunkSize, universe.PlanetChunkSize, universe.PlanetChunkSize);
@@ -44,7 +45,6 @@ public class TerrainEditor : MonoBehaviour
                     chunk.ModifyMap(worldPos, brushRadius, brushIntensity, adding);
                 }
             }
-
         }
     }
 }

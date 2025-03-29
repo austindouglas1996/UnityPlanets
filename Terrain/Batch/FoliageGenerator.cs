@@ -2,8 +2,13 @@
 using UnityEngine;
 using UnityEngine.SocialPlatforms;
 using static MarchingCube;
-using static MeshData;
-using static TerrainChunk;
+
+public class TerrainStore
+{
+    public List<GameObject> RocksPrefabs = new List<GameObject>();
+    public List<GameObject> GrassPrefabs = new List<GameObject>();
+    public List<GameObject> FlowersPrefabs = new List<GameObject>();
+}
 
 public class FoliageGenerator : MonoBehaviour
 {
@@ -12,7 +17,7 @@ public class FoliageGenerator : MonoBehaviour
     public float maxGrassHeight = 2.3f;
     public float grassDensity = 10f;
 
-    private TerrainStore _store;
+    public TerrainStore Store;
 
     private void Update()
     {
@@ -22,7 +27,7 @@ public class FoliageGenerator : MonoBehaviour
 
     public void ApplyMap(TerrainStore store, MarchingCube cube)
     {
-        this._store = store;
+        this.Store = store;
 
         foliageDrawer = null;
         foliageDrawer = new MeshBatchDrawer(Camera.main);
@@ -44,16 +49,16 @@ public class FoliageGenerator : MonoBehaviour
             if (roll < rockChance)
             {
                 Vector3 rockScale = Vector3.one * Random.Range(0.2f, 3f);
-                foliageDrawer.Add(this._store.RocksPrefabs.Random(), tria.Position, rotation, rockScale);
+                foliageDrawer.Add(this.Store.RocksPrefabs.Random(), tria.Position, rotation, rockScale);
             }
 
             Vector3 scale = Vector3.one * Random.Range(1.3f, 2f);
-            foliageDrawer.Add(this._store.GrassPrefabs.Random(), tria.Position, rotation, scale);
+            foliageDrawer.Add(this.Store.GrassPrefabs.Random(), tria.Position, rotation, scale);
 
             if (roll < flowerChance + rockChance) // Flower spawn, only if rock didn't spawn
             {
                 Vector3 flowerScale = Vector3.one * Random.Range(1.3f, 2.5f);
-                foliageDrawer.Add(this._store.FlowersPrefabs.Random(), tria.Position, rotation, flowerScale);
+                foliageDrawer.Add(this.Store.FlowersPrefabs.Random(), tria.Position, rotation, flowerScale);
             }
         }
     }

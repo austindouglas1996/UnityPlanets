@@ -8,7 +8,6 @@ public class PlanetChunk : MonoBehaviour
     public Planet Planet;
 
     private PlanetChunkThreadData threadData;
-
     public int RenderDetail { get; set; } = -1;
 
     public async Task Generate(Planet owner, Vector3Int coordinates)
@@ -26,7 +25,35 @@ public class PlanetChunk : MonoBehaviour
     public void ModifyMap(Vector3 hitPoint, float radius, float intensity, bool adding = true)
     {
         MarchingCubes.ModifyMapWithBrush(ref threadData.MapData.DensityMap, this.Coordinates, hitPoint, radius, intensity, adding);
+        ScheduleUpdate();
     }
+
+    private bool updateScheduled = false;
+    private bool updateRequested = false;
+
+    private async void ScheduleUpdate()
+    {
+        if (updateScheduled)
+        {
+            updateRequested = true;
+            return;
+        }
+
+        updateScheduled = true;
+
+        await Task.Delay(50); // debounce window
+        await UpdateAsync();
+
+        updateScheduled = false;
+
+        if (updateRequested)
+        {
+            updateRequested = false;
+            ScheduleUpdate(); // run the queued update
+        }
+    }
+
+
 
     public async Task UpdateAsync(bool initial = false)
     {
@@ -50,14 +77,10 @@ public class PlanetChunk : MonoBehaviour
             return;
         }
 
-        this.GetComponent<MeshFilter>().sharedMesh = MeshGenerator.GenerateMarchingCubeMesh(threadData.Cube);
+        Mesh newMesh = MarchingCubes.GenerateMesh(threadData.Cube);
 
-        if (GetComponent<MeshCollider>() != null)
-        {
-            Destroy(GetComponent<MeshCollider>());
-        }
-
-        this.gameObject.AddComponent<MeshCollider>();
+        this.GetComponent<MeshFilter>().sharedMesh = newMesh;
+        this.GetComponent<MeshCollider>().sharedMesh = newMesh;
     }
 
     public void SetVisible(bool visible)

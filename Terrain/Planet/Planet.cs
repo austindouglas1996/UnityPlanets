@@ -88,7 +88,7 @@ public class Planet : MonoBehaviour
 
         List<PlanetChunk> newActiveChunks = new List<PlanetChunk>();
 
-        foreach (var chunkCoord in GetChunksAroundFollower(64f))
+        foreach (var chunkCoord in GetChunksAroundFollower(248f))
         {
             PlanetChunk chunk = await GetOrInstantiateChunk(chunkCoord);
 
@@ -152,7 +152,12 @@ public class Planet : MonoBehaviour
                     Vector3Int offset = new(x, y, z);
                     Vector3Int chunkCoord = centerChunkCoord + offset;
 
-                    if (IsChunkInRangeOfFollwer(chunkCoord, loadRadius))
+                    // Get the chunk's world-space center
+                    Vector3 chunkCenter = (Vector3)chunkCoord * chunkSize + Vector3.one * (chunkSize / 2f);
+
+                    // Check both the follower load radius and the planet boundary.
+                    if (Vector3.Distance(chunkCenter, Universe.Follower.position) <= loadRadius &&
+                        Vector3.Distance(chunkCenter, Center) <= Radius + 20)
                     {
                         chunksToLoad.Add(chunkCoord);
                     }
