@@ -74,9 +74,23 @@ public static class MarchingCubes
         // Build final mesh
         Mesh mesh = new Mesh();
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // In case large chunk
-        mesh.SetVertices(cube.vertices);
-        mesh.SetTriangles(cube.triangles, 0);
+        mesh.vertices = cube.vertices.ToArray();
+        mesh.uv = cube.uvs.ToArray();
+        mesh.triangles = cube.triangles.ToArray();
         mesh.RecalculateNormals();
+
+        Vector3[] normals = mesh.normals;
+        Vector2[] uvs = new Vector2[normals.Length];
+
+        for (int i = 0; i < normals.Length; i++)
+        {
+            Vector3 n = normals[i];
+            uvs[i] = new Vector2(n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f);
+        }
+
+        mesh.uv = uvs;
+
+
         mesh.RecalculateBounds();
 
         return mesh;

@@ -47,6 +47,24 @@ public class Planet : MonoBehaviour
     /// </summary>
     private bool IsBusy = false;
 
+    [SerializeField]
+    private Gradient purpleSwirlGradientS = new Gradient
+    {
+        colorKeys = new GradientColorKey[]
+    {
+        new GradientColorKey(new Color(0.2f, 0f, 0.4f), 0f),    // Deep purple
+        new GradientColorKey(new Color(0.6f, 0f, 0.8f), 0.4f),  // Lighter violet
+        new GradientColorKey(new Color(0.9f, 0.6f, 1f), 0.7f),  // Soft lavender
+        new GradientColorKey(Color.white, 1f)                  // White highlight
+    },
+        alphaKeys = new GradientAlphaKey[]
+    {
+        new GradientAlphaKey(1f, 0f),
+        new GradientAlphaKey(1f, 1f)
+    }
+    };
+
+
     /// <summary>
     /// Generate a new density map for a set chunk coordinates.
     /// </summary>
@@ -56,6 +74,30 @@ public class Planet : MonoBehaviour
     {
         PlanetMapData newMap = new PlanetMapData();
         newMap.DensityMap = MarchingCubes.GenerateRoundMap(Universe.PlanetChunkSize, coordinates, Center, Radius);
+
+        int width = newMap.DensityMap.GetLength(0);
+        int height = newMap.DensityMap.GetLength(1);
+        Color[] colorMap = new Color[width * height];
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                Vector3 worldPos = new Vector3(
+                    coordinates.x * Universe.PlanetChunkSize + x,
+                    coordinates.y * Universe.PlanetChunkSize + y,
+                    coordinates.z * Universe.PlanetChunkSize); // or use z=0 if not needed
+
+                float noiseValue = Perlin.Fbm(worldPos.x * Noise, worldPos.y * Noise, worldPos.z * Noise, Octaves);
+
+                float normalized = Mathf.InverseLerp(-1f, 1f, noiseValue);
+                colorMap[y * width + x] = purpleSwirlGradientS.Evaluate(normalized);
+            }
+        }
+
+        newMap.ColorMap = colorMap;
+
+
         return newMap;
     }
 

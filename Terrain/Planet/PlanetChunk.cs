@@ -69,7 +69,7 @@ public class PlanetChunk : MonoBehaviour
             MarchingCube cubeProcesor = new MarchingCube();
             cubeProcesor.Process(mapData.DensityMap, this.Planet.Threshold, new Vector3(0, 0, 0));
 
-            threadData = new PlanetChunkThreadData(mapData, cubeProcesor);
+            threadData = new PlanetChunkThreadData(mapData, mapData.ColorMap, cubeProcesor);
         });
 
         if (threadData == null)
@@ -80,6 +80,7 @@ public class PlanetChunk : MonoBehaviour
         Mesh newMesh = MarchingCubes.GenerateMesh(threadData.Cube);
 
         this.GetComponent<MeshFilter>().sharedMesh = newMesh;
+        this.GetComponent<MeshRenderer>().material.mainTexture = TextureGenerator.TextureFromColourMap(threadData.ColorMap, Planet.Universe.PlanetChunkSize, Planet.Universe.PlanetChunkSize);
         this.GetComponent<MeshCollider>().sharedMesh = newMesh;
     }
 
@@ -90,13 +91,15 @@ public class PlanetChunk : MonoBehaviour
 
     public class PlanetChunkThreadData
     {
-        public PlanetChunkThreadData(PlanetMapData mapData, MarchingCube cube)
+        public PlanetChunkThreadData(PlanetMapData mapData, Color[] color, MarchingCube cube)
         {
             this.MapData = mapData;
+            this.ColorMap = color;
             this.Cube = cube;
         }
 
         public PlanetMapData MapData { get; set; }
+        public Color[] ColorMap { get; set; }
         public MarchingCube Cube { get; set; }
     }
 }

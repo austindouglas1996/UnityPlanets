@@ -7,7 +7,7 @@ public class MarchingCube
 {
     public List<Vector3> vertices = new List<Vector3>();
     public List<int> triangles = new List<int>();
-    public List<Vector3> uvs = new List<Vector3>();
+    public List<Vector2> uvs = new List<Vector2>();
 
     public void Process(float[,,] densityMap, float threshold, Vector3 chunkOffset)
     {
