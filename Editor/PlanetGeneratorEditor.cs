@@ -10,8 +10,9 @@ public class PlanetGeneratorEditor : Editor
 
         Planet generator = (Planet)target;
 
-        if (GUILayout.Button("Regenerate Cave"))
+        if (GUILayout.Button("Regenerate"))
         {
+            generator.Rebuild();
         }
     }
 }

@@ -18,8 +18,8 @@ public class Planet : MonoBehaviour
 
     [Header("Noise")]
     public float Threshold = 0.5f;
-    public int Octaves = 12;
-    public float Noise = 0.1f;
+    //public int Octaves = 12;
+    //public float Noise = 0.1f;
 
     [Header("Rendering")]
     public float DistanceToUpdateChunks = 10f;
@@ -64,6 +64,42 @@ public class Planet : MonoBehaviour
     }
     };
 
+    Gradient fishingPlanetGradient = new Gradient
+    {
+        colorKeys = new GradientColorKey[]
+    {
+        new GradientColorKey(new Color(0.02f, 0.1f, 0.2f), 0f),     // Deep lake blue
+        new GradientColorKey(new Color(0.0f, 0.3f, 0.4f), 0.2f),     // Shallow teal water
+        new GradientColorKey(new Color(0.2f, 0.5f, 0.3f), 0.4f),     // Mossy green shorelines
+        new GradientColorKey(new Color(0.8f, 0.7f, 0.4f), 0.65f),    // Sunlit grass/meadows
+        new GradientColorKey(new Color(0.9f, 0.85f, 0.7f), 0.85f),   // Soft horizon light
+        new GradientColorKey(new Color(0.5f, 0.7f, 0.9f), 1f),       // Clear sky blue
+    },
+        alphaKeys = new GradientAlphaKey[]
+    {
+        new GradientAlphaKey(1f, 0f),
+        new GradientAlphaKey(1f, 1f)
+    }
+    };
+
+    [Header("Test")]
+    public int octaves = 5;
+    public float noiseScale = 1f;
+    public float noiseMultiplier = 1f;
+    public float persistence = 0.5f;
+    public float lacunarity = 2f;
+    public float amplitude = 1f;
+    public float frequency = 1f;
+
+    [Header("Colors")]
+    public List<ColorCode> TerrainColors = new List<ColorCode>();
+    [System.Serializable]
+    public class ColorCode
+    {
+        public float Height = 0.0f;
+        public Color BaseColor;
+    }
+
     /// <summary>
     /// Generate a new density map for a set chunk coordinates.
     /// </summary>
@@ -72,25 +108,39 @@ public class Planet : MonoBehaviour
     public PlanetMapData GenerateMap(Vector3Int coordinates)
     {
         PlanetMapData newMap = new PlanetMapData();
-        newMap.DensityMap = MarchingCubes.GenerateRoundMap(Universe.PlanetChunkSize, coordinates, Center, Radius);
+        newMap.DensityMap = MarchingCubes.GenerateRoundMap(Universe.PlanetChunkSize, coordinates, Center, Radius, noiseScale, noiseMultiplier, frequency, amplitude, octaves, persistence, lacunarity);
 
         int width = newMap.DensityMap.GetLength(0);
         int height = newMap.DensityMap.GetLength(1);
         Color[] colorMap = new Color[width * height];
 
+        Vector3 chunkWorldOrigin = new Vector3(
+            coordinates.x * Universe.PlanetChunkSize,
+            coordinates.y * Universe.PlanetChunkSize,
+            coordinates.z * Universe.PlanetChunkSize
+        );
+
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                Vector3 worldPos = new Vector3(
-                    coordinates.x * Universe.PlanetChunkSize + x,
-                    coordinates.y * Universe.PlanetChunkSize + y,
-                    coordinates.z * Universe.PlanetChunkSize);
+                Vector3 worldPos = chunkWorldOrigin + new Vector3(x, y, 0); // Z is flat slice for 2D color map
+                float dist = Vector3.Distance(worldPos, Center); // Center of planet
+                float heightNormalized = Mathf.InverseLerp(0f, Radius, dist); // 0 = core, 1 = outermost
 
-                float noiseValue = Perlin.Fbm(worldPos.x * Noise, worldPos.y * Noise, Octaves);
+                // Default to the last color in the list in case no match found
+                Color selectedColor = TerrainColors.Count > 0 ? TerrainColors[TerrainColors.Count - 1].BaseColor : Color.white;
 
-                float normalized = Mathf.InverseLerp(-1f, 1f, noiseValue);
-                colorMap[y * width + x] = planetGradient.Evaluate(normalized);
+                foreach (ColorCode code in TerrainColors)
+                {
+                    if (heightNormalized <= code.Height)
+                    {
+                        selectedColor = code.BaseColor;
+                        break;
+                    }
+                }
+
+                colorMap[y * width + x] = selectedColor;
             }
         }
 
@@ -98,6 +148,25 @@ public class Planet : MonoBehaviour
 
 
         return newMap;
+    }
+
+    public void Rebuild()
+    {
+        while(this.transform.childCount != 0)
+        {
+            foreach (Transform go in this.transform)
+            {
+                DestroyImmediate(go.gameObject);
+            }
+        }
+
+        ActiveChunks.Clear();
+        ChunksCache.Clear();
+
+        lastKnownFollowerPosition = new Vector3(999, 999, 999);
+        Universe.Follower.transform.position = new Vector3(this.transform.position.x, Radius, this.transform.position.z);
+
+        UpdateActiveChunks();
     }
 
     private void Start()

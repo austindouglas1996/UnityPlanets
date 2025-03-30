@@ -2,14 +2,6 @@
 using UnityEngine;
 using UnityEngine.SocialPlatforms;
 using static MarchingCube;
-
-public class TerrainStore
-{
-    public List<GameObject> RocksPrefabs = new List<GameObject>();
-    public List<GameObject> GrassPrefabs = new List<GameObject>();
-    public List<GameObject> FlowersPrefabs = new List<GameObject>();
-}
-
 public class FoliageGenerator : MonoBehaviour
 {
     private MeshBatchDrawer foliageDrawer;
@@ -52,7 +44,7 @@ public class FoliageGenerator : MonoBehaviour
                 foliageDrawer.Add(this.Store.RocksPrefabs.Random(), tria.Position, rotation, rockScale);
             }
 
-            Vector3 scale = Vector3.one * Random.Range(1.3f, 2f);
+            Vector3 scale = Vector3.one * Random.Range(0.7f, 1.4f);
             foliageDrawer.Add(this.Store.GrassPrefabs.Random(), tria.Position, rotation, scale);
 
             if (roll < flowerChance + rockChance) // Flower spawn, only if rock didn't spawn

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(TerrainStore))]
 public class Universe : MonoBehaviour
 {
     public Transform Follower;
@@ -10,4 +11,10 @@ public class Universe : MonoBehaviour
 
     public PlanetChunk ChunkPrefab;
     private List<Planet> Planets;
+
+    public TerrainStore Store;
+    private void Start()
+    {
+        Store = GetComponent<TerrainStore>();
+    }
 }

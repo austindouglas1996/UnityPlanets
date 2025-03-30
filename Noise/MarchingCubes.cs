@@ -4,7 +4,7 @@ using UnityEngine;
 
 public static class MarchingCubes
 {
-    public static float[,,] GenerateRoundMap(int chunkSize, Vector3Int chunkPos, Vector3 centerPos, float radius)
+    public static float[,,] GenerateRoundMap(int chunkSize, Vector3Int chunkPos, Vector3 centerPos, float radius, float noiseScale, float noiseMultiplier, float frequency, float amplitude, int octaves, float persistence, float lacunarity)
     {
         Vector3Int size = new Vector3Int(chunkSize, chunkSize, chunkSize);
 
@@ -28,11 +28,20 @@ public static class MarchingCubes
 
                     // Give the planet some roughness.
                     float sphericalNoise = Perlin.Fbm(worldX * 0.06f, worldY * 0.06f, worldZ * 0.06f, 5);
-                    float bumpyRadius = radius + (sphericalNoise - 0.5f) * 2f;
 
-                    float density = (bumpyRadius - dist) * 0.05f;
+                    float sampleFreq = frequency * noiseScale;
 
-                    densityMap[x, y, z] = density;
+                    float noiseValue = Perlin.Fbm(
+                        worldX * sampleFreq,
+                        worldY * sampleFreq,
+                        worldZ * sampleFreq, 
+                        octaves) * amplitude;
+
+                    float bumpyRadius = radius
+                        + (sphericalNoise - 0.5f) * 5f
+                        + (noiseValue - 0.5f) * noiseMultiplier;
+
+                    densityMap[x, y, z] = (bumpyRadius - dist) * 0.05f;
                 }
             }
         }
@@ -75,17 +84,21 @@ public static class MarchingCubes
         Mesh mesh = new Mesh();
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // In case large chunk
         mesh.vertices = cube.vertices.ToArray();
-        mesh.uv = cube.uvs.ToArray();
         mesh.triangles = cube.triangles.ToArray();
+
         mesh.RecalculateNormals();
 
-        Vector3[] normals = mesh.normals;
-        Vector2[] uvs = new Vector2[normals.Length];
+        Vector3[] vertices = mesh.vertices;
+        Vector2[] uvs = new Vector2[vertices.Length];
 
-        for (int i = 0; i < normals.Length; i++)
+        for (int i = 0; i < vertices.Length; i++)
         {
-            Vector3 n = normals[i];
-            uvs[i] = new Vector2(n.x * 0.5f + 0.5f, n.z * 0.5f + 0.5f);
+            Vector3 v = vertices[i].normalized;
+
+            float u = 0.5f + Mathf.Atan2(v.z, v.x) / (2f * Mathf.PI);
+            float vCoord = 0.5f - Mathf.Asin(v.y) / Mathf.PI;
+
+            uvs[i] = new Vector2(u, vCoord);
         }
 
         mesh.uv = uvs;

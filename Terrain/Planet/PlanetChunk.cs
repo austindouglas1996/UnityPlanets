@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Unity.VisualScripting;
 using UnityEngine;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
@@ -12,6 +13,11 @@ public class PlanetChunk : MonoBehaviour
 
     private bool updateScheduled = false;
     private bool updateRequested = false;
+
+    private void Start()
+    {
+        this.AddComponent<FoliageGenerator>();
+    }
 
     /// <summary>
     /// Start the initial generation of the planet.
@@ -95,6 +101,8 @@ public class PlanetChunk : MonoBehaviour
         {
             return;
         }
+
+        //this.GetComponent<FoliageGenerator>().ApplyMap(Planet.Universe.Store, threadData.Cube);
 
         Mesh newMesh = MarchingCubes.GenerateMesh(threadData.Cube);
 
