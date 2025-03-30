@@ -85,7 +85,7 @@ public static class MarchingCubes
         for (int i = 0; i < normals.Length; i++)
         {
             Vector3 n = normals[i];
-            uvs[i] = new Vector2(n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f);
+            uvs[i] = new Vector2(n.x * 0.5f + 0.5f, n.z * 0.5f + 0.5f);
         }
 
         mesh.uv = uvs;

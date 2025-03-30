@@ -10,6 +10,15 @@ public class PlanetChunk : MonoBehaviour
     private PlanetChunkThreadData threadData;
     public int RenderDetail { get; set; } = -1;
 
+    private bool updateScheduled = false;
+    private bool updateRequested = false;
+
+    /// <summary>
+    /// Start the initial generation of the planet.
+    /// </summary>
+    /// <param name="owner"></param>
+    /// <param name="coordinates"></param>
+    /// <returns></returns>
     public async Task Generate(Planet owner, Vector3Int coordinates)
     {
         this.Planet = owner;
@@ -22,15 +31,22 @@ public class PlanetChunk : MonoBehaviour
         await this.UpdateAsync(true);
     }
 
+    /// <summary>
+    /// Modify the terrain map using a brush. Basic modification.
+    /// </summary>
+    /// <param name="hitPoint"></param>
+    /// <param name="radius"></param>
+    /// <param name="intensity"></param>
+    /// <param name="adding"></param>
     public void ModifyMap(Vector3 hitPoint, float radius, float intensity, bool adding = true)
     {
         MarchingCubes.ModifyMapWithBrush(ref threadData.MapData.DensityMap, this.Coordinates, hitPoint, radius, intensity, adding);
         ScheduleUpdate();
     }
 
-    private bool updateScheduled = false;
-    private bool updateRequested = false;
-
+    /// <summary>
+    /// Schedule an update for the chunk to be updated. This helps with modifying the terrain but not wanting an extra every single tiny edit.
+    /// </summary>
     private async void ScheduleUpdate()
     {
         if (updateScheduled)
@@ -49,12 +65,15 @@ public class PlanetChunk : MonoBehaviour
         if (updateRequested)
         {
             updateRequested = false;
-            ScheduleUpdate(); // run the queued update
+            ScheduleUpdate();
         }
     }
 
-
-
+    /// <summary>
+    /// Update the chunk data. Processing the density map, and recreating the mesh and its colors.
+    /// </summary>
+    /// <param name="initial"></param>
+    /// <returns></returns>
     public async Task UpdateAsync(bool initial = false)
     {
         await Task.Run(() =>
@@ -84,11 +103,18 @@ public class PlanetChunk : MonoBehaviour
         this.GetComponent<MeshCollider>().sharedMesh = newMesh;
     }
 
+    /// <summary>
+    /// Set the chunk visible. Helps with knowing whether to continue to render/update content.
+    /// </summary>
+    /// <param name="visible"></param>
     public void SetVisible(bool visible)
     {
         this.gameObject.SetActive(visible);
     }
 
+    /// <summary>
+    /// Container for transferring data through threads.
+    /// </summary>
     public class PlanetChunkThreadData
     {
         public PlanetChunkThreadData(PlanetMapData mapData, Color[] color, MarchingCube cube)

@@ -47,15 +47,15 @@ public class Planet : MonoBehaviour
     /// </summary>
     private bool IsBusy = false;
 
-    [SerializeField]
-    private Gradient purpleSwirlGradientS = new Gradient
+    Gradient planetGradient = new Gradient
     {
         colorKeys = new GradientColorKey[]
     {
-        new GradientColorKey(new Color(0.2f, 0f, 0.4f), 0f),    // Deep purple
-        new GradientColorKey(new Color(0.6f, 0f, 0.8f), 0.4f),  // Lighter violet
-        new GradientColorKey(new Color(0.9f, 0.6f, 1f), 0.7f),  // Soft lavender
-        new GradientColorKey(Color.white, 1f)                  // White highlight
+        new GradientColorKey(new Color(0.1f, 0.0f, 0.3f), 0f),    // Deep space purple
+        new GradientColorKey(new Color(0.2f, 0.5f, 0.8f), 0.25f), // Cool ocean blue
+        new GradientColorKey(new Color(0.2f, 0.8f, 0.3f), 0.5f),  // Vibrant green
+        new GradientColorKey(new Color(1.0f, 0.8f, 0.2f), 0.75f), // Bright gold/yellow
+        new GradientColorKey(new Color(1.0f, 0.3f, 0.2f), 1f),    // Bold red/orange
     },
         alphaKeys = new GradientAlphaKey[]
     {
@@ -63,7 +63,6 @@ public class Planet : MonoBehaviour
         new GradientAlphaKey(1f, 1f)
     }
     };
-
 
     /// <summary>
     /// Generate a new density map for a set chunk coordinates.
@@ -86,12 +85,12 @@ public class Planet : MonoBehaviour
                 Vector3 worldPos = new Vector3(
                     coordinates.x * Universe.PlanetChunkSize + x,
                     coordinates.y * Universe.PlanetChunkSize + y,
-                    coordinates.z * Universe.PlanetChunkSize); // or use z=0 if not needed
+                    coordinates.z * Universe.PlanetChunkSize);
 
-                float noiseValue = Perlin.Fbm(worldPos.x * Noise, worldPos.y * Noise, worldPos.z * Noise, Octaves);
+                float noiseValue = Perlin.Fbm(worldPos.x * Noise, worldPos.y * Noise, Octaves);
 
                 float normalized = Mathf.InverseLerp(-1f, 1f, noiseValue);
-                colorMap[y * width + x] = purpleSwirlGradientS.Evaluate(normalized);
+                colorMap[y * width + x] = planetGradient.Evaluate(normalized);
             }
         }
 
@@ -105,8 +104,9 @@ public class Planet : MonoBehaviour
     {
         lastKnownFollowerPosition = new Vector3(999,999,999);
         this.Universe = GetComponent<Universe>();
-    }
 
+        Universe.Follower.transform.position = new Vector3(this.transform.position.x, Radius, this.transform.position.z);
+    }
     private async void Update()
     {
         // Update the list of active chunks if the player has walked away enough.
@@ -130,7 +130,7 @@ public class Planet : MonoBehaviour
 
         List<PlanetChunk> newActiveChunks = new List<PlanetChunk>();
 
-        foreach (var chunkCoord in GetChunksAroundFollower(248f))
+        foreach (var chunkCoord in GetChunksAroundFollower(128f))
         {
             PlanetChunk chunk = await GetOrInstantiateChunk(chunkCoord);
 
