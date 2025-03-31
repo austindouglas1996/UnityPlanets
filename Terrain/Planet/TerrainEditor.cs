@@ -35,6 +35,9 @@ public class TerrainEditor : MonoBehaviour
 
             foreach (var chunk in planet.ActiveChunks)
             {
+                if (chunk == null)
+                    continue;
+
                 // Each chunk's world bounds
                 Vector3 chunkSize = new Vector3(universe.PlanetChunkSize, universe.PlanetChunkSize, universe.PlanetChunkSize);
                 Bounds chunkBounds = new Bounds(chunk.transform.position + chunkSize * 0.5f, chunkSize);

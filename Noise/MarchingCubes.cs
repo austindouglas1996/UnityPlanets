@@ -87,6 +87,7 @@ public static class MarchingCubes
         mesh.triangles = cube.triangles.ToArray();
 
         mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
 
         Vector3[] vertices = mesh.vertices;
         Vector2[] uvs = new Vector2[vertices.Length];
@@ -103,8 +104,16 @@ public static class MarchingCubes
 
         mesh.uv = uvs;
 
+        float minRadius = float.MaxValue;
+        float maxRadius = float.MinValue;
 
-        mesh.RecalculateBounds();
+        foreach (Vector3 vertex in vertices)
+        {
+            float distance = vertex.magnitude;
+
+            if (distance < minRadius) minRadius = distance;
+            if (distance > maxRadius) maxRadius = distance;
+        }
 
         return mesh;
     }

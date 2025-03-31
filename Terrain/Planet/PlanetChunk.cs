@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using Unity.VisualScripting;
 using UnityEngine;
+using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class PlanetChunk : MonoBehaviour
@@ -30,7 +31,7 @@ public class PlanetChunk : MonoBehaviour
         this.Planet = owner;
         this.Coordinates = coordinates;
 
-        this.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        this.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Shader Graphs/VertexColor"));
         this.GetComponent<MeshRenderer>().material.SetFloat("_Smoothness", 0f);
 
         this.name = $"Chunk X:{coordinates.x} Y:{coordinates.y} Z:{coordinates.z}";
@@ -94,7 +95,7 @@ public class PlanetChunk : MonoBehaviour
             MarchingCube cubeProcesor = new MarchingCube();
             cubeProcesor.Process(mapData.DensityMap, this.Planet.Threshold, new Vector3(0, 0, 0));
 
-            threadData = new PlanetChunkThreadData(mapData, mapData.ColorMap, cubeProcesor);
+            threadData = new PlanetChunkThreadData(mapData, cubeProcesor);
         });
 
         if (threadData == null)
@@ -106,8 +107,20 @@ public class PlanetChunk : MonoBehaviour
 
         Mesh newMesh = MarchingCubes.GenerateMesh(threadData.Cube);
 
-        this.GetComponent<MeshFilter>().sharedMesh = newMesh;
-        this.GetComponent<MeshRenderer>().material.mainTexture = TextureGenerator.TextureFromColourMap(threadData.ColorMap, Planet.Universe.PlanetChunkSize, Planet.Universe.PlanetChunkSize);
+        Color[] colors = new Color[threadData.Cube.vertices.Count];
+        for (int i = 0; i < threadData.Cube.vertices.Count; i++)
+        {
+            Vector3 worldPos = transform.TransformPoint(threadData.Cube.vertices[i]);
+            float distance = (worldPos - Planet.Center).magnitude;
+            float normalized = Mathf.InverseLerp(Planet.MinSurfaceRadius, Planet.MaxSurfaceRadius, distance);
+            Color vertexColor = Planet.gay.Evaluate(normalized);
+            colors[i] = vertexColor;
+        }
+
+        newMesh.colors = colors;
+
+
+        this.GetComponent<MeshFilter>().mesh = newMesh;
         this.GetComponent<MeshCollider>().sharedMesh = newMesh;
     }
 
@@ -125,15 +138,13 @@ public class PlanetChunk : MonoBehaviour
     /// </summary>
     public class PlanetChunkThreadData
     {
-        public PlanetChunkThreadData(PlanetMapData mapData, Color[] color, MarchingCube cube)
+        public PlanetChunkThreadData(PlanetMapData mapData, MarchingCube cube)
         {
             this.MapData = mapData;
-            this.ColorMap = color;
             this.Cube = cube;
         }
 
         public PlanetMapData MapData { get; set; }
-        public Color[] ColorMap { get; set; }
         public MarchingCube Cube { get; set; }
     }
 }

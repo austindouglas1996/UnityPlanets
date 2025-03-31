@@ -94,16 +94,6 @@ public class MarchingCube
                 }
             }
         }
-
-        if (vertices.Count == 0)
-        {
-            Debug.Log("Mesh has 0 vertices.");
-        }
-
-        if (vertices.Count > 65535)
-        {
-            Debug.Log("Mesh size is too large. 65,000 is max");
-        }
     }
 
     /// <summary>
@@ -183,12 +173,12 @@ public class MarchingCube
     }
 
     private static readonly Vector3[] CornerOffsets = new Vector3[]
-{
+    {
         new Vector3(0, 0, 0), new Vector3(1, 0, 0),
         new Vector3(1, 0, 1), new Vector3(0, 0, 1),
         new Vector3(0, 1, 0), new Vector3(1, 1, 0),
         new Vector3(1, 1, 1), new Vector3(0, 1, 1)
-};
+    };
 
     private static readonly int[,] EdgeConnections = new int[,]
     {
@@ -198,7 +188,7 @@ public class MarchingCube
     };
 
     private static readonly int[,] TriangleTable = new int[,]
-        {
+    {
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {0, 1, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},

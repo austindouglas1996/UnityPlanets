@@ -44,13 +44,16 @@ public class FoliageGenerator : MonoBehaviour
                 foliageDrawer.Add(this.Store.RocksPrefabs.Random(), tria.Position, rotation, rockScale);
             }
 
-            Vector3 scale = Vector3.one * Random.Range(0.7f, 1.4f);
-            foliageDrawer.Add(this.Store.GrassPrefabs.Random(), tria.Position, rotation, scale);
-
-            if (roll < flowerChance + rockChance) // Flower spawn, only if rock didn't spawn
+            if ((int)averageHeight > 32)
             {
-                Vector3 flowerScale = Vector3.one * Random.Range(1.3f, 2.5f);
-                foliageDrawer.Add(this.Store.FlowersPrefabs.Random(), tria.Position, rotation, flowerScale);
+                Vector3 scale = Vector3.one * Random.Range(0.7f, 1.4f);
+                foliageDrawer.Add(this.Store.GrassPrefabs.Random(), tria.Position, rotation, scale);
+
+                if (roll < flowerChance + rockChance) // Flower spawn, only if rock didn't spawn
+                {
+                    Vector3 flowerScale = Vector3.one * Random.Range(1.3f, 2.5f);
+                    foliageDrawer.Add(this.Store.FlowersPrefabs.Random(), tria.Position, rotation, flowerScale);
+                }
             }
         }
     }

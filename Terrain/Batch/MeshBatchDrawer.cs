@@ -90,7 +90,7 @@ public class MeshBatchDrawer
             // Calculate the distance between the batch's center and the follower's position
             float distanceToFollower = Vector3.Distance(Bounds.center, followerPosition);
             lastSeenDistance = distanceToFollower;
-            if (distanceToFollower > 400f)
+            if (distanceToFollower > 1200f)
                 return false;
 
             if (GeometryUtility.TestPlanesAABB(frustumPlanes, Bounds))

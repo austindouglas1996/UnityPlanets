@@ -25,8 +25,6 @@ public class Planet : MonoBehaviour
     public float DistanceToUpdateChunks = 10f;
     public Material BaseMaterial;
 
-    public Vector3 Center;
-
     /// <summary>
     /// Last known position the follower was seen at.
     /// </summary>
@@ -47,40 +45,8 @@ public class Planet : MonoBehaviour
     /// </summary>
     private bool IsBusy = false;
 
-    Gradient planetGradient = new Gradient
-    {
-        colorKeys = new GradientColorKey[]
-    {
-        new GradientColorKey(new Color(0.1f, 0.0f, 0.3f), 0f),    // Deep space purple
-        new GradientColorKey(new Color(0.2f, 0.5f, 0.8f), 0.25f), // Cool ocean blue
-        new GradientColorKey(new Color(0.2f, 0.8f, 0.3f), 0.5f),  // Vibrant green
-        new GradientColorKey(new Color(1.0f, 0.8f, 0.2f), 0.75f), // Bright gold/yellow
-        new GradientColorKey(new Color(1.0f, 0.3f, 0.2f), 1f),    // Bold red/orange
-    },
-        alphaKeys = new GradientAlphaKey[]
-    {
-        new GradientAlphaKey(1f, 0f),
-        new GradientAlphaKey(1f, 1f)
-    }
-    };
 
-    Gradient fishingPlanetGradient = new Gradient
-    {
-        colorKeys = new GradientColorKey[]
-    {
-        new GradientColorKey(new Color(0.02f, 0.1f, 0.2f), 0f),     // Deep lake blue
-        new GradientColorKey(new Color(0.0f, 0.3f, 0.4f), 0.2f),     // Shallow teal water
-        new GradientColorKey(new Color(0.2f, 0.5f, 0.3f), 0.4f),     // Mossy green shorelines
-        new GradientColorKey(new Color(0.8f, 0.7f, 0.4f), 0.65f),    // Sunlit grass/meadows
-        new GradientColorKey(new Color(0.9f, 0.85f, 0.7f), 0.85f),   // Soft horizon light
-        new GradientColorKey(new Color(0.5f, 0.7f, 0.9f), 1f),       // Clear sky blue
-    },
-        alphaKeys = new GradientAlphaKey[]
-    {
-        new GradientAlphaKey(1f, 0f),
-        new GradientAlphaKey(1f, 1f)
-    }
-    };
+    public Gradient gay;
 
     [Header("Test")]
     public int octaves = 5;
@@ -91,13 +57,13 @@ public class Planet : MonoBehaviour
     public float amplitude = 1f;
     public float frequency = 1f;
 
-    [Header("Colors")]
-    public List<ColorCode> TerrainColors = new List<ColorCode>();
-    [System.Serializable]
-    public class ColorCode
+    public float MinSurfaceRadius = 220;
+    public float MaxSurfaceRadius = 256;
+    public bool AutoHandleSurfaceRadius = true;
+
+    public Vector3 Center
     {
-        public float Height = 0.0f;
-        public Color BaseColor;
+        get { return new Vector3(0,0,0); }
     }
 
     /// <summary>
@@ -109,43 +75,6 @@ public class Planet : MonoBehaviour
     {
         PlanetMapData newMap = new PlanetMapData();
         newMap.DensityMap = MarchingCubes.GenerateRoundMap(Universe.PlanetChunkSize, coordinates, Center, Radius, noiseScale, noiseMultiplier, frequency, amplitude, octaves, persistence, lacunarity);
-
-        int width = newMap.DensityMap.GetLength(0);
-        int height = newMap.DensityMap.GetLength(1);
-        Color[] colorMap = new Color[width * height];
-
-        Vector3 chunkWorldOrigin = new Vector3(
-            coordinates.x * Universe.PlanetChunkSize,
-            coordinates.y * Universe.PlanetChunkSize,
-            coordinates.z * Universe.PlanetChunkSize
-        );
-
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                Vector3 worldPos = chunkWorldOrigin + new Vector3(x, y, 0); // Z is flat slice for 2D color map
-                float dist = Vector3.Distance(worldPos, Center); // Center of planet
-                float heightNormalized = Mathf.InverseLerp(0f, Radius, dist); // 0 = core, 1 = outermost
-
-                // Default to the last color in the list in case no match found
-                Color selectedColor = TerrainColors.Count > 0 ? TerrainColors[TerrainColors.Count - 1].BaseColor : Color.white;
-
-                foreach (ColorCode code in TerrainColors)
-                {
-                    if (heightNormalized <= code.Height)
-                    {
-                        selectedColor = code.BaseColor;
-                        break;
-                    }
-                }
-
-                colorMap[y * width + x] = selectedColor;
-            }
-        }
-
-        newMap.ColorMap = colorMap;
-
 
         return newMap;
     }
@@ -165,6 +94,8 @@ public class Planet : MonoBehaviour
 
         lastKnownFollowerPosition = new Vector3(999, 999, 999);
         Universe.Follower.transform.position = new Vector3(this.transform.position.x, Radius, this.transform.position.z);
+
+        this.IsBusy = false;
 
         UpdateActiveChunks();
     }
@@ -197,6 +128,12 @@ public class Planet : MonoBehaviour
         if (IsBusy) return;
         IsBusy = true;
 
+        // In case sizes changed.
+        if (AutoHandleSurfaceRadius)
+        {
+            this.UpdateSurfaceRadius();
+        }
+
         List<PlanetChunk> newActiveChunks = new List<PlanetChunk>();
 
         foreach (var chunkCoord in GetChunksAroundFollower(128f))
@@ -220,11 +157,21 @@ public class Planet : MonoBehaviour
         // in the active chunks list.
         foreach (var chunk in ActiveChunks.Except(newActiveChunks))
         {
-            chunk.SetVisible(false);
+            if (chunk != null)
+                chunk.SetVisible(false);
         }
 
         ActiveChunks = newActiveChunks;
         IsBusy = false;
+    }
+
+    /// <summary>
+    /// Automatically adjust the surface radius sizes.
+    /// </summary>
+    private void UpdateSurfaceRadius()
+    {
+        this.MinSurfaceRadius = (this.Radius - 40);
+        this.MaxSurfaceRadius = (this.Radius - 20);
     }
 
     /// <summary>
