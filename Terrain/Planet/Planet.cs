@@ -14,15 +14,47 @@ public class Planet : MonoBehaviour
 
     [Header("Generation")]
     public int Radius = 128;
+
+    [Header("Noise Generation")]
+    [Range(0f, 1f), Tooltip("Defines how much noise is generated at the base of the planet. Even with a complete 0 noise the planet will have some noise on the surface.")]
     public float SurfaceRoughness = 0.05f;
 
-    [Header("Noise")]
-    public float Threshold = 0.5f;
+    [Range(-0.5f, 0.5f), Tooltip("Defines the cutoff point for the surface. Voxels below this value get filled in, voxels above it get carved out.")]
+    public float ISOLevel = 0.5f;
+
+    [Range(1, 12), Tooltip("Controls how many layers of noise are stacked. More octaves = more detail, but also more compute-heavy.")]
+    public int Octaves = 5;
+
+    [Range(0f, 1f), Tooltip("Scales the noise map. Lower values zoom in for big landmasses, higher values zoom out for finer features.")]
+    public float NoiseScale = 1f;
+
+    [Range(1f, 150f), Tooltip("Multiplies the overall noise height. Think of this like turning up the terrain’s 'volume'.")]
+    public float NoiseMultiplier = 1f;
+
+    [Range(0f, 25f), Tooltip("Base height of terrain features. Higher amplitude = taller hills and deeper valleys.")]
+    public float Amplitude = 1f;
+
+    [Range(0f, 3f), Tooltip("How quickly the noise changes over space. Higher frequency = more rapid bumps and dips.")]
+    public float Frequency = 1f;
+
+    [Header("Coloring")] 
+    public Gradient SurfaceColorRange;
+
+    [Tooltip("Gives the base height of the surface of the planet. This serves as the starting point of the color scale. NOTE: Anything below it will be treated as zero.")]
+    public float StartSurfaceColorRadius = 220;
+
+    [Tooltip("Gives the max height of the surface of the planet. This serves as the top of the color scale. NOTE: Anything above it will be treated as the max.")]
+    public float EndSurfaceColorRadius = 256;
+
+    [Tooltip("Automatically handle the start and end of the surface colors. This is useful when testing different height differences and need to see the color changes.")]
+    public bool AutoHandleSurfaceColorRadius = true;
 
     [Header("Rendering")]
+    [Tooltip("How far a given chunk can be that it will be rendered on screen. Details will automatically be adjusted on distance.")]
     public float ChunkRenderDistance = 400;
-    public float DistanceToUpdateChunks = 10f;
-    public Material BaseMaterial;
+
+    [Tooltip("How far the follower needs to be travel before we update the active chunks.")]
+    public float TravelDistanceToUpdateChunks = 10f;
 
     /// <summary>
     /// Last known position the follower was seen at.
@@ -44,20 +76,6 @@ public class Planet : MonoBehaviour
     /// </summary>
     private bool IsBusy = false;
 
-
-    public Gradient gay;
-
-    [Header("Test")]
-    public int octaves = 5;
-    public float noiseScale = 1f;
-    public float noiseMultiplier = 1f;
-    public float amplitude = 1f;
-    public float frequency = 1f;
-
-    public float MinSurfaceRadius = 220;
-    public float MaxSurfaceRadius = 256;
-    public bool AutoHandleSurfaceRadius = true;
-
     public Vector3 Center
     {
         get { return new Vector3(0,0,0); }
@@ -71,7 +89,7 @@ public class Planet : MonoBehaviour
     public PlanetMapData GenerateMap(Vector3Int coordinates)
     {
         PlanetMapData newMap = new PlanetMapData();
-        newMap.DensityMap = MarchingCubes.GenerateSphereMap(Universe.PlanetChunkSize, coordinates, Center, Radius, noiseScale, noiseMultiplier, frequency, amplitude, octaves);
+        newMap.DensityMap = MarchingCubes.GenerateSphereMap(Universe.PlanetChunkSize, coordinates, Center, Radius, NoiseScale, NoiseMultiplier, Frequency, Amplitude, Octaves);
 
         return newMap;
     }
@@ -124,7 +142,7 @@ public class Planet : MonoBehaviour
         IsBusy = true;
 
         // In case sizes changed.
-        if (AutoHandleSurfaceRadius)
+        if (AutoHandleSurfaceColorRadius)
         {
             this.UpdateSurfaceRadius();
         }
@@ -165,8 +183,8 @@ public class Planet : MonoBehaviour
     /// </summary>
     private void UpdateSurfaceRadius()
     {
-        this.MinSurfaceRadius = (this.Radius - 40);
-        this.MaxSurfaceRadius = (this.Radius - 20);
+        this.StartSurfaceColorRadius = (this.Radius - 40);
+        this.EndSurfaceColorRadius = (this.Radius - 20);
     }
 
     /// <summary>
@@ -187,7 +205,7 @@ public class Planet : MonoBehaviour
     private bool IsFollowerOutsideOfRange()
     {
         float viewerDistance = Vector3.Distance(Universe.Follower.position, lastKnownFollowerPosition);
-        if (viewerDistance > DistanceToUpdateChunks)
+        if (viewerDistance > TravelDistanceToUpdateChunks)
         {
             lastKnownFollowerPosition = Universe.Follower.position;
             return true;

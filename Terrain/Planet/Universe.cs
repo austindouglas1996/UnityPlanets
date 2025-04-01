@@ -4,17 +4,18 @@ using UnityEngine;
 [RequireComponent(typeof(TerrainStore))]
 public class Universe : MonoBehaviour
 {
+    [Header("Components")]
+    public PlanetChunk ChunkPrefab;
+    [HideInInspector] public TerrainStore ResourceStore;
+
+    [Header("World")]
     public Transform Follower;
 
+    [Header("Rendering")]
     public int PlanetChunkSize = 32;
-    public Vector2Int PlanetChunksToLoad = new Vector2Int(5, 5);
 
-    public PlanetChunk ChunkPrefab;
-    private List<Planet> Planets;
-
-    public TerrainStore Store;
     private void Start()
     {
-        Store = GetComponent<TerrainStore>();
+        ResourceStore = GetComponent<TerrainStore>();
     }
 }

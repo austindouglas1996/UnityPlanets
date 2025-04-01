@@ -93,7 +93,7 @@ public class PlanetChunk : MonoBehaviour
                 mapData = threadData.MapData;
 
             MarchingCube cubeProcesor = new MarchingCube();
-            cubeProcesor.Process(mapData.DensityMap, this.Planet.Threshold, new Vector3(0, 0, 0));
+            cubeProcesor.Process(mapData.DensityMap, this.Planet.ISOLevel, new Vector3(0, 0, 0));
 
             threadData = new PlanetChunkThreadData(mapData, cubeProcesor);
         });
@@ -112,8 +112,8 @@ public class PlanetChunk : MonoBehaviour
         {
             Vector3 worldPos = transform.TransformPoint(threadData.Cube.vertices[i]);
             float distance = (worldPos - Planet.Center).magnitude;
-            float normalized = Mathf.InverseLerp(Planet.MinSurfaceRadius, Planet.MaxSurfaceRadius, distance);
-            Color vertexColor = Planet.gay.Evaluate(normalized);
+            float normalized = Mathf.InverseLerp(Planet.StartSurfaceColorRadius, Planet.EndSurfaceColorRadius, distance);
+            Color vertexColor = Planet.SurfaceColorRange.Evaluate(normalized);
             colors[i] = vertexColor;
         }
 
