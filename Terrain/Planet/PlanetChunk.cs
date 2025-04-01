@@ -92,8 +92,8 @@ public class PlanetChunk : MonoBehaviour
             else
                 mapData = threadData.MapData;
 
-            MarchingCube cubeProcesor = new MarchingCube();
-            cubeProcesor.Process(mapData.DensityMap, this.Planet.ISOLevel, new Vector3(0, 0, 0));
+            MarchingCubes cubeProcesor = new MarchingCubes();
+            cubeProcesor.Generate(mapData.DensityMap, this.Planet.ISOLevel, new Vector3(0, 0, 0));
 
             threadData = new PlanetChunkThreadData(mapData, cubeProcesor);
         });
@@ -138,13 +138,13 @@ public class PlanetChunk : MonoBehaviour
     /// </summary>
     public class PlanetChunkThreadData
     {
-        public PlanetChunkThreadData(PlanetMapData mapData, MarchingCube cube)
+        public PlanetChunkThreadData(PlanetMapData mapData, MarchingCubes cube)
         {
             this.MapData = mapData;
             this.Cube = cube;
         }
 
         public PlanetMapData MapData { get; set; }
-        public MarchingCube Cube { get; set; }
+        public MarchingCubes Cube { get; set; }
     }
 }
