@@ -105,7 +105,7 @@ public class PlanetChunk : MonoBehaviour
 
         //this.GetComponent<FoliageGenerator>().ApplyMap(Planet.Universe.Store, threadData.Cube);
 
-        Mesh newMesh = MarchingCubes.GenerateMesh(threadData.Cube);
+        Mesh newMesh = MarchingCubes.GenerateSphereMesh(threadData.Cube);
 
         Color[] colors = new Color[threadData.Cube.vertices.Count];
         for (int i = 0; i < threadData.Cube.vertices.Count; i++)

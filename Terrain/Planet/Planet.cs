@@ -18,10 +18,9 @@ public class Planet : MonoBehaviour
 
     [Header("Noise")]
     public float Threshold = 0.5f;
-    //public int Octaves = 12;
-    //public float Noise = 0.1f;
 
     [Header("Rendering")]
+    public float ChunkRenderDistance = 400;
     public float DistanceToUpdateChunks = 10f;
     public Material BaseMaterial;
 
@@ -52,8 +51,6 @@ public class Planet : MonoBehaviour
     public int octaves = 5;
     public float noiseScale = 1f;
     public float noiseMultiplier = 1f;
-    public float persistence = 0.5f;
-    public float lacunarity = 2f;
     public float amplitude = 1f;
     public float frequency = 1f;
 
@@ -74,7 +71,7 @@ public class Planet : MonoBehaviour
     public PlanetMapData GenerateMap(Vector3Int coordinates)
     {
         PlanetMapData newMap = new PlanetMapData();
-        newMap.DensityMap = MarchingCubes.GenerateRoundMap(Universe.PlanetChunkSize, coordinates, Center, Radius, noiseScale, noiseMultiplier, frequency, amplitude, octaves, persistence, lacunarity);
+        newMap.DensityMap = MarchingCubes.GenerateSphereMap(Universe.PlanetChunkSize, coordinates, Center, Radius, noiseScale, noiseMultiplier, frequency, amplitude, octaves);
 
         return newMap;
     }
@@ -107,13 +104,11 @@ public class Planet : MonoBehaviour
 
         Universe.Follower.transform.position = new Vector3(this.transform.position.x, Radius, this.transform.position.z);
     }
+
     private async void Update()
     {
-        // Update the list of active chunks if the player has walked away enough.
-        float viewerDistance = Vector3.Distance(Universe.Follower.position, lastKnownFollowerPosition);
-        if (viewerDistance > DistanceToUpdateChunks)
+        if (IsFollowerOutsideOfRange())
         {
-            lastKnownFollowerPosition = Universe.Follower.position;
             await UpdateActiveChunks();
         }
     }
@@ -136,7 +131,7 @@ public class Planet : MonoBehaviour
 
         List<PlanetChunk> newActiveChunks = new List<PlanetChunk>();
 
-        foreach (var chunkCoord in GetChunksAroundFollower(128f))
+        foreach (var chunkCoord in GetChunksAroundFollower(ChunkRenderDistance))
         {
             PlanetChunk chunk = await GetOrInstantiateChunk(chunkCoord);
 
@@ -183,6 +178,22 @@ public class Planet : MonoBehaviour
     private int GetRenderDetail(Vector3Int coordinates)
     {
         return 1;
+    }
+
+    /// <summary>
+    /// Returns whether the follower has walked far enough away from their last position that we should update the list of active chunks.
+    /// </summary>
+    /// <returns></returns>
+    private bool IsFollowerOutsideOfRange()
+    {
+        float viewerDistance = Vector3.Distance(Universe.Follower.position, lastKnownFollowerPosition);
+        if (viewerDistance > DistanceToUpdateChunks)
+        {
+            lastKnownFollowerPosition = Universe.Follower.position;
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>

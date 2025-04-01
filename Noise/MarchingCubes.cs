@@ -4,7 +4,7 @@ using UnityEngine;
 
 public static class MarchingCubes
 {
-    public static float[,,] GenerateRoundMap(int chunkSize, Vector3Int chunkPos, Vector3 centerPos, float radius, float noiseScale, float noiseMultiplier, float frequency, float amplitude, int octaves, float persistence, float lacunarity)
+    public static float[,,] GenerateSphereMap(int chunkSize, Vector3Int chunkPos, Vector3 centerPos, float radius, float noiseScale, float noiseMultiplier, float frequency, float amplitude, int octaves)
     {
         Vector3Int size = new Vector3Int(chunkSize, chunkSize, chunkSize);
 
@@ -39,7 +39,7 @@ public static class MarchingCubes
 
                     float bumpyRadius = radius
                         + (sphericalNoise - 0.5f) * 5f
-                        + (noiseValue - 0.5f) * noiseMultiplier;
+                        + (noiseValue) * noiseMultiplier;
 
                     densityMap[x, y, z] = (bumpyRadius - dist) * 0.05f;
                 }
@@ -50,35 +50,7 @@ public static class MarchingCubes
         return densityMap;
     }
 
-    public static float[,,] GenerateSquareMap(Vector3Int size, Vector3Int chunkPos, float noise, int octaves)
-    {
-        // Create a density map with an extra layer of padding for marching cubes
-        float[,,] densityMap = new float[size.x + 1, size.y + 1, size.z + 1];
-
-        for (int x = 0; x < size.x + 1; x++)
-        {
-            for (int y = 0; y < size.y + 1; y++)
-            {
-                for (int z = 0; z < size.z + 1; z++)
-                {
-                    // Convert local chunk coordinates to world coordinates
-                    int worldX = chunkPos.x * size.x + x;
-                    int worldY = chunkPos.y * size.y + y;
-                    int worldZ = chunkPos.z * size.z + z;
-
-                    // Sample 3D Perlin noise at the world coordinates
-                    float noiseValue = Perlin.Fbm(worldX * noise, worldY * noise, worldZ * noise, octaves);
-                    noiseValue *= Mathf.Abs(Perlin.Fbm(worldX * 0.02f, worldY * 0.02f, worldZ * 0.02f, octaves));
-
-                    densityMap[x, y, z] = noiseValue;
-                }
-            }
-        }
-
-        return densityMap;
-    }
-
-    public static Mesh GenerateMesh(MarchingCube cube)
+    public static Mesh GenerateSphereMesh(MarchingCube cube)
     {
         // Build final mesh
         Mesh mesh = new Mesh();
