@@ -1,14 +1,15 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SphereChunkLayout : IChunkLayout
+public class PlanetChunkLayout : IChunkLayout
 {
     private Planet Planet;
-    private SphereChunkConfiguration Configuration;
+    private PlanetChunkConfiguration Configuration;
 
-    public SphereChunkLayout(Planet planet, SphereChunkConfiguration configuration)
+    public PlanetChunkLayout(Planet planet, PlanetChunkConfiguration configuration)
     {
         this.Planet = planet;
+        this.Configuration = configuration;
     }
 
     public List<Vector3Int> GetActiveChunkCoordinates(Vector3 followerPosition)
@@ -35,7 +36,7 @@ public class SphereChunkLayout : IChunkLayout
 
                     // Check both the follower load radius and the planet boundary.
                     if (Vector3.Distance(chunkCenter, followerPosition) <= Configuration.MaxLoadRadius &&
-                        Vector3.Distance(chunkCenter, Planet.Center) <= Planet.Radius + 120)
+                        Vector3.Distance(chunkCenter, Planet.Center) <= Planet.PlanetRadius + 120)
                     {
                         chunksToLoad.Add(chunkCoord);
                     }

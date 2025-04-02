@@ -16,7 +16,10 @@ public class ChunkController : MonoBehaviour
     private MeshRenderer meshRenderer;
     private MeshCollider meshCollider;
 
-    private BaseMarchingCubeGenerator generator;
+    private IChunkGenerator generator;
+    private IChunkColorizer colorizer;
+
+    private bool IsInitialized = false;
 
     private void Awake()
     {
@@ -30,23 +33,33 @@ public class ChunkController : MonoBehaviour
         meshRenderer.material.SetFloat("_Smoothness", 0f);
     }
 
-    public void Initialize(IChunkConfiguration config, Vector3Int coordinates)
+    public void Initialize(IChunkGenerator generator, IChunkColorizer colorizer, IChunkConfiguration config, Vector3Int coordinates)
     {
         if (coordinates != null)
         {
             this.Coordinates = coordinates;
         }
 
-        this.Configuration = config;
-        if (this.Configuration.ChunkType == ChunkType.Sphere)
+        if (config == null)
         {
-            Planet planet = ((SphereChunkConfiguration)this.Configuration).Planet;
-            this.generator = new SphereDensityMapGenerator(planet.Center, planet.Radius, planet.MapOptions);
+            throw new System.ArgumentNullException("Configuration is null.");
         }
+
+        this.generator = generator;
+        this.colorizer = colorizer;
+        this.Configuration = config;
+
+        this.IsInitialized = true;
     }
 
     public async Task UpdateChunkAsync(bool initial = true)
     {
+        if (!IsInitialized)
+        {
+            Debug.LogWarning("Tried to call UpdateChunkAsync() before initializing chunk.");
+            return;
+        }
+
         Color[] colors = null;
         Matrix4x4 localToWorld = transform.localToWorldMatrix;
 
@@ -54,17 +67,17 @@ public class ChunkController : MonoBehaviour
         {
             if (initial || ChunkData == null)
             {
-                ChunkData.DensityMap = generator.Generate(Configuration.ChunkSize, this.Coordinates);
-                ChunkData.MeshData = generator.GenerateMeshData(ChunkData.DensityMap, new Vector3(0, 0, 0));
-                ChunkData = new ChunkData(ChunkData.DensityMap, ChunkData.MeshData);
+                ChunkData = await generator.GenerateNewChunk(Coordinates, Configuration);
+            }
+            else
+            {
+                await generator.UpdateChunkData(ChunkData, Configuration);
             }
 
-            ChunkData.MeshData = generator.GenerateMeshData(ChunkData.DensityMap, new Vector3(0, 0, 0));
-
-            colors = ApplyVertexColor(ChunkData.MeshData, localToWorld);
+            colors = colorizer.ApplyColors(ChunkData.MeshData, localToWorld, Configuration);
         });
 
-        Mesh newMesh = generator.GenerateMesh(ChunkData.MeshData);
+        Mesh newMesh = generator.GenerateMesh(ChunkData, Configuration);
 
         newMesh.colors = colors;
 
@@ -79,34 +92,5 @@ public class ChunkController : MonoBehaviour
     public void SetVisible(bool visible)
     {
         this.gameObject.SetActive(visible);
-    }
-
-    private Color[] ApplyVertexColor(MeshData meshData, Matrix4x4 localToWorld)
-    {
-        Color[] colors = new Color[ChunkData.MeshData.Vertices.Count];
-
-        if (Configuration.ChunkType == ChunkType.Sphere)
-        {
-            SphereChunkConfiguration sphereConfig = ((SphereChunkConfiguration)Configuration);
-
-            for (int i = 0; i < ChunkData.MeshData.Vertices.Count; i++)
-            {
-                Vector3 worldPos = localToWorld.MultiplyPoint3x4(ChunkData.MeshData.Vertices[i]);
-                float distance = (worldPos - sphereConfig.Planet.Center).magnitude;
-
-                /*
-                 * 
-                 * THIS WAS PREVIOUSLY
-                 * sphereConfig.Planet.StartSurfaceColorRadius, sphereConfig.Planet.EndSurfaceColorRadius
-                 * 
-                 * We changed this to 0f - 1f
-                 */
-                float normalized = Mathf.InverseLerp(0f, 1f, distance);
-                Color vertexColor = sphereConfig.Planet.MapOptions.SurfaceColorRange.Evaluate(normalized);
-                colors[i] = vertexColor;
-            }
-        }
-
-        return colors;
     }
 }

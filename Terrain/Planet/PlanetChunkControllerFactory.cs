@@ -2,6 +2,13 @@ using UnityEngine;
 
 public class PlanetChunkControllerFactory : IChunkControllerFactory
 {
+    private Planet planet;
+
+    public PlanetChunkControllerFactory(Planet planet)
+    {
+        this.planet = planet;
+    }
+
     public ChunkController CreateChunkController(Vector3Int coordinates, IChunkConfiguration config, Transform parent)
     {
         Vector3 pos = new Vector3(
@@ -14,7 +21,7 @@ public class PlanetChunkControllerFactory : IChunkControllerFactory
         newChunk.transform.parent = parent;
 
         ChunkController newController = newChunk.AddComponent<ChunkController>();
-        newController.Initialize(config, coordinates);
+        newController.Initialize(new PlanetChunkGenerator(planet), new PlanetChunkColorizer(planet), config, coordinates);
 
         return newController;
     }

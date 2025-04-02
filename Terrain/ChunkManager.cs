@@ -7,8 +7,6 @@ using VHierarchy.Libs;
 public class ChunkManager : MonoBehaviour
 {
     public Transform Follower;
-    public ChunkType ChunkType;
-    public IChunkConfiguration Configuration;
 
     [Header("Rendering")]
     [Tooltip("How far a given chunk can be that it will be rendered on screen. Details will automatically be adjusted on distance.")]
@@ -17,6 +15,7 @@ public class ChunkManager : MonoBehaviour
     [Tooltip("How far the follower needs to be travel before we update the active chunks.")]
     public float TravelDistanceToUpdateChunks = 10f;
 
+    private IChunkConfiguration Configuration;
     private IChunkLayout Layout;
     private IChunkControllerFactory Factory;
 
@@ -26,15 +25,11 @@ public class ChunkManager : MonoBehaviour
     private Vector3 LastKnownFollowerPosition;
 
     private bool IsBusy = false;
+    private bool IsInitialized = false;
 
     private void Awake()
     {
         this.LastKnownFollowerPosition = new Vector3(999, 999, 999);
-
-        if (this.ChunkType == ChunkType.Sphere)
-        {
-            this.Layout = new SphereChunkLayout();
-        }
     }
 
     private async void Update()
@@ -43,6 +38,22 @@ public class ChunkManager : MonoBehaviour
         {
             await UpdateChunks();
         }
+    }
+
+    public void Initialize(IChunkConfiguration configuration, IChunkLayout layout, IChunkControllerFactory factory)
+    {
+        if (configuration == null)
+            throw new System.ArgumentNullException("Configuration is null.");
+        if (layout == null)
+            throw new System.ArgumentNullException("Layout is null.");
+        if (factory == null)
+            throw new System.ArgumentNullException("Factory is null.");
+
+        this.Configuration = configuration;
+        this.Layout = layout;
+        this.Factory = factory;
+
+        this.IsInitialized = true;
     }
 
     /// <summary>
@@ -69,7 +80,7 @@ public class ChunkManager : MonoBehaviour
     /// <exception cref="System.ArgumentNullException"></exception>
     private async Task UpdateChunks()
     {
-        if (IsBusy)
+        if (IsBusy || !IsInitialized)
             return;
         IsBusy = true;
 

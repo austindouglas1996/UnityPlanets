@@ -6,9 +6,8 @@ public class TerrainEditor : MonoBehaviour
     public float brushRadius = 5f;
     public float brushIntensity = 0.1f;
     public float isolevel = 0.5f;
-    public Universe universe;
     public Planet planet;
-
+        /*
     void Update()
     {
         if (Input.GetMouseButton(0)) // Left click to add terrain
@@ -50,4 +49,5 @@ public class TerrainEditor : MonoBehaviour
             }
         }
     }
+    */
 }
