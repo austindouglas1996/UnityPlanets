@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Unity.VisualScripting;
 using UnityEngine;
-using static PlanetChunk;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class ChunkController : MonoBehaviour
@@ -31,7 +30,7 @@ public class ChunkController : MonoBehaviour
         meshRenderer.material.SetFloat("_Smoothness", 0f);
     }
 
-    public async Task Initialize(IChunkConfiguration config, Vector3Int coordinates)
+    public void Initialize(IChunkConfiguration config, Vector3Int coordinates)
     {
         if (coordinates != null)
         {
@@ -44,8 +43,6 @@ public class ChunkController : MonoBehaviour
             Planet planet = ((SphereChunkConfiguration)this.Configuration).Planet;
             this.generator = new SphereDensityMapGenerator(planet.Center, planet.Radius, planet.MapOptions);
         }
-
-        await UpdateChunkAsync(true);
     }
 
     public async Task UpdateChunkAsync(bool initial = true)
