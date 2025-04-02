@@ -31,14 +31,21 @@ public class ChunkController : MonoBehaviour
         meshRenderer.material.SetFloat("_Smoothness", 0f);
     }
 
-    public void Initialize(IChunkConfiguration config)
+    public async Task Initialize(IChunkConfiguration config, Vector3Int coordinates)
     {
+        if (coordinates != null)
+        {
+            this.Coordinates = coordinates;
+        }
+
         this.Configuration = config;
         if (this.Configuration.ChunkType == ChunkType.Sphere)
         {
             Planet planet = ((SphereChunkConfiguration)this.Configuration).Planet;
             this.generator = new SphereDensityMapGenerator(planet.Center, planet.Radius, planet.MapOptions);
         }
+
+        await UpdateChunkAsync(true);
     }
 
     public async Task UpdateChunkAsync(bool initial = true)
