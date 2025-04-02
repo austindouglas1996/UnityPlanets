@@ -47,7 +47,7 @@ public class PlanetChunk : MonoBehaviour
     /// <param name="adding"></param>
     public void ModifyMap(Vector3 hitPoint, float radius, float intensity, bool adding = true)
     {
-        MarchingCubes.ModifyMapWithBrush(ref threadData.MapData.DensityMap, this.Coordinates, hitPoint, radius, intensity, adding);
+        DensityMapModifier.ModifyMapWithSphereBrush(ref threadData.MapData.DensityMap, this.Coordinates, hitPoint, radius, intensity, adding);
         ScheduleUpdate();
     }
 
@@ -83,19 +83,37 @@ public class PlanetChunk : MonoBehaviour
     /// <returns></returns>
     public async Task UpdateAsync(bool initial = false)
     {
+        SphereDensityMapGenerator mapGenerator = new(Planet.Center, Planet.Radius, Planet.MapOptions);
+
+        Color[] colors = null;
+        Matrix4x4 localToWorld = transform.localToWorldMatrix;
+
         await Task.Run(() =>
         {
             PlanetMapData mapData;
 
             if (initial || threadData == null)
-                mapData = this.Planet.GenerateMap(this.Coordinates);
+            {
+                float[,,] densityMap = mapGenerator.Generate(Planet.Universe.PlanetChunkSize, this.Coordinates);
+                MeshData meshData = mapGenerator.GenerateMeshData(densityMap, new Vector3(0, 0, 0));
+                mapData = new PlanetMapData(densityMap, meshData);
+            }
             else
                 mapData = threadData.MapData;
 
-            MarchingCubes cubeProcesor = new MarchingCubes();
-            cubeProcesor.Generate(mapData.DensityMap, this.Planet.ISOLevel, new Vector3(0, 0, 0));
+            mapData.MeshData = mapGenerator.GenerateMeshData(mapData.DensityMap, new Vector3(0, 0, 0));
 
-            threadData = new PlanetChunkThreadData(mapData, cubeProcesor);
+            colors = new Color[mapData.MeshData.Vertices.Count];
+            for (int i = 0; i < mapData.MeshData.Vertices.Count; i++)
+            {
+                Vector3 worldPos = localToWorld.MultiplyPoint3x4(mapData.MeshData.Vertices[i]);
+                float distance = (worldPos - Planet.Center).magnitude;
+                float normalized = Mathf.InverseLerp(Planet.StartSurfaceColorRadius, Planet.EndSurfaceColorRadius, distance);
+                Color vertexColor = Planet.MapOptions.SurfaceColorRange.Evaluate(normalized);
+                colors[i] = vertexColor;
+            }
+
+            threadData = new PlanetChunkThreadData(mapData);
         });
 
         if (threadData == null)
@@ -105,20 +123,9 @@ public class PlanetChunk : MonoBehaviour
 
         //this.GetComponent<FoliageGenerator>().ApplyMap(Planet.Universe.Store, threadData.Cube);
 
-        Mesh newMesh = MarchingCubes.GenerateSphereMesh(threadData.Cube);
-
-        Color[] colors = new Color[threadData.Cube.vertices.Count];
-        for (int i = 0; i < threadData.Cube.vertices.Count; i++)
-        {
-            Vector3 worldPos = transform.TransformPoint(threadData.Cube.vertices[i]);
-            float distance = (worldPos - Planet.Center).magnitude;
-            float normalized = Mathf.InverseLerp(Planet.StartSurfaceColorRadius, Planet.EndSurfaceColorRadius, distance);
-            Color vertexColor = Planet.SurfaceColorRange.Evaluate(normalized);
-            colors[i] = vertexColor;
-        }
+        Mesh newMesh = mapGenerator.GenerateMesh(threadData.MapData.MeshData);
 
         newMesh.colors = colors;
-
 
         this.GetComponent<MeshFilter>().mesh = newMesh;
         this.GetComponent<MeshCollider>().sharedMesh = newMesh;
@@ -138,13 +145,11 @@ public class PlanetChunk : MonoBehaviour
     /// </summary>
     public class PlanetChunkThreadData
     {
-        public PlanetChunkThreadData(PlanetMapData mapData, MarchingCubes cube)
+        public PlanetChunkThreadData(PlanetMapData mapData)
         {
             this.MapData = mapData;
-            this.Cube = cube;
         }
 
         public PlanetMapData MapData { get; set; }
-        public MarchingCubes Cube { get; set; }
     }
 }

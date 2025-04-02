@@ -1,4 +1,3 @@
-using static MeshHelper;
 using System.Collections.Generic;
 using UnityEngine;
 

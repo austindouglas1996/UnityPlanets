@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEngine;
 using static MeshHelper;
 
@@ -7,6 +8,7 @@ public class SphereDensityMapGenerator : BaseMarchingCubeGenerator
     private float PlanetRadius;
 
     public SphereDensityMapGenerator(Vector3 planetCenter, float planetRadius, DensityMapOptions mapOptions)
+        : base(mapOptions)
     {
         this.PlanetCenter = planetCenter;
         this.PlanetRadius = planetRadius;
@@ -14,8 +16,10 @@ public class SphereDensityMapGenerator : BaseMarchingCubeGenerator
 
     public override DensityMapOptions Options { get; set; }
 
-    public override float[,,] Generate(Vector3Int size, Vector3Int chunkCoordinates)
+    public override float[,,] Generate(int chunkSize, Vector3Int chunkCoordinates)
     {
+        Vector3Int size = new Vector3Int(chunkSize, chunkSize, chunkSize);
+
         // Create a density map with an extra layer of padding for marching cubes
         float[,,] densityMap = new float[size.x + 1, size.y + 1, size.z + 1];
 
@@ -58,24 +62,14 @@ public class SphereDensityMapGenerator : BaseMarchingCubeGenerator
         return densityMap;
     }
 
-    public override Mesh GenerateMesh(float[,,] densityMap, float ISOLevel, Vector3 chunkOffset)
+    public override MeshData GenerateMeshData(float[,,] densityMap, Vector3 chunkOffset)
     {
-        base.Generate(densityMap, chunkOffset);
+        MeshData initialData = base.GenerateMeshData(densityMap, chunkOffset);
+        Vector2[] uvs = new Vector2[initialData.Vertices.Count];
 
-        Mesh mesh = new Mesh();
-        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // In case large chunk
-        mesh.vertices = Vertices.ToArray();
-        mesh.triangles = Triangles.ToArray();
-
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-
-        Vector3[] vertices = mesh.vertices;
-        Vector2[] uvs = new Vector2[vertices.Length];
-
-        for (int i = 0; i < vertices.Length; i++)
+        for (int i = 0; i < initialData.Vertices.Count; i++)
         {
-            Vector3 v = vertices[i].normalized;
+            Vector3 v = initialData.Vertices[i].normalized;
 
             float u = 0.5f + Mathf.Atan2(v.z, v.x) / (2f * Mathf.PI);
             float vCoord = 0.5f - Mathf.Asin(v.y) / Mathf.PI;
@@ -83,7 +77,22 @@ public class SphereDensityMapGenerator : BaseMarchingCubeGenerator
             uvs[i] = new Vector2(u, vCoord);
         }
 
-        mesh.uv = uvs;
+        // Set the UV with our modified data.
+        initialData.UVs = uvs.ToList();
+
+        return initialData;
+    }
+
+    public override Mesh GenerateMesh(MeshData data)
+    {
+        Mesh mesh = new Mesh();
+        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // In case large chunk
+        mesh.vertices = data.Vertices.ToArray();
+        mesh.triangles = data.Triangles.ToArray();
+        mesh.uv = data.UVs.ToArray();
+
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
 
         return mesh;
     }

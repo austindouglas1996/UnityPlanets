@@ -1,133 +1,30 @@
 using System.Collections.Generic;
-using System.Linq;
-using Unity.VisualScripting;
+using System.Drawing;
 using UnityEngine;
+using static MeshHelper;
+using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
-public class MarchingCubes
+public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
 {
-    private List<Vector3> vertices = new List<Vector3>();
-    private List<int> triangles = new List<int>();
-    private List<Vector2> uvs = new List<Vector2>();
-
-    public static float[,,] GenerateSphereMap(int chunkSize, Vector3Int chunkPos, Vector3 centerPos, float radius, float noiseScale, float noiseMultiplier, float frequency, float amplitude, int octaves)
+    public BaseMarchingCubeGenerator(DensityMapOptions options)
     {
-        Vector3Int size = new Vector3Int(chunkSize, chunkSize, chunkSize);
+        if (options == null)
+            throw new System.ArgumentNullException("options is null.");
 
-        // Create a density map with an extra layer of padding for marching cubes
-        float[,,] densityMap = new float[size.x + 1, size.y + 1, size.z + 1];
-
-        for (int x = 0; x < size.x + 1; x++)
-        {
-            for (int y = 0; y < size.y + 1; y++)
-            {
-                for (int z = 0; z < size.z + 1; z++)
-                {
-                    // Convert local chunk coordinates to world coordinates
-                    int worldX = chunkPos.x * size.x + x;
-                    int worldY = chunkPos.y * size.y + y;
-                    int worldZ = chunkPos.z * size.z + z;
-
-                    // Distance from center of the planet
-                    Vector3 worldPos = new Vector3(worldX, worldY, worldZ);
-                    float dist = Vector3.Distance(worldPos, centerPos);
-
-                    // Give the planet some roughness.
-                    float sphericalNoise = Perlin.Fbm(worldX * 0.06f, worldY * 0.06f, worldZ * 0.06f, 5);
-
-                    float sampleFreq = frequency * noiseScale;
-
-                    float noiseValue = Perlin.Fbm(
-                        worldX * sampleFreq,
-                        worldY * sampleFreq,
-                        worldZ * sampleFreq,
-                        octaves) * amplitude;
-
-                    float bumpyRadius = radius
-                        + (sphericalNoise - 0.5f) * 5f
-                        + (noiseValue) * noiseMultiplier;
-
-                    densityMap[x, y, z] = (bumpyRadius - dist) * 0.05f;
-                }
-            }
-        }
-
-
-        return densityMap;
+        this.Options = options;
     }
-    public static void ModifyMapWithSphereBrush(ref float[,,] densityMap, Vector3Int chunkPos, Vector3 hitPoint, float radius, float intensity, bool add)
+
+    public abstract DensityMapOptions Options { get; set; }
+    public abstract float[,,] Generate(int chunkSize, Vector3Int chunkCoordinates);
+    public virtual MeshData GenerateMeshData(float[,,] densityMap, Vector3 chunkOffset)
     {
         int width = densityMap.GetLength(0) - 1;
         int height = densityMap.GetLength(1) - 1;
         int depth = densityMap.GetLength(2) - 1;
 
-        Vector3 chunkWorldOrigin = new Vector3(
-            chunkPos.x * width,
-            chunkPos.y * height,
-            chunkPos.z * depth);
-
-        for (int x = 0; x <= width; x++)
-        {
-            for (int y = 0; y <= height; y++)
-            {
-                for (int z = 0; z <= depth; z++)
-                {
-                    Vector3 voxelWorldPos = chunkWorldOrigin + new Vector3(x, y, z);
-                    float dist = Vector3.Distance(voxelWorldPos, hitPoint);
-                    if (dist > radius) continue;
-
-                    float falloff = 1 - (dist / radius);
-                    float mod = intensity * falloff;
-
-                    if (add)
-                        densityMap[x, y, z] += mod;
-                    else
-                        densityMap[x, y, z] -= mod;
-
-                    densityMap[x, y, z] = Mathf.Clamp(densityMap[x, y, z], 0f, 1f);
-                }
-            }
-        }
-    }
-
-    public Mesh GenerateSphereMesh(float[,,] densityMap, float threshold, Vector3 chunkOffset)
-    {
-        // Process 
-        this.Generate(densityMap, threshold, chunkOffset);
-
-        // Build final mesh
-        Mesh mesh = new Mesh();
-        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // In case large chunk
-        mesh.vertices = vertices.ToArray();
-        mesh.triangles = triangles.ToArray();
-
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-
-        Vector3[] vertices = mesh.vertices;
-        Vector2[] uvs = new Vector2[vertices.Length];
-
-        for (int i = 0; i < vertices.Length; i++)
-        {
-            Vector3 v = vertices[i].normalized;
-
-            float u = 0.5f + Mathf.Atan2(v.z, v.x) / (2f * Mathf.PI);
-            float vCoord = 0.5f - Mathf.Asin(v.y) / Mathf.PI;
-
-            uvs[i] = new Vector2(u, vCoord);
-        }
-
-        mesh.uv = uvs;
-
-        return mesh;
-    }
-    private void Generate(float[,,] densityMap, float threshold, Vector3 chunkOffset)
-    {
-        int width = densityMap.GetLength(0) - 1;
-        int height = densityMap.GetLength(1) - 1;
-        int depth = densityMap.GetLength(2) - 1;
-
-        vertices = new List<Vector3>();
-        triangles = new List<int>();
+        var Vertices = new List<Vector3>();
+        var Triangles = new List<int>();
+        var UVs = new List<Vector2>();
 
         for (int x = 0; x < width; x++)
         {
@@ -155,7 +52,7 @@ public class MarchingCubes
                     int cubeIndex = 0;
                     for (int i = 0; i < 8; i++)
                     {
-                        if (cornerVals[i] > threshold)
+                        if (cornerVals[i] > Options.ISOLevel)
                             cubeIndex |= 1 << i;
                     }
 
@@ -172,42 +69,44 @@ public class MarchingCubes
 
                         // Interpolate each triangle corner
                         Vector3 v1 = InterpolateEdge(
-                            threshold,
+                            Options.ISOLevel,
                             cornerPos[EdgeConnections[edgeIndex0, 0]],
                             cornerPos[EdgeConnections[edgeIndex0, 1]],
                             cornerVals[EdgeConnections[edgeIndex0, 0]],
                             cornerVals[EdgeConnections[edgeIndex0, 1]]
                         );
                         Vector3 v2 = InterpolateEdge(
-                            threshold,
+                            Options.ISOLevel,
                             cornerPos[EdgeConnections[edgeIndex1, 0]],
                             cornerPos[EdgeConnections[edgeIndex1, 1]],
                             cornerVals[EdgeConnections[edgeIndex1, 0]],
                             cornerVals[EdgeConnections[edgeIndex1, 1]]
                         );
                         Vector3 v3 = InterpolateEdge(
-                            threshold,
+                            Options.ISOLevel,
                             cornerPos[EdgeConnections[edgeIndex2, 0]],
                             cornerPos[EdgeConnections[edgeIndex2, 1]],
                             cornerVals[EdgeConnections[edgeIndex2, 0]],
                             cornerVals[EdgeConnections[edgeIndex2, 1]]
                         );
 
-                        int baseIndex = vertices.Count;
-                        vertices.Add(v1);
-                        vertices.Add(v2);
-                        vertices.Add(v3);
+                        int baseIndex = Vertices.Count;
+                        Vertices.Add(v1);
+                        Vertices.Add(v2);
+                        Vertices.Add(v3);
 
-                        triangles.Add(baseIndex + 0);
-                        triangles.Add(baseIndex + 1);
-                        triangles.Add(baseIndex + 2);
+                        Triangles.Add(baseIndex + 0);
+                        Triangles.Add(baseIndex + 1);
+                        Triangles.Add(baseIndex + 2);
                     }
                 }
             }
         }
-    }
 
-    private static Vector3 InterpolateEdge(float threshold, Vector3 p1, Vector3 p2, float valP1, float valP2)
+        return new MeshData(Vertices, Triangles, UVs);
+    }
+    public abstract Mesh GenerateMesh(MeshData data);
+    protected virtual Vector3 InterpolateEdge(float threshold, Vector3 p1, Vector3 p2, float valP1, float valP2)
     {
         // If values are nearly equal (flat), return midpoint instead of just one side
         if (Mathf.Approximately(valP1, valP2))
@@ -219,7 +118,7 @@ public class MarchingCubes
         return Vector3.Lerp(p1, p2, t);
     }
 
-    private static readonly Vector3[] CornerOffsets = new Vector3[]
+    protected static readonly Vector3[] CornerOffsets = new Vector3[]
     {
         new Vector3(0, 0, 0), new Vector3(1, 0, 0),
         new Vector3(1, 0, 1), new Vector3(0, 0, 1),
@@ -227,14 +126,14 @@ public class MarchingCubes
         new Vector3(1, 1, 1), new Vector3(0, 1, 1)
     };
 
-    private static readonly int[,] EdgeConnections = new int[,]
+    protected static readonly int[,] EdgeConnections = new int[,]
     {
         {0, 1}, {1, 2}, {2, 3}, {3, 0},
         {4, 5}, {5, 6}, {6, 7}, {7, 4},
         {0, 4}, {1, 5}, {2, 6}, {3, 7}
     };
 
-    private static readonly int[,] TriangleTable = new int[,]
+    protected static readonly int[,] TriangleTable = new int[,]
     {
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},

@@ -2,16 +2,16 @@ using UnityEngine;
 
 public static class DensityMapModifier
 {
-    public static void ModifyMapWithSphereBrush(ref float[,,] densityMap, Vector3Int chunkPos, Vector3 hitPoint, float radius, float intensity, bool add)
+    public static void ModifyMapWithSphereBrush(ref float[,,] densityMap, Vector3Int chunkCoordinates, Vector3 hitPoint, float radius, float intensity, bool add)
     {
         int width = densityMap.GetLength(0) - 1;
         int height = densityMap.GetLength(1) - 1;
         int depth = densityMap.GetLength(2) - 1;
 
         Vector3 chunkWorldOrigin = new Vector3(
-            chunkPos.x * width,
-            chunkPos.y * height,
-            chunkPos.z * depth);
+            chunkCoordinates.x * width,
+            chunkCoordinates.y * height,
+            chunkCoordinates.z * depth);
 
         for (int x = 0; x <= width; x++)
         {

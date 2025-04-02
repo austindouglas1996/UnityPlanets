@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SocialPlatforms;
-using static MarchingCubes;
+using static MeshHelper;
 public class FoliageGenerator : MonoBehaviour
 {
     private MeshBatchDrawer foliageDrawer;
@@ -17,19 +17,21 @@ public class FoliageGenerator : MonoBehaviour
             foliageDrawer.Update();
     }
 
-    public void ApplyMap(TerrainStore store, MarchingCubes cube)
+    public void ApplyMap(TerrainStore store)
     {
         this.Store = store;
 
         foliageDrawer = null;
         foliageDrawer = new MeshBatchDrawer(Camera.main);
 
-        ProcessGrassPositions(cube);
+        ProcessGrassPositions();
     }
 
-    private void ProcessGrassPositions(MarchingCubes cube)
+    private void ProcessGrassPositions()
     {
-        foreach (TrianglePOS tria in cube.GetRandomPositionsInTriangles(this.transform, 2, true, "Default"))
+        MeshFilter meshFilter = this.GetComponent<MeshFilter>();
+
+        foreach (TrianglePOS tria in MeshHelper.GetRandomPositionsInTriangles(meshFilter.sharedMesh, this.transform, 2, true, "Default"))
         {
             float roll = Random.value;
             float flowerChance = 0.05f;

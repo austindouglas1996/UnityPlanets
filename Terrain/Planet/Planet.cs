@@ -15,30 +15,7 @@ public class Planet : MonoBehaviour
     [Header("Generation")]
     public int Radius = 128;
 
-    [Header("Noise Generation")]
-    [Range(0f, 1f), Tooltip("Defines how much noise is generated at the base of the planet. Even with a complete 0 noise the planet will have some noise on the surface.")]
-    public float SurfaceRoughness = 0.05f;
-
-    [Range(-0.5f, 0.5f), Tooltip("Defines the cutoff point for the surface. Voxels below this value get filled in, voxels above it get carved out.")]
-    public float ISOLevel = 0.5f;
-
-    [Range(1, 12), Tooltip("Controls how many layers of noise are stacked. More octaves = more detail, but also more compute-heavy.")]
-    public int Octaves = 5;
-
-    [Range(0f, 1f), Tooltip("Scales the noise map. Lower values zoom in for big landmasses, higher values zoom out for finer features.")]
-    public float NoiseScale = 1f;
-
-    [Range(1f, 150f), Tooltip("Multiplies the overall noise height. Think of this like turning up the terrain’s 'volume'.")]
-    public float NoiseMultiplier = 1f;
-
-    [Range(0f, 25f), Tooltip("Base height of terrain features. Higher amplitude = taller hills and deeper valleys.")]
-    public float Amplitude = 1f;
-
-    [Range(0f, 3f), Tooltip("How quickly the noise changes over space. Higher frequency = more rapid bumps and dips.")]
-    public float Frequency = 1f;
-
-    [Header("Coloring")] 
-    public Gradient SurfaceColorRange;
+    public DensityMapOptions MapOptions;
 
     [Tooltip("Gives the base height of the surface of the planet. This serves as the starting point of the color scale. NOTE: Anything below it will be treated as zero.")]
     public float StartSurfaceColorRadius = 220;
@@ -79,19 +56,6 @@ public class Planet : MonoBehaviour
     public Vector3 Center
     {
         get { return new Vector3(0,0,0); }
-    }
-
-    /// <summary>
-    /// Generate a new density map for a set chunk coordinates.
-    /// </summary>
-    /// <param name="coordinates"></param>
-    /// <returns></returns>
-    public PlanetMapData GenerateMap(Vector3Int coordinates)
-    {
-        PlanetMapData newMap = new PlanetMapData();
-        newMap.DensityMap = MarchingCubes.GenerateSphereMap(Universe.PlanetChunkSize, coordinates, Center, Radius, NoiseScale, NoiseMultiplier, Frequency, Amplitude, Octaves);
-
-        return newMap;
     }
 
     public void Rebuild()
