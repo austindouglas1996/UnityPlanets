@@ -99,19 +99,19 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - Vector1_3519f9570c104bd68e5a8af33d62bf8d: 2.64
-    - Vector1_3f3dc3bb8bcd4bf1842d80e898f53bc4: 14.6
-    - Vector1_4830f1fa588b45d2819e15a4b69ec032: 6.1
+    - Vector1_3519f9570c104bd68e5a8af33d62bf8d: 5
+    - Vector1_3f3dc3bb8bcd4bf1842d80e898f53bc4: 21.8
+    - Vector1_4830f1fa588b45d2819e15a4b69ec032: 53.3
     - Vector1_53B9698E: 5.6
     - Vector1_667b757cacad456b914a6435f3b21f79: 0.04
-    - Vector1_6bf863ff78f047bdb614bf9990bda5dc: 1.8
+    - Vector1_6bf863ff78f047bdb614bf9990bda5dc: 1
     - Vector1_7da725783e8a4c839247558169c9111a: 0
     - Vector1_8556eac2acc249edb98f5bbb2a4807bc: 0
     - Vector1_93DCFAA9: 26.4
     - Vector1_972e1747dcad4452851abeb6ba9d9d47: 8.22
     - Vector1_C5543ECF: 4.37
     - Vector1_E23798DE: 0.004
-    - Vector1_c1464b810f4e4d7c98dcf0d5534e8cfb: 2
+    - Vector1_c1464b810f4e4d7c98dcf0d5534e8cfb: 3
     - _AlphaClip: 0
     - _AlphaToMask: 0
     - _Amplitude: 0.5

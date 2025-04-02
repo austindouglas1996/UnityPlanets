@@ -1,8 +1,8 @@
 using UnityEngine;
 
-public class PlanetMapData
+public class ChunkData
 {
-    public PlanetMapData(float[,,] densityMap, MeshData data)
+    public ChunkData(float[,,] densityMap, MeshData data)
     {
         this.DensityMap = densityMap;
         this.MeshData = data;

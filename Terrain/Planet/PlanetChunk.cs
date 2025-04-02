@@ -90,13 +90,13 @@ public class PlanetChunk : MonoBehaviour
 
         await Task.Run(() =>
         {
-            PlanetMapData mapData;
+            ChunkData mapData;
 
             if (initial || threadData == null)
             {
                 float[,,] densityMap = mapGenerator.Generate(Planet.Universe.PlanetChunkSize, this.Coordinates);
                 MeshData meshData = mapGenerator.GenerateMeshData(densityMap, new Vector3(0, 0, 0));
-                mapData = new PlanetMapData(densityMap, meshData);
+                mapData = new ChunkData(densityMap, meshData);
             }
             else
                 mapData = threadData.MapData;
@@ -145,11 +145,11 @@ public class PlanetChunk : MonoBehaviour
     /// </summary>
     public class PlanetChunkThreadData
     {
-        public PlanetChunkThreadData(PlanetMapData mapData)
+        public PlanetChunkThreadData(ChunkData mapData)
         {
             this.MapData = mapData;
         }
 
-        public PlanetMapData MapData { get; set; }
+        public ChunkData MapData { get; set; }
     }
 }

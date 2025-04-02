@@ -208,7 +208,7 @@ public class Planet : MonoBehaviour
 
                     // Check both the follower load radius and the planet boundary.
                     if (Vector3.Distance(chunkCenter, Universe.Follower.position) <= loadRadius &&
-                        Vector3.Distance(chunkCenter, Center) <= Radius + 20)
+                        Vector3.Distance(chunkCenter, Center) <= Radius + 120)
                     {
                         chunksToLoad.Add(chunkCoord);
                     }
