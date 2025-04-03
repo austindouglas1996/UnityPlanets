@@ -66,7 +66,7 @@ public class ChunkManager : MonoBehaviour
 
         foreach (Transform child in this.transform)
         {
-            child.Destroy();
+            Destroy(child.gameObject);
         }
 
         this.IsBusy = false;
