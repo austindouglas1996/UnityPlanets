@@ -1,18 +1,18 @@
 using UnityEditor;
 using UnityEngine;
 
-[CustomEditor(typeof(PlanetGenerator))]
+[CustomEditor(typeof(ChunkManager))]
 public class PlanetGeneratorEditor : Editor
 {
     public override void OnInspectorGUI()
     {
         DrawDefaultInspector(); // Draws the default inspector UI
 
-        PlanetGenerator generator = (PlanetGenerator)target;
+        ChunkManager manager = (ChunkManager)target;
 
-        if (GUILayout.Button("Regenerate Cave"))
+        if (GUILayout.Button("Rebuild"))
         {
-            generator.Generate();
+            manager.Restart();
         }
     }
 }
