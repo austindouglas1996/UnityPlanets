@@ -25,4 +25,5 @@ public class DensityMapOptions
 
     [Header("Coloring")]
     public Gradient SurfaceColorRange;
+    public float StartSurfaceLevel;
 }

@@ -74,7 +74,7 @@ public class ChunkController : MonoBehaviour
                 await generator.UpdateChunkData(ChunkData, Configuration);
             }
 
-            if (ChunkData.MeshData.Vertices.Count < 0)
+            if (ChunkData.MeshData.Vertices.Count > 0)
             {
                 colors = colorizer.ApplyColors(ChunkData.MeshData, localToWorld, Configuration);
             }

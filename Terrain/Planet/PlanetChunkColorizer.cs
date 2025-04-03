@@ -22,14 +22,7 @@ public class PlanetChunkColorizer : IChunkColorizer
                 Vector3 worldPos = localToWorld.MultiplyPoint3x4(meshData.Vertices[i]);
                 float distance = (worldPos - planet.Center).magnitude;
 
-                /*
-                 * 
-                 * THIS WAS PREVIOUSLY
-                 * sphereConfig.Planet.StartSurfaceColorRadius, sphereConfig.Planet.EndSurfaceColorRadius
-                 * 
-                 * We changed this to 0f - 1f
-                 */
-                float normalized = Mathf.InverseLerp(0f, 1f, distance);
+                float normalized = Mathf.InverseLerp(configuration.MapOptions.StartSurfaceLevel, planet.PlanetRadius, distance);
                 Color vertexColor = configuration.MapOptions.SurfaceColorRange.Evaluate(normalized);
                 colors[i] = vertexColor;
             }
