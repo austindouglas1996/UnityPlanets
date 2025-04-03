@@ -6,7 +6,7 @@ using VHierarchy.Libs;
 
 public class ChunkManager : MonoBehaviour
 {
-    public Transform Follower;
+    [HideInInspector] public Transform Follower;
 
     [Header("Rendering")]
     [Tooltip("How far a given chunk can be that it will be rendered on screen. Details will automatically be adjusted on distance.")]
@@ -127,6 +127,8 @@ public class ChunkManager : MonoBehaviour
             if (controller == null)
                 throw new System.ArgumentNullException("ChunkController does not exist. Was the gameObject deleted?");
         }
+
+        IsBusy = false;
     }
 
     /// <summary>

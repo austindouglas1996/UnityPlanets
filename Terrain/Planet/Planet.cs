@@ -1,6 +1,7 @@
 using Unity.VisualScripting;
 using UnityEngine;
 
+[RequireComponent(typeof(ChunkManager))]
 public class Planet : MonoBehaviour
 {
     [Tooltip("The main character of the world. The object we should spawn chunks around.")]
@@ -15,6 +16,8 @@ public class Planet : MonoBehaviour
     [Tooltip("Helps with configuration of each chunk on this planet.")]
     public PlanetChunkConfiguration ChunkConfiguration;
 
+    private ChunkManager chunkManager;
+
     /// <summary>
     /// Manages the chunks made throughout this planet.
     /// </summary>
@@ -25,7 +28,7 @@ public class Planet : MonoBehaviour
         this.Follower.gameObject.SetActive(false);
         this.Follower.position = new Vector3(0, PlanetRadius, 0);
 
-        ChunkManager chunkManager = this.AddComponent<ChunkManager>();
+        this.chunkManager = this.GetComponent<ChunkManager>();
         chunkManager.Follower = Follower;
         chunkManager.Initialize(ChunkConfiguration, new PlanetChunkLayout(this, ChunkConfiguration), new PlanetChunkControllerFactory(this));
     }
