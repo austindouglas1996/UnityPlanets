@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Unity.VisualScripting;
 using UnityEngine;
 
-[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
+[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
 public class ChunkController : MonoBehaviour
 {
     public Vector3Int Coordinates;
@@ -23,8 +23,6 @@ public class ChunkController : MonoBehaviour
 
     private void Awake()
     {
-        this.name = $"Chunk X:{Coordinates.x} Y:{Coordinates.y} Z:{Coordinates.z}";
-
         meshFilter = GetComponent<MeshFilter>();
         meshCollider = GetComponent<MeshCollider>();
         meshRenderer = GetComponent<MeshRenderer>();
@@ -48,6 +46,8 @@ public class ChunkController : MonoBehaviour
         this.generator = generator;
         this.colorizer = colorizer;
         this.Configuration = config;
+
+        this.name = $"Chunk X:{Coordinates.x} Y:{Coordinates.y} Z:{Coordinates.z}";
 
         this.IsInitialized = true;
     }
@@ -74,8 +74,15 @@ public class ChunkController : MonoBehaviour
                 await generator.UpdateChunkData(ChunkData, Configuration);
             }
 
-            colors = colorizer.ApplyColors(ChunkData.MeshData, localToWorld, Configuration);
+            if (ChunkData.MeshData.Vertices.Count < 0)
+            {
+                colors = colorizer.ApplyColors(ChunkData.MeshData, localToWorld, Configuration);
+            }
         });
+
+        // No use continuing.
+        if (ChunkData.MeshData.Vertices.Count == 0)
+            return;
 
         Mesh newMesh = generator.GenerateMesh(ChunkData, Configuration);
 

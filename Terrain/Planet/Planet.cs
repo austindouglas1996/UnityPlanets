@@ -22,6 +22,9 @@ public class Planet : MonoBehaviour
 
     private void Awake()
     {
+        this.Follower.gameObject.SetActive(false);
+        this.Follower.position = new Vector3(0, PlanetRadius, 0);
+
         ChunkManager chunkManager = this.AddComponent<ChunkManager>();
         chunkManager.Follower = Follower;
         chunkManager.Initialize(ChunkConfiguration, new PlanetChunkLayout(this, ChunkConfiguration), new PlanetChunkControllerFactory(this));
