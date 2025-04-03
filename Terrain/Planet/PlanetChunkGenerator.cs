@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Threading.Tasks;
 using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
@@ -11,20 +12,29 @@ public class PlanetChunkGenerator : IChunkGenerator
         this.planet = planet;
     }
 
-    public async Task<ChunkData> GenerateNewChunk(Vector3Int coordinates, IChunkConfiguration config)
+    public Task<ChunkData> GenerateNewChunk(Vector3Int coordinates, IChunkConfiguration config, CancellationToken token = default)
     {
-        var gen = new SphereDensityMapGenerator(planet.Center, planet.PlanetRadius, config.MapOptions);
+        return Task.Run(() =>
+        {
+            token.ThrowIfCancellationRequested();
 
-        float[,,] map = gen.Generate(config.ChunkSize, coordinates);
-        MeshData data = gen.GenerateMeshData(map, new Vector3(0, 0, 0));
+            var gen = new SphereDensityMapGenerator(planet.Center, planet.PlanetRadius, config.MapOptions);
+            float[,,] map = gen.Generate(config.ChunkSize, coordinates);
+            MeshData data = gen.GenerateMeshData(map, Vector3.zero);
 
-        return new ChunkData(map, data);
+            return new ChunkData(map, data);
+        }, token);
     }
 
-    public async Task UpdateChunkData(ChunkData data, IChunkConfiguration config)
+    public Task UpdateChunkData(ChunkData data, IChunkConfiguration config, CancellationToken token = default)
     {
-        var gen = new SphereDensityMapGenerator(planet.Center, planet.PlanetRadius, config.MapOptions);
-        data.MeshData = gen.GenerateMeshData(data.DensityMap, new Vector3(0, 0, 0));
+        return Task.Run(() =>
+        {
+            token.ThrowIfCancellationRequested();
+
+            var gen = new SphereDensityMapGenerator(planet.Center, planet.PlanetRadius, config.MapOptions);
+            data.MeshData = gen.GenerateMeshData(data.DensityMap, Vector3.zero);
+        }, token);
     }
 
     public Mesh GenerateMesh(ChunkData chunk, IChunkConfiguration config)

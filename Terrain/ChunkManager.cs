@@ -115,8 +115,6 @@ public class ChunkManager : MonoBehaviour
                 {
                     controller = Factory.CreateChunkController(chunk, Configuration, this.transform);
                     this.ActiveChunks.Add(chunk, controller);
-
-                    await controller.UpdateChunkAsync();
                 }
             }
             else

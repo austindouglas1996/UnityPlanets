@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -19,6 +20,7 @@ public class ChunkController : MonoBehaviour
     private IChunkGenerator generator;
     private IChunkColorizer colorizer;
 
+    private bool IsDirty = true;
     private bool IsInitialized = false;
 
     private void Awake()
@@ -29,6 +31,15 @@ public class ChunkController : MonoBehaviour
 
         meshRenderer.material = new Material(Shader.Find("Shader Graphs/VertexColor"));
         meshRenderer.material.SetFloat("_Smoothness", 0f);
+    }
+
+    private async void Update()
+    {
+        if (IsDirty)
+        {
+            IsDirty = false;
+            await UpdateChunkAsync();
+        }
     }
 
     public void Initialize(IChunkGenerator generator, IChunkColorizer colorizer, IChunkConfiguration config, Vector3Int coordinates)
@@ -52,7 +63,7 @@ public class ChunkController : MonoBehaviour
         this.IsInitialized = true;
     }
 
-    public async Task UpdateChunkAsync(bool initial = true)
+    public async Task UpdateChunkAsync(bool initial = true, CancellationToken cancellationToken = default)
     {
         if (!IsInitialized)
         {
@@ -63,22 +74,21 @@ public class ChunkController : MonoBehaviour
         Color[] colors = null;
         Matrix4x4 localToWorld = transform.localToWorldMatrix;
 
-        await Task.Run(async () =>
+        if (initial || ChunkData == null)
         {
-            if (initial || ChunkData == null)
-            {
-                ChunkData = await generator.GenerateNewChunk(Coordinates, Configuration);
-            }
-            else
-            {
-                await generator.UpdateChunkData(ChunkData, Configuration);
-            }
+            ChunkData = await generator.GenerateNewChunk(Coordinates, Configuration);
+        }
+        else
+        {
+            await generator.UpdateChunkData(ChunkData, Configuration);
+        }
 
-            if (ChunkData.MeshData.Vertices.Count > 0)
-            {
-                colors = colorizer.ApplyColors(ChunkData.MeshData, localToWorld, Configuration);
-            }
-        });
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (ChunkData.MeshData.Vertices.Count > 0)
+        {
+            colors = colorizer.ApplyColors(ChunkData.MeshData, localToWorld, Configuration);
+        }
 
         // No use continuing.
         if (ChunkData.MeshData.Vertices.Count == 0)
