@@ -1,15 +1,31 @@
 ﻿using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SocialPlatforms;
-using static MeshHelper;
+
 public class FoliageGenerator : MonoBehaviour
 {
+    public class TrianglePOS
+    {
+        public Vector3 Position;
+        public Vector3 Normal;
+    }
+
     private MeshBatchDrawer foliageDrawer;
 
     public float maxGrassHeight = 2.3f;
     public float grassDensity = 10f;
 
-    public GenericStore Store;
+    private GenericStore Store;
+
+    private System.Random rand;
+
+    private void Awake()
+    {
+        this.rand = new System.Random();
+        this.Store = GenericStore.Instance;
+    }
 
     private void Update()
     {
@@ -17,21 +33,37 @@ public class FoliageGenerator : MonoBehaviour
             foliageDrawer.Update();
     }
 
-    public void ApplyMap(GenericStore store)
+    List<TrianglePOS> positions = new List<TrianglePOS>();
+    public async Task ApplyMap(ChunkData data, CancellationToken token = default)
     {
-        this.Store = store;
-
+        positions.Clear();
         foliageDrawer = null;
         foliageDrawer = new MeshBatchDrawer(Camera.main);
 
-        ProcessGrassPositions();
+        Matrix4x4 matrix = this.transform.localToWorldMatrix;
+
+        LayerMask layerMask = LayerMask.GetMask("Default");
+
+        await Task.Run(() =>
+        {
+            positions = GetRandomPositionsInTriangles(data, matrix);
+
+        }, token);
+
+        foreach (TrianglePOS pos in positions)
+        {
+            if (Physics.Raycast(pos.Position + Vector3.up * 5f, Vector3.down, out RaycastHit hit, 10f, layerMask))
+            {
+                pos.Position = new Vector3(pos.Position.x, hit.point.y, pos.Position.z);
+            }
+        }
+
+        ProcessGrassPositions(positions);
     }
 
-    private void ProcessGrassPositions()
+    private void ProcessGrassPositions(List<TrianglePOS> pos)
     {
-        MeshFilter meshFilter = this.GetComponent<MeshFilter>();
-
-        foreach (TrianglePOS tria in MeshHelper.GetRandomPositionsInTriangles(meshFilter.sharedMesh, this.transform, 2, true, "Default"))
+        foreach (TrianglePOS tria in pos)
         {
             float roll = Random.value;
             float flowerChance = 0.05f;
@@ -58,5 +90,44 @@ public class FoliageGenerator : MonoBehaviour
                 }
             }
         }
+    }
+
+    private List<TrianglePOS> GetRandomPositionsInTriangles(ChunkData data, Matrix4x4 matrix, int multiply = 1, bool alignY = true)
+    {
+        List<TrianglePOS> positions = new List<TrianglePOS>();
+
+        if (multiply <= 0)
+            multiply = 1;
+
+        for (int i = 0; i < data.MeshData.Triangles.Count; i += 3)
+        {
+            Vector3 localA = data.MeshData.Vertices[data.MeshData.Triangles[i]];
+            Vector3 localB = data.MeshData.Vertices[data.MeshData.Triangles[i + 1]];
+            Vector3 localC = data.MeshData.Vertices[data.MeshData.Triangles[i + 2]];
+
+            Vector3 vertexA = matrix.MultiplyPoint3x4(localA);
+            Vector3 vertexB = matrix.MultiplyPoint3x4(localB);
+            Vector3 vertexC = matrix.MultiplyPoint3x4(localC);
+
+            List<Vector3> localPositions = new List<Vector3>();
+
+            for (int x = 0; x < multiply; x++)
+            {
+                Vector3 triangleNormal = Vector3.Cross(vertexB - vertexA, vertexC - vertexA).normalized;
+                Vector3 position = RandomPointInTriangle(vertexA, vertexB, vertexC) + triangleNormal * 0.01f;
+
+                positions.Add(new TrianglePOS() { Position = position, Normal = triangleNormal });
+                localPositions.Add(position);
+            }
+        }
+
+        return positions;
+    }
+
+    private Vector3 RandomPointInTriangle(Vector3 a, Vector3 b, Vector3 c)
+    {
+        float r1 = Mathf.Sqrt((float)rand.NextDouble());
+        float r2 = (float)rand.NextDouble();
+        return (1 - r1) * a + (r1 * (1 - r2)) * b + (r1 * r2) * c;
     }
 }

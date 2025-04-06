@@ -89,7 +89,7 @@ public class ChunkManager : MonoBehaviour
         List<Vector3Int> invalidChunks = new List<Vector3Int>();
         foreach (var key in this.ActiveChunks.Keys)
         {
-            if (visibleChunksCoordinates.Contains(key))
+            if (!visibleChunksCoordinates.Contains(key))
             {
                 invalidChunks.Add(key);
             }

@@ -36,7 +36,7 @@ public class PlanetChunkLayout : IChunkLayout
 
                     // Check both the follower load radius and the planet boundary.
                     if (Vector3.Distance(chunkCenter, followerPosition) <= Configuration.MaxLoadRadius &&
-                        Vector3.Distance(chunkCenter, Planet.Center) <= Planet.PlanetRadius + 120)
+                        Vector3.Distance(chunkCenter, Planet.Center) <= Planet.PlanetRadius)
                     {
                         chunksToLoad.Add(chunkCoord);
                     }

@@ -163,25 +163,6 @@ public class MeshBatchDrawer
         else
             meshIndex = this.Meshes.Keys.ToList().IndexOf(go); // NEED TO FIND A BETTER WAY OF THIS.
 
-        /*
-         * There is no way the above line is efficent. With around 55,000 instances we need fast.
-         * This is still a problem ): 
-         * This is still a problem ): 
-         * This is still a problem ): 
-         * This is still a problem ): 
-         * This is still a problem ): 
-         * This is still a problem ): 
-         * This is still a problem ): 
-         * This is still a problem ): 
-         * This is still a problem ): 
-         * This is still a problem ): 
-         * This is still a problem ): 
-         * This is still a problem ): 
-         * This is still a problem ): 
-         * This is still a problem ): 
-         * This is still a problem ): 
-         */
-
         // Grab the last batch, create a new batch if full.
         MeshBatch currentBatch = this.Batches.Last();
         if (currentBatch.IsFull)
