@@ -92,6 +92,7 @@ public class SphereDensityMapGenerator : BaseMarchingCubeGenerator
 
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
+        //mesh.RecalculateTangents();
 
         return mesh;
     }

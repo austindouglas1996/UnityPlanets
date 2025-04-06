@@ -16,19 +16,24 @@ public class Planet : MonoBehaviour
     [Tooltip("Helps with configuration of each chunk on this planet.")]
     public PlanetChunkConfiguration ChunkConfiguration;
 
-    private ChunkManager chunkManager;
-
     /// <summary>
     /// Manages the chunks made throughout this planet.
     /// </summary>
-    private ChunkManager ChunkManager;
+    private ChunkManager chunkManager;
+
+    private void OnValidate()
+    {
+        if (this.chunkManager != null)
+        {
+            //this.lastSurfaceGradient = ChunkConfiguration.MapOptions.SurfaceColorRange;
+            this.chunkManager.ReProcessColors();
+        }
+    }
 
     private void Awake()
     {
         //this.Follower.gameObject.SetActive(false);
         this.Follower.position = new Vector3(0, PlanetRadius * 2, 0);
-
-        string e = "";
 
         this.chunkManager = this.GetComponent<ChunkManager>();
         chunkManager.Follower = Follower;

@@ -23,7 +23,7 @@ public class DensityMapOptions
     [Range(0f, 3f), Tooltip("How quickly the noise changes over space. Higher frequency = more rapid bumps and dips.")]
     public float Frequency = 1f;
 
-    [Header("Coloring")]
+    [SerializeField, Header("Coloring")]
     public Gradient SurfaceColorRange;
     public float StartSurfaceLevel;
 }

@@ -77,7 +77,6 @@ public class ChunkController : MonoBehaviour
             return;
         }
 
-        Color[] colors = null;
         Matrix4x4 localToWorld = transform.localToWorldMatrix;
 
         if (initial || ChunkData == null)
@@ -89,24 +88,32 @@ public class ChunkController : MonoBehaviour
             await generator.UpdateChunkData(ChunkData, Configuration);
         }
 
-        if (ChunkData.MeshData.Vertices.Count > 0)
-        {
-            colors = colorizer.ApplyColors(ChunkData.MeshData, localToWorld, Configuration);
-        }
-
         // No use continuing.
         if (ChunkData.MeshData.Vertices.Count == 0)
             return;
 
         Mesh newMesh = generator.GenerateMesh(ChunkData, Configuration);
 
-        newMesh.colors = colors;
-
         this.GetComponent<MeshFilter>().mesh = newMesh;
         this.GetComponent<MeshCollider>().sharedMesh = newMesh;
 
-        ChunkData.VerticeColors = colors.ToArray();
+        ApplyChunkColors();
        
         await this.GetComponent<FoliageGenerator>().ApplyMap(ChunkData);
+    }
+
+    public void ApplyChunkColors()
+    {
+        Color[] colors = null;
+
+        if (ChunkData.MeshData.Vertices.Count > 0)
+        {
+            colors = colorizer.ApplyColors(ChunkData.MeshData, transform.localToWorldMatrix, Configuration);
+        }
+        else
+            return;
+
+        ChunkData.VerticeColors = colors.ToArray();
+        this.GetComponent<MeshFilter>().mesh.colors = ChunkData.VerticeColors;
     }
 }

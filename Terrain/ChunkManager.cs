@@ -15,9 +15,9 @@ public class ChunkManager : MonoBehaviour
     [Tooltip("How far the follower needs to be travel before we update the active chunks.")]
     public float TravelDistanceToUpdateChunks = 10f;
 
-    private IChunkConfiguration Configuration;
-    private IChunkLayout Layout;
-    private IChunkControllerFactory Factory;
+    [SerializeField] private IChunkConfiguration Configuration;
+    [SerializeField] private IChunkLayout Layout;
+    [SerializeField] private IChunkControllerFactory Factory;
 
     private Dictionary<Vector3Int, ChunkController> ActiveChunks = new Dictionary<Vector3Int, ChunkController>();
     private Dictionary<Vector3Int, ChunkController> CacheChunks = new Dictionary<Vector3Int, ChunkController>();
@@ -54,6 +54,18 @@ public class ChunkManager : MonoBehaviour
         this.Factory = factory;
 
         this.IsInitialized = true;
+    }
+
+    public void ReProcessColors()
+    {
+        foreach (Transform child in this.transform)
+        {
+            ChunkController controller = child.GetComponent<ChunkController>();
+            if (controller != null)
+            {
+                controller.ApplyChunkColors();
+            }
+        }
     }
 
     /// <summary>
