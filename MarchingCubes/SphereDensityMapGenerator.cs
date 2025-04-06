@@ -1,6 +1,5 @@
 using System.Linq;
 using UnityEngine;
-using static MeshHelper;
 
 public class SphereDensityMapGenerator : BaseMarchingCubeGenerator
 {

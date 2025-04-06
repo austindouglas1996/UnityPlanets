@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Drawing;
 using UnityEngine;
-using static MeshHelper;
 using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
 public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator

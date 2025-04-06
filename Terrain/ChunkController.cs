@@ -31,6 +31,9 @@ public class ChunkController : MonoBehaviour
 
         meshRenderer.material = new Material(Shader.Find("Shader Graphs/VertexColor"));
         meshRenderer.material.SetFloat("_Smoothness", 0f);
+
+        if (this.GetComponent<FoliageGenerator>() == null)
+            this.AddComponent<FoliageGenerator>();
     }
 
     private async void Update()
@@ -65,6 +68,8 @@ public class ChunkController : MonoBehaviour
 
     public async Task UpdateChunkAsync(bool initial = true, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (!IsInitialized)
         {
             Debug.LogWarning("Tried to call UpdateChunkAsync() before initializing chunk.");
@@ -83,8 +88,6 @@ public class ChunkController : MonoBehaviour
             await generator.UpdateChunkData(ChunkData, Configuration);
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
-
         if (ChunkData.MeshData.Vertices.Count > 0)
         {
             colors = colorizer.ApplyColors(ChunkData.MeshData, localToWorld, Configuration);
@@ -100,6 +103,8 @@ public class ChunkController : MonoBehaviour
 
         this.GetComponent<MeshFilter>().mesh = newMesh;
         this.GetComponent<MeshCollider>().sharedMesh = newMesh;
+       
+        await this.GetComponent<FoliageGenerator>().ApplyMap(ChunkData);
     }
 
     /// <summary>
