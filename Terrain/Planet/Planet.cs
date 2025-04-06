@@ -25,8 +25,8 @@ public class Planet : MonoBehaviour
 
     private void Awake()
     {
-        this.Follower.gameObject.SetActive(false);
-        this.Follower.position = new Vector3(0, PlanetRadius, 0);
+        //this.Follower.gameObject.SetActive(false);
+        this.Follower.position = new Vector3(0, PlanetRadius * 2, 0);
 
         string e = "";
 

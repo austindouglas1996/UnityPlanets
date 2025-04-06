@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.VisualScripting;
@@ -103,6 +104,8 @@ public class ChunkController : MonoBehaviour
 
         this.GetComponent<MeshFilter>().mesh = newMesh;
         this.GetComponent<MeshCollider>().sharedMesh = newMesh;
+
+        ChunkData.VerticeColors = colors.ToArray();
        
         await this.GetComponent<FoliageGenerator>().ApplyMap(ChunkData);
     }

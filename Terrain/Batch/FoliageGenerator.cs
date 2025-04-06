@@ -10,6 +10,7 @@ public class FoliageGenerator : MonoBehaviour
     {
         public Vector3 Position;
         public Vector3 Normal;
+        public Color Color;
     }
 
     private MeshBatchDrawer foliageDrawer;
@@ -33,10 +34,10 @@ public class FoliageGenerator : MonoBehaviour
             foliageDrawer.Update();
     }
 
-    List<TrianglePOS> positions = new List<TrianglePOS>();
     public async Task ApplyMap(ChunkData data, CancellationToken token = default)
     {
-        positions.Clear();
+        List<TrianglePOS> positions = new List<TrianglePOS>();
+
         foliageDrawer = null;
         foliageDrawer = new MeshBatchDrawer(Camera.main);
 
@@ -65,29 +66,31 @@ public class FoliageGenerator : MonoBehaviour
     {
         foreach (TrianglePOS tria in pos)
         {
-            float roll = Random.value;
             float flowerChance = 0.05f;
-            float rockChance = 0.002f;
+            float rockChance = 0.004f;
+            float treeChance = 0.004f;
 
             float averageHeight = tria.Position.y;
             Quaternion rotation = Quaternion.FromToRotation(Vector3.up, tria.Normal) * Quaternion.Euler(0, Random.Range(0, 360), 0);
 
-            if (roll < rockChance)
+            if (Random.value < rockChance)
             {
-                Vector3 rockScale = Vector3.one * Random.Range(0.2f, 3f);
-                foliageDrawer.Add(this.Store.GetOneRandom("Rocks"), tria.Position, rotation, rockScale);
+                Vector3 rockScale = Vector3.one * Random.Range(0.2f, 11f);
+                foliageDrawer.Add(this.Store.GetOneRandom("Rocks"), tria.Position, rotation, rockScale, tria.Color);
             }
 
-            if ((int)averageHeight > 32)
-            {
-                Vector3 scale = Vector3.one * Random.Range(0.7f, 1.4f);
-                foliageDrawer.Add(this.Store.GetOneRandom("Grass"), tria.Position, rotation, scale);
+            Vector3 scale = Vector3.one * Random.Range(0.7f, 1.4f);
+            foliageDrawer.Add(this.Store.GetOneRandom("Grass"), tria.Position, rotation, scale, tria.Color);
 
-                if (roll < flowerChance + rockChance) // Flower spawn, only if rock didn't spawn
-                {
-                    Vector3 flowerScale = Vector3.one * Random.Range(1.3f, 2.5f);
-                    foliageDrawer.Add(this.Store.GetOneRandom("Flowers"), tria.Position, rotation, flowerScale);
-                }
+            if (Random.value < rockChance) // Flower spawn, only if rock didn't spawn
+            {
+                Vector3 flowerScale = Vector3.one * Random.Range(1.3f, 2.5f);
+                foliageDrawer.Add(this.Store.GetOneRandom("Flowers"), tria.Position, rotation, flowerScale, tria.Color);
+            }
+
+            if (Random.value < treeChance)
+            {
+                foliageDrawer.Add(this.Store.GetOneRandom("Trees"), tria.Position, rotation, scale, tria.Color);
             }
         }
     }
@@ -116,7 +119,12 @@ public class FoliageGenerator : MonoBehaviour
                 Vector3 triangleNormal = Vector3.Cross(vertexB - vertexA, vertexC - vertexA).normalized;
                 Vector3 position = RandomPointInTriangle(vertexA, vertexB, vertexC) + triangleNormal * 0.01f;
 
-                positions.Add(new TrianglePOS() { Position = position, Normal = triangleNormal });
+                Color A = data.VerticeColors[i];
+                Color B = data.VerticeColors[i + 1];
+                Color C = data.VerticeColors[i + 2]; 
+                Color D = (A + B + C) / 3f;
+
+                positions.Add(new TrianglePOS() { Position = position, Normal = triangleNormal, Color = D});
                 localPositions.Add(position);
             }
         }
@@ -124,6 +132,13 @@ public class FoliageGenerator : MonoBehaviour
         return positions;
     }
 
+    /// <summary>
+    /// Return a random position in the triangle.
+    /// </summary>
+    /// <param name="a"></param>
+    /// <param name="b"></param>
+    /// <param name="c"></param>
+    /// <returns></returns>
     private Vector3 RandomPointInTriangle(Vector3 a, Vector3 b, Vector3 c)
     {
         float r1 = Mathf.Sqrt((float)rand.NextDouble());

@@ -25,6 +25,7 @@ public class MeshBatchDrawer
 
         public int MeshIndex;
         public List<Matrix4x4> Positions = new List<Matrix4x4>();
+        public List<Vector4> Colors = new();
     }
 
     private struct MeshDrawItem
@@ -33,12 +34,14 @@ public class MeshBatchDrawer
         public int SubMeshIndex;
         public Material Material;
         public List<Matrix4x4> Positions;
+        public List<Vector4> Colors;
     }
 
     private class MeshBatch
     {
         private int currentIndex = 0;
         private float lastSeenDistance = 0;
+
         public MeshBatch()
         {
             lastSeenDistance = float.MaxValue;
@@ -58,7 +61,7 @@ public class MeshBatchDrawer
             get { return lastSeenDistance; }
         }
 
-        public void Add(int meshIndex, Vector3 position, Quaternion rotation, Vector3 scale)
+        public void Add(int meshIndex, Vector3 position, Quaternion rotation, Vector3 scale, Color customColor)
         {
             if (meshIndex == -1)
             {
@@ -77,6 +80,7 @@ public class MeshBatchDrawer
 
             MeshBatchItem currentBatch = Entries[meshIndex];
             currentBatch.Positions.Add(Matrix4x4.TRS(position, rotation, scale));
+            currentBatch.Colors.Add(customColor);
             currentIndex++;
 
             Bounds.Encapsulate(position);
@@ -148,7 +152,7 @@ public class MeshBatchDrawer
     /// <param name="position"></param>
     /// <param name="rotation"></param>
     /// <param name="scale"></param>
-    public void Add(GameObject go, Vector3 position, Quaternion rotation, Vector3 scale)
+    public void Add(GameObject go, Vector3 position, Quaternion rotation, Vector3 scale, Color customColor)
     {
         float distanceToFollower = Vector3.Distance(position, Follower.transform.position);
         int lodIndex = GetLODIndex(distanceToFollower);
@@ -171,7 +175,7 @@ public class MeshBatchDrawer
             this.Batches.Add(currentBatch);
         }
 
-        currentBatch.Add(meshIndex, position, rotation, scale);
+        currentBatch.Add(meshIndex, position, rotation, scale, customColor);
     }
 
     /// <summary>
@@ -223,13 +227,15 @@ public class MeshBatchDrawer
                         throw new System.ArgumentException("Mesh LOD index is invalid.");
 
                     var mesh = Meshes.ElementAt(entry.Value.MeshIndex).Value;
-                    var meshLod = mesh[lodIndex];
+                    int meshLodIndex = mesh.Count - 1 < lodIndex ? 0 : lodIndex;
+                    var meshLod = mesh[meshLodIndex];
 
                     MeshDrawItem newItem = new MeshDrawItem();
-                    newItem.Mesh = mesh[lodIndex].Mesh;
+                    newItem.Mesh = mesh[meshLodIndex].Mesh;
                     newItem.SubMeshIndex = 0;
                     newItem.Material = meshLod.Mat;
                     newItem.Positions = entry.Value.Positions;
+                    newItem.Colors = entry.Value.Colors;
 
                     this.DrawList.Add(newItem);
                 }
@@ -245,7 +251,10 @@ public class MeshBatchDrawer
     {
         foreach (var drawItem in this.DrawList)
         {
-            Graphics.DrawMeshInstanced(drawItem.Mesh, drawItem.SubMeshIndex, drawItem.Material, drawItem.Positions);
+            MaterialPropertyBlock props = new MaterialPropertyBlock();
+            props.SetVectorArray("_InstanceColor", drawItem.Colors.ToArray());
+
+            Graphics.DrawMeshInstanced(drawItem.Mesh, drawItem.SubMeshIndex, drawItem.Material, drawItem.Positions, props);
         }
     }
 

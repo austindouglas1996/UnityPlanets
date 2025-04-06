@@ -9,7 +9,9 @@ public class MeshLOD
         this.Mesh = mesh;
 
         this.Mat = material;
-        this.Mat.enableInstancing = true;
+
+        if (this.Mat != null)
+            this.Mat.enableInstancing = true;
     }
 
     public int LODIndex { get; set; }
@@ -18,11 +20,17 @@ public class MeshLOD
 
     public static List<MeshLOD> Extract(GameObject go)
     {
+        List<MeshLOD> results = new List<MeshLOD>();
+
         LODGroup group = go.GetComponent<LODGroup>();
         if (group == null)
-            throw new System.ArgumentNullException("GO does not contain a LODGroup to extract mesh.");
+        {
+            MeshFilter filter = go.GetComponent<MeshFilter>();
+            MeshRenderer renderer = go.GetComponent<MeshRenderer>();
+            results.Add(new MeshLOD(1, filter.sharedMesh, renderer.sharedMaterial));
 
-        List<MeshLOD> results = new List<MeshLOD>();
+            return results;
+        }
 
         LOD[] lods = group.GetLODs();
         for (int i = 0; i < lods.Length; i++)

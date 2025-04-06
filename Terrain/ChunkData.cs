@@ -9,5 +9,6 @@ public class ChunkData
     }
 
     public float[,,] DensityMap;
+    public Color[] VerticeColors;
     public MeshData MeshData;
 }
