@@ -109,13 +109,4 @@ public class ChunkController : MonoBehaviour
        
         await this.GetComponent<FoliageGenerator>().ApplyMap(ChunkData);
     }
-
-    /// <summary>
-    /// Set the chunk visible. Helps with knowing whether to continue to render/update content.
-    /// </summary>
-    /// <param name="visible"></param>
-    public void SetVisible(bool visible)
-    {
-        this.gameObject.SetActive(visible);
-    }
 }
