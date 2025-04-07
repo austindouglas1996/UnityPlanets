@@ -1,6 +1,9 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
 using VHierarchy.Libs;
 
@@ -36,7 +39,7 @@ public class ChunkManager : MonoBehaviour
     {
         if (IsFollowerOutsideOfRange())
         {
-            await UpdateChunks();
+            UpdateChunks();
         }
     }
 
@@ -85,12 +88,34 @@ public class ChunkManager : MonoBehaviour
         this.LastKnownFollowerPosition = new Vector3(999, 999, 999);
     }
 
+    public async Task ModifyTerrain(TerrainBrush brush, bool isAdding, float bufferMultiplier = 0.5f, CancellationToken token = default)
+    {
+        Stopwatch sw = Stopwatch.StartNew();
+
+        Bounds brushBounds = brush.GetBrushBounds();
+        Vector3 chunkSize = new Vector3(Configuration.ChunkSize, Configuration.ChunkSize, Configuration.ChunkSize);
+
+        foreach (ChunkController chunk in this.ActiveChunks.Values)
+        {
+            Bounds chunkBounds = new Bounds(chunk.transform.position + chunkSize * bufferMultiplier, chunkSize);
+
+            if (brushBounds.Intersects(chunkBounds))
+            {
+                await chunk.ModifyChunk(brush, isAdding, token);
+            }
+        }
+
+        sw.Stop();
+
+        UnityEngine.Debug.Log($"ModifyChunks took {sw.ElapsedMilliseconds} ms");
+    }
+
     /// <summary>
     /// Update the collection of active chunks in the world.
     /// </summary>
     /// <returns></returns>
     /// <exception cref="System.ArgumentNullException"></exception>
-    private async Task UpdateChunks()
+    private void UpdateChunks()
     {
         if (IsBusy || !IsInitialized)
             return;

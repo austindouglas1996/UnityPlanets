@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.VisualScripting.Antlr3.Runtime;
 using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
 
@@ -23,6 +24,17 @@ public class PlanetChunkGenerator : IChunkGenerator
             MeshData data = gen.GenerateMeshData(map, Vector3.zero);
 
             return new ChunkData(map, data);
+        }, token);
+    }
+
+    public Task ModifyChunkData(ChunkData data, IChunkConfiguration config, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default)
+    {
+        return Task.Run(() =>
+        {
+            token.ThrowIfCancellationRequested();
+
+            var gen = new SphereDensityMapGenerator(planet.Center, planet.PlanetRadius, config.MapOptions);
+            gen.ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, brush.WorldHitPoint, addingOrSubtracting);
         }, token);
     }
 

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,6 +23,7 @@ public class ChunkController : MonoBehaviour
     private IChunkColorizer colorizer;
 
     private bool IsDirty = true;
+    private bool IsBusy = false;
     private bool IsInitialized = false;
 
     private void Awake()
@@ -71,15 +73,16 @@ public class ChunkController : MonoBehaviour
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        if (IsBusy) return;
+
         if (!IsInitialized)
         {
-            Debug.LogWarning("Tried to call UpdateChunkAsync() before initializing chunk.");
             return;
         }
 
         Matrix4x4 localToWorld = transform.localToWorldMatrix;
 
-        if (initial || ChunkData == null)
+        if (ChunkData == null)
         {
             ChunkData = await generator.GenerateNewChunk(Coordinates, Configuration);
         }
@@ -99,7 +102,17 @@ public class ChunkController : MonoBehaviour
 
         ApplyChunkColors();
        
-        await this.GetComponent<FoliageGenerator>().ApplyMap(ChunkData);
+        //if (initial)
+            //await this.GetComponent<FoliageGenerator>().ApplyMap(ChunkData);
+
+        IsBusy = false;
+    }
+
+    public async Task ModifyChunk(TerrainBrush brush, bool addingOrSubtracting, CancellationToken token = default)
+    {
+        await this.generator.ModifyChunkData(this.ChunkData, this.Configuration, brush, this.Coordinates, addingOrSubtracting, token);
+
+        this.IsDirty = true;
     }
 
     public void ApplyChunkColors()

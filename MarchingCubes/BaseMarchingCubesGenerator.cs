@@ -104,6 +104,40 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
 
         return new MeshData(Vertices, Triangles, UVs);
     }
+
+    public virtual void ModifyMapWithBrush(TerrainBrush brush, ref float[,,] densityMap, Vector3Int chunkPos, Vector3 hitPoint, bool isAdding)
+    {
+        int width = densityMap.GetLength(0) - 1;
+        int height = densityMap.GetLength(1) - 1;
+        int depth = densityMap.GetLength(2) - 1;
+
+        Vector3 chunkWorldOrigin = new Vector3(
+            chunkPos.x * width,
+            chunkPos.y * height,
+            chunkPos.z * depth);
+
+        for (int x = 0; x <= width; x++)
+        {
+            for (int y = 0; y <= height; y++)
+            {
+                for (int z = 0; z <= depth; z++)
+                {
+                    Vector3 voxelWorldPos = chunkWorldOrigin + new Vector3(x, y, z);
+                    float effect = brush.GetEffectAmount(voxelWorldPos, hitPoint);
+
+                    if (effect == 0) continue;
+
+                    if (isAdding)
+                        densityMap[x, y, z] += effect;
+                    else
+                        densityMap[x, y, z] -= effect;
+
+                    densityMap[x, y, z] = Mathf.Clamp(densityMap[x, y, z], 0f, 1f);
+                }
+            }
+        }
+    }
+
     public abstract Mesh GenerateMesh(MeshData data);
     protected virtual Vector3 InterpolateEdge(float threshold, Vector3 p1, Vector3 p2, float valP1, float valP2)
     {
