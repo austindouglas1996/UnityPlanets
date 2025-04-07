@@ -26,7 +26,7 @@ public class Planet : MonoBehaviour
         if (this.chunkManager != null)
         {
             //this.lastSurfaceGradient = ChunkConfiguration.MapOptions.SurfaceColorRange;
-            this.chunkManager.ReProcessColors();
+            this.chunkManager.UpdateChunkColors();
         }
     }
 

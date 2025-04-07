@@ -7,21 +7,41 @@ using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
 using VHierarchy.Libs;
 
+/// <summary>
+/// Manages all active chunks in the world. Handles loading, unloading, re-coloring,
+/// and modifying terrain based on player movement and brush interactions.
+/// </summary>
 public class ChunkManager : MonoBehaviour
 {
+    /// <summary>
+    /// The transform that this chunk system follows, like the player.
+    /// </summary>
     [HideInInspector] public Transform Follower;
 
     [Header("Rendering")]
+
+    /// <summary>
+    /// How far away a chunk can be before it's no longer rendered. Detail is adjusted based on distance.
+    /// </summary>
     [Tooltip("How far a given chunk can be that it will be rendered on screen. Details will automatically be adjusted on distance.")]
     public float ChunkRenderDistance = 400;
 
+    /// <summary>
+    /// How far the follower has to move before we trigger an update of active chunks.
+    /// </summary>
     [Tooltip("How far the follower needs to be travel before we update the active chunks.")]
     public float TravelDistanceToUpdateChunks = 10f;
 
+    /// <summary>
+    /// These components are used to help with the generation process.
+    /// </summary>
     [SerializeField] private IChunkConfiguration Configuration;
     [SerializeField] private IChunkLayout Layout;
     [SerializeField] private IChunkControllerFactory Factory;
 
+    /// <summary>
+    /// Holds a collection of chunks we have seen along with active chunks that are currently active.
+    /// </summary>
     private Dictionary<Vector3Int, ChunkController> ActiveChunks = new Dictionary<Vector3Int, ChunkController>();
     private Dictionary<Vector3Int, ChunkController> CacheChunks = new Dictionary<Vector3Int, ChunkController>();
 
@@ -32,10 +52,11 @@ public class ChunkManager : MonoBehaviour
 
     private void Awake()
     {
+        // Reset the last seen follower position so we update everything.
         this.LastKnownFollowerPosition = new Vector3(999, 999, 999);
     }
 
-    private async void Update()
+    private void Update()
     {
         if (IsFollowerOutsideOfRange())
         {
@@ -43,6 +64,13 @@ public class ChunkManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Sets up the chunk manager with the required configuration, layout, and factory.
+    /// </summary>
+    /// <param name="configuration">Settings for chunk size and behavior.</param>
+    /// <param name="layout">Logic to determine visible chunk positions.</param>
+    /// <param name="factory">Factory that builds new chunk controllers.</param>
+    /// <exception cref="System.ArgumentNullException">If any required dependency is missing.</exception>
     public void Initialize(IChunkConfiguration configuration, IChunkLayout layout, IChunkControllerFactory factory)
     {
         if (configuration == null)
@@ -59,7 +87,10 @@ public class ChunkManager : MonoBehaviour
         this.IsInitialized = true;
     }
 
-    public void ReProcessColors()
+    /// <summary>
+    /// Loops through all child chunks and reapplies their colors. Useful for debugging or updating style changes.
+    /// </summary>
+    public void UpdateChunkColors()
     {
         foreach (Transform child in this.transform)
         {
@@ -72,7 +103,7 @@ public class ChunkManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Debug function to help with quickly re-rendering the output.
+    /// Destroys all current chunks and resets internal state. Useful for debugging.
     /// </summary>
     public void Restart()
     {
@@ -88,10 +119,16 @@ public class ChunkManager : MonoBehaviour
         this.LastKnownFollowerPosition = new Vector3(999, 999, 999);
     }
 
+    /// <summary>
+    /// Modifies all chunks that intersect the brush area.
+    /// Used when the player adds or removes terrain.
+    /// </summary>
+    /// <param name="brush">The terrain brush to apply.</param>
+    /// <param name="isAdding">True to add terrain, false to remove.</param>
+    /// <param name="bufferMultiplier">Optional chunk bounds buffer.</param>
+    /// <param name="token">Optional cancellation token.</param>
     public async Task ModifyTerrain(TerrainBrush brush, bool isAdding, float bufferMultiplier = 0.5f, CancellationToken token = default)
     {
-        Stopwatch sw = Stopwatch.StartNew();
-
         Bounds brushBounds = brush.GetBrushBounds();
         Vector3 chunkSize = new Vector3(Configuration.ChunkSize, Configuration.ChunkSize, Configuration.ChunkSize);
 
@@ -104,17 +141,12 @@ public class ChunkManager : MonoBehaviour
                 await chunk.ModifyChunk(brush, isAdding, token);
             }
         }
-
-        sw.Stop();
-
-        UnityEngine.Debug.Log($"ModifyChunks took {sw.ElapsedMilliseconds} ms");
     }
 
     /// <summary>
-    /// Update the collection of active chunks in the world.
+    /// Rebuilds the list of active chunks based on the follower’s current position.
+    /// Adds new chunks and removes out-of-range ones.
     /// </summary>
-    /// <returns></returns>
-    /// <exception cref="System.ArgumentNullException"></exception>
     private void UpdateChunks()
     {
         if (IsBusy || !IsInitialized)
@@ -167,9 +199,9 @@ public class ChunkManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Returns whether the follower has walked far enough away from their last position that we should update the list of active chunks.
+    /// Checks if the follower has moved far enough since the last chunk update to warrant refreshing.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>True if chunks should be updated, false otherwise.</returns>
     private bool IsFollowerOutsideOfRange()
     {
         float viewerDistance = Vector3.Distance(Follower.position, LastKnownFollowerPosition);

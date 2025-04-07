@@ -17,7 +17,7 @@ public class PlanetGeneratorEditor : Editor
 
         if (GUILayout.Button("ReColor"))
         {
-            manager.ReProcessColors();
+            manager.UpdateChunkColors();
         }
     }
 }

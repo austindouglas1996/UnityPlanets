@@ -6,13 +6,14 @@ using System.Threading.Tasks;
 using Unity.VisualScripting;
 using UnityEngine;
 
+/// <summary>
+/// Manages a single terrain chunk in the marching cubes system. Handles initialization, mesh generation,
+/// terrain modification, color application, and optional foliage setup. Expected to be attached to each
+/// chunk GameObject in the scene.
+/// </summary>
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
 public class ChunkController : MonoBehaviour
 {
-    public Vector3Int Coordinates;
-    public IChunkConfiguration Configuration;
-    public ChunkData ChunkData;
-
     public int RenderDetail { get; set; } = -1;
 
     private MeshFilter meshFilter;
@@ -22,8 +23,23 @@ public class ChunkController : MonoBehaviour
     private IChunkGenerator generator;
     private IChunkColorizer colorizer;
 
+    private ChunkData ChunkData;
+    private IChunkConfiguration Configuration;
+    private Vector3Int Coordinates;
+
+    /// <summary>
+    /// Tells whether this chunk needs to be regenerated.
+    /// </summary>
     private bool IsDirty = true;
+
+    /// <summary>
+    /// Tells whether this chunk is currently busy processing.
+    /// </summary>
     private bool IsBusy = false;
+
+    /// <summary>
+    /// Tells whether the initial <see cref="Initialize(IChunkGenerator, IChunkColorizer, IChunkConfiguration, Vector3Int)"/> function has been called.
+    /// </summary>
     private bool IsInitialized = false;
 
     private void Awake()
@@ -48,11 +64,20 @@ public class ChunkController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Initialize the base components used throughout this controller.
+    /// </summary>
+    /// <param name="generator">Generator to generate the chunk data.</param>
+    /// <param name="colorizer">Colorizer used to color the mesh (Vertex instance shader required)</param>
+    /// <param name="config">Configuration used for mesh noise.</param>
+    /// <param name="coordinates">Coordinates of this chunk.</param>
+    /// <exception cref="System.ArgumentNullException"></exception>
     public void Initialize(IChunkGenerator generator, IChunkColorizer colorizer, IChunkConfiguration config, Vector3Int coordinates)
     {
         if (coordinates != null)
         {
-            this.Coordinates = coordinates;
+            this.Coordinates = coordinates; 
+            this.name = $"Chunk X:{Coordinates.x} Y:{Coordinates.y} Z:{Coordinates.z}";
         }
 
         if (config == null)
@@ -64,27 +89,28 @@ public class ChunkController : MonoBehaviour
         this.colorizer = colorizer;
         this.Configuration = config;
 
-        this.name = $"Chunk X:{Coordinates.x} Y:{Coordinates.y} Z:{Coordinates.z}";
-
         this.IsInitialized = true;
     }
 
+    /// <summary>
+    /// Builds or updates the mesh for this chunk, applies vertex colors, and optionally generates foliage if it's a new chunk.
+    /// </summary>
+    /// <param name="initial">True if this is the first time the chunk is being generated (e.g. foliage should be applied).</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     public async Task UpdateChunkAsync(bool initial = true, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (IsBusy) return;
+        if (IsBusy || !IsInitialized) return;
 
-        if (!IsInitialized)
-        {
-            return;
-        }
-
+        bool initializeFoliage = false;
         Matrix4x4 localToWorld = transform.localToWorldMatrix;
 
         if (ChunkData == null)
         {
             ChunkData = await generator.GenerateNewChunk(Coordinates, Configuration);
+            initializeFoliage = true;
         }
         else
         {
@@ -101,20 +127,31 @@ public class ChunkController : MonoBehaviour
         this.GetComponent<MeshCollider>().sharedMesh = newMesh;
 
         ApplyChunkColors();
-       
-        //if (initial)
-            //await this.GetComponent<FoliageGenerator>().ApplyMap(ChunkData);
+
+        if (initializeFoliage)
+            await this.GetComponent<FoliageGenerator>().ApplyMap(ChunkData);
 
         IsBusy = false;
     }
 
-    public async Task ModifyChunk(TerrainBrush brush, bool addingOrSubtracting, CancellationToken token = default)
+    /// <summary>
+    /// Takes the existing density map and modifies the data based on the brush.
+    /// </summary>
+    /// <param name="brush">The brush that is used to modify the terrain.</param>
+    /// <param name="isAdding">Whether we are removing or adding terrain.</param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public async Task ModifyChunk(TerrainBrush brush, bool isAdding, CancellationToken token = default)
     {
-        await this.generator.ModifyChunkData(this.ChunkData, this.Configuration, brush, this.Coordinates, addingOrSubtracting, token);
+        await this.generator.ModifyChunkData(this.ChunkData, this.Configuration, brush, this.Coordinates, isAdding, token);
 
         this.IsDirty = true;
     }
 
+    /// <summary>
+    /// Generates and applies and the colors on the generated mesh. This is needed to show
+    /// proper colors on the mesh, but does require a specific vertex color shader to work.
+    /// </summary>
     public void ApplyChunkColors()
     {
         Color[] colors = null;

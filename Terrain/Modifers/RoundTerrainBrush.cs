@@ -25,5 +25,4 @@ public class RoundTerrainBrush : TerrainBrush
         float falloff = 1 - (Mathf.Sqrt(sqrDist) / Radius);
         return Intensity * falloff;
     }
-
 }

@@ -9,8 +9,6 @@ public class PlanetChunkConfiguration : IChunkConfiguration
     [SerializeField] private int surfaceBuffer = 12;
     [SerializeField] private DensityMapOptions mapOptions;
 
-    public ChunkType ChunkType => ChunkType.Planet;
-
     public int ChunkSize => chunkSize;
     public int MaxLoadRadius => maxLoadRadius;
     public int SurfaceBuffer => surfaceBuffer;
