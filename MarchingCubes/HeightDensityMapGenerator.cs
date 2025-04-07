@@ -22,20 +22,25 @@ public class HeightDensityMapGenerator : BaseMarchingCubeGenerator
             {
                 for (int z = 0; z < size.z + 1; z++)
                 {
-                    // Convert local chunk coordinates to world coordinates
                     int worldX = chunkCoordinates.x * size.x + x;
                     int worldY = chunkCoordinates.y * size.y + y;
                     int worldZ = chunkCoordinates.z * size.z + z;
 
                     float sampleFreq = Options.Frequency * Options.NoiseScale;
 
-                    float noiseValue = Perlin.Fbm(
+                    // 3D noise for caves and structure
+                    float noise = Perlin.Fbm(
                         worldX * sampleFreq,
                         worldY * sampleFreq,
                         worldZ * sampleFreq,
-                        Options.Octaves) * Options.Amplitude;
+                        Options.Octaves
+                    ) * Options.Amplitude;
 
-                    densityMap[x, y, z] = ((noiseValue) * Options.NoiseMultiplier) * 0.05f;
+                    float surfaceY = 50f; // world Y where the ground should mostly sit
+                    float value = (surfaceY - worldY) + (noise * Options.NoiseMultiplier);
+
+                    // Scale to match Marching Cubes range
+                    densityMap[x, y, z] = value * 0.5f;
                 }
             }
         }

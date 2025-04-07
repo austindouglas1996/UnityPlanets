@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class LandMassChunkColorizer : IChunkColorizer
@@ -11,7 +12,9 @@ public class LandMassChunkColorizer : IChunkColorizer
         for (int i = 0; i < meshData.Vertices.Count; i++)
         {
             Vector3 worldPos = localToWorld.MultiplyPoint3x4(meshData.Vertices[i]);
-            Color vertexColor = configuration.MapOptions.SurfaceColorRange.Evaluate(worldPos.y);
+
+            float normalized = Mathf.InverseLerp(landConfig.SurfaceMin, landConfig.SurfaceMax, worldPos.y);
+            Color vertexColor = configuration.MapOptions.SurfaceColorRange.Evaluate(normalized);
             colors[i] = vertexColor;
         }
 
