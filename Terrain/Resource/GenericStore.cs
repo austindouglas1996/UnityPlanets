@@ -28,10 +28,3 @@ public class GenericStore : MonoBehaviour
         return Get(name).Random();
     }
 }
-
-[Serializable]
-public class GenericStoreEntry
-{
-    public string Name;
-    public List<GameObject> Entries;
-}
