@@ -3,21 +3,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
-public class GenericChunkGenerator<TMapGenerator> : IChunkGenerator
-    where TMapGenerator : BaseMarchingCubeGenerator
+public abstract class GenericChunkGenerator : IChunkGenerator
 {
-    public Mesh GenerateMesh(ChunkData chunk, IChunkConfiguration config)
+    public virtual Mesh GenerateMesh(ChunkData chunk, IChunkConfiguration config)
     {
-        return CreateInstance(config).GenerateMesh(chunk.MeshData);
+        return CreateMapGenerator(config).GenerateMesh(chunk.MeshData);
     }
 
-    public Task<ChunkData> GenerateNewChunk(Vector3Int coordinates, IChunkConfiguration config, CancellationToken token = default)
+    public virtual Task<ChunkData> GenerateNewChunk(Vector3Int coordinates, IChunkConfiguration config, CancellationToken token = default)
     {
         return Task.Run(() =>
         {
             token.ThrowIfCancellationRequested();
 
-            var gen = CreateInstance(config);
+            var gen = CreateMapGenerator(config);
             float[,,] map = gen.Generate(config.ChunkSize, coordinates);
             MeshData data = gen.GenerateMeshData(map, Vector3.zero);
 
@@ -25,27 +24,24 @@ public class GenericChunkGenerator<TMapGenerator> : IChunkGenerator
         }, token);
     }
 
-    public Task ModifyChunkData(ChunkData data, IChunkConfiguration config, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default)
+    public virtual Task ModifyChunkData(ChunkData data, IChunkConfiguration config, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default)
     {
         return Task.Run(() =>
         {
             token.ThrowIfCancellationRequested();
 
-            CreateInstance(config).ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, brush.WorldHitPoint, addingOrSubtracting);
+            CreateMapGenerator(config).ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, brush.WorldHitPoint, addingOrSubtracting);
         }, token);
     }
 
-    public Task UpdateChunkData(ChunkData data, IChunkConfiguration config, CancellationToken token = default)
+    public virtual Task UpdateChunkData(ChunkData data, IChunkConfiguration config, CancellationToken token = default)
     {
         return Task.Run(() =>
         {
             token.ThrowIfCancellationRequested();
-            data.MeshData = CreateInstance(config).GenerateMeshData(data.DensityMap, Vector3.zero);
+            data.MeshData = CreateMapGenerator(config).GenerateMeshData(data.DensityMap, Vector3.zero);
         }, token);
     }
 
-    private TMapGenerator CreateInstance(IChunkConfiguration config)
-    {
-        return (TMapGenerator)Activator.CreateInstance(typeof(TMapGenerator), config);
-    }
+    protected abstract BaseMarchingCubeGenerator CreateMapGenerator(IChunkConfiguration config);
 }
