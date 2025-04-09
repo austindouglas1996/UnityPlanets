@@ -14,7 +14,7 @@ public class LandMassChunkControllerFactory : IChunkControllerFactory
         newChunk.transform.parent = parent;
 
         ChunkController newController = newChunk.AddComponent<ChunkController>();
-        newController.Initialize(new LandMassChunkGenerator(), new LandMassChunkColorizer(), config, coordinates);
+        newController.Initialize(new GenericChunkGenerator<HeightDensityMapGenerator>(), new LandMassChunkColorizer(), config, coordinates);
 
         return newController;
     }
