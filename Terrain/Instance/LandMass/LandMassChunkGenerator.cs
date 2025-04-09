@@ -4,22 +4,15 @@ using Unity.VisualScripting.Antlr3.Runtime;
 using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
 
-public class PlanetChunkGenerator : IChunkGenerator
+public class LandMassChunkGenerator : IChunkGenerator
 {
-    private Planet planet;
-
-    public PlanetChunkGenerator(Planet planet)
-    {
-        this.planet = planet;
-    }
-
     public Task<ChunkData> GenerateNewChunk(Vector3Int coordinates, IChunkConfiguration config, CancellationToken token = default)
     {
         return Task.Run(() =>
         {
             token.ThrowIfCancellationRequested();
 
-            var gen = new SphereDensityMapGenerator(planet.Center, planet.PlanetRadius, config.MapOptions);
+            var gen = CreateGenerator(config);
             float[,,] map = gen.Generate(config.ChunkSize, coordinates);
             MeshData data = gen.GenerateMeshData(map, Vector3.zero);
 
@@ -33,8 +26,7 @@ public class PlanetChunkGenerator : IChunkGenerator
         {
             token.ThrowIfCancellationRequested();
 
-            var gen = new SphereDensityMapGenerator(planet.Center, planet.PlanetRadius, config.MapOptions);
-            gen.ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, brush.WorldHitPoint, addingOrSubtracting);
+            CreateGenerator(config).ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, brush.WorldHitPoint, addingOrSubtracting);
         }, token);
     }
 
@@ -43,15 +35,17 @@ public class PlanetChunkGenerator : IChunkGenerator
         return Task.Run(() =>
         {
             token.ThrowIfCancellationRequested();
-
-            var gen = new SphereDensityMapGenerator(planet.Center, planet.PlanetRadius, config.MapOptions);
-            data.MeshData = gen.GenerateMeshData(data.DensityMap, Vector3.zero);
+            data.MeshData = CreateGenerator(config).GenerateMeshData(data.DensityMap, Vector3.zero);
         }, token);
     }
 
     public Mesh GenerateMesh(ChunkData chunk, IChunkConfiguration config)
     {
-        var gen = new SphereDensityMapGenerator(planet.Center, planet.PlanetRadius, config.MapOptions);
-        return gen.GenerateMesh(chunk.MeshData);
+        return CreateGenerator(config).GenerateMesh(chunk.MeshData);
+    }
+
+    private HeightDensityMapGenerator CreateGenerator(IChunkConfiguration config)
+    {
+        return new HeightDensityMapGenerator(config.MapOptions);
     }
 }

@@ -21,7 +21,6 @@ public class PlanetChunkControllerFactory : IChunkControllerFactory
         newChunk.transform.parent = parent;
 
         ChunkController newController = newChunk.AddComponent<ChunkController>();
-        PlanetChunkGenerator generator = new PlanetChunkGenerator(planet);
         newController.Initialize(new PlanetChunkGenerator(planet), new PlanetChunkColorizer(planet), config, coordinates);
 
         return newController;
