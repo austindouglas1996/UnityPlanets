@@ -15,7 +15,6 @@ public class LandMass : MonoBehaviour
     {
         if (this.chunkManager != null)
         {
-            //this.lastSurfaceGradient = ChunkConfiguration.MapOptions.SurfaceColorRange;
             this.chunkManager.UpdateChunkColors();
         }
     }

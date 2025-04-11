@@ -1,7 +1,19 @@
 using UnityEngine;
 
+/// <summary>
+/// Provides utilities for modifying density maps with brushes.
+/// </summary>
 public static class DensityMapModifier
 {
+    /// <summary>
+    /// Modifies a density map using a spherical brush at a world-space hit point.
+    /// </summary>
+    /// <param name="densityMap">The density map to modify (3D grid of floats).</param>
+    /// <param name="chunkCoordinates">The coordinates of the chunk in chunk space.</param>
+    /// <param name="hitPoint">The world-space point the brush is applied at.</param>
+    /// <param name="radius">The radius of the brush in world units.</param>
+    /// <param name="intensity">The intensity of the brush effect (scaled by distance).</param>
+    /// <param name="add">True to add density, false to subtract.</param>
     public static void ModifyMapWithSphereBrush(ref float[,,] densityMap, Vector3Int chunkCoordinates, Vector3 hitPoint, float radius, float intensity, bool add)
     {
         int width = densityMap.GetLength(0) - 1;

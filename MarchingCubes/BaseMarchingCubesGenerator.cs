@@ -3,8 +3,16 @@ using System.Drawing;
 using UnityEngine;
 using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
+/// <summary>
+/// Base class for implementing marching cube terrain generation.
+/// Handles mesh generation, density map modification, and interpolation.
+/// </summary>
 public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
 {
+    /// <summary>
+    /// Creates a new marching cube generator with the given density options.
+    /// </summary>
+    /// <param name="options">The configuration used for density generation and surface thresholds.</param>
     public BaseMarchingCubeGenerator(DensityMapOptions options)
     {
         if (options == null)
@@ -13,8 +21,26 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         this.Options = options;
     }
 
+    /// <summary>
+    /// The options used for generating density and controlling surface behavior.
+    /// </summary>
     public abstract DensityMapOptions Options { get; set; }
+
+    /// <summary>
+    /// Generates a 3D density map for the chunk at the specified coordinates.
+    /// </summary>
+    /// <param name="chunkSize">Size of the chunk (assumed cubic).</param>
+    /// <param name="chunkCoordinates">Coordinates of the chunk in chunk space.</param>
+    /// <returns>A 3D float array representing density values.</returns>
     public abstract float[,,] Generate(int chunkSize, Vector3Int chunkCoordinates);
+
+    /// <summary>
+    /// Generates mesh data from a given density map using the marching cubes algorithm.
+    /// Automatically skips generation if the entire chunk is empty or solid.
+    /// </summary>
+    /// <param name="densityMap">3D density values for the chunk (includes +1 padding).</param>
+    /// <param name="chunkOffset">World-space offset for this chunk's origin.</param>
+    /// <returns>MeshData containing vertices, triangles, and optional UVs.</returns>
     public virtual MeshData GenerateMeshData(float[,,] densityMap, Vector3 chunkOffset)
     {
         int width = densityMap.GetLength(0) - 1;
@@ -127,6 +153,15 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         return new MeshData(Vertices, Triangles, UVs);
     }
 
+    /// <summary>
+    /// Modifies the density map in place using a terrain brush.
+    /// Adds or subtracts density values based on brush settings and hit point.
+    /// </summary>
+    /// <param name="brush">The brush to apply to the chunk.</param>
+    /// <param name="densityMap">The density map to modify.</param>
+    /// <param name="chunkPos">Chunk position in chunk space.</param>
+    /// <param name="hitPoint">World-space location the brush is applied to.</param>
+    /// <param name="isAdding">If true, adds density; otherwise subtracts.</param>
     public virtual void ModifyMapWithBrush(TerrainBrush brush, ref float[,,] densityMap, Vector3Int chunkPos, Vector3 hitPoint, bool isAdding)
     {
         int width = densityMap.GetLength(0) - 1;
@@ -160,7 +195,23 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         }
     }
 
+    /// <summary>
+    /// Converts processed MeshData into a Unity Mesh object.
+    /// </summary>
+    /// <param name="data">The mesh data to convert.</param>
+    /// <returns>A generated Unity Mesh.</returns>
     public abstract Mesh GenerateMesh(MeshData data);
+
+    /// <summary>
+    /// Interpolates a point along an edge between two positions based on density threshold.
+    /// Used to calculate surface intersections in marching cubes.
+    /// </summary>
+    /// <param name="threshold">The surface level (ISO level).</param>
+    /// <param name="p1">First corner position.</param>
+    /// <param name="p2">Second corner position.</param>
+    /// <param name="valP1">Density at first corner.</param>
+    /// <param name="valP2">Density at second corner.</param>
+    /// <returns>Interpolated position along the edge.</returns>
     protected virtual Vector3 InterpolateEdge(float threshold, Vector3 p1, Vector3 p2, float valP1, float valP2)
     {
         // If values are nearly equal (flat), return midpoint instead of just one side
@@ -173,6 +224,9 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         return Vector3.Lerp(p1, p2, t);
     }
 
+    /// <summary>
+    /// Internal mesh logic that someone smarter than me made.
+    /// </summary>
     protected static readonly Vector3[] CornerOffsets = new Vector3[]
     {
         new Vector3(0, 0, 0), new Vector3(1, 0, 0),
@@ -181,6 +235,9 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         new Vector3(1, 1, 1), new Vector3(0, 1, 1)
     };
 
+    /// <summary>
+    /// Internal mesh logic that someone smarter than me made.
+    /// </summary>
     protected static readonly int[,] EdgeConnections = new int[,]
     {
         {0, 1}, {1, 2}, {2, 3}, {3, 0},
@@ -188,6 +245,9 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         {0, 4}, {1, 5}, {2, 6}, {3, 7}
     };
 
+    /// <summary>
+    /// Internal mesh logic that someone much smarter than me made.
+    /// </summary>
     protected static readonly int[,] TriangleTable = new int[,]
     {
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},

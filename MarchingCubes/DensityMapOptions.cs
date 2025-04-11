@@ -1,10 +1,22 @@
-
 using System;
 using UnityEngine;
+public enum NoiseType
+{
+    Perlin,
+    Simplex,
+    Ridged,
+    Cellular
+}
 
 [Serializable]
 public class DensityMapOptions
 {
+    [Tooltip("Seed used for noise generation. Keeps terrain consistent across sessions.")]
+    public int Seed = 0;
+
+    [Tooltip("Type of noise function to use.")]
+    public NoiseType SelectedNoise = NoiseType.Perlin;
+
     [Range(-0.5f, 0.5f), Tooltip("Defines the cutoff point for the surface. Voxels below this value get filled in, voxels above it get carved out.")]
     public float ISOLevel = 0.5f;
 
@@ -23,7 +35,14 @@ public class DensityMapOptions
     [Range(0f, 3f), Tooltip("How quickly the noise changes over space. Higher frequency = more rapid bumps and dips.")]
     public float Frequency = 1f;
 
-    public float LODScale = 4f;
+    [Tooltip("Offsets the noise sampling position. Useful for scrolling or layering multiple sources.")]
+    public Vector3 Offset = Vector3.zero;
+
+    [Tooltip("Applies a falloff curve to terrain edges. Useful for islands or floating chunks.")]
+    public AnimationCurve FalloffCurve = AnimationCurve.Linear(0, 1, 1, 0);
+
+    [Range(0f, 1f), Tooltip("Threshold below which the terrain is flattened. Useful for water or caves.")]
+    public float FlattenThreshold = 0.2f;
 
     [SerializeField, Header("Coloring")]
     public Gradient SurfaceColorRange;
