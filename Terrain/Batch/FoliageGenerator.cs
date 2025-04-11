@@ -90,7 +90,7 @@ public class FoliageGenerator : MonoBehaviour
 
             if (Random.value < treeChance)
             {
-                foliageDrawer.Add(this.Store.GetOneRandom("Trees"), tria.Position, rotation, scale, tria.Color);
+                //foliageDrawer.Add(this.Store.GetOneRandom("Trees"), tria.Position, rotation, scale, tria.Color);
             }
         }
     }
@@ -124,7 +124,7 @@ public class FoliageGenerator : MonoBehaviour
                 Color C = data.VerticeColors[i + 2]; 
                 Color D = (A + B + C) / 3f;
 
-                positions.Add(new TrianglePOS() { Position = position, Normal = triangleNormal, Color = D});
+                positions.Add(new TrianglePOS() { Position = position, Normal = triangleNormal, Color = D });
                 localPositions.Add(position);
             }
         }

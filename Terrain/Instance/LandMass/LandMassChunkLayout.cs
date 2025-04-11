@@ -17,6 +17,11 @@ public class LandMassChunkLayout : IChunkLayout
         int chunkSize = this.Configuration.ChunkSize;
         int maxChunkOffset = this.Configuration.ChunkViewDistance;
 
+        Vector3Int followerChunkPos = new Vector3Int(
+            Mathf.FloorToInt(followerPosition.x / chunkSize),
+            Mathf.FloorToInt(followerPosition.y / chunkSize),
+            Mathf.FloorToInt(followerPosition.z / chunkSize));
+
         List<Vector3Int> chunksToLoad = new();
 
         for (int x = -maxChunkOffset; x <= maxChunkOffset; x++)
@@ -25,7 +30,7 @@ public class LandMassChunkLayout : IChunkLayout
             {
                 for (int z = -maxChunkOffset; z <= maxChunkOffset; z++)
                 {
-                    Vector3Int offset = new(x, y, z);
+                    Vector3Int offset = followerChunkPos + new Vector3Int(x, y, z);
                     chunksToLoad.Add(offset);
                 }
             }

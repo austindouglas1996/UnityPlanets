@@ -5,7 +5,9 @@ using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
 public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
 {
-    public BaseMarchingCubeGenerator(DensityMapOptions options)
+    private ComputeShader cubesShader;
+
+    public BaseMarchingCubeGenerator(ComputeShader shader, DensityMapOptions options)
     {
         if (options == null)
             throw new System.ArgumentNullException("options is null.");

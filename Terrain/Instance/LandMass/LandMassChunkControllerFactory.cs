@@ -2,6 +2,13 @@ using UnityEngine;
 
 public class LandMassChunkControllerFactory : IChunkControllerFactory
 {
+    private ComputeShader shader;
+
+    public LandMassChunkControllerFactory(ComputeShader shader)
+    {
+        this.shader = shader;
+    }
+
     public ChunkController CreateChunkController(Vector3Int coordinates, IChunkConfiguration config, Transform parent)
     {
         Vector3 pos = new Vector3(
@@ -14,7 +21,7 @@ public class LandMassChunkControllerFactory : IChunkControllerFactory
         newChunk.transform.parent = parent;
 
         ChunkController newController = newChunk.AddComponent<ChunkController>();
-        newController.Initialize(new LandMassChunkGenerator(), new LandMassChunkColorizer(), config, coordinates);
+        newController.Initialize(new LandMassChunkGenerator(shader), new LandMassChunkColorizer(), config, coordinates);
 
         return newController;
     }

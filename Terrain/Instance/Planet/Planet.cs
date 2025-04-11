@@ -13,6 +13,8 @@ public class Planet : MonoBehaviour
     [Tooltip("You better have some very good reasons for modifying this.")]
     public Vector3 Center { get; private set; } = Vector3.zero;
 
+    public ComputeShader Shader;
+
     [Tooltip("Helps with configuration of each chunk on this planet.")]
     public PlanetChunkConfiguration ChunkConfiguration;
 

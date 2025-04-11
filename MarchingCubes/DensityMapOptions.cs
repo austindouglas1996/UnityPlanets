@@ -14,7 +14,7 @@ public class DensityMapOptions
     [Range(0f, 1f), Tooltip("Scales the noise map. Lower values zoom in for big landmasses, higher values zoom out for finer features.")]
     public float NoiseScale = 1f;
 
-    [Range(1f, 150f), Tooltip("Multiplies the overall noise height. Think of this like turning up the terrain’s 'volume'.")]
+    [Range(1f, 500f), Tooltip("Multiplies the overall noise height. Think of this like turning up the terrain’s 'volume'.")]
     public float NoiseMultiplier = 1f;
 
     [Range(0f, 25f), Tooltip("Base height of terrain features. Higher amplitude = taller hills and deeper valleys.")]

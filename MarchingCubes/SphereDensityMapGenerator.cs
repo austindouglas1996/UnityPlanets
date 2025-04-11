@@ -6,8 +6,8 @@ public class SphereDensityMapGenerator : BaseMarchingCubeGenerator
     private Vector3 PlanetCenter;
     private float PlanetRadius;
 
-    public SphereDensityMapGenerator(Vector3 planetCenter, float planetRadius, DensityMapOptions mapOptions)
-        : base(mapOptions)
+    public SphereDensityMapGenerator(Vector3 planetCenter, float planetRadius, ComputeShader shader, DensityMapOptions mapOptions)
+        : base(shader, mapOptions)
     {
         this.PlanetCenter = planetCenter;
         this.PlanetRadius = planetRadius;
