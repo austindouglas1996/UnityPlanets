@@ -66,8 +66,7 @@ public class FoliageGenerator : MonoBehaviour
     {
         foreach (TrianglePOS tria in pos)
         {
-            float flowerChance = 0.05f;
-            float rockChance = 0.004f;
+            float rockChance = 0.001f;
             float treeChance = 0.004f;
 
             float averageHeight = tria.Position.y;
