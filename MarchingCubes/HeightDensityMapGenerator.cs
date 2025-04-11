@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class HeightDensityMapGenerator : BaseMarchingCubeGenerator
 {
-    public HeightDensityMapGenerator(ComputeShader shader, DensityMapOptions options) : base(shader,options)
+    public HeightDensityMapGenerator(DensityMapOptions options) : base(options)
     {
     }
 

@@ -5,9 +5,7 @@ using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
 public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
 {
-    private ComputeShader cubesShader;
-
-    public BaseMarchingCubeGenerator(ComputeShader shader, DensityMapOptions options)
+    public BaseMarchingCubeGenerator(DensityMapOptions options)
     {
         if (options == null)
             throw new System.ArgumentNullException("options is null.");
@@ -22,6 +20,28 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         int width = densityMap.GetLength(0) - 1;
         int height = densityMap.GetLength(1) - 1;
         int depth = densityMap.GetLength(2) - 1;
+
+        // Compute min and max density quickly from the grid.
+        float minDensity = float.MaxValue;
+        float maxDensity = float.MinValue;
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                for (int z = 0; z < depth; z++)
+                {
+                    float d = densityMap[x, y, z];
+                    if (d < minDensity) minDensity = d;
+                    if (d > maxDensity) maxDensity = d;
+                }
+            }
+        }
+
+        if (minDensity > Options.ISOLevel || maxDensity < Options.ISOLevel)
+        {
+            // Return an empty MeshData so that the chunk is skipped.
+            return new MeshData(new List<Vector3>(), new List<int>(), new List<Vector2>());
+        }
 
         var Vertices = new List<Vector3>();
         var Triangles = new List<int>();

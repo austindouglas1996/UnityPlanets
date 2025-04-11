@@ -9,8 +9,6 @@ public class LandMass : MonoBehaviour
     [Tooltip("Helps with configuration of each chunk on this planet.")]
     public LandMassChunkConfiguration ChunkConfiguration;
 
-    public ComputeShader Shader;
-
     private ChunkManager chunkManager;
 
     private void OnValidate()
@@ -26,6 +24,6 @@ public class LandMass : MonoBehaviour
     {
         this.chunkManager = this.GetComponent<ChunkManager>();
         chunkManager.Follower = Follower;
-        chunkManager.Initialize(ChunkConfiguration, new LandMassChunkLayout(this, ChunkConfiguration), new LandMassChunkControllerFactory(Shader));
+        chunkManager.Initialize(ChunkConfiguration, new LandMassChunkLayout(this, ChunkConfiguration), new LandMassChunkControllerFactory());
     }
 }
