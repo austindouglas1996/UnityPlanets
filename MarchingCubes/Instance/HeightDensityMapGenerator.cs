@@ -30,14 +30,13 @@ public class HeightDensityMapGenerator : BaseMarchingCubeGenerator
 
                     // 3D noise for caves and structure
                     float noise = Perlin.Fbm(
-                        worldX * sampleFreq,
-                        worldY * sampleFreq,
-                        worldZ * sampleFreq,
+                        (worldX + Options.Seed) * sampleFreq,
+                        (worldY + Options.Seed) * sampleFreq,
+                        (worldZ + Options.Seed) * sampleFreq,
                         Options.Octaves
                     ) * Options.Amplitude;
 
-                    float surfaceY = 50f; // world Y where the ground should mostly sit
-                    float value = (surfaceY - worldY) + (noise * Options.NoiseMultiplier);
+                    float value = (25 - worldY) + (noise * Options.NoiseMultiplier);
 
                     // Scale to match Marching Cubes range
                     densityMap[x, y, z] = value * 0.5f;
