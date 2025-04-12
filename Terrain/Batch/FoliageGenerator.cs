@@ -67,7 +67,7 @@ public class FoliageGenerator : MonoBehaviour
         foreach (TrianglePOS tria in pos)
         {
             float rockChance = 0.001f;
-            float treeChance = 0.004f;
+            float treeChance = 0.005f;
 
             float averageHeight = tria.Position.y;
             Quaternion rotation = Quaternion.FromToRotation(Vector3.up, tria.Normal) * Quaternion.Euler(0, Random.Range(0, 360), 0);
@@ -89,7 +89,7 @@ public class FoliageGenerator : MonoBehaviour
 
             if (Random.value < treeChance)
             {
-                //foliageDrawer.Add(this.Store.GetOneRandom("Trees"), tria.Position, rotation, scale, tria.Color);
+                foliageDrawer.Add(this.Store.GetOneRandom("Trees"), tria.Position, Quaternion.Euler(0,0,0), scale, tria.Color);
             }
         }
     }

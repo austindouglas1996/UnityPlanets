@@ -172,7 +172,7 @@ public class ChunkManager : MonoBehaviour
             return;
         IsBusy = true;
 
-        List<Vector3Int> visibleChunksCoordinates = Layout.GetActiveChunkCoordinates(this.Follower.position);
+        HashSet<Vector3Int> visibleChunksCoordinates = new HashSet<Vector3Int>(Layout.GetActiveChunkCoordinates(this.Follower.position));
 
         List<Vector3Int> invalidChunks = new List<Vector3Int>();
         foreach (var key in this.ActiveChunks.Keys)

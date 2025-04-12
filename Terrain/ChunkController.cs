@@ -105,7 +105,6 @@ public class ChunkController : MonoBehaviour
         if (IsBusy || !IsInitialized) return;
 
         bool initializeFoliage = false;
-        Matrix4x4 localToWorld = transform.localToWorldMatrix;
 
         if (ChunkData == null)
         {
