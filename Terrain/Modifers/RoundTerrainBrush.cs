@@ -8,6 +8,10 @@ public class RoundTerrainBrush : TerrainBrush
     {
     }
 
+    public override Vector3 Min => WorldHitPoint - Vector3.one * Radius;
+
+    public override Vector3 Max => WorldHitPoint + Vector3.one * Radius;
+
     public override Bounds GetBrushBounds()
     {
         return new Bounds(WorldHitPoint, Vector3.one * Radius * 2);

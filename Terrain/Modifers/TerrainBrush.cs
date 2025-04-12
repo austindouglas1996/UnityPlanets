@@ -54,6 +54,9 @@ public abstract class TerrainBrush
         this.WorldHitPoint = worldPos;
     }
 
+    public abstract Vector3 Min { get; }
+    public abstract Vector3 Max { get; }
+
     /// <summary>
     /// Gets the bounds in world space that the brush affects.
     /// Used for chunk intersection tests.

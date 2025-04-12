@@ -55,7 +55,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
         {
             token.ThrowIfCancellationRequested();
 
-            CreateMapGenerator(config).ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, brush.WorldHitPoint, addingOrSubtracting);
+            CreateMapGenerator(config).ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, addingOrSubtracting);
         }, token);
     }
 

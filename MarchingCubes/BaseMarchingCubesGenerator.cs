@@ -162,7 +162,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="chunkPos">Chunk position in chunk space.</param>
     /// <param name="hitPoint">World-space location the brush is applied to.</param>
     /// <param name="isAdding">If true, adds density; otherwise subtracts.</param>
-    public virtual void ModifyMapWithBrush(TerrainBrush brush, ref float[,,] densityMap, Vector3Int chunkPos, Vector3 hitPoint, bool isAdding)
+    public virtual void ModifyMapWithBrush(TerrainBrush brush, ref float[,,] densityMap, Vector3Int chunkPos, bool isAdding)
     {
         int width = densityMap.GetLength(0) - 1;
         int height = densityMap.GetLength(1) - 1;
@@ -173,14 +173,26 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
             chunkPos.y * height,
             chunkPos.z * depth);
 
-        for (int x = 0; x <= width; x++)
+        Vector3 localMin = brush.Min - chunkWorldOrigin;
+        Vector3 localMax = brush.Max - chunkWorldOrigin;
+
+        // Clamp to valid voxel range
+        int minX = Mathf.Max(0, Mathf.FloorToInt(localMin.x));
+        int minY = Mathf.Max(0, Mathf.FloorToInt(localMin.y));
+        int minZ = Mathf.Max(0, Mathf.FloorToInt(localMin.z));
+
+        int maxX = Mathf.Min(width, Mathf.CeilToInt(localMax.x));
+        int maxY = Mathf.Min(height, Mathf.CeilToInt(localMax.y));
+        int maxZ = Mathf.Min(depth, Mathf.CeilToInt(localMax.z));
+
+        for (int x = minX; x <= maxX; x++)
         {
-            for (int y = 0; y <= height; y++)
+            for (int y = minY; y <= maxY; y++)
             {
-                for (int z = 0; z <= depth; z++)
+                for (int z = minZ; z <= maxZ; z++)
                 {
                     Vector3 voxelWorldPos = chunkWorldOrigin + new Vector3(x, y, z);
-                    float effect = brush.GetEffectAmount(voxelWorldPos, hitPoint);
+                    float effect = brush.GetEffectAmount(voxelWorldPos, brush.WorldHitPoint);
 
                     if (effect == 0) continue;
 
