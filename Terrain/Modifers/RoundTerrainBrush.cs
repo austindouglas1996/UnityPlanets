@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class RoundTerrainBrush : TerrainBrush
 {
-    public float Radius = 15f;
+    public float Radius = 5f;
 
     public RoundTerrainBrush(Vector3 worldPos) : base(worldPos)
     {

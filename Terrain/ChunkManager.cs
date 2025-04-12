@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.VisualScripting;
 using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
 using VHierarchy.Libs;
@@ -132,13 +133,31 @@ public class ChunkManager : MonoBehaviour
         Bounds brushBounds = brush.GetBrushBounds();
         Vector3 chunkSize = new Vector3(Configuration.ChunkSize, Configuration.ChunkSize, Configuration.ChunkSize);
 
-        foreach (ChunkController chunk in this.ActiveChunks.Values)
-        {
-            Bounds chunkBounds = new Bounds(chunk.transform.position + chunkSize * bufferMultiplier, chunkSize);
+        Vector3Int hitPosCoord = new Vector3Int(
+            Mathf.FloorToInt(brush.WorldHitPoint.x / Configuration.ChunkSize),
+            Mathf.FloorToInt(brush.WorldHitPoint.y / Configuration.ChunkSize),
+            Mathf.FloorToInt(brush.WorldHitPoint.z / Configuration.ChunkSize)
+        );
 
-            if (brushBounds.Intersects(chunkBounds))
+        // Check all neighbors in a 3x3x3 cube around the hit position
+        for (int x = -1; x <= 1; x++)
+        {
+            for (int y = -1; y <= 1; y++)
             {
-                await chunk.ModifyChunk(brush, isAdding, token);
+                for (int z = -1; z <= 1; z++)
+                {
+                    token.ThrowIfCancellationRequested();
+
+                    Vector3Int neighborCoord = hitPosCoord + new Vector3Int(x, y, z);
+
+                    if (ActiveChunks.TryGetValue(neighborCoord, out var chunk))
+                    {
+                        Bounds chunkBounds = new Bounds(chunk.transform.position + chunkSize * bufferMultiplier, chunkSize);
+
+                        if (brushBounds.Intersects(chunkBounds))
+                            await chunk.ModifyChunk(brush, isAdding, token);
+                    }
+                }
             }
         }
     }
