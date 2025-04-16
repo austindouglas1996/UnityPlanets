@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using UnityEngine;
 
@@ -9,12 +10,18 @@ public class HeightDensityMapGenerator : BaseMarchingCubeGenerator
 
     public override DensityMapOptions Options { get; set; }
 
-    public override float[,,] Generate(int chunkSize, Vector3Int chunkCoordinates)
+    public override Tuple<float[,,], float[,]> Generate(int chunkSize, Vector3Int chunkCoordinates)
     {
         Vector3Int size = new Vector3Int(chunkSize, chunkSize, chunkSize);
 
         // Create a density map with an extra layer of padding for marching cubes
         float[,,] densityMap = new float[size.x + 1, size.y + 1, size.z + 1];
+
+        // Create a surface map. Initially set it to -1.
+        float[,] surfaceMap = new float[size.x + 1, size.z + 1];
+        for (int x = 0; x < size.x + 1; x++)
+            for (int z = 0; z < size.z + 1; z++)
+                surfaceMap[x, z] = -1f; // initialize to invalid
 
         for (int x = 0; x < size.x + 1; x++)
         {
@@ -37,15 +44,21 @@ public class HeightDensityMapGenerator : BaseMarchingCubeGenerator
                     ) * Options.Amplitude;
 
                     float value = (25 - worldY) + (noise * Options.NoiseMultiplier);
+                    float valueNormalized = value * 0.5f;
 
                     // Scale to match Marching Cubes range
-                    densityMap[x, y, z] = value * 0.5f;
+                    densityMap[x, y, z] = valueNormalized;
+
+                    // detect the surface if we haven't yet and this crosses ISO level
+                    if (surfaceMap[x, z] < 0f && valueNormalized > Options.ISOLevel)
+                    {
+                        surfaceMap[x, z] = y;
+                    }
                 }
             }
         }
 
-
-        return densityMap;
+        return new Tuple<float[,,], float[,]>(densityMap, surfaceMap);
     }
 
     public override MeshData GenerateMeshData(float[,,] densityMap, Vector3 chunkOffset)
@@ -63,19 +76,5 @@ public class HeightDensityMapGenerator : BaseMarchingCubeGenerator
         initialData.UVs = uvs.ToList();
 
         return initialData;
-    }
-
-    public override Mesh GenerateMesh(MeshData data)
-    {
-        Mesh mesh = new Mesh();
-        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // In case large chunk
-        mesh.vertices = data.Vertices.ToArray();
-        mesh.triangles = data.Triangles.ToArray();
-        mesh.uv = data.UVs.ToArray();
-
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-
-        return mesh;
     }
 }

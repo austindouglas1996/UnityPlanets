@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using UnityEngine;
 
@@ -15,12 +16,18 @@ public class SphereDensityMapGenerator : BaseMarchingCubeGenerator
 
     public override DensityMapOptions Options { get; set; }
 
-    public override float[,,] Generate(int chunkSize, Vector3Int chunkCoordinates)
+    public override Tuple<float[,,], float[,]> Generate(int chunkSize, Vector3Int chunkCoordinates)
     {
         Vector3Int size = new Vector3Int(chunkSize, chunkSize, chunkSize);
 
         // Create a density map with an extra layer of padding for marching cubes
         float[,,] densityMap = new float[size.x + 1, size.y + 1, size.z + 1];
+
+        // Create a surface map. Initially set it to -1.
+        float[,] surfaceMap = new float[size.x + 1, size.z + 1];
+        for (int x = 0; x < size.x + 1; x++)
+            for (int z = 0; z < size.z + 1; z++)
+                surfaceMap[x, z] = -1f; // initialize to invalid
 
         for (int x = 0; x < size.x + 1; x++)
         {
@@ -52,13 +59,20 @@ public class SphereDensityMapGenerator : BaseMarchingCubeGenerator
                         + (sphericalNoise - 0.5f) * 5f
                         + (noiseValue) * Options.NoiseMultiplier;
 
-                    densityMap[x, y, z] = (bumpyRadius - dist) * 0.05f;
+                    float densityVal = (bumpyRadius - dist) * 0.05f;
+
+                    densityMap[x, y, z] = densityVal;
+
+                    // detect the surface if we haven't yet and this crosses ISO level
+                    if (surfaceMap[x, z] < 0f && densityVal > Options.ISOLevel)
+                    {
+                        surfaceMap[x, z] = y;
+                    }
                 }
             }
         }
 
-
-        return densityMap;
+        return new Tuple<float[,,], float[,]>(densityMap, surfaceMap);
     }
 
     public override MeshData GenerateMeshData(float[,,] densityMap, Vector3 chunkOffset)

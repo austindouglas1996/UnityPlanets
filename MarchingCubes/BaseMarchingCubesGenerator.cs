@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using UnityEngine;
@@ -32,7 +33,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="chunkSize">Size of the chunk (assumed cubic).</param>
     /// <param name="chunkCoordinates">Coordinates of the chunk in chunk space.</param>
     /// <returns>A 3D float array representing density values.</returns>
-    public abstract float[,,] Generate(int chunkSize, Vector3Int chunkCoordinates);
+    public abstract Tuple<float[,,], float[,]> Generate(int chunkSize, Vector3Int chunkCoordinates);
 
     /// <summary>
     /// Generates mesh data from a given density map using the marching cubes algorithm.
@@ -212,7 +213,19 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// </summary>
     /// <param name="data">The mesh data to convert.</param>
     /// <returns>A generated Unity Mesh.</returns>
-    public abstract Mesh GenerateMesh(MeshData data);
+    public virtual Mesh GenerateMesh(MeshData data)
+    {
+        Mesh mesh = new Mesh();
+        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // In case large chunk
+        mesh.vertices = data.Vertices.ToArray();
+        mesh.triangles = data.Triangles.ToArray();
+        mesh.uv = data.UVs.ToArray();
+
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+
+        return mesh;
+    }
 
     /// <summary>
     /// Interpolates a point along an edge between two positions based on density threshold.
