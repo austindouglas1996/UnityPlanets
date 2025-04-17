@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using UnityEngine;
@@ -44,116 +44,81 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <returns>MeshData containing vertices, triangles, and optional UVs.</returns>
     public virtual MeshData GenerateMeshData(float[,,] densityMap, Vector3 chunkOffset)
     {
-        int width = densityMap.GetLength(0) - 1;
-        int height = densityMap.GetLength(1) - 1;
-        int depth = densityMap.GetLength(2) - 1;
+        int paddedX = densityMap.GetLength(0);
+        int paddedY = densityMap.GetLength(1);
+        int paddedZ = densityMap.GetLength(2);
 
-        // Compute min and max density quickly from the grid.
-        float minDensity = float.MaxValue;
-        float maxDensity = float.MinValue;
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                for (int z = 0; z < depth; z++)
+        int pad = 1;
+        int chunkW = paddedX - 3;  // original chunkSize X
+        int chunkH = paddedY - 3;  // original chunkSize Y
+        int chunkD = paddedZ - 3;  // original chunkSize Z
+
+        var verts = new List<Vector3>();
+        var tris = new List<int>();
+        var uvs = new List<Vector2>();
+
+        // ← CHANGE: use `< pad+chunk*` instead of `<=`
+        for (int x = pad; x < pad + chunkW; x++)
+            for (int y = pad; y < pad + chunkH; y++)
+                for (int z = pad; z < pad + chunkD; z++)
                 {
-                    float d = densityMap[x, y, z];
-                    if (d < minDensity) minDensity = d;
-                    if (d > maxDensity) maxDensity = d;
-                }
-            }
-        }
-
-        if (minDensity > Options.ISOLevel || maxDensity < Options.ISOLevel)
-        {
-            // Return an empty MeshData so that the chunk is skipped.
-            return new MeshData(new List<Vector3>(), new List<int>(), new List<Vector2>(), new List<Vector3>());
-        }
-
-        var Vertices = new List<Vector3>();
-        var Triangles = new List<int>();
-        var UVs = new List<Vector2>();
-        var Normals = new List<Vector3>();
-
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                for (int z = 0; z < depth; z++)
-                {
-                    // Gather corner values/positions
                     float[] cornerVals = new float[8];
                     Vector3[] cornerPos = new Vector3[8];
 
                     for (int i = 0; i < 8; i++)
                     {
-                        Vector3 offset = CornerOffsets[i];
-
-                        int cx = x + (int)offset.x;
-                        int cy = y + (int)offset.y;
-                        int cz = z + (int)offset.z;
+                        var off = CornerOffsets[i];
+                        int cx = x + (int)off.x;  // in [pad .. pad+chunk*]
+                        int cy = y + (int)off.y;
+                        int cz = z + (int)off.z;
 
                         cornerVals[i] = densityMap[cx, cy, cz];
-                        cornerPos[i] = new Vector3(cx, cy, cz) + chunkOffset;
+                        // strip padding → (0..chunkSize)
+                        cornerPos[i] = new Vector3(
+                            cx - pad,
+                            cy - pad,
+                            cz - pad
+                        ) + chunkOffset;
                     }
 
-                    // Build the cubeIndex
                     int cubeIndex = 0;
                     for (int i = 0; i < 8; i++)
-                    {
                         if (cornerVals[i] > Options.ISOLevel)
                             cubeIndex |= 1 << i;
-                    }
+                    if (TriangleTable[cubeIndex, 0] == -1) continue;
 
-                    // If no geometry, continue
-                    if (TriangleTable[cubeIndex, 0] == -1)
-                        continue;
-
-                    // Generate triangles from the lookup table
                     for (int t = 0; TriangleTable[cubeIndex, t] != -1; t += 3)
                     {
-                        int edgeIndex0 = TriangleTable[cubeIndex, t];
-                        int edgeIndex1 = TriangleTable[cubeIndex, t + 1];
-                        int edgeIndex2 = TriangleTable[cubeIndex, t + 2];
+                        int e0 = TriangleTable[cubeIndex, t];
+                        int e1 = TriangleTable[cubeIndex, t + 1];
+                        int e2 = TriangleTable[cubeIndex, t + 2];
 
-                        // Interpolate each triangle corner
-                        Vector3 v1 = InterpolateEdge(
-                            Options.ISOLevel,
-                            cornerPos[EdgeConnections[edgeIndex0, 0]],
-                            cornerPos[EdgeConnections[edgeIndex0, 1]],
-                            cornerVals[EdgeConnections[edgeIndex0, 0]],
-                            cornerVals[EdgeConnections[edgeIndex0, 1]]
-                        );
-                        Vector3 v2 = InterpolateEdge(
-                            Options.ISOLevel,
-                            cornerPos[EdgeConnections[edgeIndex1, 0]],
-                            cornerPos[EdgeConnections[edgeIndex1, 1]],
-                            cornerVals[EdgeConnections[edgeIndex1, 0]],
-                            cornerVals[EdgeConnections[edgeIndex1, 1]]
-                        );
-                        Vector3 v3 = InterpolateEdge(
-                            Options.ISOLevel,
-                            cornerPos[EdgeConnections[edgeIndex2, 0]],
-                            cornerPos[EdgeConnections[edgeIndex2, 1]],
-                            cornerVals[EdgeConnections[edgeIndex2, 0]],
-                            cornerVals[EdgeConnections[edgeIndex2, 1]]
-                        );
+                        var v1 = InterpolateEdge(Options.ISOLevel,
+                                    cornerPos[EdgeConnections[e0, 0]],
+                                    cornerPos[EdgeConnections[e0, 1]],
+                                    cornerVals[EdgeConnections[e0, 0]],
+                                    cornerVals[EdgeConnections[e0, 1]]);
+                        var v2 = InterpolateEdge(Options.ISOLevel,
+                                    cornerPos[EdgeConnections[e1, 0]],
+                                    cornerPos[EdgeConnections[e1, 1]],
+                                    cornerVals[EdgeConnections[e1, 0]],
+                                    cornerVals[EdgeConnections[e1, 1]]);
+                        var v3 = InterpolateEdge(Options.ISOLevel,
+                                    cornerPos[EdgeConnections[e2, 0]],
+                                    cornerPos[EdgeConnections[e2, 1]],
+                                    cornerVals[EdgeConnections[e2, 0]],
+                                    cornerVals[EdgeConnections[e2, 1]]);
 
-                        int baseIndex = Vertices.Count;
-                        Vertices.Add(v1);
-                        Vertices.Add(v2);
-                        Vertices.Add(v3);
-
-                        Triangles.Add(baseIndex + 0);
-                        Triangles.Add(baseIndex + 1);
-                        Triangles.Add(baseIndex + 2);
+                        int bi = verts.Count;
+                        verts.Add(v1); verts.Add(v2); verts.Add(v3);
+                        tris.Add(bi); tris.Add(bi + 1); tris.Add(bi + 2);
                     }
                 }
-            }
-        }
 
-        return new MeshData(Vertices, Triangles, UVs, GenerateNormals(Vertices, densityMap));
+        var normals = GenerateNormals(verts, densityMap);
+        return new MeshData(verts, tris, uvs, normals);
     }
+
 
     /// <summary>
     /// Generate the normals for this mesh for the best lighting. The default function will generate
@@ -165,15 +130,19 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     protected List<Vector3> GenerateNormals(List<Vector3> vertices, float[,,] densityMap)
     {
         List<Vector3> normals = new List<Vector3>();
+        int pad = 1; // because densityMap is chunkSize+3, padded on all sides
 
         for (int i = 0; i < vertices.Count; i++)
         {
             Vector3 vertex = vertices[i];
 
-            Vector3 gradient = SampleDensityGradient(vertex, densityMap);
+            // Shift world-space vertex into padded densityMap space
+            Vector3 paddedLocal = vertex + new Vector3(pad, pad, pad);
+
+            Vector3 gradient = SampleDensityGradient(paddedLocal, densityMap);
             Vector3 normal = -gradient.normalized;
 
-            if (normal == Vector3.zero)
+            if (!float.IsFinite(normal.x) || !float.IsFinite(normal.y) || !float.IsFinite(normal.z))
                 normal = Vector3.up;
 
             normals.Add(normal);
@@ -181,6 +150,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
 
         return normals;
     }
+
 
     /// <summary>
     /// Modifies the density map in place using a terrain brush.
