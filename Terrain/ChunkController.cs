@@ -23,9 +23,9 @@ public class ChunkController : MonoBehaviour
     private IChunkGenerator generator;
     private IChunkColorizer colorizer;
 
-    private ChunkData ChunkData;
+    public ChunkData ChunkData;
     private IChunkConfiguration Configuration;
-    private Vector3Int Coordinates;
+    public Vector3Int Coordinates;
 
     /// <summary>
     /// Tells whether this chunk needs to be regenerated.
@@ -36,6 +36,11 @@ public class ChunkController : MonoBehaviour
     /// Tells whether this chunk is currently busy processing.
     /// </summary>
     private bool IsBusy = false;
+
+    /// <summary>
+    /// Tells whether this chunk has been rendered at least once with its chunk data assigned.
+    /// </summary>
+    public bool RenderedOnce = false;
 
     /// <summary>
     /// Tells whether the initial <see cref="Initialize(IChunkGenerator, IChunkColorizer, IChunkConfiguration, Vector3Int)"/> function has been called.
@@ -90,6 +95,8 @@ public class ChunkController : MonoBehaviour
         this.Configuration = config;
 
         this.IsInitialized = true;
+
+        this.IsDirty = true;
     }
 
     /// <summary>
@@ -131,6 +138,7 @@ public class ChunkController : MonoBehaviour
             await this.GetComponent<FoliageGenerator>().ApplyMap(ChunkData);
 
         IsBusy = false;
+        RenderedOnce = true;
     }
 
     /// <summary>

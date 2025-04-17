@@ -1,6 +1,8 @@
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using UnityEngine;
+using static FoliageGenerator;
 using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
 /// <summary>
@@ -24,7 +26,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <summary>
     /// The options used for generating density and controlling surface behavior.
     /// </summary>
-    public abstract DensityMapOptions Options { get; set; }
+    public DensityMapOptions Options { get; set; }
 
     /// <summary>
     /// Generates a 3D density map for the chunk at the specified coordinates.
@@ -32,7 +34,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="chunkSize">Size of the chunk (assumed cubic).</param>
     /// <param name="chunkCoordinates">Coordinates of the chunk in chunk space.</param>
     /// <returns>A 3D float array representing density values.</returns>
-    public abstract float[,,] Generate(int chunkSize, Vector3Int chunkCoordinates);
+    public abstract Tuple<float[,,], float[,]> Generate(int chunkSize, Vector3Int chunkCoordinates);
 
     /// <summary>
     /// Generates mesh data from a given density map using the marching cubes algorithm.
@@ -72,6 +74,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         var Vertices = new List<Vector3>();
         var Triangles = new List<int>();
         var UVs = new List<Vector2>();
+        var Normals = new List<Vector3>();
 
         for (int x = 0; x < width; x++)
         {
@@ -212,7 +215,19 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// </summary>
     /// <param name="data">The mesh data to convert.</param>
     /// <returns>A generated Unity Mesh.</returns>
-    public abstract Mesh GenerateMesh(MeshData data);
+    public virtual Mesh GenerateMesh(MeshData data)
+    {
+        Mesh mesh = new Mesh();
+        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // In case large chunk
+        mesh.vertices = data.Vertices.ToArray();
+        mesh.triangles = data.Triangles.ToArray();
+        mesh.uv = data.UVs.ToArray();
+
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+
+        return mesh;
+    }
 
     /// <summary>
     /// Interpolates a point along an edge between two positions based on density threshold.

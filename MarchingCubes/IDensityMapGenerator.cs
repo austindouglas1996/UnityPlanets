@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 /// <summary>
@@ -16,5 +17,5 @@ public interface IDensityMapGenerator
     /// <param name="chunkSize">The size of the chunk along one axis (assumes cubic chunks).</param>
     /// <param name="chunkCoordinates">The chunk's position in chunk space.</param>
     /// <returns>A 3D array of floats representing the density values of the chunk.</returns>
-    float[,,] Generate(int chunkSize, Vector3Int chunkCoordinates);
+    Tuple<float[,,], float[,]> Generate(int chunkSize, Vector3Int chunkCoordinates);
 }

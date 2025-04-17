@@ -33,10 +33,10 @@ public abstract class GenericChunkGenerator : IChunkGenerator
             token.ThrowIfCancellationRequested();
 
             var gen = CreateMapGenerator(config);
-            float[,,] map = gen.Generate(config.ChunkSize, coordinates);
-            MeshData data = gen.GenerateMeshData(map, Vector3.zero);
+            var map = gen.Generate(config.ChunkSize, coordinates);
+            MeshData data = gen.GenerateMeshData(map.Item1, Vector3.zero);
 
-            return new ChunkData(map, data);
+            return new ChunkData(map.Item1, map.Item2, data);
         }, token);
     }
 
