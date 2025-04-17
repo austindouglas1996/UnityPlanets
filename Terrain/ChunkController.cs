@@ -37,6 +37,9 @@ public class ChunkController : MonoBehaviour
     /// </summary>
     private bool IsBusy = false;
 
+    /// <summary>
+    /// Tells whether this chunk has been rendered at least once with its chunk data assigned.
+    /// </summary>
     public bool RenderedOnce = false;
 
     /// <summary>

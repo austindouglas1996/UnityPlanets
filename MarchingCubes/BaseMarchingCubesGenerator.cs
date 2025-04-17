@@ -25,7 +25,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <summary>
     /// The options used for generating density and controlling surface behavior.
     /// </summary>
-    public abstract DensityMapOptions Options { get; set; }
+    public DensityMapOptions Options { get; set; }
 
     /// <summary>
     /// Generates a 3D density map for the chunk at the specified coordinates.
@@ -67,12 +67,13 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         if (minDensity > Options.ISOLevel || maxDensity < Options.ISOLevel)
         {
             // Return an empty MeshData so that the chunk is skipped.
-            return new MeshData(new List<Vector3>(), new List<int>(), new List<Vector2>());
+            return new MeshData(new List<Vector3>(), new List<int>(), new List<Vector2>(), new List<Vector3>());
         }
 
         var Vertices = new List<Vector3>();
         var Triangles = new List<int>();
         var UVs = new List<Vector2>();
+        var Normals = new List<Vector3>();
 
         for (int x = 0; x < width; x++)
         {
@@ -151,7 +152,34 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
             }
         }
 
-        return new MeshData(Vertices, Triangles, UVs);
+        return new MeshData(Vertices, Triangles, UVs, GenerateNormals(Vertices, densityMap));
+    }
+
+    /// <summary>
+    /// Generate the normals for this mesh for the best lighting. The default function will generate
+    /// simple lighting based on nearby positions.
+    /// </summary>
+    /// <param name="vertices"></param>
+    /// <param name="densityMap"></param>
+    /// <returns></returns>
+    protected List<Vector3> GenerateNormals(List<Vector3> vertices, float[,,] densityMap)
+    {
+        List<Vector3> normals = new List<Vector3>();
+
+        for (int i = 0; i < vertices.Count; i++)
+        {
+            Vector3 vertex = vertices[i];
+
+            Vector3 gradient = SampleDensityGradient(vertex, densityMap);
+            Vector3 normal = -gradient.normalized;
+
+            if (normal == Vector3.zero)
+                normal = Vector3.up;
+
+            normals.Add(normal);
+        }
+
+        return normals;
     }
 
     /// <summary>
@@ -220,8 +248,9 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         mesh.vertices = data.Vertices.ToArray();
         mesh.triangles = data.Triangles.ToArray();
         mesh.uv = data.UVs.ToArray();
+        mesh.normals = data.Normals.ToArray();
 
-        mesh.RecalculateNormals();
+        //mesh.RecalculateNormals();
         mesh.RecalculateBounds();
 
         return mesh;
@@ -247,6 +276,69 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
 
         float t = (threshold - valP1) / (valP2 - valP1);
         return Vector3.Lerp(p1, p2, t);
+    }
+
+    /// <summary>
+    /// Sample a point in a density map to get the best normal mapping value.
+    /// </summary>
+    /// <param name="pos"></param>
+    /// <param name="densityMap"></param>
+    /// <returns></returns>
+    private float SampleDensity(Vector3 pos, float[,,] densityMap)
+    {
+        int x0 = Mathf.FloorToInt(pos.x);
+        int y0 = Mathf.FloorToInt(pos.y);
+        int z0 = Mathf.FloorToInt(pos.z);
+        int x1 = x0 + 1;
+        int y1 = y0 + 1;
+        int z1 = z0 + 1;
+
+        float tx = pos.x - x0;
+        float ty = pos.y - y0;
+        float tz = pos.z - z0;
+
+        x0 = Mathf.Clamp(x0, 0, densityMap.GetLength(0) - 1);
+        x1 = Mathf.Clamp(x1, 0, densityMap.GetLength(0) - 1);
+        y0 = Mathf.Clamp(y0, 0, densityMap.GetLength(1) - 1);
+        y1 = Mathf.Clamp(y1, 0, densityMap.GetLength(1) - 1);
+        z0 = Mathf.Clamp(z0, 0, densityMap.GetLength(2) - 1);
+        z1 = Mathf.Clamp(z1, 0, densityMap.GetLength(2) - 1);
+
+        float c000 = densityMap[x0, y0, z0];
+        float c100 = densityMap[x1, y0, z0];
+        float c010 = densityMap[x0, y1, z0];
+        float c110 = densityMap[x1, y1, z0];
+        float c001 = densityMap[x0, y0, z1];
+        float c101 = densityMap[x1, y0, z1];
+        float c011 = densityMap[x0, y1, z1];
+        float c111 = densityMap[x1, y1, z1];
+
+        float c00 = Mathf.Lerp(c000, c100, tx);
+        float c01 = Mathf.Lerp(c001, c101, tx);
+        float c10 = Mathf.Lerp(c010, c110, tx);
+        float c11 = Mathf.Lerp(c011, c111, tx);
+
+        float c0 = Mathf.Lerp(c00, c10, ty);
+        float c1 = Mathf.Lerp(c01, c11, ty);
+
+        return Mathf.Lerp(c0, c1, tz);
+    }
+
+    /// <summary>
+    /// Sample a set of density positions to find a lighting normal to use.
+    /// </summary>
+    /// <param name="pos"></param>
+    /// <param name="densityMap"></param>
+    /// <returns></returns>
+    private Vector3 SampleDensityGradient(Vector3 pos, float[,,] densityMap)
+    {
+        float delta = 0.01f;
+
+        float dx = SampleDensity(pos + new Vector3(delta, 0, 0), densityMap) - SampleDensity(pos - new Vector3(delta, 0, 0), densityMap);
+        float dy = SampleDensity(pos + new Vector3(0, delta, 0), densityMap) - SampleDensity(pos - new Vector3(0, delta, 0), densityMap);
+        float dz = SampleDensity(pos + new Vector3(0, 0, delta), densityMap) - SampleDensity(pos - new Vector3(0, 0, delta), densityMap);
+
+        return new Vector3(dx, dy, dz);
     }
 
     /// <summary>

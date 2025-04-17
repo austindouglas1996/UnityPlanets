@@ -1,16 +1,11 @@
 using System;
 using UnityEngine;
 
-public abstract class MicroDensityMapGenerator : BaseMarchingCubeGenerator
+public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
 {
-    private ChunkController Controller;
-
-    public MicroDensityMapGenerator(ChunkController owner, DensityMapOptions options) : base(options)
+    protected GenericDensityMapGenerator(DensityMapOptions options) : base(options)
     {
-        this.Controller = owner;
     }
-
-    public override DensityMapOptions Options { get; set; }
 
     public override Tuple<float[,,], float[,]> Generate(int chunkSize, Vector3Int chunkCoordinates)
     {
@@ -35,11 +30,11 @@ public abstract class MicroDensityMapGenerator : BaseMarchingCubeGenerator
                     int worldY = chunkCoordinates.y * size.y + y;
                     int worldZ = chunkCoordinates.z * size.z + z;
 
-                    float value = GetMapValue(new Vector3(worldX, worldY, worldZ));
-                    densityMap[x, y, z] = value;
+                    float val = GetValueForWorldPosition(worldX, worldY, worldZ);
+                    densityMap[x, y, z] = val;
 
                     // detect the surface if we haven't yet and this crosses ISO level
-                    if (surfaceMap[x, z] < 0f && value > Options.ISOLevel)
+                    if (surfaceMap[x, z] < 0f && val > Options.ISOLevel)
                     {
                         surfaceMap[x, z] = y;
                     }
@@ -50,5 +45,5 @@ public abstract class MicroDensityMapGenerator : BaseMarchingCubeGenerator
         return new Tuple<float[,,], float[,]>(densityMap, surfaceMap);
     }
 
-    protected abstract float GetMapValue(Vector3 worldPos);
+    protected abstract float GetValueForWorldPosition(float worldX, float worldY, float worldZ);
 }

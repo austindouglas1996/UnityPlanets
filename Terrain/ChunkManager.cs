@@ -162,9 +162,6 @@ public class ChunkManager : MonoBehaviour
         }
     }
 
-    private List<Vector3> points = new List<Vector3>();
-    [SerializeField] public MicroChunkConfiguration microConfig;
-
     /// <summary>
     /// Rebuilds the list of active chunks based on the follower’s current position.
     /// Adds new chunks and removes out-of-range ones.
@@ -206,23 +203,6 @@ public class ChunkManager : MonoBehaviour
                 {
                     controller = Factory.CreateChunkController(chunk, Configuration, this.transform);
                     this.ActiveChunks.Add(chunk, controller);
-
-                    if (chunk == new Vector3Int(0,0,0))
-                    {
-                        List<Vector3> points = new List<Vector3>();
-                        float y = 25f;
-                        int size = 32;
-
-                        for (int i = 0; i < size; i++)
-                        {
-                            points.Add(new Vector3(i, y, i)); // (0,0) -> (31,31)
-                        }
-
-
-                        GameObject microG = new GameObject();
-                        MicroChunk micro = microG.AddComponent<MicroChunk>();
-                        micro.Initialize(controller, points, new Vector3(0, 0, 0), new Vector3(32, 32, 32), microConfig, new MicroChunkControllerFactory());
-                    }
                 }
             }
             else
