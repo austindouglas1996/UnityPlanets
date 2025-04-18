@@ -135,7 +135,9 @@ public class ChunkController : MonoBehaviour
         ApplyChunkColors();
 
         if (initializeFoliage)
+        {
             await this.GetComponent<FoliageGenerator>().ApplyMap(ChunkData);
+        }
 
         IsBusy = false;
         RenderedOnce = true;
@@ -165,7 +167,14 @@ public class ChunkController : MonoBehaviour
 
         if (ChunkData.MeshData.Vertices.Count > 0)
         {
-            colors = colorizer.ApplyColors(ChunkData.MeshData, transform.localToWorldMatrix, Configuration);
+            Matrix4x4 matrix = transform.localToWorldMatrix;
+            colors = colorizer.ApplyColors(ChunkData.MeshData, matrix, Configuration);
+
+            foreach (ITerrainModifier modifier in Configuration.Modifiers)
+            {
+                if(modifier is IModifyColor colorMod)
+                    colorMod.ModifyColor(ref colors, ChunkData.MeshData, matrix, Configuration);
+            }
         }
         else
             return;

@@ -34,7 +34,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="chunkSize">Size of the chunk (assumed cubic).</param>
     /// <param name="chunkCoordinates">Coordinates of the chunk in chunk space.</param>
     /// <returns>A 3D float array representing density values.</returns>
-    public abstract Tuple<float[,,], float[,]> Generate(int chunkSize, Vector3Int chunkCoordinates);
+    public abstract DensityMapData Generate(int chunkSize, Vector3Int chunkCoordinates);
 
     /// <summary>
     /// Generates mesh data from a given density map using the marching cubes algorithm.
