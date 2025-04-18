@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -21,10 +21,10 @@ public class HeightDensityMapGenerator : GenericDensityMapGenerator
             Options.Octaves
         ) * Options.Amplitude;
 
-        float value = (25 - worldY) + (noise * Options.NoiseMultiplier);
+        float value = -worldY + (noise * Options.NoiseMultiplier);
 
         // Scale to match Marching Cubes range
-        return value * 0.5f;
+        return value;
     }
 
     public override MeshData GenerateMeshData(float[,,] densityMap, Vector3 chunkOffset)

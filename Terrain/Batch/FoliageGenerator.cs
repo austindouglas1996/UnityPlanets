@@ -89,7 +89,7 @@ public class FoliageGenerator : MonoBehaviour
 
             if (Random.value < treeChance)
             {
-                foliageDrawer.Add(this.Store.GetOneRandom("Trees"), tria.Position, Quaternion.Euler(0,0,0), scale, tria.Color);
+                //foliageDrawer.Add(this.Store.GetOneRandom("Trees"), tria.Position, Quaternion.Euler(0,0,0), scale, tria.Color);
             }
         }
     }

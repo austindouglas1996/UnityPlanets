@@ -16,7 +16,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <returns>A generated Mesh.</returns>
     public virtual Mesh GenerateMesh(ChunkData chunk, IChunkConfiguration config)
     {
-        return CreateMapGenerator(config).GenerateMesh(chunk.MeshData);
+        return CreateMapGenerator(config).GenerateMesh(chunk.DensityMap, chunk.MeshData);
     }
 
     /// <summary>
