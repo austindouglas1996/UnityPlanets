@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 /// <summary>
 /// Contains config data for how chunks are sized, typed, and generated.
 /// Passed into generators and factories.
@@ -13,4 +15,9 @@ public interface IChunkConfiguration
     /// Density Options used for marching cubes generator.
     /// </summary>
     DensityMapOptions MapOptions { get; }
+
+    /// <summary>
+    /// Chunk modifiers to use when generating chunks.
+    /// </summary>
+    List<ITerrainModifier> Modifiers { get; }
 }

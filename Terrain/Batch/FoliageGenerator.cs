@@ -89,7 +89,7 @@ public class FoliageGenerator : MonoBehaviour
 
             if (Random.value < treeChance)
             {
-                foliageDrawer.Add(this.Store.GetOneRandom("Trees"), tria.Position, Quaternion.Euler(0,0,0), scale, tria.Color);
+                //foliageDrawer.Add(this.Store.GetOneRandom("Trees"), tria.Position, Quaternion.Euler(0,0,0), scale, tria.Color);
             }
         }
     }
@@ -100,6 +100,12 @@ public class FoliageGenerator : MonoBehaviour
 
         if (multiply <= 0)
             multiply = 1;
+
+        int sizeX = data.FoliageMask.GetLength(0);
+        int sizeY = data.FoliageMask.GetLength(1);
+        int sizeZ = data.FoliageMask.GetLength(2);
+
+        Vector3 chunkOrigin = matrix.MultiplyPoint3x4(Vector3.zero);
 
         for (int i = 0; i < data.MeshData.Triangles.Count; i += 3)
         {
@@ -117,6 +123,20 @@ public class FoliageGenerator : MonoBehaviour
             {
                 Vector3 triangleNormal = Vector3.Cross(vertexB - vertexA, vertexC - vertexA).normalized;
                 Vector3 position = RandomPointInTriangle(vertexA, vertexB, vertexC) + triangleNormal * 0.01f;
+
+                // Convert world position to local chunk voxel indices
+                int localX = Mathf.RoundToInt(position.x - chunkOrigin.x);
+                int localY = Mathf.RoundToInt(position.y - chunkOrigin.y);
+                int localZ = Mathf.RoundToInt(position.z - chunkOrigin.z);
+
+                // Bounds check
+                if (localX < 0 || localY < 0 || localZ < 0 ||
+                    localX >= sizeX || localY >= sizeY || localZ >= sizeZ)
+                    continue;
+
+                // Respect foliage mask
+                if (data.FoliageMask[localX, localY, localZ] <= 0f)
+                    continue;
 
                 Color A = data.VerticeColors[i];
                 Color B = data.VerticeColors[i + 1];

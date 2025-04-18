@@ -34,7 +34,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="chunkSize">Size of the chunk (assumed cubic).</param>
     /// <param name="chunkCoordinates">Coordinates of the chunk in chunk space.</param>
     /// <returns>A 3D float array representing density values.</returns>
-    public abstract Tuple<float[,,], float[,]> Generate(int chunkSize, Vector3Int chunkCoordinates);
+    public abstract DensityMapData Generate(int chunkSize, Vector3Int chunkCoordinates);
 
     /// <summary>
     /// Generates mesh data from a given density map using the marching cubes algorithm.
@@ -215,18 +215,116 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// </summary>
     /// <param name="data">The mesh data to convert.</param>
     /// <returns>A generated Unity Mesh.</returns>
-    public virtual Mesh GenerateMesh(MeshData data)
+    public virtual Mesh GenerateMesh(float[,,] densityMap, MeshData data)
     {
-        Mesh mesh = new Mesh();
-        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // In case large chunk
-        mesh.vertices = data.Vertices.ToArray();
-        mesh.triangles = data.Triangles.ToArray();
-        mesh.uv = data.UVs.ToArray();
+        List<Vector3> flatVertices = new List<Vector3>();
+        List<Vector3> flatNormals = new List<Vector3>();
+        List<Vector2> flatUVs = new List<Vector2>();
+        List<int> flatTriangles = new List<int>();
 
-        mesh.RecalculateNormals();
+        for (int i = 0; i < data.Triangles.Count; i += 3)
+        {
+            int i0 = data.Triangles[i];
+            int i1 = data.Triangles[i + 1];
+            int i2 = data.Triangles[i + 2];
+
+            Vector3 v0 = data.Vertices[i0];
+            Vector3 v1 = data.Vertices[i1];
+            Vector3 v2 = data.Vertices[i2];
+
+            // Inside the flat shading loop:
+            Vector3 gradient0 = SampleDensityGradient(v0, densityMap);
+            Vector3 gradient1 = SampleDensityGradient(v1, densityMap);
+            Vector3 gradient2 = SampleDensityGradient(v2, densityMap);
+
+            // Average gradient for the face
+            Vector3 faceNormal = -(gradient0 + gradient1 + gradient2) / 3f;
+            faceNormal.Normalize();
+
+            // Duplicate vertices
+            int startIndex = flatVertices.Count;
+            flatVertices.Add(v0);
+            flatVertices.Add(v1);
+            flatVertices.Add(v2);
+
+            flatNormals.Add(faceNormal);
+            flatNormals.Add(faceNormal);
+            flatNormals.Add(faceNormal);
+
+            // Add new UV's
+            flatUVs.Add(data.UVs.Count > i0 ? data.UVs[i0] : Vector2.zero);
+            flatUVs.Add(data.UVs.Count > i1 ? data.UVs[i1] : Vector2.zero);
+            flatUVs.Add(data.UVs.Count > i2 ? data.UVs[i2] : Vector2.zero);
+
+            flatTriangles.Add(startIndex);
+            flatTriangles.Add(startIndex + 1);
+            flatTriangles.Add(startIndex + 2);
+        }
+
+        Mesh mesh = new Mesh();
+        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        mesh.vertices = flatVertices.ToArray();
+        mesh.triangles = flatTriangles.ToArray();
+        mesh.normals = flatNormals.ToArray();
+        mesh.uv = flatUVs.ToArray();
         mesh.RecalculateBounds();
 
         return mesh;
+    }
+
+    private Vector3 SampleDensityGradient(Vector3 pos, float[,,] densityMap)
+    {
+        float delta = 0.01f;
+
+        float dx = SampleDensity(pos + new Vector3(delta, 0, 0), densityMap)
+                 - SampleDensity(pos - new Vector3(delta, 0, 0), densityMap);
+        float dy = SampleDensity(pos + new Vector3(0, delta, 0), densityMap)
+                 - SampleDensity(pos - new Vector3(0, delta, 0), densityMap);
+        float dz = SampleDensity(pos + new Vector3(0, 0, delta), densityMap)
+                 - SampleDensity(pos - new Vector3(0, 0, delta), densityMap);
+
+        return new Vector3(dx, dy, dz);
+    }
+
+    private float SampleDensity(Vector3 pos, float[,,] densityMap)
+    {
+        int x0 = Mathf.FloorToInt(pos.x);
+        int y0 = Mathf.FloorToInt(pos.y);
+        int z0 = Mathf.FloorToInt(pos.z);
+
+        int x1 = x0 + 1;
+        int y1 = y0 + 1;
+        int z1 = z0 + 1;
+
+        float tx = pos.x - x0;
+        float ty = pos.y - y0;
+        float tz = pos.z - z0;
+
+        x0 = Mathf.Clamp(x0, 0, densityMap.GetLength(0) - 1);
+        x1 = Mathf.Clamp(x1, 0, densityMap.GetLength(0) - 1);
+        y0 = Mathf.Clamp(y0, 0, densityMap.GetLength(1) - 1);
+        y1 = Mathf.Clamp(y1, 0, densityMap.GetLength(1) - 1);
+        z0 = Mathf.Clamp(z0, 0, densityMap.GetLength(2) - 1);
+        z1 = Mathf.Clamp(z1, 0, densityMap.GetLength(2) - 1);
+
+        float c000 = densityMap[x0, y0, z0];
+        float c100 = densityMap[x1, y0, z0];
+        float c010 = densityMap[x0, y1, z0];
+        float c110 = densityMap[x1, y1, z0];
+        float c001 = densityMap[x0, y0, z1];
+        float c101 = densityMap[x1, y0, z1];
+        float c011 = densityMap[x0, y1, z1];
+        float c111 = densityMap[x1, y1, z1];
+
+        float c00 = Mathf.Lerp(c000, c100, tx);
+        float c01 = Mathf.Lerp(c001, c101, tx);
+        float c10 = Mathf.Lerp(c010, c110, tx);
+        float c11 = Mathf.Lerp(c011, c111, tx);
+
+        float c0 = Mathf.Lerp(c00, c10, ty);
+        float c1 = Mathf.Lerp(c01, c11, ty);
+
+        return Mathf.Lerp(c0, c1, tz);
     }
 
     /// <summary>
