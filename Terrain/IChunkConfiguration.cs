@@ -16,6 +16,8 @@ public interface IChunkConfiguration
     /// </summary>
     DensityMapOptions MapOptions { get; }
 
+    BiomeMap BiomeMap { get; }
+
     /// <summary>
     /// Chunk modifiers to use when generating chunks.
     /// </summary>

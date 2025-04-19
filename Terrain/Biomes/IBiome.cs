@@ -1,5 +1,8 @@
+using UnityEngine;
+
 public interface IBiome
 {
-    float Modify(float baseVal, Vector3 worldPos);
-    Color GetColor();
+    string Name { get; }
+    DensityMapOptions DensityMapOptions { get; }
+    float Evaulate(float baseVal, Vector3 worldPos);
 }

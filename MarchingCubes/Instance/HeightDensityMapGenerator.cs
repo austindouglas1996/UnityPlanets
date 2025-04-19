@@ -5,12 +5,12 @@ using UnityEngine;
 
 public class HeightDensityMapGenerator : GenericDensityMapGenerator
 {
-    private BiomeNoise biomeNoise;
-    public HeightDensityMapGenerator(DensityMapOptions options) : base(options)
-    {
-        biomeNoise = new BiomeNoise(new IBiome[] { new PlainBiome(0.4f, 0.1f, 52), new OceanBiome(depthScale: 0.4f, depthStrength: 20f, seed: 88f), new MountainBiome(5f, 60f, 52) }, 0.003f, 52);
-    }
+    private BiomeMap biomeMap;
 
+    public HeightDensityMapGenerator(BiomeMap biomeMap, DensityMapOptions options) : base(options)
+    {
+        this.biomeMap = biomeMap;
+    }
 
     protected override float GetValueForWorldPosition(float worldX, float worldY, float worldZ)
     {
@@ -24,8 +24,10 @@ public class HeightDensityMapGenerator : GenericDensityMapGenerator
             Options.Octaves
         ) * Options.Amplitude;
 
+        Vector3 worldPos = new Vector3(worldX, worldY, worldZ);
+
         float value = -worldY + (noise * Options.NoiseMultiplier);
-        value = biomeNoise.Evaluate(value, new Vector3(worldX, worldY, worldZ));
+        value = biomeMap.Evaluate(value, worldPos);
 
         // Scale to match Marching Cubes range
         return value;
