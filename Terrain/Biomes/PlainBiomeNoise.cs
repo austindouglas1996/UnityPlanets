@@ -12,6 +12,6 @@ public class PlainBiomeNoise : IBiome
 
     public float Evaulate(float baseVal, Vector3 worldPos)
     {
-        return baseVal + 25f;
+        return baseVal;
     }
 }

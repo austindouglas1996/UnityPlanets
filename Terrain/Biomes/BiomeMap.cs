@@ -87,36 +87,33 @@ public class BiomeMap
         return Mathf.Lerp(i0, i1, fz);
     }
 
+    public Color EvaluateColor(Vector3 worldPos)
+    {
+        float regionSize = 32f;
 
+        int baseX = Mathf.FloorToInt(worldPos.x / regionSize);
+        int baseZ = Mathf.FloorToInt(worldPos.z / regionSize);
 
-public Color EvaluateColor(Vector3 worldPos)
-{
-    float regionSize = 32f;
+        Vector3Int c00 = new Vector3Int(baseX, 0, baseZ);
+        Vector3Int c10 = c00 + Vector3Int.right;
+        Vector3Int c01 = c00 + Vector3Int.forward;
+        Vector3Int c11 = c00 + Vector3Int.right + Vector3Int.forward;
 
-    int baseX = Mathf.FloorToInt(worldPos.x / regionSize);
-    int baseZ = Mathf.FloorToInt(worldPos.z / regionSize);
+        IBiome b00 = GetBiome(c00);
+        IBiome b10 = GetBiome(c10);
+        IBiome b01 = GetBiome(c01);
+        IBiome b11 = GetBiome(c11);
 
-    Vector3Int c00 = new Vector3Int(baseX, 0, baseZ);
-    Vector3Int c10 = c00 + Vector3Int.right;
-    Vector3Int c01 = c00 + Vector3Int.forward;
-    Vector3Int c11 = c00 + Vector3Int.right + Vector3Int.forward;
+        float localX = Mathf.InverseLerp(0f, regionSize, worldPos.x - baseX * regionSize);
+        float localZ = Mathf.InverseLerp(0f, regionSize, worldPos.z - baseZ * regionSize);
 
-    IBiome b00 = GetBiome(c00);
-    IBiome b10 = GetBiome(c10);
-    IBiome b01 = GetBiome(c01);
-    IBiome b11 = GetBiome(c11);
+        float fx = Mathf.SmoothStep(0f, 1f, localX);
+        float fz = Mathf.SmoothStep(0f, 1f, localZ);
 
-    float localX = Mathf.InverseLerp(0f, regionSize, worldPos.x - baseX * regionSize);
-    float localZ = Mathf.InverseLerp(0f, regionSize, worldPos.z - baseZ * regionSize);
-
-    float fx = Mathf.SmoothStep(0f, 1f, localX);
-    float fz = Mathf.SmoothStep(0f, 1f, localZ);
-
-    Color c0 = Color.Lerp(b00.DensityMapOptions.SurfaceColorRange.Evaluate(worldPos.y), b10.DensityMapOptions.SurfaceColorRange.Evaluate(worldPos.y), fx);
-    Color c1 = Color.Lerp(b01.DensityMapOptions.SurfaceColorRange.Evaluate(worldPos.y), b11.DensityMapOptions.SurfaceColorRange.Evaluate(worldPos.y), fx);
-    return Color.Lerp(c0, c1, fz);
-}
-
+        Color c0 = Color.Lerp(b00.DensityMapOptions.SurfaceColorRange.Evaluate(worldPos.y), b10.DensityMapOptions.SurfaceColorRange.Evaluate(worldPos.y), fx);
+        Color c1 = Color.Lerp(b01.DensityMapOptions.SurfaceColorRange.Evaluate(worldPos.y), b11.DensityMapOptions.SurfaceColorRange.Evaluate(worldPos.y), fx);
+        return Color.Lerp(c0, c1, fz);
+    }
 
     private void EstablishBound()
     {

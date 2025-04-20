@@ -23,10 +23,10 @@ public class OceanBiomeNoise : IBiome
         // how far below sea level we want to pull
         float gravityWell = -worldPos.y * 5.5f;
 
-        // carve a little bumpy seafloor
+        // carve a little bumpy seafloor for extra decorations later.
         float oceanFloor = gravityWell - (terrainNoise * 20f);
 
         // return the *lower* of land or ocean, so ocean always undercuts land
-        return Mathf.Min(baseVal, oceanFloor) + 10;
+        return baseVal + Mathf.Min(baseVal, oceanFloor) - 10;
     }
 }
