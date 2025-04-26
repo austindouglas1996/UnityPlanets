@@ -7,10 +7,12 @@ public class MountainBiomeNoise : IBiome
         this.DensityMapOptions = options;
     }
 
+    public int Id { get; } = 4;
     public string Name => "Mountain";
+    public float PreferredHeight => 32;
     public DensityMapOptions DensityMapOptions {  get; private set; }
 
-    public float Evaulate(float baseVal, Vector3 worldPos)
+    public float Evaluate(float baseVal, Vector3 worldPos)
     {
         // Use 2D FBM for mountain *shapes*, not 3D — we want large ridges on the surface, not caves
         float sampleFreq = 0.002f;

@@ -65,7 +65,7 @@ public class ChunkController : MonoBehaviour
         if (IsDirty)
         {
             IsDirty = false;
-            await UpdateChunkAsync();
+            await UpdateChunkAsync(true);
         }
     }
 
@@ -127,7 +127,11 @@ public class ChunkController : MonoBehaviour
         if (ChunkData.MeshData.Vertices.Count == 0)
             return;
 
+        cancellationToken.ThrowIfCancellationRequested();
+
         Mesh newMesh = generator.GenerateMesh(ChunkData, Configuration);
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         this.GetComponent<MeshFilter>().mesh = newMesh;
         this.GetComponent<MeshCollider>().sharedMesh = newMesh;

@@ -25,8 +25,8 @@ public class HeightDensityMapGenerator : GenericDensityMapGenerator
         ) * Options.Amplitude;
 
         Vector3 worldPos = new Vector3(worldX, worldY, worldZ);
-
         float value = -worldY + (noise * Options.NoiseMultiplier);
+
         value = biomeMap.Evaluate(value, worldPos);
 
         // Scale to match Marching Cubes range
