@@ -11,14 +11,14 @@ public class BiomeMap
 
     private Dictionary<Vector2Int, BiomeSector> Sectors = new Dictionary<Vector2Int, BiomeSector>(0);
 
-    private BiomeMapper mapper;
+    private BiomeTiler mapper;
 
     public BiomeMap(List<IBiome> biomes)
     {
         this.biomes = biomes;
         this.biomesById = biomes.ToDictionary(b => b.Id);
 
-        this.mapper = new BiomeMapper(this.biomes);
+        this.mapper = new BiomeTiler(this.biomes);
         this.Sectors = this.mapper.CreateMap(new Vector2Int(24, 24), false);
 
         PrintBiomeDistribution();
@@ -46,11 +46,20 @@ public class BiomeMap
     }
 
 
-    public IBiome GetBiome(Vector3Int coordinate)
+    public IBiome GetBiome(Vector3Int coordinate, float[,] surfaceMap)
     {
-        Vector2Int v = new Vector2Int(coordinate.x, coordinate.z);
-        IBiome biome = biomesById[Sectors[v].BiomeId];
-        return biome;
+        float surfaceHeight = surfaceMap[coordinate.x, coordinate.z];
+        IBiome selectedBiome = biomes.First();
+
+        foreach (var biome in biomes.OrderBy(b => b.MinSurface))
+        {
+            if (surfaceHeight >= biome.MinSurface)
+                selectedBiome = biome;
+            else
+                break;
+        }
+
+        return selectedBiome;
     }
 
 
@@ -67,10 +76,10 @@ public class BiomeMap
         Vector3Int c01 = c00 + Vector3Int.forward;
         Vector3Int c11 = c00 + Vector3Int.right + Vector3Int.forward;
 
-        IBiome b00 = GetBiome(c00);
-        IBiome b10 = GetBiome(c10);
-        IBiome b01 = GetBiome(c01);
-        IBiome b11 = GetBiome(c11);
+        IBiome b00 = GetBiome(c00, null);
+        IBiome b10 = GetBiome(c10, null);
+        IBiome b01 = GetBiome(c01, null);
+        IBiome b11 = GetBiome(c11, null);
 
         // Local position inside region
         float localX = Mathf.InverseLerp(0f, regionSize, worldPos.x - baseX * regionSize);
@@ -92,7 +101,7 @@ public class BiomeMap
         return Mathf.Lerp(i0, i1, fz);
     }
 
-    public Color EvaluateColor(Vector3 worldPos)
+    public Color EvaluateColor(Vector3 worldPos, float[,] surfaceMap)
     {
         float regionSize = 32f;
 
@@ -104,10 +113,10 @@ public class BiomeMap
         Vector3Int c01 = c00 + Vector3Int.forward;
         Vector3Int c11 = c00 + Vector3Int.right + Vector3Int.forward;
 
-        IBiome b00 = GetBiome(c00);
-        IBiome b10 = GetBiome(c10);
-        IBiome b01 = GetBiome(c01);
-        IBiome b11 = GetBiome(c11);
+        IBiome b00 = GetBiome(c00, surfaceMap);
+        IBiome b10 = GetBiome(c10, surfaceMap);
+        IBiome b01 = GetBiome(c01, surfaceMap);
+        IBiome b11 = GetBiome(c11, surfaceMap);
 
         float localX = Mathf.InverseLerp(0f, regionSize, worldPos.x - baseX * regionSize);
         float localZ = Mathf.InverseLerp(0f, regionSize, worldPos.z - baseZ * regionSize);
@@ -115,8 +124,8 @@ public class BiomeMap
         float fx = Mathf.SmoothStep(0f, 1f, localX);
         float fz = Mathf.SmoothStep(0f, 1f, localZ);
 
-        Color c0 = Color.Lerp(b00.DensityMapOptions.SurfaceColorRange.Evaluate(worldPos.y), b10.DensityMapOptions.SurfaceColorRange.Evaluate(worldPos.y), fx);
-        Color c1 = Color.Lerp(b01.DensityMapOptions.SurfaceColorRange.Evaluate(worldPos.y), b11.DensityMapOptions.SurfaceColorRange.Evaluate(worldPos.y), fx);
+        Color c0 = Color.Lerp(b00.SurfaceColorRange.Evaluate(worldPos.y), b10.SurfaceColorRange.Evaluate(worldPos.y), fx);
+        Color c1 = Color.Lerp(b01.SurfaceColorRange.Evaluate(worldPos.y), b11.SurfaceColorRange.Evaluate(worldPos.y), fx);
         return Color.Lerp(c0, c1, fz);
     }
 }

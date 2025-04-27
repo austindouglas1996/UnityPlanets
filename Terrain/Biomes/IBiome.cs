@@ -4,7 +4,8 @@ public interface IBiome
 {
     int Id { get; }
     string Name { get; }
-    float PreferredHeight { get; }
-    DensityMapOptions DensityMapOptions { get; }
+    public float MinSurface { get; }
+    DensityMapOptions BaseMapOptions { get; }
+    Gradient SurfaceColorRange { get; }
     float Evaluate(float baseVal, Vector3 worldPos);
 }

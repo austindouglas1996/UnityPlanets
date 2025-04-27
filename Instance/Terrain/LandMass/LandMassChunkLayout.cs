@@ -26,7 +26,7 @@ public class LandMassChunkLayout : IChunkLayout
 
         for (int x = -maxChunkOffset; x <= maxChunkOffset; x++)
         {
-            for (int y = -maxChunkOffset; y <= maxChunkOffset; y++)
+            for (int y = -3; y <= 3; y++)
             {
                 for (int z = -maxChunkOffset; z <= maxChunkOffset; z++)
                 {

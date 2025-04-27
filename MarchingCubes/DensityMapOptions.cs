@@ -11,40 +11,53 @@ public enum NoiseType
 [Serializable]
 public class DensityMapOptions
 {
-    [Tooltip("Seed used for noise generation. Keeps terrain consistent across sessions.")]
+    [Header("Global Settings")]
+    [Tooltip("Seed used for all noise generation. Keeps terrain consistent across sessions.")]
     public int Seed = 0;
 
-    [Tooltip("Type of noise function to use.")]
-    public NoiseType SelectedNoise = NoiseType.Perlin;
+    [Tooltip("Defines the surface cutoff. Voxels below this value are solid, above are air.")]
+    [Range(-1f, 1f)]
+    public float ISOLevel = 0.0f;
 
-    [Range(-0.5f, 0.5f), Tooltip("Defines the cutoff point for the surface. Voxels below this value get filled in, voxels above it get carved out.")]
-    public float ISOLevel = 0.5f;
+    [Header("Continent Sculpting")]
+    [Tooltip("Controls how large continents and oceans are.")]
+    public float ContinentFrequency = 0.001f;
 
-    [Range(1, 12), Tooltip("Controls how many layers of noise are stacked. More octaves = more detail, but also more compute-heavy.")]
-    public int Octaves = 5;
+    [Tooltip("How tall continents become above sea level.")]
+    public float ContinentAmplitude = 200f;
 
-    [Range(0f, 1f), Tooltip("Scales the noise map. Lower values zoom in for big landmasses, higher values zoom out for finer features.")]
-    public float NoiseScale = 1f;
+    [Tooltip("Minimum continent noise to be land (otherwise ocean).")]
+    [Range(0f, 1f)]
+    public float LandThreshold = 0.4f;
 
-    [Range(1f, 500f), Tooltip("Multiplies the overall noise height. Think of this like turning up the terrain’s 'volume'.")]
-    public float NoiseMultiplier = 1f;
+    [Header("Mountain Sculpting")]
+    [Tooltip("Controls spacing of mountain chains.")]
+    public float MountainFrequency = 0.004f;
 
-    [Range(0f, 25f), Tooltip("Base height of terrain features. Higher amplitude = taller hills and deeper valleys.")]
-    public float Amplitude = 1f;
+    [Tooltip("Controls height of mountain regions.")]
+    public float MountainAmplitude = 140f;
 
-    [Range(0f, 3f), Tooltip("How quickly the noise changes over space. Higher frequency = more rapid bumps and dips.")]
-    public float Frequency = 1f;
+    [Tooltip("Sharpness of mountain ridges (higher = sharper peaks).")]
+    public float MountainSharpness = 3f;
 
-    [Tooltip("Offsets the noise sampling position. Useful for scrolling or layering multiple sources.")]
-    public Vector3 Offset = Vector3.zero;
+    [Header("Terrain Detail Sculpting")]
+    [Tooltip("Controls size of local bumps and dips.")]
+    public float DetailFrequency = 0.02f;
 
-    [Tooltip("Applies a falloff curve to terrain edges. Useful for islands or floating chunks.")]
-    public AnimationCurve FalloffCurve = AnimationCurve.Linear(0, 1, 1, 0);
+    [Tooltip("Strength of small hills and details.")]
+    public float DetailAmplitude = 25f;
 
-    [Range(0f, 1f), Tooltip("Threshold below which the terrain is flattened. Useful for water or caves.")]
-    public float FlattenThreshold = 0.2f;
+    [Header("Flatness Control")]
+    [Tooltip("Controls large flat zones (plains, deserts).")]
+    public float FlatnessFrequency = 0.006f;
 
-    [SerializeField, Header("Coloring")]
-    public Gradient SurfaceColorRange;
-    public float StartSurfaceLevel;
+    [Tooltip("How aggressively flat areas are smoothed.")]
+    public float FlatnessStrength = 1f;
+
+    [Header("Terrain Shape Remapping")]
+    [Tooltip("Curve to remap terrain height. Controls flatness, hills, and peaks.")]
+    public AnimationCurve TerrainShapeCurve = AnimationCurve.Linear(0, 0, 1, 1);
+
+    [Tooltip("Overall vertical scale for terrain.")]
+    public float TotalHeightScale = 256f;
 }

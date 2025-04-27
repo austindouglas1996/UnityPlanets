@@ -13,7 +13,7 @@ public class BiomeSector
     public float BlendFactor;
 }
 
-public class BiomeMapper
+public class BiomeTiler
 {
     private Vector2Int[] dirs = new[]
     {
@@ -28,7 +28,7 @@ public class BiomeMapper
     private int Seed = 3271;
     private System.Random rnd;
 
-    public BiomeMapper(List<IBiome> biomes)
+    public BiomeTiler(List<IBiome> biomes)
     {
         this.biomes = biomes;
         this.rnd = new System.Random(Seed);

@@ -124,7 +124,7 @@ Material:
     m_Colors:
     - _BaseColor: {r: 0.028301716, g: 0.35364693, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _DeepColor: {r: 0.118369445, g: 0.27807444, b: 0.59748423, a: 1}
+    - _DeepColor: {r: 0.56289303, g: 0.7097897, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _FoamColor: {r: 0.54667526, g: 0.60469896, b: 0.8238993, a: 0}
     - _RippleColor: {r: 0.103773475, g: 0.6058321, b: 1, a: 0}

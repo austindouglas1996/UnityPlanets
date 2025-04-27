@@ -13,5 +13,5 @@ public interface IChunkColorizer
     /// <param name="localToWorld">Transform matrix used to convert positions for color calculations.</param>
     /// <param name="configuration">Chunk configuration info.</param>
     /// <returns>An array of colors to assign to the mesh.</returns>
-    Color[] ApplyColors(MeshData meshData, Matrix4x4 localToWorld, IChunkConfiguration configuration);
+    Color[] ApplyColors(MeshData meshData, Matrix4x4 localToWorld, float[,] surfaceMap, IChunkConfiguration configuration);
 }

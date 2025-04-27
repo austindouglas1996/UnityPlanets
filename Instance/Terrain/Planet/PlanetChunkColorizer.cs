@@ -9,7 +9,7 @@ public class PlanetChunkColorizer : IChunkColorizer
         this.planet = planet;
     }
 
-    public Color[] ApplyColors(MeshData meshData, Matrix4x4 localToWorld, IChunkConfiguration configuration)
+    public Color[] ApplyColors(MeshData meshData, Matrix4x4 localToWorld, float[,] surfaceMap, IChunkConfiguration configuration)
     {
         Color[] colors = new Color[meshData.Vertices.Count];
 
@@ -20,9 +20,9 @@ public class PlanetChunkColorizer : IChunkColorizer
             Vector3 worldPos = localToWorld.MultiplyPoint3x4(meshData.Vertices[i]);
             float distance = (worldPos - planet.Center).magnitude;
 
-            float normalized = Mathf.InverseLerp(configuration.MapOptions.StartSurfaceLevel, planet.PlanetRadius, distance);
-            Color vertexColor = configuration.MapOptions.SurfaceColorRange.Evaluate(normalized);
-            colors[i] = vertexColor;
+            //float normalized = Mathf.InverseLerp(configuration.MapOptions.StartSurfaceLevel, planet.PlanetRadius, distance);
+            //Color vertexColor = configuration.MapOptions.SurfaceColorRange.Evaluate(normalized);
+            //colors[i] = vertexColor;
         }
 
         return colors;

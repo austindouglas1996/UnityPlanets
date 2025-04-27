@@ -115,12 +115,12 @@ public class ChunkController : MonoBehaviour
 
         if (ChunkData == null)
         {
-            ChunkData = await generator.GenerateNewChunk(Coordinates, Configuration);
+            ChunkData = await ChunkGenerationQueue.Instance.Enqueue(() => generator.GenerateNewChunk(Coordinates, Configuration));
             initializeFoliage = true;
         }
         else
         {
-            await generator.UpdateChunkData(ChunkData, Configuration);
+            await ChunkGenerationQueue.Instance.Enqueue(() => generator.UpdateChunkData(ChunkData, Configuration));
         }
 
         // No use continuing.
@@ -172,7 +172,7 @@ public class ChunkController : MonoBehaviour
         if (ChunkData.MeshData.Vertices.Count > 0)
         {
             Matrix4x4 matrix = transform.localToWorldMatrix;
-            colors = colorizer.ApplyColors(ChunkData.MeshData, matrix, Configuration);
+            colors = colorizer.ApplyColors(ChunkData.MeshData, matrix, ChunkData.SurfaceMap, Configuration);
 
             foreach (ITerrainModifier modifier in Configuration.Modifiers)
             {
