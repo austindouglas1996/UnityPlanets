@@ -4,13 +4,14 @@ using UnityEngine;
 
 public class LandMassChunkLayout : IChunkLayout
 {
-    private LandMass land;
     private LandMassChunkConfiguration Configuration;
+    private BaseMarchingCubeGenerator Generator;
+    private HashSet<Vector3Int> IgnoreChunks = new HashSet<Vector3Int>();
 
-    public LandMassChunkLayout(LandMass land, LandMassChunkConfiguration configuration)
+    public LandMassChunkLayout(LandMassChunkGenerator generator, LandMassChunkConfiguration configuration)
     {
-        this.land = land;
         Configuration = configuration;
+        Generator = generator.CreateMapGenerator(configuration);
     }
 
     public HashSet<Vector3Int> GetActiveChunkCoordinates(Vector3 followerPosition)
@@ -32,6 +33,18 @@ public class LandMassChunkLayout : IChunkLayout
                 for (int z = -maxChunkOffset; z <= maxChunkOffset; z++)
                 {
                     Vector3Int offset = followerChunkPos + new Vector3Int(x, y, z);
+
+                    // Seen chunks, we know it is already empty.
+                    if (IgnoreChunks.Contains(offset))
+                        continue;
+
+                    // Does this chunk contain data to be rendered? 
+                    if (!Generator.ShouldGenerateChunk(offset, Configuration.ChunkSize))
+                    {
+                        IgnoreChunks.Add(offset);
+                        continue;
+                    }
+
                     chunksToLoad.Add(offset);
                 }
             }

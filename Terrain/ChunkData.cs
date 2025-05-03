@@ -17,8 +17,10 @@ public class ChunkData
         this.SurfaceMap = surfaceMap;
         this.MeshData = data;
         this.FoliageMask = foliageMask;
+        this.LODIndex = MeshData.LODIndex;
     }
 
+    public int LODIndex = -1;
     public float[,,] DensityMap;
     public float[,] SurfaceMap;
     public float[,,] FoliageMask;

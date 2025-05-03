@@ -17,5 +17,5 @@ public interface IDensityMapGenerator
     /// <param name="chunkSize">The size of the chunk along one axis (assumes cubic chunks).</param>
     /// <param name="chunkCoordinates">The chunk's position in chunk space.</param>
     /// <returns>A 3D array of floats representing the density values of the chunk.</returns>
-    DensityMapData Generate(int chunkSize, Vector3Int chunkCoordinates);
+    DensityMapData Generate(int chunkSize, Vector3Int chunkCoordinates, int lodIndex);
 }

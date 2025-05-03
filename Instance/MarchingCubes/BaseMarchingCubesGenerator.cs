@@ -34,7 +34,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="chunkSize">Size of the chunk (assumed cubic).</param>
     /// <param name="chunkCoordinates">Coordinates of the chunk in chunk space.</param>
     /// <returns>A 3D float array representing density values.</returns>
-    public abstract DensityMapData Generate(int chunkSize, Vector3Int chunkCoordinates);
+    public abstract DensityMapData Generate(int chunkSize, Vector3Int chunkCoordinates, int lodIndex);
 
     /// <summary>
     /// Generates mesh data from a given density map using the marching cubes algorithm.
@@ -69,7 +69,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
 
         if (minDensity > Options.ISOLevel || maxDensity < Options.ISOLevel)
         {
-            return new MeshData(new(), new(), new());
+            return new MeshData(0, new(), new(), new());
         }
 
         var Vertices = new List<Vector3>();
@@ -148,9 +148,8 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
             }
         }
 
-        return new MeshData(Vertices, Triangles, UVs);
+        return new MeshData(lodIndex, Vertices, Triangles, UVs);
     }
-
 
     /// <summary>
     /// Modifies the density map in place using a terrain brush.
@@ -229,9 +228,9 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
             Vector3 v2 = data.Vertices[i2];
 
             // Inside the flat shading loop:
-            Vector3 gradient0 = SampleDensityGradient(v0, densityMap);
-            Vector3 gradient1 = SampleDensityGradient(v1, densityMap);
-            Vector3 gradient2 = SampleDensityGradient(v2, densityMap);
+            Vector3 gradient0 = data.LODIndex == 0 ? SampleDensityGradientLOD0(v0, densityMap) : SampleDensityGradient(v0);
+            Vector3 gradient1 = data.LODIndex == 0 ? SampleDensityGradientLOD0(v1, densityMap) : SampleDensityGradient(v1);
+            Vector3 gradient2 = data.LODIndex == 0 ? SampleDensityGradientLOD0(v2, densityMap) : SampleDensityGradient(v2);
 
             // Average gradient for the face
             Vector3 faceNormal = -(gradient0 + gradient1 + gradient2) / 3f;
@@ -268,7 +267,119 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         return mesh;
     }
 
-    private Vector3 SampleDensityGradient(Vector3 pos, float[,,] densityMap)
+    private System.Random random = new System.Random();
+    public bool ShouldGenerateChunk(Vector3Int chunkCoords, int chunkSize)
+    {
+        int worldX = chunkCoords.x * chunkSize;
+        int worldY = chunkCoords.y * chunkSize;
+        int worldZ = chunkCoords.z * chunkSize;
+
+        float iso = Options.ISOLevel;
+        float threshold = 8.0f;
+
+        // Check corners
+        for (int x = 0; x <= 1; x++)
+            for (int y = 0; y <= 1; y++)
+                for (int z = 0; z <= 1; z++)
+                {
+                    float val = GetValueForWorldPosition(
+                        worldX + x * chunkSize,
+                        worldY + y * chunkSize,
+                        worldZ + z * chunkSize
+                    );
+                    if (Mathf.Abs(val - iso) <= threshold)
+                        return true;
+                }
+
+        int half = chunkSize / 2;
+        int quarter = chunkSize / 4;
+
+        // Top center + edges (to catch cliff drops or hilltops)
+        Vector3Int[] topFaceSamples = new[]
+        {
+            new Vector3Int(half, chunkSize, half),           // center top
+            new Vector3Int(0, chunkSize, half),
+            new Vector3Int(chunkSize, chunkSize, half),
+            new Vector3Int(half, chunkSize, 0),
+            new Vector3Int(half, chunkSize, chunkSize),
+
+            new Vector3Int(quarter, chunkSize, quarter),
+            new Vector3Int(quarter, chunkSize, 3 * quarter),
+            new Vector3Int(3 * quarter, chunkSize, quarter),
+            new Vector3Int(3 * quarter, chunkSize, 3 * quarter)
+        };
+
+        foreach (var sample in topFaceSamples)
+        {
+            float val = GetValueForWorldPosition(
+                worldX + sample.x,
+                worldY + sample.y,
+                worldZ + sample.z);
+
+            if (Mathf.Abs(val - iso) <= threshold)
+                return true;
+        }
+
+        // Optional: vertical middle samples to catch slopes
+        Vector3Int[] verticalPillars = new[]
+        {
+            new Vector3Int(half, 0, half),
+            new Vector3Int(half, chunkSize / 2, half),
+            new Vector3Int(half, chunkSize, half)
+        };
+
+        foreach (var sample in verticalPillars)
+        {
+            float val = GetValueForWorldPosition(
+                worldX + sample.x,
+                worldY + sample.y,
+                worldZ + sample.z);
+
+            if (Mathf.Abs(val - iso) <= threshold)
+                return true;
+        }
+
+        return false;
+    }
+
+
+
+    /// <summary>
+    /// Retrieve the value for a given position.
+    /// </summary>
+    /// <param name="worldX"></param>
+    /// <param name="worldY"></param>
+    /// <param name="worldZ"></param>
+    /// <returns></returns>
+    protected abstract float GetValueForWorldPosition(float worldX, float worldY, float worldZ);
+
+    /// <summary>
+    /// Sample a world position to find the normals for lighting.
+    /// </summary>
+    /// <param name="worldPos"></param>
+    /// <returns></returns>
+    private Vector3 SampleDensityGradient(Vector3 worldPos)
+    {
+        float eps = 0.5f;
+
+        float dx = GetValueForWorldPosition(worldPos.x + eps, worldPos.y, worldPos.z)
+                 - GetValueForWorldPosition(worldPos.x - eps, worldPos.y, worldPos.z);
+        float dy = GetValueForWorldPosition(worldPos.x, worldPos.y + eps, worldPos.z)
+                 - GetValueForWorldPosition(worldPos.x, worldPos.y - eps, worldPos.z);
+        float dz = GetValueForWorldPosition(worldPos.x, worldPos.y, worldPos.z + eps)
+                 - GetValueForWorldPosition(worldPos.x, worldPos.y, worldPos.z - eps);
+
+        return new Vector3(dx, dy, dz).normalized;
+    }
+
+    /// <summary>
+    /// Sample a world position find the normals for a LOD0 normal for lighting
+    /// (LOD0 does not have its collection filled with no data making this a bit cheaper)
+    /// </summary>
+    /// <param name="pos"></param>
+    /// <param name="densityMap"></param>
+    /// <returns></returns>
+    private Vector3 SampleDensityGradientLOD0(Vector3 pos, float[,,] densityMap)
     {
         float delta = 0.01f;
 

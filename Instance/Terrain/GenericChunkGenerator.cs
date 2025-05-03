@@ -33,7 +33,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
             token.ThrowIfCancellationRequested();
 
             var gen = CreateMapGenerator(config);
-            var map = gen.Generate(config.ChunkSize, coordinates);
+            var map = gen.Generate(config.ChunkSize, coordinates, 0);
 
             foreach (var modifier in config.Modifiers)
             {
@@ -44,7 +44,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
                     foliageMod.ModifyFoliageMask(ref map.FoliageMask, coordinates);
             }
 
-            MeshData data = gen.GenerateMeshData(map.DensityMap, Vector3.zero);
+            MeshData data = gen.GenerateMeshData(map.DensityMap, Vector3.zero, map.LODIndex);
 
             return new ChunkData(map.DensityMap, map.SurfaceMap, map.FoliageMask, data);
         }, token);
@@ -89,5 +89,5 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// </summary>
     /// <param name="config">The chunk configuration.</param>
     /// <returns>A new BaseMarchingCubeGenerator instance.</returns>
-    protected abstract BaseMarchingCubeGenerator CreateMapGenerator(IChunkConfiguration config);
+    public abstract BaseMarchingCubeGenerator CreateMapGenerator(IChunkConfiguration config);
 }
