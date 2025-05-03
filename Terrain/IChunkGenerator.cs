@@ -16,7 +16,7 @@ public interface IChunkGenerator
     /// <param name="config">Chunk settings/configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>Newly generated chunk data.</returns>
-    Task<ChunkData> GenerateNewChunk(Vector3Int coordinates, IChunkConfiguration config, CancellationToken token = default);
+    Task<ChunkData> GenerateNewChunk(Vector3Int coordinates, int lodIndex, IChunkConfiguration config, CancellationToken token = default);
 
     /// <summary>
     /// Applies a brush to modify an existing chunk’s density map.

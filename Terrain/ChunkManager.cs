@@ -177,6 +177,11 @@ public class ChunkManager : MonoBehaviour
 
         HashSet<Vector3Int> visibleChunksCoordinates = new HashSet<Vector3Int>(Layout.GetActiveChunkCoordinates(this.Follower.position));
 
+        Vector3Int followerChunkPos = new Vector3Int(
+            Mathf.FloorToInt(this.Follower.position.x / this.Configuration.ChunkSize),
+            Mathf.FloorToInt(this.Follower.position.y / this.Configuration.ChunkSize),
+            Mathf.FloorToInt(this.Follower.position.z / this.Configuration.ChunkSize));
+
         // Retrieve invalid chunks.
         List<Vector3Int> invalidChunks = new List<Vector3Int>();
         foreach (var key in this.ActiveChunks.Keys)
@@ -218,6 +223,8 @@ public class ChunkManager : MonoBehaviour
 
             if (controller == null)
                 throw new System.ArgumentNullException("ChunkController does not exist. Was the gameObject deleted?");
+
+            controller.LODIndex = Layout.GetRenderDetail(followerChunkPos, controller.Coordinates);
         }
 
         IsBusy = false;

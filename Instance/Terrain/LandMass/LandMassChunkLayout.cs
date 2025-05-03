@@ -60,6 +60,13 @@ public class LandMassChunkLayout : IChunkLayout
 
     public int GetRenderDetail(Vector3Int followerCoordinates, Vector3Int chunkCoordinate)
     {
-        return 1;
+        int dx = Mathf.Abs(chunkCoordinate.x - followerCoordinates.x);
+        int dz = Mathf.Abs(chunkCoordinate.z - followerCoordinates.z);
+
+        int distance = Mathf.Max(dx, dz);
+        int lod = Mathf.Max(0, distance - 1);
+
+        // Clamp to a max LOD of 5, anything over 5 does not render.
+        return Mathf.Min(lod, 5);
     }
 }

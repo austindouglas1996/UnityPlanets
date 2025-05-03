@@ -6,7 +6,7 @@ public class LandMassChunkControllerFactory : GenericChunkControllerFactory
     public override ChunkController CreateChunkController(Vector3Int coordinates, IChunkConfiguration config, Transform parent, CancellationToken cancellationToken)
     {
         ChunkController newController = base.CreateChunkController(coordinates, config, parent, cancellationToken);
-        newController.Initialize(Generator, Colorizer, config, coordinates, cancellationToken);
+        newController.Initialize(Generator, Colorizer, config, coordinates, 0, cancellationToken);
 
         return newController;
     }

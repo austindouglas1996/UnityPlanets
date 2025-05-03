@@ -26,14 +26,14 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="config">The chunk configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>The generated chunk data.</returns>
-    public virtual Task<ChunkData> GenerateNewChunk(Vector3Int coordinates, IChunkConfiguration config, CancellationToken token = default)
+    public virtual Task<ChunkData> GenerateNewChunk(Vector3Int coordinates, int lodIndex, IChunkConfiguration config, CancellationToken token = default)
     {
         return Task.Run(() =>
         {
             token.ThrowIfCancellationRequested();
 
             var gen = CreateMapGenerator(config);
-            var map = gen.Generate(config.ChunkSize, coordinates, 0);
+            var map = gen.Generate(config.ChunkSize, coordinates, lodIndex);
 
             foreach (var modifier in config.Modifiers)
             {

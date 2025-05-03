@@ -320,7 +320,6 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
                 return true;
         }
 
-        // Optional: vertical middle samples to catch slopes
         Vector3Int[] verticalPillars = new[]
         {
             new Vector3Int(half, 0, half),

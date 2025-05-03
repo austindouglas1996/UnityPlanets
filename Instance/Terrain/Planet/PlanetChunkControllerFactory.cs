@@ -13,7 +13,7 @@ public class PlanetChunkControllerFactory : GenericChunkControllerFactory
     public override ChunkController CreateChunkController(Vector3Int coordinates, IChunkConfiguration config, Transform parent, CancellationToken cancellationToken)
     {
         ChunkController newController = base.CreateChunkController(coordinates, config, parent, cancellationToken);
-        newController.Initialize(new PlanetChunkGenerator(planet), new PlanetChunkColorizer(planet), config, coordinates, cancellationToken);
+        newController.Initialize(new PlanetChunkGenerator(planet), new PlanetChunkColorizer(planet), config, coordinates, 0, cancellationToken);
 
         return newController;
     }

@@ -14,8 +14,6 @@ using UnityEngine;
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
 public class ChunkController : MonoBehaviour
 {
-    public int RenderDetail { get; set; } = -1;
-
     private MeshFilter meshFilter;
     private MeshRenderer meshRenderer;
     private MeshCollider meshCollider;
@@ -23,7 +21,7 @@ public class ChunkController : MonoBehaviour
     private IChunkGenerator generator;
     private IChunkColorizer colorizer;
 
-    public ChunkData ChunkData;
+    public Dictionary<int, ChunkData> ChunkData = new Dictionary<int, ChunkData>();
     private IChunkConfiguration Configuration;
     public Vector3Int Coordinates;
 
@@ -51,6 +49,16 @@ public class ChunkController : MonoBehaviour
     /// Token used to help with cancelling async processes.
     /// </summary>
     private CancellationToken cancellationToken;
+
+    /// <summary>
+    /// The LOD for this specific chunk to render.
+    /// </summary>
+    public int LODIndex
+    {
+        get { return this.lodIndex; }
+        set { this.lodIndex = value; this.IsDirty = true; }
+    }
+    private int lodIndex = 0;
 
     private void Awake()
     {
@@ -82,7 +90,7 @@ public class ChunkController : MonoBehaviour
     /// <param name="config">Configuration used for mesh noise.</param>
     /// <param name="coordinates">Coordinates of this chunk.</param>
     /// <exception cref="System.ArgumentNullException"></exception>
-    public void Initialize(IChunkGenerator generator, IChunkColorizer colorizer, IChunkConfiguration config, Vector3Int coordinates, CancellationToken cancellationToken = default)
+    public void Initialize(IChunkGenerator generator, IChunkColorizer colorizer, IChunkConfiguration config, Vector3Int coordinates, int lodIndex, CancellationToken cancellationToken = default)
     {
         if (coordinates != null)
         {
@@ -98,6 +106,7 @@ public class ChunkController : MonoBehaviour
         this.generator = generator;
         this.colorizer = colorizer;
         this.Configuration = config;
+        this.LODIndex = lodIndex;
 
         this.cancellationToken = cancellationToken;
 
@@ -117,34 +126,38 @@ public class ChunkController : MonoBehaviour
 
         bool initializeFoliage = false;
 
-        if (ChunkData == null)
+        ChunkData chunkData;
+
+        if (!this.ChunkData.TryGetValue(this.LODIndex, out chunkData))
         {
-            ChunkData = await ChunkGenerationQueue.Instance.Enqueue(() => generator.GenerateNewChunk(Coordinates, Configuration, cancellationToken));
+            chunkData = await ChunkGenerationQueue.Instance.Enqueue(() => generator.GenerateNewChunk(Coordinates, this.LODIndex, Configuration, cancellationToken));
             initializeFoliage = true;
         }
         else
         {
-            await ChunkGenerationQueue.Instance.Enqueue(() => generator.UpdateChunkData(ChunkData, Configuration, cancellationToken));
+            await ChunkGenerationQueue.Instance.Enqueue(() => generator.UpdateChunkData(chunkData, Configuration, cancellationToken));
         }
 
         // No use continuing.
-        if (ChunkData.MeshData.Vertices.Count == 0)
+        if (chunkData.MeshData.Vertices.Count == 0)
             return;
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        Mesh newMesh = generator.GenerateMesh(ChunkData, Configuration);
+        Mesh newMesh = generator.GenerateMesh(chunkData, Configuration);
 
         cancellationToken.ThrowIfCancellationRequested();
 
         this.GetComponent<MeshFilter>().mesh = newMesh;
         this.GetComponent<MeshCollider>().sharedMesh = newMesh;
 
+        this.ChunkData[this.LODIndex] = chunkData;
+
         ApplyChunkColors();
 
         if (initializeFoliage)
         {
-            await this.GetComponent<FoliageGenerator>().ApplyMap(ChunkData);
+            await this.GetComponent<FoliageGenerator>().ApplyMap(chunkData);
         }
 
         IsBusy = false;
@@ -160,7 +173,7 @@ public class ChunkController : MonoBehaviour
     /// <returns></returns>
     public async Task ModifyChunk(TerrainBrush brush, bool isAdding, CancellationToken token = default)
     {
-        await this.generator.ModifyChunkData(this.ChunkData, this.Configuration, brush, this.Coordinates, isAdding, token);
+        await this.generator.ModifyChunkData(this.ChunkData[this.LODIndex], this.Configuration, brush, this.Coordinates, isAdding, token);
 
         this.IsDirty = true;
     }
@@ -175,21 +188,25 @@ public class ChunkController : MonoBehaviour
 
         this.cancellationToken.ThrowIfCancellationRequested();
 
-        if (ChunkData.MeshData.Vertices.Count > 0)
+        ChunkData chunkData = this.ChunkData[this.LODIndex];
+
+        if (chunkData.MeshData.Vertices.Count > 0)
         {
             Matrix4x4 matrix = transform.localToWorldMatrix;
-            colors = colorizer.ApplyColors(ChunkData.MeshData, matrix, ChunkData.SurfaceMap, Configuration);
+            colors = colorizer.ApplyColors(chunkData.MeshData, matrix, chunkData.SurfaceMap, Configuration);
 
             foreach (ITerrainModifier modifier in Configuration.Modifiers)
             {
                 if(modifier is IModifyColor colorMod)
-                    colorMod.ModifyColor(ref colors, ChunkData.MeshData, matrix, Configuration);
+                    colorMod.ModifyColor(ref colors, chunkData.MeshData, matrix, Configuration);
             }
         }
         else
             return;
 
-        ChunkData.VerticeColors = colors.ToArray();
-        this.GetComponent<MeshFilter>().mesh.colors = ChunkData.VerticeColors;
+        chunkData.VerticeColors = colors.ToArray();
+        this.GetComponent<MeshFilter>().mesh.colors = chunkData.VerticeColors;
+
+        this.ChunkData[this.LODIndex] = chunkData;
     }
 }
