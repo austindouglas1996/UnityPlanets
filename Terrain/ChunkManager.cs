@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Unity.VisualScripting;
 using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
+using UnityEngine.InputSystem.XR;
 using VHierarchy.Libs;
 
 /// <summary>
@@ -34,34 +35,22 @@ public class ChunkManager : MonoBehaviour
     [SerializeField] private IChunkLayout Layout;
     [SerializeField] private IChunkControllerFactory Factory;
 
-    /// <summary>
-    /// Holds a collection of chunks we have seen along with active chunks that are currently active.
-    /// </summary>
-    private Dictionary<Vector3Int, ChunkController> ActiveChunks = new Dictionary<Vector3Int, ChunkController>();
-    private Dictionary<Vector3Int, ChunkController> CacheChunks = new Dictionary<Vector3Int, ChunkController>();
-
-    private Vector3 LastKnownFollowerPosition;
+    private Dictionary<Vector3Int, ChunkController> Chunks = new Dictionary<Vector3Int, ChunkController>();
 
     private bool IsBusy = false;
     private bool IsInitialized = false;
 
     private CancellationTokenSource cancellationToken = new CancellationTokenSource();
 
-    private void Awake()
+    private async void Update()
     {
-        // Reset the last seen follower position so we update everything.
-        this.LastKnownFollowerPosition = new Vector3(999, 999, 999);
-    }
-
-    private void Update()
-    {
-        if (IsFollowerOutsideOfRange())
+        if (!IsBusy && Layout.ShouldUpdateLayout(Follower.position))
         {
-            UpdateChunks();
+            await UpdateChunks();
         }
     }
 
-    void OnDisable()
+    private void OnDisable()
     {
         cancellationToken.Cancel();
     }
@@ -111,16 +100,12 @@ public class ChunkManager : MonoBehaviour
     /// </summary>
     public void Restart()
     {
-        this.ActiveChunks.Clear();
-        this.CacheChunks.Clear();
-
         foreach (Transform child in this.transform)
         {
             Destroy(child.gameObject);
         }
 
         this.IsBusy = false;
-        this.LastKnownFollowerPosition = new Vector3(999, 999, 999);
     }
 
     /// <summary>
@@ -153,12 +138,13 @@ public class ChunkManager : MonoBehaviour
 
                     Vector3Int neighborCoord = hitPosCoord + new Vector3Int(x, y, z);
 
-                    if (ActiveChunks.TryGetValue(neighborCoord, out var chunk))
+                    if (Layout.PreviousActiveChunks.TryGetValue(neighborCoord, out var chunk))
                     {
-                        Bounds chunkBounds = new Bounds(chunk.transform.position + chunkSize * bufferMultiplier, chunkSize);
+                        ChunkController controller = Chunks[chunk];
+                        Bounds chunkBounds = new Bounds(controller.transform.position + chunkSize * bufferMultiplier, chunkSize);
 
-                        if (brushBounds.Intersects(chunkBounds))
-                            await chunk.ModifyChunk(brush, isAdding, token);
+                        //if (brushBounds.Intersects(chunkBounds))
+                            //await chunk.ModifyChunk(brush, isAdding, token);
                     }
                 }
             }
@@ -169,80 +155,48 @@ public class ChunkManager : MonoBehaviour
     /// Rebuilds the list of active chunks based on the follower’s current position.
     /// Adds new chunks and removes out-of-range ones.
     /// </summary>
-    private void UpdateChunks()
+    private async Task UpdateChunks()
     {
         if (IsBusy || !IsInitialized)
             return;
         IsBusy = true;
 
-        HashSet<Vector3Int> visibleChunksCoordinates = new HashSet<Vector3Int>(Layout.GetActiveChunkCoordinates(this.Follower.position));
+        Stopwatch sw = new Stopwatch();
+        sw.Start();
 
-        Vector3Int followerChunkPos = new Vector3Int(
-            Mathf.FloorToInt(this.Follower.position.x / this.Configuration.ChunkSize),
-            Mathf.FloorToInt(this.Follower.position.y / this.Configuration.ChunkSize),
-            Mathf.FloorToInt(this.Follower.position.z / this.Configuration.ChunkSize));
+        ChunkLayoutResponse layoutResponse = await Layout.GetChunkLayoutUpdate(Follower.position);
 
-        // Retrieve invalid chunks.
-        List<Vector3Int> invalidChunks = new List<Vector3Int>();
-        foreach (var key in this.ActiveChunks.Keys)
+        // Remove old chunks.
+        foreach (Vector3Int oldChunk in layoutResponse.RemoveChunks)
         {
-            if (!visibleChunksCoordinates.Contains(key))
+            if (Chunks.TryGetValue(oldChunk, out var chunk))
             {
-                invalidChunks.Add(key);
+                chunk.Destroy();
+                Chunks.Remove(chunk.Coordinates);
             }
         }
 
-        // Remove invalid chunks.
-        foreach (var invalidKey in invalidChunks)
+        // Handle new chunks
+        foreach (ChunkLayoutEntryInfo activeChunk in layoutResponse.ActiveChunks)
         {
-            ActiveChunks.Remove(invalidKey);
-        }
-
-        // Add new chunks.
-        foreach (var chunk in visibleChunksCoordinates)
-        {
-            ChunkController controller;
-
-            if (!ActiveChunks.ContainsKey(chunk))
+            // Does this chunk already exist?
+            if (Chunks.TryGetValue(activeChunk.Coordinates, out var newChunk))
             {
-                if (CacheChunks.ContainsKey(chunk))
-                {
-                    controller = CacheChunks[chunk];
-                    this.ActiveChunks.Add(chunk, controller);
-                }
-                else
-                {
-                    controller = Factory.CreateChunkController(chunk, Configuration, this.transform, cancellationToken.Token);
-                    this.ActiveChunks.Add(chunk, controller);
-                }
+                newChunk.LODIndex = activeChunk.LOD;
             }
             else
             {
-                controller = ActiveChunks[chunk];
+                ChunkController newController = Factory.CreateChunkController
+                    (activeChunk.Coordinates, Configuration, this.transform, cancellationToken.Token);
+                newController.LODIndex = activeChunk.LOD;
+
+                Chunks[activeChunk.Coordinates] = newController;
             }
-
-            if (controller == null)
-                throw new System.ArgumentNullException("ChunkController does not exist. Was the gameObject deleted?");
-
-            controller.LODIndex = Layout.GetRenderDetail(followerChunkPos, controller.Coordinates);
         }
 
-        IsBusy = false;
-    }
+        this.IsBusy = false;
+        sw.Stop();
 
-    /// <summary>
-    /// Checks if the follower has moved far enough since the last chunk update to warrant refreshing.
-    /// </summary>
-    /// <returns>True if chunks should be updated, false otherwise.</returns>
-    private bool IsFollowerOutsideOfRange()
-    {
-        float viewerDistance = Vector3.Distance(Follower.position, LastKnownFollowerPosition);
-        if (viewerDistance > TravelDistanceToUpdateChunks)
-        {
-            LastKnownFollowerPosition = Follower.position;
-            return true;
-        }
-
-        return false;
+        UnityEngine.Debug.Log($"New Active Chunks: {layoutResponse.ActiveChunks.Count}, removed chunks {layoutResponse.RemoveChunks.Count}, time {sw.ElapsedMilliseconds}MS");
     }
 }

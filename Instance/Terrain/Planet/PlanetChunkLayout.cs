@@ -1,70 +1,36 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 
-public class PlanetChunkLayout : IChunkLayout
+public class PlanetChunkLayout : GenericChunkLayout
 {
     private Planet Planet;
-    private PlanetChunkConfiguration Configuration;
 
     public PlanetChunkLayout(Planet planet, PlanetChunkConfiguration configuration)
+        : base(configuration)
     {
         this.Planet = planet;
-        this.Configuration = configuration;
     }
 
-    public HashSet<Vector3Int> GetActiveChunkCoordinates(Vector3 followerPosition)
+    public new PlanetChunkConfiguration Configuration
     {
-        int chunkSize = Configuration.ChunkSize;
-        int maxChunkOffset = Mathf.CeilToInt(Configuration.MaxLoadRadius / chunkSize);
+        get { return (PlanetChunkConfiguration)base.Configuration; }
+    }
 
-        // Convert world position to chunk coordinate
-        Vector3Int centerChunkCoord = WorldToChunkCoord(followerPosition);
+    public override int ChunkRenderDistanceInChunks { get; protected set; }
+    protected override ChunkResponse GetChunkResponse(Vector3Int followerCoordinates, Vector3Int coordinates)
+    {
+        // Get the chunk's world-space center
+        Vector3 chunkCenter = (Vector3)coordinates * Configuration.ChunkSize + Vector3.one * (Configuration.ChunkSize / 2f);
 
-        List<Vector3Int> chunksToLoad = new();
-
-        for (int x = -maxChunkOffset; x <= maxChunkOffset; x++)
+        // Check both the follower load radius and the planet boundary.
+        if (Vector3.Distance(chunkCenter, followerCoordinates) <= Configuration.MaxLoadRadius &&
+            Vector3.Distance(chunkCenter, Planet.Center) <= Planet.PlanetRadius + Configuration.SurfaceBuffer)
         {
-            for (int y = -maxChunkOffset; y <= maxChunkOffset; y++)
-            {
-                for (int z = -maxChunkOffset; z <= maxChunkOffset; z++)
-                {
-                    Vector3Int offset = new(x, y, z);
-                    Vector3Int chunkCoord = centerChunkCoord + offset;
-
-                    // Get the chunk's world-space center
-                    Vector3 chunkCenter = (Vector3)chunkCoord * chunkSize + Vector3.one * (chunkSize / 2f);
-
-                    // Check both the follower load radius and the planet boundary.
-                    if (Vector3.Distance(chunkCenter, followerPosition) <= Configuration.MaxLoadRadius &&
-                        Vector3.Distance(chunkCenter, Planet.Center) <= Planet.PlanetRadius + Configuration.SurfaceBuffer)
-                    {
-                        chunksToLoad.Add(chunkCoord);
-                    }
-                }
-            }
+            return ChunkResponse.Surface;
         }
 
-        // Sort by distance.
-        chunksToLoad.Sort((a, b) =>
-            Vector3.Distance(a, centerChunkCoord).CompareTo(Vector3.Distance(b, centerChunkCoord))
-        );
-
-
-        return chunksToLoad.ToHashSet();
-    }
-
-    public int GetRenderDetail(Vector3Int followerCoordinates, Vector3Int chunkCoordinate)
-    {
-        return 1;
-    }
-
-    private Vector3Int WorldToChunkCoord(Vector3 worldPos)
-    {
-        return new Vector3Int(
-            Mathf.FloorToInt(worldPos.x / Configuration.ChunkSize),
-            Mathf.FloorToInt(worldPos.y / Configuration.ChunkSize),
-            Mathf.FloorToInt(worldPos.z / Configuration.ChunkSize)
-        );
+        return ChunkResponse.Air;
     }
 }

@@ -56,9 +56,18 @@ public class ChunkController : MonoBehaviour
     public int LODIndex
     {
         get { return this.lodIndex; }
-        set { this.lodIndex = value; this.IsDirty = true; }
+        set 
+        {
+            if (value == this.lodIndex)
+                return;
+
+            this.lodIndex = value; 
+            this.IsDirty = true; 
+        }
     }
     private int lodIndex = 0;
+
+    public bool ForceUp = false;
 
     private void Awake()
     {
@@ -78,6 +87,12 @@ public class ChunkController : MonoBehaviour
         if (IsDirty)
         {
             IsDirty = false;
+            await UpdateChunkAsync(true, cancellationToken);
+        }
+
+        if (ForceUp)
+        {
+            ForceUp = false;
             await UpdateChunkAsync(true, cancellationToken);
         }
     }
@@ -122,24 +137,31 @@ public class ChunkController : MonoBehaviour
     /// <returns></returns>
     public async Task UpdateChunkAsync(bool initial = true, CancellationToken cancellationToken = default)
     {
-        if (IsBusy || !IsInitialized) return;
+        if (!IsInitialized) return;
 
         bool initializeFoliage = false;
 
         ChunkData chunkData;
 
-        if (!this.ChunkData.TryGetValue(this.LODIndex, out chunkData))
+        int lod = this.LODIndex;
+
+        if (!this.ChunkData.TryGetValue(lod, out chunkData))
         {
-            chunkData = await ChunkGenerationQueue.Instance.Enqueue(() => generator.GenerateNewChunk(Coordinates, this.LODIndex, Configuration, cancellationToken));
             initializeFoliage = true;
-        }
-        else
-        {
-            await ChunkGenerationQueue.Instance.Enqueue(() => generator.UpdateChunkData(chunkData, Configuration, cancellationToken));
+
+            await ChunkGenerationQueue.Instance.RequestChunkGeneration(
+                Coordinates,
+                lod,
+                async (token) =>
+                {
+                    token.ThrowIfCancellationRequested();
+                    chunkData = await generator.GenerateNewChunk(Coordinates, lod, Configuration, token);
+                    this.ChunkData[lod] = chunkData; // Store the result
+                });
         }
 
         // No use continuing.
-        if (chunkData.MeshData.Vertices.Count == 0)
+        if (chunkData == null || chunkData.MeshData.Vertices.Count == 0)
             return;
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -151,15 +173,16 @@ public class ChunkController : MonoBehaviour
         this.GetComponent<MeshFilter>().mesh = newMesh;
         this.GetComponent<MeshCollider>().sharedMesh = newMesh;
 
-        this.ChunkData[this.LODIndex] = chunkData;
+        this.ChunkData[lod] = chunkData;
 
         ApplyChunkColors();
 
         if (initializeFoliage)
         {
-            await this.GetComponent<FoliageGenerator>().ApplyMap(chunkData);
+            //await this.GetComponent<FoliageGenerator>().ApplyMap(chunkData);
         }
 
+        IsDirty = false;
         IsBusy = false;
         RenderedOnce = true;
     }

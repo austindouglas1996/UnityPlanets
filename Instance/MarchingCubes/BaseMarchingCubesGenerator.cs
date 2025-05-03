@@ -270,76 +270,49 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     private System.Random random = new System.Random();
     public bool ShouldGenerateChunk(Vector3Int chunkCoords, int chunkSize)
     {
+        int step = chunkSize / 4; // Check every 1/4th of the chunk
+
         int worldX = chunkCoords.x * chunkSize;
         int worldY = chunkCoords.y * chunkSize;
         int worldZ = chunkCoords.z * chunkSize;
 
         float iso = Options.ISOLevel;
-        float threshold = 8.0f;
 
-        // Check corners
-        for (int x = 0; x <= 1; x++)
-            for (int y = 0; y <= 1; y++)
-                for (int z = 0; z <= 1; z++)
+        for (int x = 0; x < chunkSize; x += step)
+        {
+            for (int y = 0; y < chunkSize; y += step)
+            {
+                for (int z = 0; z < chunkSize; z += step)
                 {
-                    float val = GetValueForWorldPosition(
-                        worldX + x * chunkSize,
-                        worldY + y * chunkSize,
-                        worldZ + z * chunkSize
-                    );
-                    if (Mathf.Abs(val - iso) <= threshold)
-                        return true;
+                    // Sample the 8 corners of a voxel cube
+                    float[] values = new float[8];
+                    for (int i = 0; i < 8; i++)
+                    {
+                        Vector3 offset = CornerOffsets[i]; // defined below
+                        int sx = (int)(worldX + x + offset.x * step);
+                        int sy = (int)(worldY + y + offset.y * step);
+                        int sz = (int)(worldZ + z + offset.z * step);
+
+                        values[i] = GetValueForWorldPosition(sx, sy, sz);
+                    }
+
+                    // Check for surface intersection
+                    bool hasAbove = false, hasBelow = false;
+                    foreach (float v in values)
+                    {
+                        if (v >= iso) hasAbove = true;
+                        if (v < iso) hasBelow = true;
+
+                        if (hasAbove && hasBelow)
+                            return true; // surface crosses this cube
+                    }
                 }
-
-        int half = chunkSize / 2;
-        int quarter = chunkSize / 4;
-
-        // Top center + edges (to catch cliff drops or hilltops)
-        Vector3Int[] topFaceSamples = new[]
-        {
-            new Vector3Int(half, chunkSize, half),           // center top
-            new Vector3Int(0, chunkSize, half),
-            new Vector3Int(chunkSize, chunkSize, half),
-            new Vector3Int(half, chunkSize, 0),
-            new Vector3Int(half, chunkSize, chunkSize),
-
-            new Vector3Int(quarter, chunkSize, quarter),
-            new Vector3Int(quarter, chunkSize, 3 * quarter),
-            new Vector3Int(3 * quarter, chunkSize, quarter),
-            new Vector3Int(3 * quarter, chunkSize, 3 * quarter)
-        };
-
-        foreach (var sample in topFaceSamples)
-        {
-            float val = GetValueForWorldPosition(
-                worldX + sample.x,
-                worldY + sample.y,
-                worldZ + sample.z);
-
-            if (Mathf.Abs(val - iso) <= threshold)
-                return true;
-        }
-
-        Vector3Int[] verticalPillars = new[]
-        {
-            new Vector3Int(half, 0, half),
-            new Vector3Int(half, chunkSize / 2, half),
-            new Vector3Int(half, chunkSize, half)
-        };
-
-        foreach (var sample in verticalPillars)
-        {
-            float val = GetValueForWorldPosition(
-                worldX + sample.x,
-                worldY + sample.y,
-                worldZ + sample.z);
-
-            if (Mathf.Abs(val - iso) <= threshold)
-                return true;
+            }
         }
 
         return false;
     }
+
 
 
 
