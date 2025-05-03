@@ -189,7 +189,9 @@ public abstract class GenericChunkLayout : IChunkLayout
         int dz = Mathf.Abs(chunkCoordinate.z - followerCoordinates.z);
 
         int distance = Mathf.Max(dx, dz);
-        int lod = Mathf.Max(0, distance - 4);
+
+        // Each tier is 12 chunks wide.
+        int lod = distance / 12;
 
         // Clamp to a max LOD of 5, anything over 5 does not render.
         return Mathf.Min(lod, 5);

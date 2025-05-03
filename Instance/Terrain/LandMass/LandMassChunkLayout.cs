@@ -18,7 +18,7 @@ public class LandMassChunkLayout : GenericChunkLayout
 
     protected override ChunkResponse GetChunkResponse(Vector3Int followerCoordinates, Vector3Int coordinates)
     {
-        if (Generator.ShouldGenerateChunk(coordinates, Configuration.ChunkSize))
+        if (!Generator.ShouldGenerateChunk(coordinates, Configuration.ChunkSize))
             return ChunkResponse.Air;
 
         return ChunkResponse.Surface;

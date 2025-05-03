@@ -148,7 +148,62 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
             }
         }
 
-        return new MeshData(lodIndex, Vertices, Triangles, UVs);
+        MeshData data = new MeshData(lodIndex, Vertices, Triangles, UVs);
+        Flatten(densityMap, data);
+
+        return data;
+    }
+
+    private void Flatten(float[,,] densityMap, MeshData data)
+    {
+        List<Vector3> flatVertices = new List<Vector3>();
+        List<Vector3> flatNormals = new List<Vector3>();
+        List<Vector2> flatUVs = new List<Vector2>();
+        List<int> flatTriangles = new List<int>();
+
+        for (int i = 0; i < data.Triangles.Count; i += 3)
+        {
+            int i0 = data.Triangles[i];
+            int i1 = data.Triangles[i + 1];
+            int i2 = data.Triangles[i + 2];
+
+            Vector3 v0 = data.Vertices[i0];
+            Vector3 v1 = data.Vertices[i1];
+            Vector3 v2 = data.Vertices[i2];
+
+            // Inside the flat shading loop:
+            Vector3 gradient0 = data.LODIndex == 0 ? SampleDensityGradientLOD0(v0, densityMap) : SampleDensityGradient(v0, data.LODIndex);
+            Vector3 gradient1 = data.LODIndex == 0 ? SampleDensityGradientLOD0(v1, densityMap) : SampleDensityGradient(v1, data.LODIndex);
+            Vector3 gradient2 = data.LODIndex == 0 ? SampleDensityGradientLOD0(v2, densityMap) : SampleDensityGradient(v2, data.LODIndex);
+
+            // Average gradient for the face
+            Vector3 faceNormal = -(gradient0 + gradient1 + gradient2) / 3f;
+            faceNormal.Normalize();
+
+            // Duplicate vertices
+            int startIndex = flatVertices.Count;
+            flatVertices.Add(v0);
+            flatVertices.Add(v1);
+            flatVertices.Add(v2);
+
+            flatNormals.Add(faceNormal);
+            flatNormals.Add(faceNormal);
+            flatNormals.Add(faceNormal);
+
+            // Add new UV's
+            flatUVs.Add(data.UVs.Count > i0 ? data.UVs[i0] : Vector2.zero);
+            flatUVs.Add(data.UVs.Count > i1 ? data.UVs[i1] : Vector2.zero);
+            flatUVs.Add(data.UVs.Count > i2 ? data.UVs[i2] : Vector2.zero);
+
+            flatTriangles.Add(startIndex);
+            flatTriangles.Add(startIndex + 1);
+            flatTriangles.Add(startIndex + 2);
+        }
+
+        data.Vertices = flatVertices;
+        data.UVs = flatUVs;
+        data.Normals = flatNormals;
+        data.Triangles = flatTriangles;
     }
 
     /// <summary>
@@ -212,56 +267,12 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <returns>A generated Unity Mesh.</returns>
     public virtual Mesh GenerateMesh(float[,,] densityMap, MeshData data)
     {
-        List<Vector3> flatVertices = new List<Vector3>();
-        List<Vector3> flatNormals = new List<Vector3>();
-        List<Vector2> flatUVs = new List<Vector2>();
-        List<int> flatTriangles = new List<int>();
-
-        for (int i = 0; i < data.Triangles.Count; i += 3)
-        {
-            int i0 = data.Triangles[i];
-            int i1 = data.Triangles[i + 1];
-            int i2 = data.Triangles[i + 2];
-
-            Vector3 v0 = data.Vertices[i0];
-            Vector3 v1 = data.Vertices[i1];
-            Vector3 v2 = data.Vertices[i2];
-
-            // Inside the flat shading loop:
-            Vector3 gradient0 = data.LODIndex == 0 ? SampleDensityGradientLOD0(v0, densityMap) : SampleDensityGradient(v0);
-            Vector3 gradient1 = data.LODIndex == 0 ? SampleDensityGradientLOD0(v1, densityMap) : SampleDensityGradient(v1);
-            Vector3 gradient2 = data.LODIndex == 0 ? SampleDensityGradientLOD0(v2, densityMap) : SampleDensityGradient(v2);
-
-            // Average gradient for the face
-            Vector3 faceNormal = -(gradient0 + gradient1 + gradient2) / 3f;
-            faceNormal.Normalize();
-
-            // Duplicate vertices
-            int startIndex = flatVertices.Count;
-            flatVertices.Add(v0);
-            flatVertices.Add(v1);
-            flatVertices.Add(v2);
-
-            flatNormals.Add(faceNormal);
-            flatNormals.Add(faceNormal);
-            flatNormals.Add(faceNormal);
-
-            // Add new UV's
-            flatUVs.Add(data.UVs.Count > i0 ? data.UVs[i0] : Vector2.zero);
-            flatUVs.Add(data.UVs.Count > i1 ? data.UVs[i1] : Vector2.zero);
-            flatUVs.Add(data.UVs.Count > i2 ? data.UVs[i2] : Vector2.zero);
-
-            flatTriangles.Add(startIndex);
-            flatTriangles.Add(startIndex + 1);
-            flatTriangles.Add(startIndex + 2);
-        }
-
         Mesh mesh = new Mesh();
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-        mesh.vertices = flatVertices.ToArray();
-        mesh.triangles = flatTriangles.ToArray();
-        mesh.normals = flatNormals.ToArray();
-        mesh.uv = flatUVs.ToArray();
+        mesh.vertices = data.Vertices.ToArray();
+        mesh.triangles = data.Triangles.ToArray();
+        mesh.normals = data.Normals.ToArray();
+        mesh.uv = data.UVs.ToArray();
         mesh.RecalculateBounds();
 
         return mesh;
@@ -330,12 +341,12 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// </summary>
     /// <param name="worldPos"></param>
     /// <returns></returns>
-    private Vector3 SampleDensityGradient(Vector3 worldPos)
+    private Vector3 SampleDensityGradient(Vector3 worldPos, int lodIndex)
     {
-        float eps = 0.5f;
+        float eps = (1 << lodIndex) * 1.0f;
 
         float dx = GetValueForWorldPosition(worldPos.x + eps, worldPos.y, worldPos.z)
-                 - GetValueForWorldPosition(worldPos.x - eps, worldPos.y, worldPos.z);
+                  - GetValueForWorldPosition(worldPos.x - eps, worldPos.y, worldPos.z);
         float dy = GetValueForWorldPosition(worldPos.x, worldPos.y + eps, worldPos.z)
                  - GetValueForWorldPosition(worldPos.x, worldPos.y - eps, worldPos.z);
         float dz = GetValueForWorldPosition(worldPos.x, worldPos.y, worldPos.z + eps)

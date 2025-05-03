@@ -34,13 +34,10 @@ public class LandMassChunkColorizer : IChunkColorizer
 
             float blendFactor = Mathf.InverseLerp(lowerBiome.MinSurface, upperBiome.MinSurface, height);
 
-            float lowerBiomeT = Mathf.InverseLerp(lowerBiome.MinSurface, upperBiome.MinSurface, height);
-            float upperBiomeT = Mathf.InverseLerp(upperBiome.MinSurface, lowerBiome.MinSurface, height);
+            Color lowerColor = lowerBiome.SurfaceColorRange.Evaluate(0f);
+            Color upperColor = upperBiome.SurfaceColorRange.Evaluate(1f);
 
-            Color lowerColor = lowerBiome.SurfaceColorRange.Evaluate(lowerBiomeT);
-            Color upperColor = upperBiome.SurfaceColorRange.Evaluate(upperBiomeT);
-
-            // Blend colors smoothly based on height
+            // Blend between biome colors based on the height blend factor
             colors[i] = Color.Lerp(lowerColor, upperColor, blendFactor);
         }
 
