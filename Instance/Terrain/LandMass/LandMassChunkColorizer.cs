@@ -20,7 +20,7 @@ public class LandMassChunkColorizer : IChunkColorizer
             float height = worldPos.y;
 
             IBiome lowerBiome = sortedBiomes[0];
-            IBiome upperBiome = sortedBiomes[^1];
+            IBiome upperBiome = sortedBiomes[1];
 
             for (int b = 0; b < sortedBiomes.Count - 1; b++)
             {
@@ -32,11 +32,13 @@ public class LandMassChunkColorizer : IChunkColorizer
                 }
             }
 
-            // Now we have lower and upper biome
             float blendFactor = Mathf.InverseLerp(lowerBiome.MinSurface, upperBiome.MinSurface, height);
 
-            Color lowerColor = lowerBiome.SurfaceColorRange.Evaluate(height);
-            Color upperColor = upperBiome.SurfaceColorRange.Evaluate(height);
+            float lowerBiomeT = Mathf.InverseLerp(lowerBiome.MinSurface, upperBiome.MinSurface, height);
+            float upperBiomeT = Mathf.InverseLerp(upperBiome.MinSurface, lowerBiome.MinSurface, height);
+
+            Color lowerColor = lowerBiome.SurfaceColorRange.Evaluate(lowerBiomeT);
+            Color upperColor = upperBiome.SurfaceColorRange.Evaluate(upperBiomeT);
 
             // Blend colors smoothly based on height
             colors[i] = Color.Lerp(lowerColor, upperColor, blendFactor);

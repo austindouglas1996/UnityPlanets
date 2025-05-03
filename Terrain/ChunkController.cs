@@ -47,6 +47,11 @@ public class ChunkController : MonoBehaviour
     /// </summary>
     private bool IsInitialized = false;
 
+    /// <summary>
+    /// Token used to help with cancelling async processes.
+    /// </summary>
+    private CancellationToken cancellationToken;
+
     private void Awake()
     {
         meshFilter = GetComponent<MeshFilter>();
@@ -65,7 +70,7 @@ public class ChunkController : MonoBehaviour
         if (IsDirty)
         {
             IsDirty = false;
-            await UpdateChunkAsync(true);
+            await UpdateChunkAsync(true, cancellationToken);
         }
     }
 
@@ -77,7 +82,7 @@ public class ChunkController : MonoBehaviour
     /// <param name="config">Configuration used for mesh noise.</param>
     /// <param name="coordinates">Coordinates of this chunk.</param>
     /// <exception cref="System.ArgumentNullException"></exception>
-    public void Initialize(IChunkGenerator generator, IChunkColorizer colorizer, IChunkConfiguration config, Vector3Int coordinates)
+    public void Initialize(IChunkGenerator generator, IChunkColorizer colorizer, IChunkConfiguration config, Vector3Int coordinates, CancellationToken cancellationToken = default)
     {
         if (coordinates != null)
         {
@@ -94,8 +99,9 @@ public class ChunkController : MonoBehaviour
         this.colorizer = colorizer;
         this.Configuration = config;
 
-        this.IsInitialized = true;
+        this.cancellationToken = cancellationToken;
 
+        this.IsInitialized = true;
         this.IsDirty = true;
     }
 
@@ -107,20 +113,18 @@ public class ChunkController : MonoBehaviour
     /// <returns></returns>
     public async Task UpdateChunkAsync(bool initial = true, CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         if (IsBusy || !IsInitialized) return;
 
         bool initializeFoliage = false;
 
         if (ChunkData == null)
         {
-            ChunkData = await ChunkGenerationQueue.Instance.Enqueue(() => generator.GenerateNewChunk(Coordinates, Configuration));
+            ChunkData = await ChunkGenerationQueue.Instance.Enqueue(() => generator.GenerateNewChunk(Coordinates, Configuration, cancellationToken));
             initializeFoliage = true;
         }
         else
         {
-            await ChunkGenerationQueue.Instance.Enqueue(() => generator.UpdateChunkData(ChunkData, Configuration));
+            await ChunkGenerationQueue.Instance.Enqueue(() => generator.UpdateChunkData(ChunkData, Configuration, cancellationToken));
         }
 
         // No use continuing.
@@ -168,6 +172,8 @@ public class ChunkController : MonoBehaviour
     public void ApplyChunkColors()
     {
         Color[] colors = null;
+
+        this.cancellationToken.ThrowIfCancellationRequested();
 
         if (ChunkData.MeshData.Vertices.Count > 0)
         {

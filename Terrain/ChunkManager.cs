@@ -22,12 +22,6 @@ public class ChunkManager : MonoBehaviour
     [Header("Rendering")]
 
     /// <summary>
-    /// How far away a chunk can be before it's no longer rendered. Detail is adjusted based on distance.
-    /// </summary>
-    [Tooltip("How far a given chunk can be that it will be rendered on screen. Details will automatically be adjusted on distance.")]
-    public float ChunkRenderDistance = 400;
-
-    /// <summary>
     /// How far the follower has to move before we trigger an update of active chunks.
     /// </summary>
     [Tooltip("How far the follower needs to be travel before we update the active chunks.")]
@@ -51,6 +45,8 @@ public class ChunkManager : MonoBehaviour
     private bool IsBusy = false;
     private bool IsInitialized = false;
 
+    private CancellationTokenSource cancellationToken = new CancellationTokenSource();
+
     private void Awake()
     {
         // Reset the last seen follower position so we update everything.
@@ -63,6 +59,11 @@ public class ChunkManager : MonoBehaviour
         {
             UpdateChunks();
         }
+    }
+
+    void OnDisable()
+    {
+        cancellationToken.Cancel();
     }
 
     /// <summary>
@@ -84,6 +85,8 @@ public class ChunkManager : MonoBehaviour
         this.Configuration = configuration;
         this.Layout = layout;
         this.Factory = factory;
+
+        ChunkGenerationQueue.Instance.CancellationToken = cancellationToken.Token;
 
         this.IsInitialized = true;
     }
@@ -174,6 +177,7 @@ public class ChunkManager : MonoBehaviour
 
         HashSet<Vector3Int> visibleChunksCoordinates = new HashSet<Vector3Int>(Layout.GetActiveChunkCoordinates(this.Follower.position));
 
+        // Retrieve invalid chunks.
         List<Vector3Int> invalidChunks = new List<Vector3Int>();
         foreach (var key in this.ActiveChunks.Keys)
         {
@@ -183,11 +187,13 @@ public class ChunkManager : MonoBehaviour
             }
         }
 
+        // Remove invalid chunks.
         foreach (var invalidKey in invalidChunks)
         {
             ActiveChunks.Remove(invalidKey);
         }
 
+        // Add new chunks.
         foreach (var chunk in visibleChunksCoordinates)
         {
             ChunkController controller;
@@ -201,7 +207,7 @@ public class ChunkManager : MonoBehaviour
                 }
                 else
                 {
-                    controller = Factory.CreateChunkController(chunk, Configuration, this.transform);
+                    controller = Factory.CreateChunkController(chunk, Configuration, this.transform, cancellationToken.Token);
                     this.ActiveChunks.Add(chunk, controller);
                 }
             }

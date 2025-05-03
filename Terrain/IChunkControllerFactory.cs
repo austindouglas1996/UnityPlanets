@@ -1,3 +1,4 @@
+using System.Threading;
 using UnityEngine;
 
 /// <summary>
@@ -13,5 +14,5 @@ public interface IChunkControllerFactory
     /// <param name="config">Chunk configuration.</param>
     /// <param name="parent">The parent transform to attach the chunk to.</param>
     /// <returns>A new <see cref="ChunkController"/> instance.</returns>
-    ChunkController CreateChunkController(Vector3Int coordinates, IChunkConfiguration config, Transform parent);
+    ChunkController CreateChunkController(Vector3Int coordinates, IChunkConfiguration config, Transform parent, CancellationToken cancellationToken = default);
 }

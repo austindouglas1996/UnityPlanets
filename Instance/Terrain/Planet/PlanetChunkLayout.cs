@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class PlanetChunkLayout : IChunkLayout
@@ -12,7 +13,7 @@ public class PlanetChunkLayout : IChunkLayout
         this.Configuration = configuration;
     }
 
-    public List<Vector3Int> GetActiveChunkCoordinates(Vector3 followerPosition)
+    public HashSet<Vector3Int> GetActiveChunkCoordinates(Vector3 followerPosition)
     {
         int chunkSize = Configuration.ChunkSize;
         int maxChunkOffset = Mathf.CeilToInt(Configuration.MaxLoadRadius / chunkSize);
@@ -50,7 +51,7 @@ public class PlanetChunkLayout : IChunkLayout
         );
 
 
-        return chunksToLoad;
+        return chunksToLoad.ToHashSet();
     }
 
     public int GetRenderDetail(Vector3Int followerCoordinates, Vector3Int chunkCoordinate)

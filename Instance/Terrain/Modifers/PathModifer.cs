@@ -152,7 +152,7 @@ public class PathModifer : IModifyDensity, IModifyColor, IModifyFoliageMask
                         float t = Mathf.InverseLerp(path.OuterRadius, path.InnerRadius, distToPath);
                         t = Mathf.SmoothStep(0f, 1f, t);
 
-                        densityMap[x, y, z] += (-worldY) * t * 0.6f;
+                        densityMap[x, y, z] += t * 0.6f;
                     }
                 }
     }

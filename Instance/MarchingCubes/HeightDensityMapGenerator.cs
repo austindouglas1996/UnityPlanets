@@ -78,7 +78,7 @@ public class HeightDensityMapGenerator : GenericDensityMapGenerator
     }
 
 
-    public override MeshData GenerateMeshData(float[,,] densityMap, Vector3 chunkOffset)
+    public override MeshData GenerateMeshData(float[,,] densityMap, Vector3 chunkOffset, int lodIndex = 6)
     {
         MeshData initialData = base.GenerateMeshData(densityMap, chunkOffset);
         Vector2[] uvs = new Vector2[initialData.Vertices.Count];

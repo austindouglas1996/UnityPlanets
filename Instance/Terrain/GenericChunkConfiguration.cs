@@ -27,6 +27,6 @@ public class GenericChunkConfiguration : IChunkConfiguration
             Biomes.Add(biomeFactory.CreateInstance(biome.Name));
         }
 
-        //this.modifiers.Add(new PathModifer());
+        this.modifiers.Add(new PathModifer());
     }
 }

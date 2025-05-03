@@ -13,7 +13,7 @@ public interface IChunkLayout
     /// </summary>
     /// <param name="followerPosition">The world-space position of the object being followed.</param>
     /// <returns>A list of <see cref="Vector3Int"/> coordinates representing active chunks.</returns>
-    List<Vector3Int> GetActiveChunkCoordinates(Vector3 followerPosition);
+    HashSet<Vector3Int> GetActiveChunkCoordinates(Vector3 followerPosition);
 
     /// <summary>
     /// Determines the level of detail (LOD) that should be used for a given chunk

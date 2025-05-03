@@ -93,7 +93,7 @@ Material:
     - _ClearCoatSmoothness: 0
     - _Cull: 2
     - _Cutoff: 0.5
-    - _Depth: 45
+    - _Depth: 25
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
     - _Distance: 25
@@ -124,11 +124,11 @@ Material:
     m_Colors:
     - _BaseColor: {r: 0.028301716, g: 0.35364693, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _DeepColor: {r: 0.56289303, g: 0.7097897, b: 1, a: 1}
+    - _DeepColor: {r: 0.34901962, g: 0.44313726, b: 0.77254903, a: 0}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _FoamColor: {r: 0.54667526, g: 0.60469896, b: 0.8238993, a: 0}
     - _RippleColor: {r: 0.103773475, g: 0.6058321, b: 1, a: 0}
-    - _ShallowColor: {r: 0.34786987, g: 0.44399908, b: 0.7735849, a: 0}
+    - _ShallowColor: {r: 0.5647059, g: 0.70980394, b: 1, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
     - _baseColor: {r: 0.040880322, g: 0.31889397, b: 1, a: 0}
     - _deepWater: {r: 0.039215688, g: 0.31764707, b: 1, a: 0}

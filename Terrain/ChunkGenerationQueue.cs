@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
 using UnityEngine;
+using System.Threading;
 
 public class ChunkGenerationQueue
 {
@@ -9,6 +10,13 @@ public class ChunkGenerationQueue
     private int maxConcurrentTasks = 64;
     private int runningTasks = 0;
     private bool isProcessing = false;
+
+    public CancellationToken CancellationToken
+    {
+        get { return cancellationToken; }
+        set { cancellationToken = value; }
+    }
+    private CancellationToken cancellationToken;
 
     public static ChunkGenerationQueue Instance
     {
@@ -72,10 +80,12 @@ public class ChunkGenerationQueue
     {
         isProcessing = true;
 
-        int tasksPerFrame = 5; 
+        int tasksPerFrame = 2; 
 
         while (generationQueue.Count > 0)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             int processedThisFrame = 0;
 
             while (generationQueue.Count > 0 && processedThisFrame < tasksPerFrame)

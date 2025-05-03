@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class LandMassChunkLayout : IChunkLayout
@@ -12,7 +13,7 @@ public class LandMassChunkLayout : IChunkLayout
         Configuration = configuration;
     }
 
-    public List<Vector3Int> GetActiveChunkCoordinates(Vector3 followerPosition)
+    public HashSet<Vector3Int> GetActiveChunkCoordinates(Vector3 followerPosition)
     {
         int chunkSize = this.Configuration.ChunkSize;
         int maxChunkOffset = this.Configuration.ChunkViewDistance;
@@ -38,11 +39,10 @@ public class LandMassChunkLayout : IChunkLayout
 
         // Sort by distance.
         chunksToLoad.Sort((a, b) =>
-            Vector3.Distance(a, b).CompareTo(Vector3.Distance(b, a))
+            Vector3.Distance(a, followerChunkPos).CompareTo(Vector3.Distance(b, followerChunkPos))
         );
 
-
-        return chunksToLoad;
+        return chunksToLoad.ToHashSet();
     }
 
     public int GetRenderDetail(Vector3Int followerCoordinates, Vector3Int chunkCoordinate)
