@@ -29,7 +29,7 @@ public class ChunkGenerationQueue
     /// <summary>
     /// Options when running the job system.
     /// </summary>
-    private int maxConcurrentTasks = 64;
+    private int maxConcurrentTasks = 1;
     private int runningTasks = 0;
     private bool isProcessing = false;
 
@@ -142,15 +142,13 @@ public class ChunkGenerationQueue
     private async Task ProcessQueue()
     {
         isProcessing = true;
-        int tasksPerFrame = 2; 
 
-        while (generationQueue.Count > 0)
+        while (generationQueue.Count >= 0)
         {
             // This is only called if game closed.
             cancellationToken.ThrowIfCancellationRequested();
 
-            int processedThisFrame = 0;
-            while (generationQueue.Count > 0 && processedThisFrame < tasksPerFrame)
+            while (generationQueue.Count > 0)
             {
                 if (runningTasks > maxConcurrentTasks)
                     break;
@@ -185,8 +183,6 @@ public class ChunkGenerationQueue
                         Debug.Log("Remaining tasks: " + generationQueue.Count + ", running: " + runningTasks);
                     }
                 });
-
-                processedThisFrame++;
             }
 
             await Task.Yield(); // yield after batch

@@ -171,11 +171,11 @@ public class ChunkController : MonoBehaviour
         cancellationToken.ThrowIfCancellationRequested();
 
         this.GetComponent<MeshFilter>().mesh = newMesh;
-        this.GetComponent<MeshCollider>().sharedMesh = newMesh;
+        //this.GetComponent<MeshCollider>().sharedMesh = newMesh;
 
         this.ChunkData[lod] = chunkData;
 
-        ApplyChunkColors();
+        //ApplyChunkColors();
 
         if (initializeFoliage)
         {
