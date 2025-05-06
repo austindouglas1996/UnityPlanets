@@ -10,11 +10,16 @@ public class PlanetChunkControllerFactory : GenericChunkControllerFactory
         this.planet = planet;
     }
 
-    public override ChunkController CreateChunkController(Vector3Int coordinates, IChunkConfiguration config, Transform parent, CancellationToken cancellationToken)
+    public override ChunkController CreateChunkController(Vector3Int coordinates, ChunkManager manager, IChunkConfiguration config, Transform parent, CancellationToken cancellationToken)
     {
-        ChunkController newController = base.CreateChunkController(coordinates, config, parent, cancellationToken);
-        newController.Initialize(new PlanetChunkGenerator(planet), new PlanetChunkColorizer(planet), config, coordinates, 0, cancellationToken);
+        ChunkController newController = base.CreateChunkController(coordinates, manager, config, parent, cancellationToken);
+        newController.Initialize(manager, new PlanetChunkColorizer(planet), config, coordinates, 0, cancellationToken);
 
         return newController;
+    }
+
+    public override IChunkGenerator CreateGenerator()
+    {
+        return new PlanetChunkGenerator(planet);
     }
 }

@@ -3,23 +3,20 @@ using UnityEngine;
 
 public class LandMassChunkControllerFactory : GenericChunkControllerFactory
 {
-    public override ChunkController CreateChunkController(Vector3Int coordinates, IChunkConfiguration config, Transform parent, CancellationToken cancellationToken)
+    public override ChunkController CreateChunkController(Vector3Int coordinates, ChunkManager manager, IChunkConfiguration config, Transform parent, CancellationToken cancellationToken)
     {
-        ChunkController newController = base.CreateChunkController(coordinates, config, parent, cancellationToken);
-        newController.Initialize(Generator, Colorizer, config, coordinates, 0, cancellationToken);
+        ChunkController newController = base.CreateChunkController(coordinates, manager, config, parent, cancellationToken);
+        newController.Initialize(manager, Colorizer, config, coordinates, 0, cancellationToken);
 
         return newController;
     }
 
-    private LandMassChunkGenerator Generator
+    public override IChunkGenerator CreateGenerator()
     {
-        get
-        {
-            if (generator == null)
-                generator = new LandMassChunkGenerator();
+        if (generator == null)
+            generator = new LandMassChunkGenerator();
 
-            return generator;
-        }
+        return this.generator;
     }
 
     private LandMassChunkColorizer Colorizer

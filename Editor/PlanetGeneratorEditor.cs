@@ -12,7 +12,7 @@ public class PlanetGeneratorEditor : Editor
 
         if (GUILayout.Button("Rebuild"))
         {
-            manager.Restart();
+            //manager.Restart();
         }
 
         if (GUILayout.Button("ReColor"))

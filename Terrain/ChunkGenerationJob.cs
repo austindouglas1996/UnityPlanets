@@ -2,19 +2,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
-public class ChunkJob
+public class ChunkGenerationJob
 {
-    public ChunkJob(Vector3Int coordinates, int lODIndex, Task task, CancellationTokenSource cts)
+    public ChunkGenerationJob(Vector3Int coordinates, int lODIndex, CancellationTokenSource cts)
     {
         Coordinates = coordinates;
         LODIndex = lODIndex;
-        Task = task;
+        Completion = new TaskCompletionSource<ChunkData>(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationSource = cts;
     }
 
     public Vector3Int Coordinates { get; private set; }
     public int LODIndex { get; private set; }
-    public Task Task { get; private set; }
+
+    public TaskCompletionSource<ChunkData> Completion;
 
     public CancellationTokenSource CancellationSource { get; private set; }
     public CancellationToken Token => CancellationSource.Token;

@@ -16,31 +16,44 @@ using VHierarchy.Libs;
 public class ChunkManager : MonoBehaviour
 {
     /// <summary>
+    /// How far the follower has to move before we trigger an update of active chunks.
+    /// </summary>
+    [Header("Rendering"), Tooltip("How far the follower needs to be travel before we update the active chunks.")]
+    public float TravelDistanceToUpdateChunks = 10f;
+
+    /// <summary>
     /// The transform that this chunk system follows, like the player.
     /// </summary>
     [HideInInspector] public Transform Follower;
 
-    [Header("Rendering")]
-
     /// <summary>
-    /// How far the follower has to move before we trigger an update of active chunks.
-    /// </summary>
-    [Tooltip("How far the follower needs to be travel before we update the active chunks.")]
-    public float TravelDistanceToUpdateChunks = 10f;
-
-    /// <summary>
-    /// These components are used to help with the generation process.
+    /// Chunk configurations.
     /// </summary>
     [SerializeField] private IChunkConfiguration Configuration;
     [SerializeField] private IChunkLayout Layout;
     [SerializeField] private IChunkControllerFactory Factory;
+    [SerializeField] private IChunkGenerator Generator;
+    [SerializeField] private ChunkGenerationQueue GenerationQueue;
 
+    /// <summary>
+    /// A cancellation token used to help with cancelling processes on game close.
+    /// </summary>
+    private CancellationTokenSource cancellationToken = new CancellationTokenSource();
+
+    /// <summary>
+    /// A collection of active chunks in the game world.
+    /// </summary>
     private Dictionary<Vector3Int, ChunkController> Chunks = new Dictionary<Vector3Int, ChunkController>();
 
+    /// <summary>
+    /// Tells whether the manager is currently busy executing other tasks.
+    /// </summary>
     private bool IsBusy = false;
-    private bool IsInitialized = false;
 
-    private CancellationTokenSource cancellationToken = new CancellationTokenSource();
+    /// <summary>
+    /// Returns whether <see cref="Initialize(IChunkConfiguration, IChunkLayout, IChunkControllerFactory)"/> has been successful.
+    /// </summary>
+    private bool IsInitialized = false;
 
     private async void Update()
     {
@@ -74,11 +87,42 @@ public class ChunkManager : MonoBehaviour
         this.Configuration = configuration;
         this.Layout = layout;
         this.Factory = factory;
+        this.Generator = this.Factory.CreateGenerator();
 
-        ChunkGenerationQueue.Instance.CancellationToken = cancellationToken.Token;
+        if (this.Generator == null)
+            throw new System.ArgumentNullException("Generator is null.");
+
+        this.GenerationQueue = new ChunkGenerationQueue(this.Generator, this.Configuration, this.cancellationToken.Token);
 
         this.IsInitialized = true;
     }
+
+    /// <summary>
+    /// Request a chunk be generated based on a <see cref="ChunkController"/> data.
+    /// </summary>
+    /// <param name="controller"></param>
+    public void RequestNewChunkGeneration(ChunkController controller)
+    {
+        var task = this.GenerationQueue.RequestChunkGeneration(controller.Coordinates, controller.LODIndex);
+        task.ContinueWith(t => 
+        {
+            if (t.Status != TaskStatus.RanToCompletion)
+                return;
+
+            if (t.Result.MeshData.Vertices.Count == 0)
+                return;
+
+            Mesh mesh = this.Generator.GenerateMesh(t.Result, this.Configuration);
+            controller.UpdateChunkData(t.Result, mesh);
+        }, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
+
+
+
+
+
+
 
     /// <summary>
     /// Loops through all child chunks and reapplies their colors. Useful for debugging or updating style changes.
@@ -93,19 +137,6 @@ public class ChunkManager : MonoBehaviour
                 controller.ApplyChunkColors();
             }
         }
-    }
-
-    /// <summary>
-    /// Destroys all current chunks and resets internal state. Useful for debugging.
-    /// </summary>
-    public void Restart()
-    {
-        foreach (Transform child in this.transform)
-        {
-            Destroy(child.gameObject);
-        }
-
-        this.IsBusy = false;
     }
 
     /// <summary>
@@ -187,7 +218,7 @@ public class ChunkManager : MonoBehaviour
             else
             {
                 ChunkController newController = Factory.CreateChunkController
-                    (activeChunk.Coordinates, Configuration, this.transform, cancellationToken.Token);
+                    (activeChunk.Coordinates, this, Configuration, this.transform, cancellationToken.Token);
                 newController.LODIndex = activeChunk.LOD;
 
                 Chunks[activeChunk.Coordinates] = newController;

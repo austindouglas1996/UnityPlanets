@@ -3,7 +3,7 @@ using UnityEngine;
 
 public abstract class GenericChunkControllerFactory : IChunkControllerFactory
 {
-    public virtual ChunkController CreateChunkController(Vector3Int coordinates, IChunkConfiguration config, Transform parent, CancellationToken cancellationToken)
+    public virtual ChunkController CreateChunkController(Vector3Int coordinates, ChunkManager manager, IChunkConfiguration config, Transform parent, CancellationToken cancellationToken)
     {
         Vector3 pos = new Vector3(
             coordinates.x * config.ChunkSize,
@@ -18,4 +18,6 @@ public abstract class GenericChunkControllerFactory : IChunkControllerFactory
 
         return newController;
     }
+
+    public abstract IChunkGenerator CreateGenerator();
 }

@@ -11,33 +11,50 @@ public class ChunkGenerationQueue
     /// A dictionary of active chunks with their jobs. Allows for one respective job, but also
     /// works with LOD so past jobs are cancelled before being queued. 
     /// </summary>
-    private readonly Dictionary<Vector3Int, ChunkJob> pendingJobs = new Dictionary<Vector3Int, ChunkJob>();
+    private readonly Dictionary<Vector3Int, ChunkGenerationJob> pendingJobs = new Dictionary<Vector3Int, ChunkGenerationJob>();
     private readonly object pendingJobsLock = new();
 
     /// <summary>
     /// A collection of jobs to be executed yet. Seperate from active jobs, this runs the actual
     /// task.
     /// </summary>
-    private Queue<ChunkJob> generationQueue = new Queue<ChunkJob>();
+    private Queue<ChunkGenerationJob> generationQueue = new Queue<ChunkGenerationJob>();
+    private readonly object queueLock = new();
 
     /// <summary>
-    /// A task to run the process queue.
+    /// A collection of tasks to run the process queue.
     /// </summary>
-    private Task? processQueueTask = null;
-    private readonly object processLock = new();
-
-    /// <summary>
-    /// Options when running the job system.
-    /// </summary>
-    private int maxConcurrentTasks = 1;
-    private int runningTasks = 0;
+    private List<Task?> workerTasks = new();
     private bool isProcessing = false;
+
+    /// <summary>
+    /// The generator used to generate.
+    /// </summary>
+    private IChunkGenerator chunkGenerator;
+
+    /// <summary>
+    /// The configuration used for chunk generation.
+    /// </summary>
+    private IChunkConfiguration chunkConfiguration;
 
     /// <summary>
     /// Initialize a new instance of the <see cref="ChunkGenerationQueue"/> class.
     /// </summary>
-    public ChunkGenerationQueue()
+    public ChunkGenerationQueue(IChunkGenerator chunkGenerator, IChunkConfiguration configuration, CancellationToken token)
     {
+        if (chunkGenerator == null)
+            throw new ArgumentNullException(nameof(chunkGenerator));
+        if (configuration == null)
+            throw new ArgumentNullException(nameof(configuration));
+
+        this.chunkGenerator = chunkGenerator;
+        this.chunkConfiguration = configuration;
+        this.cancellationToken = token;
+
+        for (int i = 0; i < 3; i++)
+        {
+            workerTasks.Add(Task.Run(() => WorkerLoop(cancellationToken)));
+        }
     }
 
     /// <summary>
@@ -51,22 +68,6 @@ public class ChunkGenerationQueue
     private CancellationToken cancellationToken;
 
     /// <summary>
-    /// Returns an instance of <see cref="ChunkGenerationQueue"/> to keep the codebase a bit clean and make sure
-    /// there is only one generation system so the CPU is not overloaded.
-    /// </summary>
-    public static ChunkGenerationQueue Instance
-    {
-        get
-        {
-            if (instance == null)
-                instance = new ChunkGenerationQueue();
-
-            return instance;
-        }
-    }
-    private static ChunkGenerationQueue instance;
-
-    /// <summary>
     /// Request chunk generation for a given chunk. Given LOD, certain details are required to generate an appropiate job.
     /// The job will then be tracked and cancelled if another job from the same coordinates is given. 
     /// </summary>
@@ -74,120 +75,80 @@ public class ChunkGenerationQueue
     /// <param name="LODIndex"></param>
     /// <param name="generationTask"></param>
     /// <returns></returns>
-    public Task RequestChunkGeneration(Vector3Int coordinates, int LODIndex, Func<CancellationToken, Task> generationTask)
+    public Task<ChunkData> RequestChunkGeneration(Vector3Int coordinates, int LODIndex)
     {
-        if (pendingJobs.TryGetValue(coordinates, out var job))
+        lock (queueLock) 
         {
-            if (job.LODIndex == LODIndex)
-                return job.Task;
-
-            job.Cancel(); 
-        }
-
-        // Create new key.
-        var cts = new CancellationTokenSource();
-        var token = cts.Token;
-
-        var wrappedTask = Task.Run(async () =>
-        {
-            try
+            // Try to find an existing job. If for some reason we 
+            // have a job of the same LOD, return it. If not
+            // LOD must have changed so cancel active.
+            if (pendingJobs.TryGetValue(coordinates, out var job))
             {
-                await generationTask(token);
-            }
-            catch (OperationCanceledException)
-            {
-                Debug.Log("Chunk cancelled.");
-            }
-            finally
-            {
-                lock (pendingJobsLock)
-                {
-                    if (pendingJobs.TryGetValue(coordinates, out var job) && job.LODIndex == LODIndex)
-                    {
-                        pendingJobs.Remove(coordinates);
-                    }
-                }
-            }
-        }, token);
+                if (job.LODIndex == LODIndex)
+                    return job.Completion.Task;
 
-        lock (pendingJobsLock)
-        {
-            ChunkJob newJob = new(coordinates, LODIndex, wrappedTask, cts);
+                job.Cancel();
+                pendingJobs.Remove(coordinates);
+            }
+
+            // Create new key.
+            var cts = new CancellationTokenSource();
+            var token = cts.Token;
+
+            ChunkGenerationJob newJob = new(coordinates, LODIndex, cts);
 
             // Register job as active
             pendingJobs[coordinates] = newJob;
+            generationQueue.Enqueue(newJob);
 
-            // Only enqueue if not cancelled already
-            if (!newJob.Token.IsCancellationRequested)
-            {
-                generationQueue.Enqueue(newJob);
-            }
+            return newJob.Completion.Task;
         }
-
-        lock (processLock)
-        {
-            if (processQueueTask == null || processQueueTask.IsCompleted)
-            {
-                processQueueTask = ProcessQueue();
-            }
-        }
-
-        return wrappedTask;
     }
 
     /// <summary>
-    /// Process the job queue.
+    /// A loop to go through each job and render the desired chunk.
     /// </summary>
+    /// <param name="token"></param>
     /// <returns></returns>
-    private async Task ProcessQueue()
+    private async Task WorkerLoop(CancellationToken token)
     {
-        isProcessing = true;
-
-        while (generationQueue.Count >= 0)
+        while (!token.IsCancellationRequested)
         {
-            // This is only called if game closed.
-            cancellationToken.ThrowIfCancellationRequested();
+            ChunkGenerationJob? job = null;
 
-            while (generationQueue.Count > 0)
+            lock (queueLock)
             {
-                if (runningTasks > maxConcurrentTasks)
-                    break;
-                else
-                    runningTasks++;
-
-                ChunkJob job = generationQueue.Dequeue();
-
-                if (job.Token.IsCancellationRequested)
-                {
-                    runningTasks--;
-                    continue;
-                }
-
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await job.Task;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        Debug.Log($"[ChunkGen] Cancelled chunk {job.Coordinates} (LOD {job.LODIndex})");
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError($"Chunk generation error: {ex}");
-                    }
-                    finally
-                    {
-                        runningTasks--;
-                        Debug.Log("Remaining tasks: " + generationQueue.Count + ", running: " + runningTasks);
-                    }
-                });
+                if (generationQueue.Count > 0)
+                    job = generationQueue.Dequeue();
             }
 
-            await Task.Yield(); // yield after batch
-        }
+            if (job == null)
+            {
+                await Task.Delay(10, token); // Slight pause before polling again
+                continue;
+            }
 
-        isProcessing = false;
+            if (job.Token.IsCancellationRequested)
+            {
+                job.Completion.TrySetCanceled();
+                continue;
+            }
+
+            try
+            {
+                var result = await chunkGenerator.GenerateNewChunk(job.Coordinates, job.LODIndex, chunkConfiguration, job.Token);
+                job.Completion.TrySetResult(result);
+            }
+            catch (OperationCanceledException)
+            {
+                job.Completion.TrySetCanceled();
+            }
+            catch (Exception ex)
+            {
+                job.Completion.TrySetException(ex);
+            }
+
+            await Task.Yield(); // Yield to prevent thread starvation
+        }
     }
 }

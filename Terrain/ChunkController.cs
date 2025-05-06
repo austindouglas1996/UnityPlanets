@@ -1,3 +1,4 @@
+using SingularityGroup.HotReload;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -5,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.AI;
 
 /// <summary>
 /// Manages a single terrain chunk in the marching cubes system. Handles initialization, mesh generation,
@@ -17,8 +19,7 @@ public class ChunkController : MonoBehaviour
     private MeshFilter meshFilter;
     private MeshRenderer meshRenderer;
     private MeshCollider meshCollider;
-
-    private IChunkGenerator generator;
+    private ChunkManager chunkManager;
     private IChunkColorizer colorizer;
 
     public Dictionary<int, ChunkData> ChunkData = new Dictionary<int, ChunkData>();
@@ -82,18 +83,17 @@ public class ChunkController : MonoBehaviour
             this.AddComponent<FoliageGenerator>();
     }
 
-    private async void Update()
+    private void Update()
     {
         if (IsDirty)
         {
             IsDirty = false;
-            await UpdateChunkAsync(true, cancellationToken);
-        }
 
-        if (ForceUp)
-        {
-            ForceUp = false;
-            await UpdateChunkAsync(true, cancellationToken);
+            // Do we need to regenerate the chunk?
+            if (!this.ChunkData.TryGetValue(this.LODIndex, out ChunkData chunkData))
+            {
+                this.chunkManager.RequestNewChunkGeneration(this);
+            }
         }
     }
 
@@ -105,7 +105,7 @@ public class ChunkController : MonoBehaviour
     /// <param name="config">Configuration used for mesh noise.</param>
     /// <param name="coordinates">Coordinates of this chunk.</param>
     /// <exception cref="System.ArgumentNullException"></exception>
-    public void Initialize(IChunkGenerator generator, IChunkColorizer colorizer, IChunkConfiguration config, Vector3Int coordinates, int lodIndex, CancellationToken cancellationToken = default)
+    public void Initialize(ChunkManager manager, IChunkColorizer colorizer, IChunkConfiguration config, Vector3Int coordinates, int lodIndex, CancellationToken cancellationToken = default)
     {
         if (coordinates != null)
         {
@@ -118,7 +118,7 @@ public class ChunkController : MonoBehaviour
             throw new System.ArgumentNullException("Configuration is null.");
         }
 
-        this.generator = generator;
+        this.chunkManager = manager;
         this.colorizer = colorizer;
         this.Configuration = config;
         this.LODIndex = lodIndex;
@@ -130,60 +130,19 @@ public class ChunkController : MonoBehaviour
     }
 
     /// <summary>
-    /// Builds or updates the mesh for this chunk, applies vertex colors, and optionally generates foliage if it's a new chunk.
+    /// Update the chunk data on this controller.
     /// </summary>
-    /// <param name="initial">True if this is the first time the chunk is being generated (e.g. foliage should be applied).</param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    public async Task UpdateChunkAsync(bool initial = true, CancellationToken cancellationToken = default)
+    /// <param name="data"></param>
+    /// <param name="mesh"></param>
+    public void UpdateChunkData(ChunkData data, Mesh mesh)
     {
-        if (!IsInitialized) return;
+        this.GetComponent<MeshFilter>().mesh = mesh;
+        this.GetComponent<MeshCollider>().sharedMesh = mesh;
 
-        bool initializeFoliage = false;
+        this.ChunkData[data.LODIndex] = data;
 
-        ChunkData chunkData;
+        this.ApplyChunkColors();
 
-        int lod = this.LODIndex;
-
-        if (!this.ChunkData.TryGetValue(lod, out chunkData))
-        {
-            initializeFoliage = true;
-
-            await ChunkGenerationQueue.Instance.RequestChunkGeneration(
-                Coordinates,
-                lod,
-                async (token) =>
-                {
-                    token.ThrowIfCancellationRequested();
-                    chunkData = await generator.GenerateNewChunk(Coordinates, lod, Configuration, token);
-                    this.ChunkData[lod] = chunkData; // Store the result
-                });
-        }
-
-        // No use continuing.
-        if (chunkData == null || chunkData.MeshData.Vertices.Count == 0)
-            return;
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        Mesh newMesh = generator.GenerateMesh(chunkData, Configuration);
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        this.GetComponent<MeshFilter>().mesh = newMesh;
-        //this.GetComponent<MeshCollider>().sharedMesh = newMesh;
-
-        this.ChunkData[lod] = chunkData;
-
-        //ApplyChunkColors();
-
-        if (initializeFoliage)
-        {
-            //await this.GetComponent<FoliageGenerator>().ApplyMap(chunkData);
-        }
-
-        IsDirty = false;
-        IsBusy = false;
         RenderedOnce = true;
     }
 
@@ -196,7 +155,7 @@ public class ChunkController : MonoBehaviour
     /// <returns></returns>
     public async Task ModifyChunk(TerrainBrush brush, bool isAdding, CancellationToken token = default)
     {
-        await this.generator.ModifyChunkData(this.ChunkData[this.LODIndex], this.Configuration, brush, this.Coordinates, isAdding, token);
+        //await this.generator.ModifyChunkData(this.ChunkData[this.LODIndex], this.Configuration, brush, this.Coordinates, isAdding, token);
 
         this.IsDirty = true;
     }
