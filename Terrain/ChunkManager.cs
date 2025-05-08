@@ -21,6 +21,9 @@ public class ChunkManager : MonoBehaviour
     [Header("Rendering"), Tooltip("How far the follower needs to be travel before we update the active chunks.")]
     public float TravelDistanceToUpdateChunks = 10f;
 
+    [Tooltip("Should chunks the follower cannot see be automatically hidden?")]
+    public bool AutomaticallyHideChunksOutOfView = true;
+
     /// <summary>
     /// The transform that this chunk system follows, like the player.
     /// </summary>
@@ -55,11 +58,25 @@ public class ChunkManager : MonoBehaviour
     /// </summary>
     private bool IsInitialized = false;
 
+    private Quaternion LastFollowerRotation;
+
     private async void Update()
     {
         if (!IsBusy && Layout.ShouldUpdateLayout(Follower.position))
         {
             await UpdateChunks();
+        }
+
+        if (AutomaticallyHideChunksOutOfView)
+        {
+            Quaternion currentRot = Follower.transform.rotation;
+            float angleDelta = Quaternion.Angle(LastFollowerRotation, currentRot);
+
+            if (angleDelta > 30f)
+            {
+                LastFollowerRotation = currentRot;
+                UpdateChunkVisibility();
+            }
         }
     }
 
@@ -92,7 +109,7 @@ public class ChunkManager : MonoBehaviour
         if (this.Generator == null)
             throw new System.ArgumentNullException("Generator is null.");
 
-        this.GenerationQueue = new ChunkGenerationQueue(this.Generator, this.Configuration, this.cancellationToken.Token);
+        this.GenerationQueue = new ChunkGenerationQueue(this.Follower, this.Generator, this.Configuration, this.cancellationToken.Token);
 
         this.IsInitialized = true;
     }
@@ -116,13 +133,6 @@ public class ChunkManager : MonoBehaviour
             controller.UpdateChunkData(t.Result, mesh);
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
-
-
-
-
-
-
-
 
     /// <summary>
     /// Loops through all child chunks and reapplies their colors. Useful for debugging or updating style changes.
@@ -202,9 +212,12 @@ public class ChunkManager : MonoBehaviour
         {
             if (Chunks.TryGetValue(oldChunk, out var chunk))
             {
-                chunk.Destroy();
-                Chunks.Remove(chunk.Coordinates);
+                //chunk.Destroy();
+                //Chunks.Remove(chunk.Coordinates);
             }
+
+            // Cancel any active jobs.
+            this.GenerationQueue.CancelChunkGeneration(oldChunk);
         }
 
         // Handle new chunks
@@ -229,5 +242,30 @@ public class ChunkManager : MonoBehaviour
         sw.Stop();
 
         UnityEngine.Debug.Log($"New Active Chunks: {layoutResponse.ActiveChunks.Count}, removed chunks {layoutResponse.RemoveChunks.Count}, time {sw.ElapsedMilliseconds}MS");
+    }
+
+    /// <summary>
+    /// Update the chunk visibility based on what the follower can see.
+    /// </summary>
+    private void UpdateChunkVisibility()
+    {
+        Vector3 camForward = Follower.transform.forward;
+
+        foreach (var chunk in Chunks)
+        {
+            Vector3 chunkCenter = chunk.Value.transform.position + new Vector3(this.Configuration.ChunkSize, this.Configuration.ChunkSize, this.Configuration.ChunkSize) * 0.5f;
+            Vector3 toChunk = (chunkCenter - Follower.transform.position);
+
+            // Always render closeup chunks.
+            if (toChunk.magnitude < 40f)
+            {
+                chunk.Value.gameObject.SetActive(true);
+                continue;
+            }
+
+            float dot = Vector3.Dot(camForward, toChunk.normalized);
+            bool isRoughlyInFront = dot > 0f;
+            chunk.Value.gameObject.SetActive(isRoughlyInFront);
+        }
     }
 }

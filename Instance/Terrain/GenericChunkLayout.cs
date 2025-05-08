@@ -126,7 +126,7 @@ public abstract class GenericChunkLayout : IChunkLayout
             List<ChunkLayoutEntryInfo> chunksToLoad = new();
             for (int x = -maxChunkOffset; x <= maxChunkOffset; x++)
             {
-                for (int y = -3; y <= 3; y++)
+                for (int y = -6; y <= 6; y++)
                 {
                     for (int z = -maxChunkOffset; z <= maxChunkOffset; z++)
                     {
@@ -191,7 +191,7 @@ public abstract class GenericChunkLayout : IChunkLayout
         int distance = Mathf.Max(dx, dz);
 
         // Each tier is 12 chunks wide.
-        int lod = distance / 12;
+        int lod = distance / 24;
 
         // Clamp to a max LOD of 5, anything over 5 does not render.
         return Mathf.Min(lod, 5);

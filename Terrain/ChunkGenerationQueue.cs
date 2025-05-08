@@ -18,7 +18,7 @@ public class ChunkGenerationQueue
     /// A collection of jobs to be executed yet. Seperate from active jobs, this runs the actual
     /// task.
     /// </summary>
-    private Queue<ChunkGenerationJob> generationQueue = new Queue<ChunkGenerationJob>();
+    private PriorityQueue<ChunkGenerationJob> generationQueue = new PriorityQueue<ChunkGenerationJob>();
     private readonly object queueLock = new();
 
     /// <summary>
@@ -26,6 +26,11 @@ public class ChunkGenerationQueue
     /// </summary>
     private List<Task?> workerTasks = new();
     private bool isProcessing = false;
+
+    /// <summary>
+    /// The follower used to calculate priority.
+    /// </summary>
+    private Transform follower;
 
     /// <summary>
     /// The generator used to generate.
@@ -40,13 +45,16 @@ public class ChunkGenerationQueue
     /// <summary>
     /// Initialize a new instance of the <see cref="ChunkGenerationQueue"/> class.
     /// </summary>
-    public ChunkGenerationQueue(IChunkGenerator chunkGenerator, IChunkConfiguration configuration, CancellationToken token)
+    public ChunkGenerationQueue(Transform follower, IChunkGenerator chunkGenerator, IChunkConfiguration configuration, CancellationToken token)
     {
+        if (follower == null)
+            throw new ArgumentNullException(nameof(follower));
         if (chunkGenerator == null)
             throw new ArgumentNullException(nameof(chunkGenerator));
         if (configuration == null)
             throw new ArgumentNullException(nameof(configuration));
 
+        this.follower = follower;
         this.chunkGenerator = chunkGenerator;
         this.chunkConfiguration = configuration;
         this.cancellationToken = token;
@@ -99,9 +107,25 @@ public class ChunkGenerationQueue
 
             // Register job as active
             pendingJobs[coordinates] = newJob;
-            generationQueue.Enqueue(newJob);
+            generationQueue.Enqueue(newJob, GetPriorityOfChunk(coordinates));
 
             return newJob.Completion.Task;
+        }
+    }
+
+    /// <summary>
+    /// Cancel a chunk generation task if one exists.
+    /// </summary>
+    /// <param name="coordinates"></param>
+    public void CancelChunkGeneration(Vector3Int coordinates)
+    {
+        lock (queueLock)
+        {
+            if (pendingJobs.TryGetValue(coordinates, out var job))
+            {
+                job.Cancel();
+                pendingJobs.Remove(coordinates);
+            }
         }
     }
 
@@ -150,5 +174,24 @@ public class ChunkGenerationQueue
 
             await Task.Yield(); // Yield to prevent thread starvation
         }
+    }
+
+    /// <summary>
+    /// Return the priority of this chunk based on the distance from the follower.
+    /// </summary>
+    /// <param name="coordinates"></param>
+    /// <returns></returns>
+    private int GetPriorityOfChunk(Vector3Int coordinates)
+    {
+        Vector3 worldPos = this.follower.transform.position;
+
+        Vector2Int followerChunkCoord = new Vector2Int(
+            Mathf.FloorToInt(worldPos.x / chunkConfiguration.ChunkSize),
+            Mathf.FloorToInt(worldPos.z / chunkConfiguration.ChunkSize));
+
+        int dx = Mathf.Abs(coordinates.x - followerChunkCoord.x);
+        int dz = Mathf.Abs(coordinates.z - followerChunkCoord.y);
+
+        return Math.Max(dx, dz);
     }
 }

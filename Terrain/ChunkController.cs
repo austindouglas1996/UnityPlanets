@@ -137,9 +137,14 @@ public class ChunkController : MonoBehaviour
     public void UpdateChunkData(ChunkData data, Mesh mesh)
     {
         this.GetComponent<MeshFilter>().mesh = mesh;
-        this.GetComponent<MeshCollider>().sharedMesh = mesh;
 
-        this.ChunkData[data.LODIndex] = data;
+        // If the player is not in this chunk then no need for a collider.
+        if (data.LODIndex == 0)
+            this.GetComponent<MeshCollider>().sharedMesh = mesh;
+        else
+            this.GetComponent<MeshCollider>().sharedMesh = null;
+
+            this.ChunkData[data.LODIndex] = data;
 
         this.ApplyChunkColors();
 

@@ -343,7 +343,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <returns></returns>
     private Vector3 SampleDensityGradient(Vector3 worldPos, int lodIndex)
     {
-        float eps = (1 << lodIndex) * 1.0f;
+        float eps = (1 << lodIndex) * 1f;
 
         float dx = GetValueForWorldPosition(worldPos.x + eps, worldPos.y, worldPos.z)
                   - GetValueForWorldPosition(worldPos.x - eps, worldPos.y, worldPos.z);
