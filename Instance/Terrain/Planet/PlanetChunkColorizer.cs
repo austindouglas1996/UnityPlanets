@@ -23,8 +23,8 @@ public class PlanetChunkColorizer : IChunkColorizer
             Vector3 worldPos = localToWorld.MultiplyPoint3x4(meshData.Vertices[i]);
             float height = worldPos.y;
 
-            IBiome lowerBiome = sortedBiomes[0];
-            IBiome upperBiome = sortedBiomes[1];
+            Biome lowerBiome = sortedBiomes[0];
+            Biome upperBiome = sortedBiomes[1];
 
             for (int b = 0; b < sortedBiomes.Count - 1; b++)
             {

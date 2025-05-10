@@ -23,7 +23,6 @@ public class LandMass : MonoBehaviour
     {
         this.chunkManager = this.GetComponent<ChunkManager>();
         chunkManager.Follower = Follower;
-        ChunkConfiguration.Setup();
         chunkManager.Initialize(ChunkConfiguration, new LandMassChunkLayout(new LandMassChunkGenerator(), ChunkConfiguration), new LandMassChunkControllerFactory());
     }
 }
