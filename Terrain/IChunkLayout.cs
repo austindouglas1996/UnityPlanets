@@ -22,14 +22,16 @@ public class ChunkLayoutResponse
 /// </summary>
 public class ChunkLayoutEntryInfo
 {
-    public ChunkLayoutEntryInfo(Vector3Int coordinates, int lod) 
+    public ChunkLayoutEntryInfo(Vector3Int coordinates, int lod, bool isStale = false) 
     {
         this.Coordinates = coordinates;
         this.LOD = lod;
+        this.IsStale = isStale;
     }
 
     public Vector3Int Coordinates {  get; set; }
     public int LOD;
+    public bool IsStale { get; private set; }
 }
 
 /// <summary>
@@ -55,6 +57,13 @@ public interface IChunkLayout
     /// <param name="followerPosition">The world-space position of the object being followed.</param>
     /// <returns>A list of <see cref="Vector3Int"/> coordinates representing active chunks.</returns>
     Task<ChunkLayoutResponse> GetChunkLayoutUpdate(Vector3 followerPosition);
+
+    /// <summary>
+    /// Returns an enumerable of chunk coordinates that should be active, or removed.
+    /// </summary>
+    /// <param name="followerPosition"></param>
+    /// <returns></returns>
+    IAsyncEnumerable<ChunkLayoutEntryInfo> StreamChunkLayoutUpdate(Vector3 followerPosition);
 
     /// <summary>
     /// Determines the level of detail (LOD) that should be used for a given chunk

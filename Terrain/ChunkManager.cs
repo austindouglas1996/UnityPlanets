@@ -231,43 +231,42 @@ public class ChunkManager : MonoBehaviour
         Stopwatch sw = new Stopwatch();
         sw.Start();
 
-        ChunkLayoutResponse layoutResponse = await Layout.GetChunkLayoutUpdate(Follower.position);
+        int active = 0;
+        int created = 0;
+        int remove = 0;
 
-        // Remove old chunks.
-        foreach (Vector3Int oldChunk in layoutResponse.RemoveChunks)
+        await foreach (var entry in Layout.StreamChunkLayoutUpdate(Follower.position))
         {
-            if (Chunks.TryGetValue(oldChunk, out var chunk))
+            // Is this chunk no longer active?
+            if (entry.IsStale)
             {
-                //chunk.Destroy();
-                //Chunks.Remove(chunk.Coordinates);
+                this.GenerationQueue.CancelChunkGeneration(entry.Coordinates);
+                remove++;
+                continue;
             }
 
-            // Cancel any active jobs.
-            this.GenerationQueue.CancelChunkGeneration(oldChunk);
-        }
-
-        // Handle new chunks
-        foreach (ChunkLayoutEntryInfo activeChunk in layoutResponse.ActiveChunks)
-        {
             // Does this chunk already exist?
-            if (Chunks.TryGetValue(activeChunk.Coordinates, out var newChunk))
+            if (Chunks.TryGetValue(entry.Coordinates, out var newChunk))
             {
-                newChunk.LODIndex = activeChunk.LOD;
+                newChunk.LODIndex = entry.LOD;
             }
             else
             {
                 ChunkController newController = Factory.CreateChunkController
-                    (activeChunk.Coordinates, this, Configuration, this.transform, cancellationToken.Token);
-                newController.LODIndex = activeChunk.LOD;
+                    (entry.Coordinates, this, Configuration, this.transform, cancellationToken.Token);
+                newController.LODIndex = entry.LOD;
 
-                Chunks[activeChunk.Coordinates] = newController;
+                Chunks[entry.Coordinates] = newController;
+                created++;
             }
+
+            active++;
         }
 
         this.IsBusy = false;
         sw.Stop();
 
-        UnityEngine.Debug.Log($"New Active Chunks: {layoutResponse.ActiveChunks.Count}, removed chunks {layoutResponse.RemoveChunks.Count}, time {sw.ElapsedMilliseconds}MS");
+        UnityEngine.Debug.Log($"Created Chunks: {created}, Active Chunks: {active}, removed chunks {remove}, time {sw.ElapsedMilliseconds}MS");
     }
 
     /// <summary>

@@ -1,6 +1,8 @@
+using SingularityGroup.HotReload;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Unity.VisualScripting;
 using UnityEngine;
 
 /// <summary>
@@ -89,81 +91,127 @@ public abstract class GenericChunkLayout : IChunkLayout
     /// <returns></returns>
     public virtual async Task<ChunkLayoutResponse> GetChunkLayoutUpdate(Vector3 followerPosition)
     {
-        return await Task.Run(() =>
+        HashSet<ChunkLayoutEntryInfo> active = new();
+        HashSet<Vector3Int> remove = new();
+
+        await foreach (var entry in StreamChunkLayoutUpdate(followerPosition))
         {
-            // Has the follower travelled to far for us to keep up?
-            bool FullReset = (followerPosition - LastFollowerPosition).sqrMagnitude > MinChangeForFullReset * MinChangeForFullReset;
+            if (entry.IsStale)
+                remove.Add(entry.Coordinates);
+            else
+                active.Add(entry);
+        }
 
-            // Memory management.
-            if (FullReset)
+        return new ChunkLayoutResponse(active, remove);
+    }
+
+    /// <summary>
+    /// Get a set of active that should be rendered but by streaming the results to reduce the process time.
+    /// </summary>
+    /// <param name="followerPosition"></param>
+    /// <returns></returns>
+    public virtual async IAsyncEnumerable<ChunkLayoutEntryInfo> StreamChunkLayoutUpdate(Vector3 followerPosition)
+    {
+        // Has the follower travelled to far for us to keep up?
+        bool FullReset = (followerPosition - LastFollowerPosition).sqrMagnitude > MinChangeForFullReset * MinChangeForFullReset;
+
+        // Memory management.
+        if (FullReset)
+        {
+            this.KnownAirChunks.Clear();
+            this.KnownSurfaceChunks.Clear();
+        }
+
+        // Set the new position.
+        this.LastFollowerPosition = followerPosition;
+
+        Vector3Int followerChunkPos = new Vector3Int(
+            Mathf.FloorToInt(followerPosition.x / this.Configuration.ChunkSize),
+            Mathf.FloorToInt(followerPosition.y / this.Configuration.ChunkSize),
+            Mathf.FloorToInt(followerPosition.z / this.Configuration.ChunkSize));
+
+        int chunksPerYield = 4;
+        int chunksSinceYield = 0;
+
+        List<Vector3Int> offsets = new();
+
+        foreach (var x in this.Configuration.RenderDistanceInChunks.X.Values())
+        {
+            foreach (var z in this.Configuration.RenderDistanceInChunks.Z.Values())
             {
-                this.KnownAirChunks.Clear();
-                this.KnownSurfaceChunks.Clear();
-            }
-
-            // Set the new position.
-            this.LastFollowerPosition = followerPosition;
-
-            int chunkSize = this.Configuration.ChunkSize;
-
-            Vector3Int followerChunkPos = new Vector3Int(
-                Mathf.FloorToInt(followerPosition.x / chunkSize),
-                Mathf.FloorToInt(followerPosition.y / chunkSize),
-                Mathf.FloorToInt(followerPosition.z / chunkSize));     
-
-            List<ChunkLayoutEntryInfo> chunksToLoad = new();
-
-            foreach (var x in this.Configuration.RenderDistanceInChunks.X.Values())
-            {
-                foreach (var z in this.Configuration.RenderDistanceInChunks.Z.Values())
+                foreach (var y in this.Configuration.RenderDistanceInChunks.Y.Values())
                 {
-                    foreach (var y in this.Configuration.RenderDistanceInChunks.Y.Values())
-                    {
-                        Vector3Int offset = followerChunkPos + new Vector3Int(x, y, z);
+                    offsets.Add(new Vector3Int(x, y, z));
+                }
+            }
+        }
 
-                        // Ignore air chunks as there is nothing to render.
-                        if (KnownAirChunks.Contains(offset))
-                            continue;
+        offsets.Sort((a, b) =>
+        {
+            int da = Mathf.Abs(a.x) + Mathf.Abs(a.y) + Mathf.Abs(a.z);
+            int db = Mathf.Abs(b.x) + Mathf.Abs(b.y) + Mathf.Abs(b.z);
+            return da.CompareTo(db);
+        });
 
-                        int lod = GetRenderDetail(followerChunkPos, offset);
+        HashSet<Vector3Int> activeChunks = new HashSet<Vector3Int> ();
+        foreach (var chunkOffset in offsets)
+        {
+            Vector3Int offset = followerChunkPos + chunkOffset;
 
-                        // Unless this is a full reset, and the previous list contained
-                        // this chunk then let us keep rendering it.
-                        if (!FullReset && PreviousActiveChunks.Contains(offset))
-                        {
-                            chunksToLoad.Add(new ChunkLayoutEntryInfo(offset, lod));
-                        }
+            // Ignore air chunks as there is nothing to render.
+            if (KnownAirChunks.Contains(offset))
+                continue;
 
-                        // This chunk has not been seen before. Let's get some
-                        // information on it. 
-                        switch (GetChunkResponse(followerChunkPos, offset))
-                        {
-                            case ChunkResponse.Air:
-                                KnownAirChunks.Add(offset);
-                                break;
-                            case ChunkResponse.Surface:
-                                KnownSurfaceChunks.Add(offset);
-                                chunksToLoad.Add(new ChunkLayoutEntryInfo(offset, lod));
-                                break;
-                        }
-                    }
+            int lod = GetRenderDetail(followerChunkPos, offset);
+
+            // Unless this is a full reset, and the previous list contained
+            // this chunk then let us keep rendering it.
+            if (!FullReset && PreviousActiveChunks.Contains(offset))
+            {
+                activeChunks.Add(offset);
+                yield return new ChunkLayoutEntryInfo(offset, lod);
+                chunksSinceYield++;
+            }
+            else
+            {
+                switch (GetChunkResponse(followerChunkPos, offset))
+                {
+                    case ChunkResponse.Air:
+                        KnownAirChunks.Add(offset);
+                        break;
+                    case ChunkResponse.Surface:
+                        activeChunks.Add(offset);
+                        KnownSurfaceChunks.Add(offset);
+                        yield return new ChunkLayoutEntryInfo(offset, lod);
+                        chunksSinceYield++;
+                        break;
                 }
             }
 
-            // Sort by distance.
-            chunksToLoad.Sort((a, b) =>
-                Vector3.Distance(a.Coordinates, followerChunkPos).CompareTo(Vector3.Distance(b.Coordinates, followerChunkPos)));
+            if (chunksSinceYield >= chunksPerYield)
+            {
+                await Task.Yield();
+                chunksSinceYield = 0;
+            }
+        }
 
-            HashSet<Vector3Int> newChunkCoords = new HashSet<Vector3Int>(
-                chunksToLoad.Select(entry => entry.Coordinates));
+        // Remove the inactive chunks.
+        HashSet<Vector3Int> toRemove = new HashSet<Vector3Int>(this.PreviousActiveChunks);
+        toRemove.ExceptWith(activeChunks);
+        foreach (var chunk in toRemove.OrderByDescending(c => Vector3.Distance(c, followerChunkPos)))
+        {
+            yield return new ChunkLayoutEntryInfo(chunk, -1, true);
 
-            HashSet<Vector3Int> toRemove = new HashSet<Vector3Int>(this.PreviousActiveChunks);
-            toRemove.ExceptWith(newChunkCoords);
+            chunksPerYield++;
+            if (chunksSinceYield >= chunksPerYield)
+            {
+                await Task.Yield();
+                chunksSinceYield = 0;
+            }
+        }
 
-            this.PreviousActiveChunks = newChunkCoords;
-
-            return new ChunkLayoutResponse(chunksToLoad.ToHashSet(), toRemove);
-        });
+        // Set the collection to use the new collection.
+        PreviousActiveChunks = activeChunks;
     }
 
     /// <summary>
