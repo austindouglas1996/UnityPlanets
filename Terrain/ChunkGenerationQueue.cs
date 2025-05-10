@@ -184,8 +184,8 @@ public class ChunkGenerationQueue
                 {
                     ChunkModificationJob mod = job.ModificationJob;
 
-                    chunkGenerator.ModifyChunkData(mod.ExistingData, chunkConfiguration, mod.Brush, job.Coordinates, mod.IsAdding, job.Token);
-                    chunkGenerator.UpdateChunkData(mod.ExistingData, chunkConfiguration, job.Token);
+                    chunkGenerator.ApplyTerrainBrush(mod.ExistingData, chunkConfiguration, mod.Brush, job.Coordinates, mod.IsAdding, job.Token);
+                    chunkGenerator.RegenerateMeshData(mod.ExistingData, chunkConfiguration, job.Token);
 
                     // We set the original data back.
                     result = mod.ExistingData;

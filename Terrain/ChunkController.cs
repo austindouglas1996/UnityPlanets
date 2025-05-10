@@ -147,36 +147,4 @@ public class ChunkController : MonoBehaviour
 
         RenderedOnce = true;
     }
-
-    /// <summary>
-    /// Generates and applies and the colors on the generated mesh. This is needed to show
-    /// proper colors on the mesh, but does require a specific vertex color shader to work.
-    /// </summary>
-    public void ApplyChunkColors()
-    {
-        Color[] colors = null;
-
-        this.cancellationToken.ThrowIfCancellationRequested();
-
-        ChunkData chunkData = this.ChunkData[this.LODIndex];
-
-        if (chunkData.MeshData.Vertices.Count > 0)
-        {
-            Matrix4x4 matrix = transform.localToWorldMatrix;
-            colors = colorizer.ApplyColors(chunkData.MeshData, matrix, chunkData.SurfaceMap, Configuration);
-
-            foreach (ITerrainModifier modifier in Configuration.Modifiers)
-            {
-                if(modifier is IModifyColor colorMod)
-                    colorMod.ModifyColor(ref colors, chunkData.MeshData, matrix, Configuration);
-            }
-        }
-        else
-            return;
-
-        chunkData.VerticeColors = colors.ToArray();
-        this.GetComponent<MeshFilter>().mesh.colors = chunkData.VerticeColors;
-
-        this.ChunkData[this.LODIndex] = chunkData;
-    }
 }

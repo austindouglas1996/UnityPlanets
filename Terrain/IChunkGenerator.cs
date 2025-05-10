@@ -28,7 +28,7 @@ public interface IChunkGenerator
     /// <param name="chunkPos">Chunk grid position.</param>
     /// <param name="addingOrSubtracting">True to add terrain, false to remove it.</param>
     /// <param name="token">Optional cancellation token.</param>
-    void ModifyChunkData(ChunkData data, IChunkConfiguration config, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default);
+    void ApplyTerrainBrush(ChunkData data, IChunkConfiguration config, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default);
 
     /// <summary>
     /// Updates a chunk after it has been modified — usually to regenerate mesh data.
@@ -37,7 +37,7 @@ public interface IChunkGenerator
     /// <param name="data">Chunk data to update.</param>
     /// <param name="config">Chunk configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
-    void UpdateChunkData(ChunkData data, IChunkConfiguration config, CancellationToken token = default);
+    void RegenerateMeshData(ChunkData data, IChunkConfiguration config, CancellationToken token = default);
 
     /// <summary>
     /// Builds a mesh from the chunk's density data.

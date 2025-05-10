@@ -55,7 +55,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="chunkPos">The chunk position in the world.</param>
     /// <param name="addingOrSubtracting">True if adding, false if subtracting.</param>
     /// <param name="token">Optional cancellation token.</param>
-    public virtual void ModifyChunkData(ChunkData data, IChunkConfiguration config, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default)
+    public virtual void ApplyTerrainBrush(ChunkData data, IChunkConfiguration config, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default)
     {
         token.ThrowIfCancellationRequested();
 
@@ -68,7 +68,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="data">The chunk data to update.</param>
     /// <param name="config">The chunk config.</param>
     /// <param name="token">Optional cancellation token.</param>
-    public virtual void UpdateChunkData(ChunkData data, IChunkConfiguration config, CancellationToken token = default)
+    public virtual void RegenerateMeshData(ChunkData data, IChunkConfiguration config, CancellationToken token = default)
     {
         token.ThrowIfCancellationRequested();
         data.MeshData = CreateMapGenerator(config).GenerateMeshData(data.DensityMap, Vector3.zero, data.MeshData.LODIndex);
