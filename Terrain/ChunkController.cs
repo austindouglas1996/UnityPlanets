@@ -22,7 +22,7 @@ public class ChunkController : MonoBehaviour
     /// <summary>
     /// A collection of <see cref="ChunkData"/> based on LOD index for easy rendering.
     /// </summary>
-    public Dictionary<int, ChunkData> ChunkData = new Dictionary<int, ChunkData>();
+    public Dictionary<int, ChunkRenderData> ChunkData = new Dictionary<int, ChunkRenderData>();
 
     /// <summary>
     /// Tells whether this chunk needs to be regenerated.
@@ -70,8 +70,8 @@ public class ChunkController : MonoBehaviour
         {
             IsDirty = false;
 
-            // Do we need to regenerate the chunk?
-            if (!this.ChunkData.TryGetValue(this.LODIndex, out ChunkData chunkData))
+            // Do we need to generate the chunk?
+            if (!this.ChunkData.TryGetValue(this.LODIndex, out ChunkRenderData chunkData))
             {
                 this.chunkManager.RequestNewChunkGeneration(this);
             }
@@ -106,7 +106,7 @@ public class ChunkController : MonoBehaviour
         // Properties.
         this.chunkManager = null;
         this.Coordinates = default;
-        this.ChunkData = new Dictionary<int, ChunkData>();
+        this.ChunkData = new Dictionary<int, ChunkRenderData>();
         this.cancellationToken = default;
         this.IsDirty = false;
 
@@ -121,13 +121,13 @@ public class ChunkController : MonoBehaviour
     /// </summary>
     /// <param name="data"></param>
     /// <param name="mesh"></param>
-    public void ApplyChunkData(ChunkData data, Mesh mesh)
+    public void ApplyChunkData(ChunkRenderData renderData)
     {
-        this.ChunkData[data.MeshData.LODIndex] = data;
+        this.ChunkData[renderData.LOD] = renderData;
 
-        this.GetComponent<MeshFilter>().mesh = mesh;
-        this.GetComponent<MeshCollider>().sharedMesh = data.MeshData.LODIndex == 0 ? mesh : null;
+        this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
+        this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
         
-        this.GetComponent<FoliageGenerator>().ApplyMap(data, cancellationToken);
+        this.GetComponent<FoliageGenerator>().ApplyMap(renderData, cancellationToken);
     }
 }

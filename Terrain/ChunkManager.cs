@@ -136,7 +136,9 @@ public class ChunkManager : MonoBehaviour
                 return;
 
             Mesh mesh = this.Generator.GenerateMesh(t.Result, this.Configuration);
-            controller.ApplyChunkData(t.Result, mesh);
+            ChunkRenderData renderData = new ChunkRenderData(controller.Coordinates, t.Result, mesh, controller.transform.localToWorldMatrix);
+
+            controller.ApplyChunkData(renderData);
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
@@ -148,7 +150,7 @@ public class ChunkManager : MonoBehaviour
     /// <param name="isAdding"></param>
     public void RequestChunkModification(ChunkController controller, TerrainBrush brush, bool isAdding)
     {
-        ChunkModificationJob modificationJob = new ChunkModificationJob(controller.ChunkData[0], brush, isAdding);
+        ChunkModificationJob modificationJob = new ChunkModificationJob(controller.ChunkData[0].Data, brush, isAdding);
         var task = this.GenerationQueue.RequestChunkGeneration(controller.Coordinates, 0, modificationJob);
 
         task.ContinueWith(t =>
@@ -160,7 +162,9 @@ public class ChunkManager : MonoBehaviour
                 return;
 
             Mesh mesh = this.Generator.GenerateMesh(t.Result, this.Configuration);
-            controller.ApplyChunkData(t.Result, mesh);
+            ChunkRenderData renderData = new ChunkRenderData(controller.Coordinates, t.Result, mesh, controller.transform.localToWorldMatrix);
+
+            controller.ApplyChunkData(renderData);
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 

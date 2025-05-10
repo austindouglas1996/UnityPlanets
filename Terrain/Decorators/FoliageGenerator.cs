@@ -33,7 +33,7 @@ public class FoliageGenerator : MonoBehaviour
             foliageDrawer.Update();
     }
 
-    public void ApplyMap(ChunkData data, CancellationToken token = default)
+    public void ApplyMap(ChunkRenderData data, CancellationToken token = default)
     {
         List<TrianglePOS> positions = new List<TrianglePOS>();
 
@@ -44,7 +44,7 @@ public class FoliageGenerator : MonoBehaviour
 
         LayerMask layerMask = LayerMask.GetMask("Default");
 
-        positions = GetRandomPositionsInTriangles(data, matrix);
+        positions = GetRandomPositionsInTriangles(data.Data, matrix);
 
         foreach (TrianglePOS pos in positions)
         {
@@ -138,9 +138,9 @@ public class FoliageGenerator : MonoBehaviour
                         if (data.FoliageMask[localX, localY, localZ] <= 0f)
                             continue;
 
-                        Color A = data.VerticeColors[i];
-                        Color B = data.VerticeColors[i + 1];
-                        Color C = data.VerticeColors[i + 2];
+                        Color A = data.MeshData.VerticeColors[i];
+                        Color B = data.MeshData.VerticeColors[i + 1];
+                        Color C = data.MeshData.VerticeColors[i + 2];
                         Color D = (A + B + C) / 3f;
 
                         positions.Add(new TrianglePOS() { Position = position, Normal = triangleNormal, Color = D });

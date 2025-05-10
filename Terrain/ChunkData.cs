@@ -22,6 +22,7 @@ public class ChunkData
     public float[,,] DensityMap;
     public float[,] SurfaceMap;
     public float[,,] FoliageMask;
-    public Color[] VerticeColors;
     public MeshData MeshData;
+
+    public bool IsRenderable => MeshData != null && !MeshData.IsEmpty;
 }

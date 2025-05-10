@@ -56,6 +56,6 @@ public abstract class GenericChunkColorizer : IChunkColorizer
                 colorMod.ModifyColor(ref colors, chunk.MeshData, localToWorld, config);
         }
 
-        chunk.VerticeColors = colors;
+        chunk.MeshData.VerticeColors = colors;
     }
 }
