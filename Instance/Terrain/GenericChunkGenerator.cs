@@ -26,28 +26,24 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="config">The chunk configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>The generated chunk data.</returns>
-    public virtual Task<ChunkData> GenerateNewChunk(Vector3Int coordinates, int lodIndex, IChunkConfiguration config, CancellationToken token = default)
+    public virtual ChunkData GenerateNewChunk(Vector3Int coordinates, int lodIndex, IChunkConfiguration config, CancellationToken token = default)
     {
-        return Task.Run(() =>
+        token.ThrowIfCancellationRequested();
+
+        var gen = CreateMapGenerator(config);
+        var map = gen.Generate(config.ChunkSize, coordinates, lodIndex);
+
+        foreach (var modifier in config.Modifiers)
         {
-            token.ThrowIfCancellationRequested();
+            if (modifier is IModifyDensity densityMod)
+                densityMod.ModifyDensity(ref map.DensityMap, coordinates, config.MapOptions);
 
-            var gen = CreateMapGenerator(config);
-            var map = gen.Generate(config.ChunkSize, coordinates, lodIndex);
+            if (modifier is IModifyFoliageMask foliageMod)
+                foliageMod.ModifyFoliageMask(ref map.FoliageMask, coordinates);
+        }
 
-            foreach (var modifier in config.Modifiers)
-            {
-                if (modifier is IModifyDensity densityMod)
-                    densityMod.ModifyDensity(ref map.DensityMap, coordinates, config.MapOptions);
-
-                if (modifier is IModifyFoliageMask foliageMod)
-                    foliageMod.ModifyFoliageMask(ref map.FoliageMask, coordinates);
-            }
-
-            MeshData data = gen.GenerateMeshData(map.DensityMap, Vector3.zero, map.LODIndex);
-
-            return new ChunkData(map.DensityMap, map.SurfaceMap, map.FoliageMask, data);
-        }, token);
+        MeshData data = gen.GenerateMeshData(map.DensityMap, Vector3.zero, map.LODIndex);
+        return new ChunkData(map.DensityMap, map.SurfaceMap, map.FoliageMask, data);
     }
 
     /// <summary>
@@ -59,14 +55,11 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="chunkPos">The chunk position in the world.</param>
     /// <param name="addingOrSubtracting">True if adding, false if subtracting.</param>
     /// <param name="token">Optional cancellation token.</param>
-    public virtual Task ModifyChunkData(ChunkData data, IChunkConfiguration config, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default)
+    public virtual void ModifyChunkData(ChunkData data, IChunkConfiguration config, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default)
     {
-        return Task.Run(() =>
-        {
-            token.ThrowIfCancellationRequested();
+        token.ThrowIfCancellationRequested();
 
-            CreateMapGenerator(config).ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, addingOrSubtracting);
-        }, token);
+        CreateMapGenerator(config).ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, addingOrSubtracting);
     }
 
     /// <summary>
@@ -75,13 +68,10 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="data">The chunk data to update.</param>
     /// <param name="config">The chunk config.</param>
     /// <param name="token">Optional cancellation token.</param>
-    public virtual Task UpdateChunkData(ChunkData data, IChunkConfiguration config, CancellationToken token = default)
+    public virtual void UpdateChunkData(ChunkData data, IChunkConfiguration config, CancellationToken token = default)
     {
-        return Task.Run(() =>
-        {
-            token.ThrowIfCancellationRequested();
-            data.MeshData = CreateMapGenerator(config).GenerateMeshData(data.DensityMap, Vector3.zero, data.MeshData.LODIndex);
-        }, token);
+        token.ThrowIfCancellationRequested();
+        data.MeshData = CreateMapGenerator(config).GenerateMeshData(data.DensityMap, Vector3.zero, data.MeshData.LODIndex);
     }
 
     /// <summary>

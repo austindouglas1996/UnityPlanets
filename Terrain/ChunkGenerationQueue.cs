@@ -178,13 +178,13 @@ public class ChunkGenerationQueue
                 ChunkData result;
 
                 if (job.ModificationJob == null)
-                    result = await chunkGenerator.GenerateNewChunk(job.Coordinates, job.LODIndex, chunkConfiguration, job.Token);
+                    result = chunkGenerator.GenerateNewChunk(job.Coordinates, job.LODIndex, chunkConfiguration, job.Token);
                 else
                 {
                     ChunkModificationJob mod = job.ModificationJob;
 
-                    await chunkGenerator.ModifyChunkData(mod.ExistingData, chunkConfiguration, mod.Brush, job.Coordinates, mod.IsAdding, job.Token);
-                    await chunkGenerator.UpdateChunkData(mod.ExistingData, chunkConfiguration, job.Token);
+                    chunkGenerator.ModifyChunkData(mod.ExistingData, chunkConfiguration, mod.Brush, job.Coordinates, mod.IsAdding, job.Token);
+                    chunkGenerator.UpdateChunkData(mod.ExistingData, chunkConfiguration, job.Token);
 
                     // We set the original data back.
                     result = mod.ExistingData;
