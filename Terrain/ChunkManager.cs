@@ -32,10 +32,11 @@ public class ChunkManager : MonoBehaviour
     /// <summary>
     /// Chunk configurations.
     /// </summary>
-    [SerializeField] private IChunkConfiguration Configuration;
-    [SerializeField] private IChunkLayout Layout;
-    [SerializeField] private IChunkControllerFactory Factory;
-    [SerializeField] private IChunkGenerator Generator;
+    [SerializeField] public IChunkConfiguration Configuration;
+    [SerializeField] public IChunkColorizer Colorizer;
+    [SerializeField] public IChunkLayout Layout;
+    [SerializeField] public IChunkControllerFactory Factory;
+    [SerializeField] public IChunkGenerator Generator;
     [SerializeField] private ChunkGenerationQueue GenerationQueue;
 
     /// <summary>
@@ -92,19 +93,22 @@ public class ChunkManager : MonoBehaviour
     /// <param name="layout">Logic to determine visible chunk positions.</param>
     /// <param name="factory">Factory that builds new chunk controllers.</param>
     /// <exception cref="System.ArgumentNullException">If any required dependency is missing.</exception>
-    public void Initialize(IChunkConfiguration configuration, IChunkLayout layout, IChunkControllerFactory factory)
+    public void Initialize(IChunkConfiguration configuration, IChunkLayout layout, IChunkColorizer colorizer, IChunkControllerFactory factory, IChunkGenerator generator)
     {
         if (configuration == null)
             throw new System.ArgumentNullException("Configuration is null.");
         if (layout == null)
             throw new System.ArgumentNullException("Layout is null.");
+        if (colorizer == null)
+            throw new System.ArgumentNullException("Color is null.");
         if (factory == null)
             throw new System.ArgumentNullException("Factory is null.");
 
         this.Configuration = configuration;
         this.Layout = layout;
+        this.Colorizer = colorizer;
         this.Factory = factory;
-        this.Generator = this.Factory.CreateGenerator();
+        this.Generator = generator;
 
         if (this.Generator == null)
             throw new System.ArgumentNullException("Generator is null.");

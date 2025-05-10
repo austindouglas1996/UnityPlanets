@@ -3,21 +3,49 @@ using UnityEngine;
 
 public abstract class GenericChunkControllerFactory : IChunkControllerFactory
 {
-    public virtual ChunkController CreateChunkController(Vector3Int coordinates, ChunkManager manager, IChunkConfiguration config, Transform parent, CancellationToken cancellationToken)
+    private ChunkPool chunkPool;
+    private ChunkManager chunkManager;
+
+    public GenericChunkControllerFactory(int preloadChunks, ChunkManager manager)
     {
-        Vector3 pos = new Vector3(
-            coordinates.x * config.ChunkSize,
-            coordinates.y * config.ChunkSize,
-            coordinates.z * config.ChunkSize);
+        this.chunkManager = manager;
 
-        GameObject newChunk = new GameObject();
-        newChunk.transform.position = pos;
-        newChunk.transform.parent = parent;
+        GameObject newGO = new GameObject();
+        newGO.AddComponent<ChunkController>();
 
-        ChunkController newController = newChunk.AddComponent<ChunkController>();
-
-        return newController;
+        chunkPool = new ChunkPool(newGO, 200, manager.transform);
     }
 
-    public abstract IChunkGenerator CreateGenerator();
+    protected ChunkPool Pool
+    {
+        get { return chunkPool; }
+        set { chunkPool = value; }
+    }
+
+    protected ChunkManager ChunkManager
+    {
+        get { return chunkManager; }
+    }
+
+    public virtual ChunkController CreateChunkController(Vector3Int coordinates, CancellationToken cancellationToken)
+    {
+        Vector3 pos = new Vector3(
+            coordinates.x * chunkManager.Configuration.ChunkSize,
+            coordinates.y * chunkManager.Configuration.ChunkSize,
+            coordinates.z * chunkManager.Configuration.ChunkSize);
+
+        ChunkController newChunk = chunkPool.GetController();
+        newChunk.transform.position = pos;
+        newChunk.transform.parent = chunkManager.transform;
+
+        // Give 0 for the LOD as other LODS will not be rendered as objects.
+        newChunk.Initialize(this.chunkManager, coordinates, 0, cancellationToken);
+
+        return newChunk;
+    }
+
+    public void Release(ChunkController chunkController)
+    {
+        this.chunkPool.Release(chunkController);
+    }
 }

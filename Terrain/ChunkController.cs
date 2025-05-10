@@ -68,8 +68,6 @@ public class ChunkController : MonoBehaviour
     }
     private int lodIndex = 0;
 
-    public bool ForceUp = false;
-
     private void Awake()
     {
         meshFilter = GetComponent<MeshFilter>();
@@ -105,7 +103,7 @@ public class ChunkController : MonoBehaviour
     /// <param name="config">Configuration used for mesh noise.</param>
     /// <param name="coordinates">Coordinates of this chunk.</param>
     /// <exception cref="System.ArgumentNullException"></exception>
-    public void Initialize(ChunkManager manager, IChunkColorizer colorizer, IChunkConfiguration config, Vector3Int coordinates, int lodIndex, CancellationToken cancellationToken = default)
+    public void Initialize(ChunkManager manager, Vector3Int coordinates, int lodIndex, CancellationToken cancellationToken = default)
     {
         if (coordinates != null)
         {
@@ -113,14 +111,9 @@ public class ChunkController : MonoBehaviour
             this.name = $"Chunk X:{Coordinates.x} Y:{Coordinates.y} Z:{Coordinates.z}";
         }
 
-        if (config == null)
-        {
-            throw new System.ArgumentNullException("Configuration is null.");
-        }
-
         this.chunkManager = manager;
-        this.colorizer = colorizer;
-        this.Configuration = config;
+        this.colorizer = manager.Colorizer;
+        this.Configuration = manager.Configuration;
         this.LODIndex = lodIndex;
 
         this.cancellationToken = cancellationToken;
