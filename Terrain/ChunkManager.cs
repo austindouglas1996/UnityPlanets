@@ -237,6 +237,8 @@ public class ChunkManager : MonoBehaviour
 
         await foreach (var entry in Layout.StreamChunkLayoutUpdate(Follower.position))
         {
+            await Task.Yield();
+
             // Is this chunk no longer active?
             if (entry.IsStale)
             {

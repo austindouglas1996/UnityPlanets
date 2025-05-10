@@ -1,8 +1,11 @@
 using SingularityGroup.HotReload;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Unity.VisualScripting;
+using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
 
 /// <summary>
@@ -130,7 +133,7 @@ public abstract class GenericChunkLayout : IChunkLayout
             Mathf.FloorToInt(followerPosition.y / this.Configuration.ChunkSize),
             Mathf.FloorToInt(followerPosition.z / this.Configuration.ChunkSize));
 
-        int chunksPerYield = 4;
+        int chunksPerYield = 64;
         int chunksSinceYield = 0;
 
         List<Vector3Int> offsets = new();
@@ -153,7 +156,7 @@ public abstract class GenericChunkLayout : IChunkLayout
             return da.CompareTo(db);
         });
 
-        HashSet<Vector3Int> activeChunks = new HashSet<Vector3Int> ();
+        HashSet<Vector3Int> activeChunks = new HashSet<Vector3Int>();
         foreach (var chunkOffset in offsets)
         {
             Vector3Int offset = followerChunkPos + chunkOffset;

@@ -170,6 +170,7 @@ public class ChunkGenerationQueue
             if (job.Token.IsCancellationRequested)
             {
                 job.Completion.TrySetCanceled();
+                pendingJobs.Remove(job.Coordinates);
                 continue;
             }
 
@@ -191,6 +192,7 @@ public class ChunkGenerationQueue
                 }
 
                 job.Completion.TrySetResult(result);
+                pendingJobs.Remove(job.Coordinates);
             }
             catch (OperationCanceledException)
             {
@@ -200,8 +202,6 @@ public class ChunkGenerationQueue
             {
                 job.Completion.TrySetException(ex);
             }
-
-            await Task.Yield(); // Yield to prevent thread starvation
         }
     }
 

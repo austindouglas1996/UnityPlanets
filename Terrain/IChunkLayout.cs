@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Threading;
 
 /// <summary>
 /// A structure class to help with a simple response from <see cref="GetActiveChunkCoordinates(Vector3)"/>.

@@ -150,7 +150,7 @@ public class ChunkController : MonoBehaviour
 
         this.ApplyChunkColors();
         
-        //this.GetComponent<FoliageGenerator>().ApplyMap(data, cancellationToken);
+        this.GetComponent<FoliageGenerator>().ApplyMap(data, cancellationToken);
 
         RenderedOnce = true;
     }
