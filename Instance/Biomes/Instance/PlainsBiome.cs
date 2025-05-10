@@ -6,8 +6,4 @@ public class PlainsBiome : GenericBiome
     {
     }
 
-    public override float Evaluate(float baseVal, Vector3 worldPos)
-    {
-        throw new System.NotImplementedException();
-    }
 }

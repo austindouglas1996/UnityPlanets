@@ -1,4 +1,6 @@
+using System.Linq;
 using UnityEngine;
+using static UnityEngine.Rendering.STP;
 
 public class PlanetChunkColorizer : IChunkColorizer
 {
@@ -13,16 +15,34 @@ public class PlanetChunkColorizer : IChunkColorizer
     {
         Color[] colors = new Color[meshData.Vertices.Count];
 
-        PlanetChunkConfiguration sphereConfig = ((PlanetChunkConfiguration)configuration);
+        // Pre-sort biomes (optional if not already sorted)
+        var sortedBiomes = configuration.Biomes.OrderBy(b => b.MinSurface).ToList();
 
         for (int i = 0; i < meshData.Vertices.Count; i++)
         {
             Vector3 worldPos = localToWorld.MultiplyPoint3x4(meshData.Vertices[i]);
-            float distance = (worldPos - planet.Center).magnitude;
+            float height = worldPos.y;
 
-            //float normalized = Mathf.InverseLerp(configuration.MapOptions.StartSurfaceLevel, planet.PlanetRadius, distance);
-            //Color vertexColor = configuration.MapOptions.SurfaceColorRange.Evaluate(normalized);
-            //colors[i] = vertexColor;
+            IBiome lowerBiome = sortedBiomes[0];
+            IBiome upperBiome = sortedBiomes[1];
+
+            for (int b = 0; b < sortedBiomes.Count - 1; b++)
+            {
+                if (height >= sortedBiomes[b].MinSurface && height < sortedBiomes[b + 1].MinSurface)
+                {
+                    lowerBiome = sortedBiomes[b];
+                    upperBiome = sortedBiomes[b + 1];
+                    break;
+                }
+            }
+
+            float blendFactor = Mathf.InverseLerp(lowerBiome.MinSurface, upperBiome.MinSurface, height);
+
+            Color lowerColor = lowerBiome.SurfaceColorRange.Evaluate(0f);
+            Color upperColor = upperBiome.SurfaceColorRange.Evaluate(1f);
+
+            // Blend between biome colors based on the height blend factor
+            colors[i] = Color.Lerp(lowerColor, upperColor, blendFactor);
         }
 
         return colors;

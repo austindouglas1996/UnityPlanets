@@ -6,11 +6,13 @@ using UnityEngine;
 public class PlanetChunkLayout : GenericChunkLayout
 {
     private Planet Planet;
+    private BaseMarchingCubeGenerator Generator;
 
-    public PlanetChunkLayout(Planet planet, PlanetChunkConfiguration configuration)
+    public PlanetChunkLayout(Planet planet, PlanetChunkGenerator generator, PlanetChunkConfiguration configuration)
         : base(configuration)
     {
         this.Planet = planet;
+        Generator = generator.CreateMapGenerator(configuration);
     }
 
     public new PlanetChunkConfiguration Configuration
@@ -18,9 +20,13 @@ public class PlanetChunkLayout : GenericChunkLayout
         get { return (PlanetChunkConfiguration)base.Configuration; }
     }
 
-    public override int ChunkRenderDistanceInChunks { get; protected set; }
     protected override ChunkResponse GetChunkResponse(Vector3Int followerCoordinates, Vector3Int coordinates)
     {
+        if (!Generator.ShouldGenerateChunk(coordinates, Configuration.ChunkSize))
+            return ChunkResponse.Air;
+
+        return ChunkResponse.Surface;
+
         // Get the chunk's world-space center
         Vector3 chunkCenter = (Vector3)coordinates * Configuration.ChunkSize + Vector3.one * (Configuration.ChunkSize / 2f);
 

@@ -51,17 +51,6 @@ public abstract class GenericChunkLayout : IChunkLayout
     public HashSet<Vector3Int> KnownSurfaceChunks = new HashSet<Vector3Int>();
 
     /// <summary>
-    /// The amount of chunks between negative/positive that should be rendered from the 
-    /// follower chunk position. 
-    /// 
-    /// Example given 6.
-    /// -6 < X < 6
-    /// -6 < Y < 6
-    /// -6 < Z < 6
-    /// </summary>
-    public abstract int ChunkRenderDistanceInChunks { get; protected set; }
-
-    /// <summary>
     /// The last known follower position.
     /// </summary>
     public Vector3 LastFollowerPosition { get; protected set; } = new Vector3(999, 999, 999);
@@ -116,7 +105,6 @@ public abstract class GenericChunkLayout : IChunkLayout
             this.LastFollowerPosition = followerPosition;
 
             int chunkSize = this.Configuration.ChunkSize;
-            int maxChunkOffset = ChunkRenderDistanceInChunks;
 
             Vector3Int followerChunkPos = new Vector3Int(
                 Mathf.FloorToInt(followerPosition.x / chunkSize),
@@ -124,11 +112,12 @@ public abstract class GenericChunkLayout : IChunkLayout
                 Mathf.FloorToInt(followerPosition.z / chunkSize));     
 
             List<ChunkLayoutEntryInfo> chunksToLoad = new();
-            for (int x = -maxChunkOffset; x <= maxChunkOffset; x++)
+
+            foreach (var x in this.Configuration.RenderDistanceInChunks.X.Values())
             {
-                for (int y = -6; y <= 6; y++)
+                foreach (var z in this.Configuration.RenderDistanceInChunks.Z.Values())
                 {
-                    for (int z = -maxChunkOffset; z <= maxChunkOffset; z++)
+                    foreach (var y in this.Configuration.RenderDistanceInChunks.Y.Values())
                     {
                         Vector3Int offset = followerChunkPos + new Vector3Int(x, y, z);
 
@@ -156,7 +145,7 @@ public abstract class GenericChunkLayout : IChunkLayout
                                 KnownSurfaceChunks.Add(offset);
                                 chunksToLoad.Add(new ChunkLayoutEntryInfo(offset, lod));
                                 break;
-                        }   
+                        }
                     }
                 }
             }

@@ -20,6 +20,4 @@ public abstract class GenericBiome : IBiome
     public DensityMapOptions BaseMapOptions { get; protected set; }
 
     public Gradient SurfaceColorRange { get; protected set; }
-
-    public abstract float Evaluate(float baseVal, Vector3 worldPos);
 }

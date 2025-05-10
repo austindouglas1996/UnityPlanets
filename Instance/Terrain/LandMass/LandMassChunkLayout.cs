@@ -14,8 +14,6 @@ public class LandMassChunkLayout : GenericChunkLayout
         Generator = generator.CreateMapGenerator(configuration);
     }
 
-    public override int ChunkRenderDistanceInChunks { get; protected set; } = 16;
-
     protected override ChunkResponse GetChunkResponse(Vector3Int followerCoordinates, Vector3Int coordinates)
     {
         if (!Generator.ShouldGenerateChunk(coordinates, Configuration.ChunkSize))

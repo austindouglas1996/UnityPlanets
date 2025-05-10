@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using UnityEngine;
 
-public class SphereDensityMapGenerator : GenericDensityMapGenerator
+public class SphereDensityMapGenerator : HeightDensityMapGenerator
 {
     private Vector3 PlanetCenter;
     private float PlanetRadius;
@@ -16,56 +16,16 @@ public class SphereDensityMapGenerator : GenericDensityMapGenerator
 
     protected override float GetValueForWorldPosition(float worldX, float worldY, float worldZ)
     {
-        Vector3 worldPos = new Vector3(worldX, worldY, worldZ);
-        float dist = Vector3.Distance(worldPos, PlanetCenter);
+        float dist = Vector3.Distance(new Vector3(worldX,worldY,worldZ), PlanetCenter);
+        float baseValue = base.GetValueForWorldPosition(worldX, worldY, worldZ);
+        float bumpyRadius = PlanetRadius + baseValue;
 
-        // --- World Sculpting layers ---
-
-        // 1. Continents/Oceans (very low frequency)
-        float continentNoise = Perlin.Fbm(
-            (worldX + Options.Seed) * Options.ContinentFrequency,
-            (worldY + Options.Seed) * Options.ContinentFrequency,
-            (worldZ + Options.Seed) * Options.ContinentFrequency,
-            3
-        );
-        continentNoise = Mathf.Clamp01((continentNoise + 1f) * 0.5f);
-        continentNoise = Mathf.SmoothStep(0f, 1f, continentNoise);
-
-        // 2. Mountain Ridges (medium frequency)
-        float mountainNoise = Perlin.Fbm(
-            (worldX + Options.Seed + 999) * Options.MountainFrequency,
-            (worldY + Options.Seed + 999) * Options.MountainFrequency,
-            (worldZ + Options.Seed + 999) * Options.MountainFrequency,
-            5
-        );
-        mountainNoise = Mathf.Pow(mountainNoise, Options.MountainSharpness); // sharpen peaks
-
-        // 3. Small bumps/details (higher frequency)
-        float detailNoise = Perlin.Fbm(
-            (worldX + Options.Seed + 1234) * Options.DetailFrequency,
-            (worldY + Options.Seed + 1234) * Options.DetailFrequency,
-            (worldZ + Options.Seed + 1234) * Options.DetailFrequency,
-            6
-        );
-
-        // --- Combine into a bumpy radius ---
-        float bumpHeight =
-            continentNoise * Options.ContinentAmplitude +
-            mountainNoise * Options.MountainAmplitude +
-            detailNoise * Options.DetailAmplitude;
-
-        // Planet's surface with bumpiness added
-        float bumpyRadius = PlanetRadius + bumpHeight;
-
-        // --- Final density ---
-        // Positive: inside planet (solid)
-        // Negative: outside planet (empty)
         return (bumpyRadius - dist) * 0.05f;
     }
 
     public override MeshData GenerateMeshData(float[,,] densityMap, Vector3 chunkOffset, int lodIndex = 6)
     {
-        MeshData initialData = base.GenerateMeshData(densityMap, chunkOffset);
+        MeshData initialData = base.GenerateMeshData(densityMap, chunkOffset, lodIndex);
         Vector2[] uvs = new Vector2[initialData.Vertices.Count];
 
         for (int i = 0; i < initialData.Vertices.Count; i++)

@@ -36,11 +36,11 @@ public class HeightDensityMapGenerator : GenericDensityMapGenerator
             4
         );
         flatness = Mathf.Clamp01((flatness + 1f) * 0.5f);
-        flatness = Mathf.Pow(1f - flatness, Options.FlatnessStrength); // Higher = more flat areas
+        flatness = Mathf.Pow(1f - flatness, Options.FlatnessStrength); 
 
         // MOUNTAIN MASK: Where mountains *can* appear
         float mountainMask = Perlin.Fbm(
-            (worldX + Options.Seed + 9999) * 0.001f,   // much larger scale than normal mountains
+            (worldX + Options.Seed + 9999) * 0.001f, 
             (worldZ + Options.Seed + 9999) * 0.001f,
             3
         );
