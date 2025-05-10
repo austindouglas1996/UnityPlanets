@@ -121,7 +121,7 @@ public abstract class GenericChunkLayout : IChunkLayout
             Vector3Int followerChunkPos = new Vector3Int(
                 Mathf.FloorToInt(followerPosition.x / chunkSize),
                 Mathf.FloorToInt(followerPosition.y / chunkSize),
-                Mathf.FloorToInt(followerPosition.z / chunkSize));
+                Mathf.FloorToInt(followerPosition.z / chunkSize));     
 
             List<ChunkLayoutEntryInfo> chunksToLoad = new();
             for (int x = -maxChunkOffset; x <= maxChunkOffset; x++)

@@ -80,7 +80,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
         return Task.Run(() =>
         {
             token.ThrowIfCancellationRequested();
-            data.MeshData = CreateMapGenerator(config).GenerateMeshData(data.DensityMap, Vector3.zero);
+            data.MeshData = CreateMapGenerator(config).GenerateMeshData(data.DensityMap, Vector3.zero, data.MeshData.LODIndex);
         }, token);
     }
 

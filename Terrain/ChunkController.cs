@@ -139,30 +139,20 @@ public class ChunkController : MonoBehaviour
         this.GetComponent<MeshFilter>().mesh = mesh;
 
         // If the player is not in this chunk then no need for a collider.
-        if (data.LODIndex == 0)
+        if (data.MeshData.LODIndex == 0)
+        {
             this.GetComponent<MeshCollider>().sharedMesh = mesh;
+        }
         else
             this.GetComponent<MeshCollider>().sharedMesh = null;
-
-            this.ChunkData[data.LODIndex] = data;
+        
+        this.ChunkData[data.MeshData.LODIndex] = data;
 
         this.ApplyChunkColors();
+        
+        //this.GetComponent<FoliageGenerator>().ApplyMap(data, cancellationToken);
 
         RenderedOnce = true;
-    }
-
-    /// <summary>
-    /// Takes the existing density map and modifies the data based on the brush.
-    /// </summary>
-    /// <param name="brush">The brush that is used to modify the terrain.</param>
-    /// <param name="isAdding">Whether we are removing or adding terrain.</param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    public async Task ModifyChunk(TerrainBrush brush, bool isAdding, CancellationToken token = default)
-    {
-        //await this.generator.ModifyChunkData(this.ChunkData[this.LODIndex], this.Configuration, brush, this.Coordinates, isAdding, token);
-
-        this.IsDirty = true;
     }
 
     /// <summary>

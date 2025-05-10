@@ -15,7 +15,7 @@ public class TerrainEditor : MonoBehaviour
 
     private float lastModifyTime = 0f;
 
-    async void Update()
+    void Update()
     {
         bool isAdding = Input.GetMouseButton(0);
         bool isRemoving = Input.GetMouseButton(1);
@@ -23,7 +23,7 @@ public class TerrainEditor : MonoBehaviour
         if ((isAdding || isRemoving) && Time.time - lastModifyTime > modifyCooldown)
         {
             lastModifyTime = Time.time;
-            await TryModifyTerrain(isAdding);
+            TryModifyTerrain(isAdding);
         }
     }
 
@@ -32,14 +32,14 @@ public class TerrainEditor : MonoBehaviour
     /// </summary>
     /// <param name="adding"></param>
     /// <returns></returns>
-    private async Task TryModifyTerrain(bool adding)
+    private void TryModifyTerrain(bool adding)
     {
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         int layerMask = 1 << LayerMask.NameToLayer("Default");
 
         if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, layerMask))
         {
-            await chunkManager.ModifyTerrain(CreateBrush(hit.point), adding);
+            chunkManager.ModifyTerrain(CreateBrush(hit.point), adding);
         }
     }
 

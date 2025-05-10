@@ -135,6 +135,30 @@ public class ChunkManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Request a chunk be updated due to player modifications.
+    /// </summary>
+    /// <param name="controller"></param>
+    /// <param name="brush"></param>
+    /// <param name="isAdding"></param>
+    public void RequestChunkModification(ChunkController controller, TerrainBrush brush, bool isAdding)
+    {
+        ChunkModificationJob modificationJob = new ChunkModificationJob(controller.ChunkData[0], brush, isAdding);
+        var task = this.GenerationQueue.RequestChunkGeneration(controller.Coordinates, 0, modificationJob);
+
+        task.ContinueWith(t =>
+        {
+            if (t.Status != TaskStatus.RanToCompletion)
+                return;
+
+            if (t.Result.MeshData.Vertices.Count == 0)
+                return;
+
+            Mesh mesh = this.Generator.GenerateMesh(t.Result, this.Configuration);
+            controller.UpdateChunkData(t.Result, mesh);
+        }, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
+    /// <summary>
     /// Loops through all child chunks and reapplies their colors. Useful for debugging or updating style changes.
     /// </summary>
     public void UpdateChunkColors()
@@ -157,7 +181,7 @@ public class ChunkManager : MonoBehaviour
     /// <param name="isAdding">True to add terrain, false to remove.</param>
     /// <param name="bufferMultiplier">Optional chunk bounds buffer.</param>
     /// <param name="token">Optional cancellation token.</param>
-    public async Task ModifyTerrain(TerrainBrush brush, bool isAdding, float bufferMultiplier = 0.5f, CancellationToken token = default)
+    public void ModifyTerrain(TerrainBrush brush, bool isAdding, float bufferMultiplier = 0.5f, CancellationToken token = default)
     {
         Bounds brushBounds = brush.GetBrushBounds();
         Vector3 chunkSize = new Vector3(Configuration.ChunkSize, Configuration.ChunkSize, Configuration.ChunkSize);
@@ -184,8 +208,10 @@ public class ChunkManager : MonoBehaviour
                         ChunkController controller = Chunks[chunk];
                         Bounds chunkBounds = new Bounds(controller.transform.position + chunkSize * bufferMultiplier, chunkSize);
 
-                        //if (brushBounds.Intersects(chunkBounds))
-                            //await chunk.ModifyChunk(brush, isAdding, token);
+                        if (brushBounds.Intersects(chunkBounds))
+                        {
+                            RequestChunkModification(controller, brush, isAdding);
+                        }
                     }
                 }
             }

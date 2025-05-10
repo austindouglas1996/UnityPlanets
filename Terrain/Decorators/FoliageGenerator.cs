@@ -20,11 +20,10 @@ public class FoliageGenerator : MonoBehaviour
 
     private GenericStore Store;
 
-    private System.Random rand;
+    private System.Random rand = new System.Random();
 
     private void Awake()
     {
-        this.rand = new System.Random();
         this.Store = GenericStore.Instance;
     }
 
@@ -34,7 +33,7 @@ public class FoliageGenerator : MonoBehaviour
             foliageDrawer.Update();
     }
 
-    public async Task ApplyMap(ChunkData data, CancellationToken token = default)
+    public void ApplyMap(ChunkData data, CancellationToken token = default)
     {
         List<TrianglePOS> positions = new List<TrianglePOS>();
 
@@ -45,11 +44,7 @@ public class FoliageGenerator : MonoBehaviour
 
         LayerMask layerMask = LayerMask.GetMask("Default");
 
-        await Task.Run(() =>
-        {
-            positions = GetRandomPositionsInTriangles(data, matrix);
-
-        }, token);
+        positions = GetRandomPositionsInTriangles(data, matrix);
 
         foreach (TrianglePOS pos in positions)
         {
@@ -89,7 +84,8 @@ public class FoliageGenerator : MonoBehaviour
 
             if (Random.value < treeChance)
             {
-                //foliageDrawer.Add(this.Store.GetOneRandom("Trees"), tria.Position, Quaternion.Euler(0,0,0), scale, tria.Color);
+                Vector3 treeScale = Vector3.one * Random.Range(0.6f, 2f);
+                foliageDrawer.Add(this.Store.GetOneRandom("Trees"), tria.Position, Quaternion.Euler(0,0,0), treeScale, tria.Color);
             }
         }
     }
@@ -98,54 +94,69 @@ public class FoliageGenerator : MonoBehaviour
     {
         List<TrianglePOS> positions = new List<TrianglePOS>();
 
-        if (multiply <= 0)
-            multiply = 1;
-
-        int sizeX = data.FoliageMask.GetLength(0);
-        int sizeY = data.FoliageMask.GetLength(1);
-        int sizeZ = data.FoliageMask.GetLength(2);
-
-        Vector3 chunkOrigin = matrix.MultiplyPoint3x4(Vector3.zero);
-
-        for (int i = 0; i < data.MeshData.Triangles.Count; i += 3)
+        try
         {
-            Vector3 localA = data.MeshData.Vertices[data.MeshData.Triangles[i]];
-            Vector3 localB = data.MeshData.Vertices[data.MeshData.Triangles[i + 1]];
-            Vector3 localC = data.MeshData.Vertices[data.MeshData.Triangles[i + 2]];
+            if (multiply <= 0)
+                multiply = 1;
 
-            Vector3 vertexA = matrix.MultiplyPoint3x4(localA);
-            Vector3 vertexB = matrix.MultiplyPoint3x4(localB);
-            Vector3 vertexC = matrix.MultiplyPoint3x4(localC);
+            int sizeX = data.FoliageMask.GetLength(0);
+            int sizeY = data.FoliageMask.GetLength(1);
+            int sizeZ = data.FoliageMask.GetLength(2);
 
-            List<Vector3> localPositions = new List<Vector3>();
+            Vector3 chunkOrigin = matrix.MultiplyPoint3x4(Vector3.zero);
 
-            for (int x = 0; x < multiply; x++)
+            for (int i = 0; i < data.MeshData.Triangles.Count; i += 3)
             {
-                Vector3 triangleNormal = Vector3.Cross(vertexB - vertexA, vertexC - vertexA).normalized;
-                Vector3 position = RandomPointInTriangle(vertexA, vertexB, vertexC) + triangleNormal * 0.01f;
+                Vector3 localA = data.MeshData.Vertices[data.MeshData.Triangles[i]];
+                Vector3 localB = data.MeshData.Vertices[data.MeshData.Triangles[i + 1]];
+                Vector3 localC = data.MeshData.Vertices[data.MeshData.Triangles[i + 2]];
 
-                // Convert world position to local chunk voxel indices
-                int localX = Mathf.RoundToInt(position.x - chunkOrigin.x);
-                int localY = Mathf.RoundToInt(position.y - chunkOrigin.y);
-                int localZ = Mathf.RoundToInt(position.z - chunkOrigin.z);
+                Vector3 vertexA = matrix.MultiplyPoint3x4(localA);
+                Vector3 vertexB = matrix.MultiplyPoint3x4(localB);
+                Vector3 vertexC = matrix.MultiplyPoint3x4(localC);
 
-                // Bounds check
-                if (localX < 0 || localY < 0 || localZ < 0 ||
-                    localX >= sizeX || localY >= sizeY || localZ >= sizeZ)
-                    continue;
+                List<Vector3> localPositions = new List<Vector3>();
 
-                // Respect foliage mask
-                if (data.FoliageMask[localX, localY, localZ] <= 0f)
-                    continue;
+                for (int x = 0; x < multiply; x++)
+                {
+                    try
+                    {
+                        Vector3 triangleNormal = Vector3.Cross(vertexB - vertexA, vertexC - vertexA).normalized;
+                        Vector3 position = RandomPointInTriangle(vertexA, vertexB, vertexC) + triangleNormal * 0.01f;
 
-                Color A = data.VerticeColors[i];
-                Color B = data.VerticeColors[i + 1];
-                Color C = data.VerticeColors[i + 2]; 
-                Color D = (A + B + C) / 3f;
+                        // Convert world position to local chunk voxel indices
+                        int localX = Mathf.RoundToInt(position.x - chunkOrigin.x);
+                        int localY = Mathf.RoundToInt(position.y - chunkOrigin.y);
+                        int localZ = Mathf.RoundToInt(position.z - chunkOrigin.z);
 
-                positions.Add(new TrianglePOS() { Position = position, Normal = triangleNormal, Color = D });
-                localPositions.Add(position);
+                        // Bounds check
+                        if (localX < 0 || localY < 0 || localZ < 0 ||
+                            localX >= sizeX || localY >= sizeY || localZ >= sizeZ)
+                            continue;
+
+                        // Respect foliage mask
+                        if (data.FoliageMask[localX, localY, localZ] <= 0f)
+                            continue;
+
+                        Color A = data.VerticeColors[i];
+                        Color B = data.VerticeColors[i + 1];
+                        Color C = data.VerticeColors[i + 2];
+                        Color D = (A + B + C) / 3f;
+
+                        positions.Add(new TrianglePOS() { Position = position, Normal = triangleNormal, Color = D });
+                        localPositions.Add(position);
+                    }
+                    catch (System.Exception ex)
+                    {
+                        string rr = "";
+                    }
+
+                }
             }
+        }
+        catch (System.Exception e)
+        {
+            string fd = "";
         }
 
         return positions;

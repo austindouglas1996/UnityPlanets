@@ -99,15 +99,30 @@ public class ChunkGenerationQueue
                 pendingJobs.Remove(coordinates);
             }
 
-            // Create new key.
-            var cts = new CancellationTokenSource();
-            var token = cts.Token;
-
-            ChunkGenerationJob newJob = new(coordinates, LODIndex, cts);
+            ChunkGenerationJob newJob = new(coordinates, LODIndex, new CancellationTokenSource(), null);
 
             // Register job as active
             pendingJobs[coordinates] = newJob;
             generationQueue.Enqueue(newJob, GetPriorityOfChunk(coordinates));
+
+            return newJob.Completion.Task;
+        }
+    }
+
+    /// <summary>
+    /// Request a chunk generation for a given existing chunk. This chunk should be modified and given the highest of importance on updates.
+    /// </summary>
+    /// <param name="coordinates"></param>
+    /// <param name="LODIndex"></param>
+    /// <param name="modificationJob"></param>
+    /// <returns></returns>
+    public Task<ChunkData> RequestChunkGeneration(Vector3Int coordinates, int LODIndex, ChunkModificationJob modificationJob = null)
+    {
+        lock (queueLock)
+        {
+            ChunkGenerationJob newJob = new(coordinates, LODIndex, new CancellationTokenSource(), modificationJob);
+
+            generationQueue.Enqueue(newJob, -1);
 
             return newJob.Completion.Task;
         }
@@ -160,7 +175,21 @@ public class ChunkGenerationQueue
 
             try
             {
-                var result = await chunkGenerator.GenerateNewChunk(job.Coordinates, job.LODIndex, chunkConfiguration, job.Token);
+                ChunkData result;
+
+                if (job.ModificationJob == null)
+                    result = await chunkGenerator.GenerateNewChunk(job.Coordinates, job.LODIndex, chunkConfiguration, job.Token);
+                else
+                {
+                    ChunkModificationJob mod = job.ModificationJob;
+
+                    await chunkGenerator.ModifyChunkData(mod.ExistingData, chunkConfiguration, mod.Brush, job.Coordinates, mod.IsAdding, job.Token);
+                    await chunkGenerator.UpdateChunkData(mod.ExistingData, chunkConfiguration, job.Token);
+
+                    // We set the original data back.
+                    result = mod.ExistingData;
+                }
+
                 job.Completion.TrySetResult(result);
             }
             catch (OperationCanceledException)
