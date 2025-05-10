@@ -14,10 +14,5 @@ public class PlanetGeneratorEditor : Editor
         {
             //manager.Restart();
         }
-
-        if (GUILayout.Button("ReColor"))
-        {
-            manager.UpdateChunkColors();
-        }
     }
 }

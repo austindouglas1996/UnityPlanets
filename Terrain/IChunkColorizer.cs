@@ -13,5 +13,13 @@ public interface IChunkColorizer
     /// <param name="localToWorld">Transform matrix used to convert positions for color calculations.</param>
     /// <param name="configuration">Chunk configuration info.</param>
     /// <returns>An array of colors to assign to the mesh.</returns>
-    Color[] ApplyColors(MeshData meshData, Matrix4x4 localToWorld, float[,] surfaceMap, IChunkConfiguration configuration);
+    Color[] GenerateVertexColors(MeshData meshData, Matrix4x4 localToWorld, float[,] surfaceMap, IChunkConfiguration configuration);
+
+    /// <summary>
+    /// Applies generated chunk colors, along with colors found in <see cref="IChunkConfiguration.Modifiers"/>
+    /// </summary>
+    /// <param name="chunk"></param>
+    /// <param name="localToWorld"></param>
+    /// <param name="config"></param>
+    void UpdateChunkColors(ChunkData chunk, Matrix4x4 localToWorld, IChunkConfiguration config);
 }

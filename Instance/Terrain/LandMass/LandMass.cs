@@ -11,18 +11,15 @@ public class LandMass : MonoBehaviour
 
     private ChunkManager chunkManager;
 
-    private void OnValidate()
-    {
-        if (this.chunkManager != null)
-        {
-            this.chunkManager.UpdateChunkColors();
-        }
-    }
-
     private void Awake()
     {
         this.chunkManager = this.GetComponent<ChunkManager>();
-        chunkManager.Follower = Follower;
-        chunkManager.Initialize(ChunkConfiguration, new LandMassChunkLayout(new LandMassChunkGenerator(), ChunkConfiguration), new LandMassChunkControllerFactory());
+
+        var generator = new LandMassChunkGenerator();
+        var layout = new LandMassChunkLayout(generator, ChunkConfiguration);
+        var factory = new LandMassChunkControllerFactory(200, this.chunkManager);
+        var colorizer = new LandMassChunkColorizer();
+
+        this.chunkManager.Initialize(this.Follower, ChunkConfiguration, layout, colorizer, factory, generator);
     }
 }

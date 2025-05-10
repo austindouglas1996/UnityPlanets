@@ -93,7 +93,7 @@ public class ChunkManager : MonoBehaviour
     /// <param name="layout">Logic to determine visible chunk positions.</param>
     /// <param name="factory">Factory that builds new chunk controllers.</param>
     /// <exception cref="System.ArgumentNullException">If any required dependency is missing.</exception>
-    public void Initialize(IChunkConfiguration configuration, IChunkLayout layout, IChunkColorizer colorizer, IChunkControllerFactory factory, IChunkGenerator generator)
+    public void Initialize(Transform follower, IChunkConfiguration configuration, IChunkLayout layout, IChunkColorizer colorizer, IChunkControllerFactory factory, IChunkGenerator generator)
     {
         if (configuration == null)
             throw new System.ArgumentNullException("Configuration is null.");
@@ -103,6 +103,8 @@ public class ChunkManager : MonoBehaviour
             throw new System.ArgumentNullException("Color is null.");
         if (factory == null)
             throw new System.ArgumentNullException("Factory is null.");
+
+        this.Follower = follower;
 
         this.Configuration = configuration;
         this.Layout = layout;
@@ -134,7 +136,7 @@ public class ChunkManager : MonoBehaviour
                 return;
 
             Mesh mesh = this.Generator.GenerateMesh(t.Result, this.Configuration);
-            controller.UpdateChunkData(t.Result, mesh);
+            controller.ApplyChunkData(t.Result, mesh);
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
@@ -158,23 +160,8 @@ public class ChunkManager : MonoBehaviour
                 return;
 
             Mesh mesh = this.Generator.GenerateMesh(t.Result, this.Configuration);
-            controller.UpdateChunkData(t.Result, mesh);
+            controller.ApplyChunkData(t.Result, mesh);
         }, TaskScheduler.FromCurrentSynchronizationContext());
-    }
-
-    /// <summary>
-    /// Loops through all child chunks and reapplies their colors. Useful for debugging or updating style changes.
-    /// </summary>
-    public void UpdateChunkColors()
-    {
-        foreach (Transform child in this.transform)
-        {
-            ChunkController controller = child.GetComponent<ChunkController>();
-            if (controller != null)
-            {
-                controller.ApplyChunkColors();
-            }
-        }
     }
 
     /// <summary>
@@ -259,7 +246,7 @@ public class ChunkManager : MonoBehaviour
             else
             {
                 ChunkController newController = Factory.CreateChunkController
-                    (entry.Coordinates, this, Configuration, this.transform, cancellationToken.Token);
+                    (entry.Coordinates, cancellationToken.Token);
                 newController.LODIndex = entry.LOD;
 
                 Chunks[entry.Coordinates] = newController;

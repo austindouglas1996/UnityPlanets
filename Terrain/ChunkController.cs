@@ -16,35 +16,18 @@ using UnityEngine.AI;
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
 public class ChunkController : MonoBehaviour
 {
-    private MeshFilter meshFilter;
-    private MeshRenderer meshRenderer;
-    private MeshCollider meshCollider;
-    private ChunkManager chunkManager;
-    private IChunkColorizer colorizer;
-
-    public Dictionary<int, ChunkData> ChunkData = new Dictionary<int, ChunkData>();
-    private IChunkConfiguration Configuration;
     public Vector3Int Coordinates;
+    private ChunkManager chunkManager;
+
+    /// <summary>
+    /// A collection of <see cref="ChunkData"/> based on LOD index for easy rendering.
+    /// </summary>
+    public Dictionary<int, ChunkData> ChunkData = new Dictionary<int, ChunkData>();
 
     /// <summary>
     /// Tells whether this chunk needs to be regenerated.
     /// </summary>
     private bool IsDirty = true;
-
-    /// <summary>
-    /// Tells whether this chunk is currently busy processing.
-    /// </summary>
-    private bool IsBusy = false;
-
-    /// <summary>
-    /// Tells whether this chunk has been rendered at least once with its chunk data assigned.
-    /// </summary>
-    public bool RenderedOnce = false;
-
-    /// <summary>
-    /// Tells whether the initial <see cref="Initialize(IChunkGenerator, IChunkColorizer, IChunkConfiguration, Vector3Int)"/> function has been called.
-    /// </summary>
-    private bool IsInitialized = false;
 
     /// <summary>
     /// Token used to help with cancelling async processes.
@@ -59,6 +42,7 @@ public class ChunkController : MonoBehaviour
         get { return this.lodIndex; }
         set 
         {
+            // This should not be an issue, but it happened once.
             if (value == this.lodIndex)
                 return;
 
@@ -70,13 +54,12 @@ public class ChunkController : MonoBehaviour
 
     private void Awake()
     {
-        meshFilter = GetComponent<MeshFilter>();
-        meshCollider = GetComponent<MeshCollider>();
-        meshRenderer = GetComponent<MeshRenderer>();
-
+        // Set the shader and material for this controller.
+        var meshRenderer = GetComponent<MeshRenderer>();
         meshRenderer.material = new Material(Shader.Find("Shader Graphs/VertexColor"));
         meshRenderer.material.SetFloat("_Smoothness", 0f);
 
+        // Add a foliage generator too.
         if (this.GetComponent<FoliageGenerator>() == null)
             this.AddComponent<FoliageGenerator>();
     }
@@ -105,21 +88,32 @@ public class ChunkController : MonoBehaviour
     /// <exception cref="System.ArgumentNullException"></exception>
     public void Initialize(ChunkManager manager, Vector3Int coordinates, int lodIndex, CancellationToken cancellationToken = default)
     {
-        if (coordinates != null)
-        {
-            this.Coordinates = coordinates; 
-            this.name = $"Chunk X:{Coordinates.x} Y:{Coordinates.y} Z:{Coordinates.z}";
-        }
+        this.Coordinates = coordinates;
+        this.name = $"Chunk X:{Coordinates.x} Y:{Coordinates.y} Z:{Coordinates.z}";
 
         this.chunkManager = manager;
-        this.colorizer = manager.Colorizer;
-        this.Configuration = manager.Configuration;
         this.LODIndex = lodIndex;
 
         this.cancellationToken = cancellationToken;
-
-        this.IsInitialized = true;
         this.IsDirty = true;
+    }
+
+    /// <summary>
+    /// Reset the controller back to its default state so that another controller could be set.
+    /// </summary>
+    public void Reset()
+    {
+        // Properties.
+        this.chunkManager = null;
+        this.Coordinates = default;
+        this.ChunkData = new Dictionary<int, ChunkData>();
+        this.cancellationToken = default;
+        this.IsDirty = false;
+
+        // Components.
+        this.GetComponent<MeshFilter>().mesh = null;
+        this.GetComponent<MeshRenderer>().material = null;
+        this.GetComponent<MeshCollider>().sharedMaterial = null;
     }
 
     /// <summary>
@@ -127,24 +121,13 @@ public class ChunkController : MonoBehaviour
     /// </summary>
     /// <param name="data"></param>
     /// <param name="mesh"></param>
-    public void UpdateChunkData(ChunkData data, Mesh mesh)
+    public void ApplyChunkData(ChunkData data, Mesh mesh)
     {
-        this.GetComponent<MeshFilter>().mesh = mesh;
-
-        // If the player is not in this chunk then no need for a collider.
-        if (data.MeshData.LODIndex == 0)
-        {
-            this.GetComponent<MeshCollider>().sharedMesh = mesh;
-        }
-        else
-            this.GetComponent<MeshCollider>().sharedMesh = null;
-        
         this.ChunkData[data.MeshData.LODIndex] = data;
 
-        this.ApplyChunkColors();
+        this.GetComponent<MeshFilter>().mesh = mesh;
+        this.GetComponent<MeshCollider>().sharedMesh = data.MeshData.LODIndex == 0 ? mesh : null;
         
         this.GetComponent<FoliageGenerator>().ApplyMap(data, cancellationToken);
-
-        RenderedOnce = true;
     }
 }

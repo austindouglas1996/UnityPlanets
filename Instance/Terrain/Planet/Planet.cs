@@ -21,19 +21,15 @@ public class Planet : MonoBehaviour
     /// </summary>
     private ChunkManager chunkManager;
 
-    private void OnValidate()
-    {
-        if (this.chunkManager != null)
-        {
-            //this.lastSurfaceGradient = ChunkConfiguration.MapOptions.SurfaceColorRange;
-            this.chunkManager.UpdateChunkColors();
-        }
-    }
-
     private void Awake()
     {
         this.chunkManager = this.GetComponent<ChunkManager>();
-        chunkManager.Follower = Follower;
-        chunkManager.Initialize(ChunkConfiguration, new PlanetChunkLayout(this, new PlanetChunkGenerator(this), ChunkConfiguration), new PlanetChunkControllerFactory(this));
+
+        var generator = new PlanetChunkGenerator(this);
+        var layout = new PlanetChunkLayout(this, generator, ChunkConfiguration);
+        var factory = new PlanetChunkControllerFactory(this, 200, this.chunkManager);
+        var colorizer = new PlanetChunkColorizer();
+
+        this.chunkManager.Initialize(this.Follower, ChunkConfiguration, layout, colorizer, factory, generator);
     }
 }
