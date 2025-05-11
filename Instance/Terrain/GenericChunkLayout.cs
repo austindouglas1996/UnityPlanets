@@ -1,4 +1,3 @@
-using SingularityGroup.HotReload;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -211,7 +210,7 @@ public abstract class GenericChunkLayout : IChunkLayout
 
             // Unless this is a full reset, and the previous list contained
             // this chunk then let us keep rendering it.
-            if (PreviousActiveChunks.Contains(offset))
+            if (PreviousActiveChunks.Contains(offset) || KnownSurfaceChunks.Contains(offset))
             {
                 activeChunks.Add(offset);
                 output.Add(new ChunkLayoutEntryInfo(offset, lod));

@@ -29,12 +29,12 @@ public class ChunkManager : MonoBehaviour
     /// <summary>
     /// Chunk configurations.
     /// </summary>
-    [SerializeField] public IChunkConfiguration Configuration;
-    [SerializeField] public IChunkColorizer Colorizer;
-    [SerializeField] public IChunkLayout Layout;
-    [SerializeField] public IChunkControllerFactory Factory;
-    [SerializeField] public IChunkGenerator Generator;
-    [SerializeField] private ChunkRenderer Renderer;
+    public IChunkConfiguration Configuration;
+    public IChunkColorizer Colorizer;
+    public IChunkLayout Layout;
+    public IChunkControllerFactory Factory;
+    public IChunkGenerator Generator;
+    private ChunkRenderer Renderer;
 
     /// <summary>
     /// A cancellation token used to help with cancelling processes on game close.
@@ -158,6 +158,11 @@ public class ChunkManager : MonoBehaviour
 
         await foreach (var entry in Layout.StreamChunkLayoutUpdate(Follower.position, layoutCts.Token))
         {
+            if (entry.Coordinates == new Vector3Int(-3,6,3))
+            {
+                string b = "";
+            }
+
             // Is this chunk no longer active?
             if (entry.IsStale)
             {

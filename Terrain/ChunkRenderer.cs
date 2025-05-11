@@ -23,7 +23,7 @@ public class ChunkRenderer : MonoBehaviour
         {
             if (chunk.RenderType == ChunkRenderType.GPU && chunk.IsActive)
             {
-                Graphics.DrawMesh(chunk.Mesh, chunk.LocalToWorld, material, 0);
+                //Graphics.DrawMesh(chunk.Mesh, chunk.LocalToWorld, material, 0);
             }
         }
 
@@ -154,76 +154,52 @@ public class ChunkRenderer : MonoBehaviour
 
         if (this.chunkManager.Chunks.TryGetValue(chunkRenderData.Coordinates, out var existing))
         {
-            /*
-             * UPDATE GO
-             */
-            if (existing.RenderType == ChunkRenderType.GameObject && lod == 0)
+            bool ExistingIsGO = existing.RenderType == ChunkRenderType.GameObject;
+
+            // GPU to GO.
+            if (!ExistingIsGO && lod == 0)
             {
-                if (existing.Controller != null)
-                    existing.Controller.ApplyChunkData(chunkRenderData);
+                var controller = chunkManager.Factory.CreateChunkController(coord, this.cancellationToken.Token);
+                chunkRenderData.Controller = controller;
+                chunkRenderData.RenderType = ChunkRenderType.GameObject;
 
-                chunkManager.Chunks[coord] = chunkRenderData;
-                return;
+                controller.ApplyChunkData(chunkRenderData);
             }
-
-            /*
-             *  UPDATE GPU
-             */
-            if (existing.RenderType == ChunkRenderType.GPU && lod > 0)
-            {
-                chunkRenderData.RenderType = ChunkRenderType.GPU;
-                chunkManager.Chunks[coord] = chunkRenderData;
-                return;
-            }
-
-            /*
-             * DOWNGRADE: GO to GPU
-             */
-            if (existing.RenderType == ChunkRenderType.GameObject && lod > 0)
+            // GO to GPU
+            else if (ExistingIsGO && lod > 0)
             {
                 if (existing.Controller != null)
                     chunkManager.Factory.Release(existing.Controller);
 
                 chunkRenderData.RenderType = ChunkRenderType.GPU;
                 chunkRenderData.Controller = null;
-                chunkManager.Chunks[coord] = chunkRenderData;
-                return;
             }
-
-            /*
-             *  UPGRADE: GPU TO GO
-             */
-            if (existing.RenderType == ChunkRenderType.GPU && lod == 0)
+            // GO to GO (Update)
+            else if (ExistingIsGO && lod == 0)
             {
-                var controller = chunkManager.Factory.CreateChunkController(coord, this.cancellationToken.Token);
-                controller.LOD = lod;
-                controller.ApplyChunkData(chunkRenderData);
-
-                chunkRenderData.RenderType = ChunkRenderType.GameObject;
-                chunkRenderData.Controller = controller;
-                chunkManager.Chunks[coord] = chunkRenderData;
-                return;
+                if (existing.Controller != null)
+                    existing.Controller.ApplyChunkData(chunkRenderData);
+            }
+            // GPU to GPU (Update)
+            else if (!ExistingIsGO && lod > 0)
+            {
+                chunkRenderData.RenderType = ChunkRenderType.GPU;
             }
         }
-
-        /*
-         * NEW CHUNK
-         */
-        if (lod == 0)
+        else if (lod == 0)
         {
             var controller = chunkManager.Factory.CreateChunkController(coord, this.cancellationToken.Token);
-            controller.LOD = lod;
-            controller.ApplyChunkData(chunkRenderData);
-
             chunkRenderData.Controller = controller;
             chunkRenderData.RenderType = ChunkRenderType.GameObject;
+            chunkManager.Chunks[coord] = chunkRenderData;
+            controller.ApplyChunkData(chunkRenderData);
         }
         else
         {
             chunkRenderData.RenderType = ChunkRenderType.GPU;
             chunkRenderData.Controller = null;
         }
-
+        
         chunkManager.Chunks[coord] = chunkRenderData;
     }
 

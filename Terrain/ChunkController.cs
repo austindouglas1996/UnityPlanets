@@ -1,4 +1,3 @@
-using SingularityGroup.HotReload;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -82,11 +81,19 @@ public class ChunkController : MonoBehaviour
     /// <param name="mesh"></param>
     public void ApplyChunkData(ChunkRenderData renderData)
     {
-        this.ChunkData[renderData.LOD] = renderData;
+        try
+        {
+            this.LOD = renderData.LOD;
+            this.ChunkData[renderData.LOD] = renderData;
 
-        this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
-        this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
-        
-        this.GetComponent<FoliageGenerator>().ApplyMap(renderData);
+            this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
+            this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
+
+            //this.GetComponent<FoliageGenerator>().ApplyMap(renderData);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError(e);
+        }
     }
 }
