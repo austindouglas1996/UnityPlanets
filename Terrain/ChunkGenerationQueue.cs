@@ -59,7 +59,7 @@ public class ChunkGenerationQueue
         this.chunkConfiguration = configuration;
         this.cancellationToken = token;
 
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 6; i++)
         {
             workerTasks.Add(Task.Run(() => WorkerLoop(cancellationToken)));
         }
@@ -116,7 +116,7 @@ public class ChunkGenerationQueue
     /// <param name="LODIndex"></param>
     /// <param name="modificationJob"></param>
     /// <returns></returns>
-    public Task<ChunkData> RequestChunkGeneration(Vector3Int coordinates, int LODIndex, ChunkModificationJob modificationJob = null)
+    public Task<ChunkData> RequestChunkModification(Vector3Int coordinates, int LODIndex, ChunkModificationJob modificationJob = null)
     {
         lock (queueLock)
         {

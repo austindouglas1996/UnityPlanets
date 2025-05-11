@@ -1,4 +1,6 @@
 using SingularityGroup.HotReload;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -88,37 +90,14 @@ public abstract class GenericChunkLayout : IChunkLayout
     }
 
     /// <summary>
-    /// Get a set of active chunks that should be rendered.
-    /// </summary>
-    /// <param name="followerPosition"></param>
-    /// <returns></returns>
-    public virtual async Task<ChunkLayoutResponse> GetChunkLayoutUpdate(Vector3 followerPosition)
-    {
-        HashSet<ChunkLayoutEntryInfo> active = new();
-        HashSet<Vector3Int> remove = new();
-
-        await foreach (var entry in StreamChunkLayoutUpdate(followerPosition))
-        {
-            if (entry.IsStale)
-                remove.Add(entry.Coordinates);
-            else
-                active.Add(entry);
-        }
-
-        return new ChunkLayoutResponse(active, remove);
-    }
-
-    /// <summary>
     /// Get a set of active that should be rendered but by streaming the results to reduce the process time.
     /// </summary>
     /// <param name="followerPosition"></param>
     /// <returns></returns>
-    public virtual async IAsyncEnumerable<ChunkLayoutEntryInfo> StreamChunkLayoutUpdate(Vector3 followerPosition)
+    public virtual async IAsyncEnumerable<ChunkLayoutEntryInfo> StreamChunkLayoutUpdate(Vector3 followerPosition, [EnumeratorCancellation] CancellationToken token = default)
     {
         // Has the follower travelled to far for us to keep up?
         bool FullReset = (followerPosition - LastFollowerPosition).sqrMagnitude > MinChangeForFullReset * MinChangeForFullReset;
-
-        // Memory management.
         if (FullReset)
         {
             this.KnownAirChunks.Clear();
@@ -128,13 +107,76 @@ public abstract class GenericChunkLayout : IChunkLayout
         // Set the new position.
         this.LastFollowerPosition = followerPosition;
 
+        using var queue = new BlockingCollection<ChunkLayoutEntryInfo>(new ConcurrentQueue<ChunkLayoutEntryInfo>());
+        Task runner = Task.Run(() => 
+        {
+            try
+            {
+                GenerateChunkEntries(followerPosition, queue);
+            }
+            catch (OperationCanceledException) { }
+            catch (System.Exception e)
+            {
+                Debug.LogError(e);
+            }
+            finally
+            {
+                queue.CompleteAdding();
+            }
+        });
+
+        while (!queue.IsCompleted && !token.IsCancellationRequested)
+        {
+            if (queue.TryTake(out var entry, 1, token))
+            {
+                yield return entry;
+            }
+            else
+            {
+                await Task.Yield();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Get the LOD for a given chunk based on the distance from a given follower.
+    /// </summary>
+    /// <param name="followerCoordinates"></param>
+    /// <param name="chunkCoordinate"></param>
+    /// <returns></returns>
+    public int GetRenderDetail(Vector3Int followerCoordinates, Vector3Int chunkCoordinate)
+    {
+        int dx = Mathf.Abs(chunkCoordinate.x - followerCoordinates.x);
+        int dz = Mathf.Abs(chunkCoordinate.z - followerCoordinates.z);
+
+        int distance = Mathf.Max(dx, dz);
+
+        // Each tier is 12 chunks wide.
+        int lod = distance / 2;
+
+        // Clamp to a max LOD of 5, anything over 5 does not render.
+        return Mathf.Min(lod, 5);
+    }
+
+    /// <summary>
+    /// Return the type of chunk at this coordinate is.
+    /// </summary>
+    /// <param name="followerCoordinates">The follower position in case needed for determining if chunk should be rendered.</param>
+    /// <param name="coordinates">The coordinates of the chunk.</param>
+    /// <returns><see cref="ChunkResponse"/></returns>
+    protected abstract ChunkResponse GetChunkResponse(Vector3Int followerCoordinates, Vector3Int coordinates);
+
+    /// <summary>
+    /// Generates the chunk layout update in a blocking collection so it can be streamed.
+    /// </summary>
+    /// <param name="followerPosition"></param>
+    /// <param name="output"></param>
+    private void GenerateChunkEntries(Vector3 followerPosition, BlockingCollection<ChunkLayoutEntryInfo> output)
+    {
         Vector3Int followerChunkPos = new Vector3Int(
             Mathf.FloorToInt(followerPosition.x / this.Configuration.ChunkSize),
             Mathf.FloorToInt(followerPosition.y / this.Configuration.ChunkSize),
             Mathf.FloorToInt(followerPosition.z / this.Configuration.ChunkSize));
-
-        int chunksPerYield = 64;
-        int chunksSinceYield = 0;
 
         List<Vector3Int> offsets = new();
 
@@ -169,11 +211,10 @@ public abstract class GenericChunkLayout : IChunkLayout
 
             // Unless this is a full reset, and the previous list contained
             // this chunk then let us keep rendering it.
-            if (!FullReset && PreviousActiveChunks.Contains(offset))
+            if (PreviousActiveChunks.Contains(offset))
             {
                 activeChunks.Add(offset);
-                yield return new ChunkLayoutEntryInfo(offset, lod);
-                chunksSinceYield++;
+                output.Add(new ChunkLayoutEntryInfo(offset, lod));
             }
             else
             {
@@ -185,16 +226,9 @@ public abstract class GenericChunkLayout : IChunkLayout
                     case ChunkResponse.Surface:
                         activeChunks.Add(offset);
                         KnownSurfaceChunks.Add(offset);
-                        yield return new ChunkLayoutEntryInfo(offset, lod);
-                        chunksSinceYield++;
+                        output.Add(new ChunkLayoutEntryInfo(offset, lod));
                         break;
                 }
-            }
-
-            if (chunksSinceYield >= chunksPerYield)
-            {
-                await Task.Yield();
-                chunksSinceYield = 0;
             }
         }
 
@@ -203,45 +237,10 @@ public abstract class GenericChunkLayout : IChunkLayout
         toRemove.ExceptWith(activeChunks);
         foreach (var chunk in toRemove.OrderByDescending(c => Vector3.Distance(c, followerChunkPos)))
         {
-            yield return new ChunkLayoutEntryInfo(chunk, -1, true);
-
-            chunksPerYield++;
-            if (chunksSinceYield >= chunksPerYield)
-            {
-                await Task.Yield();
-                chunksSinceYield = 0;
-            }
+            output.Add(new ChunkLayoutEntryInfo(chunk, -1, true));
         }
 
         // Set the collection to use the new collection.
         PreviousActiveChunks = activeChunks;
     }
-
-    /// <summary>
-    /// Get the LOD for a given chunk based on the distance from a given follower.
-    /// </summary>
-    /// <param name="followerCoordinates"></param>
-    /// <param name="chunkCoordinate"></param>
-    /// <returns></returns>
-    public int GetRenderDetail(Vector3Int followerCoordinates, Vector3Int chunkCoordinate)
-    {
-        int dx = Mathf.Abs(chunkCoordinate.x - followerCoordinates.x);
-        int dz = Mathf.Abs(chunkCoordinate.z - followerCoordinates.z);
-
-        int distance = Mathf.Max(dx, dz);
-
-        // Each tier is 12 chunks wide.
-        int lod = distance / 24;
-
-        // Clamp to a max LOD of 5, anything over 5 does not render.
-        return Mathf.Min(lod, 5);
-    }
-
-    /// <summary>
-    /// Return the type of chunk at this coordinate is.
-    /// </summary>
-    /// <param name="followerCoordinates">The follower position in case needed for determining if chunk should be rendered.</param>
-    /// <param name="coordinates">The coordinates of the chunk.</param>
-    /// <returns><see cref="ChunkResponse"/></returns>
-    protected abstract ChunkResponse GetChunkResponse(Vector3Int followerCoordinates, Vector3Int coordinates);
 }

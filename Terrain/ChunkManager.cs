@@ -21,9 +21,6 @@ public class ChunkManager : MonoBehaviour
     [Header("Rendering"), Tooltip("How far the follower needs to be travel before we update the active chunks.")]
     public float TravelDistanceToUpdateChunks = 10f;
 
-    [Tooltip("Should chunks the follower cannot see be automatically hidden?")]
-    public bool AutomaticallyHideChunksOutOfView = true;
-
     /// <summary>
     /// The transform that this chunk system follows, like the player.
     /// </summary>
@@ -37,47 +34,29 @@ public class ChunkManager : MonoBehaviour
     [SerializeField] public IChunkLayout Layout;
     [SerializeField] public IChunkControllerFactory Factory;
     [SerializeField] public IChunkGenerator Generator;
-    [SerializeField] private ChunkGenerationQueue GenerationQueue;
+    [SerializeField] private ChunkRenderer Renderer;
 
     /// <summary>
     /// A cancellation token used to help with cancelling processes on game close.
     /// </summary>
     private CancellationTokenSource cancellationToken = new CancellationTokenSource();
+    private CancellationTokenSource layoutCts = new CancellationTokenSource();
 
     /// <summary>
     /// A collection of active chunks in the game world.
     /// </summary>
-    private Dictionary<Vector3Int, ChunkController> Chunks = new Dictionary<Vector3Int, ChunkController>();
-
-    /// <summary>
-    /// Tells whether the manager is currently busy executing other tasks.
-    /// </summary>
-    private bool IsBusy = false;
+    public Dictionary<Vector3Int, ChunkRenderData> Chunks = new Dictionary<Vector3Int, ChunkRenderData>();
 
     /// <summary>
     /// Returns whether <see cref="Initialize(IChunkConfiguration, IChunkLayout, IChunkControllerFactory)"/> has been successful.
     /// </summary>
     private bool IsInitialized = false;
 
-    private Quaternion LastFollowerRotation;
-
     private async void Update()
     {
-        if (!IsBusy && Layout.ShouldUpdateLayout(Follower.position))
+        if (Layout.ShouldUpdateLayout(Follower.position))
         {
             await UpdateChunks();
-        }
-
-        if (AutomaticallyHideChunksOutOfView)
-        {
-            Quaternion currentRot = Follower.transform.rotation;
-            float angleDelta = Quaternion.Angle(LastFollowerRotation, currentRot);
-
-            if (angleDelta > 30f)
-            {
-                LastFollowerRotation = currentRot;
-                UpdateChunkVisibility();
-            }
         }
     }
 
@@ -103,6 +82,8 @@ public class ChunkManager : MonoBehaviour
             throw new System.ArgumentNullException("Color is null.");
         if (factory == null)
             throw new System.ArgumentNullException("Factory is null.");
+        if (generator == null)
+            throw new System.ArgumentNullException("Generator is null.");
 
         this.Follower = follower;
 
@@ -112,60 +93,10 @@ public class ChunkManager : MonoBehaviour
         this.Factory = factory;
         this.Generator = generator;
 
-        if (this.Generator == null)
-            throw new System.ArgumentNullException("Generator is null.");
-
-        this.GenerationQueue = new ChunkGenerationQueue(this.Follower, this.Generator, this.Configuration, this.cancellationToken.Token);
+        this.Renderer = this.GetComponent<ChunkRenderer>();
+        this.Renderer.Initialize(factory);
 
         this.IsInitialized = true;
-    }
-
-    /// <summary>
-    /// Request a chunk be generated based on a <see cref="ChunkController"/> data.
-    /// </summary>
-    /// <param name="controller"></param>
-    public void RequestNewChunkGeneration(ChunkController controller)
-    {
-        var task = this.GenerationQueue.RequestChunkGeneration(controller.Coordinates, controller.LODIndex);
-        task.ContinueWith(t => 
-        {
-            if (t.Status != TaskStatus.RanToCompletion)
-                return;
-
-            if (t.Result.MeshData.Vertices.Count == 0)
-                return;
-
-            Mesh mesh = this.Generator.GenerateMesh(t.Result, this.Configuration);
-            ChunkRenderData renderData = new ChunkRenderData(controller.Coordinates, t.Result, mesh, controller.transform.localToWorldMatrix);
-
-            controller.ApplyChunkData(renderData);
-        }, TaskScheduler.FromCurrentSynchronizationContext());
-    }
-
-    /// <summary>
-    /// Request a chunk be updated due to player modifications.
-    /// </summary>
-    /// <param name="controller"></param>
-    /// <param name="brush"></param>
-    /// <param name="isAdding"></param>
-    public void RequestChunkModification(ChunkController controller, TerrainBrush brush, bool isAdding)
-    {
-        ChunkModificationJob modificationJob = new ChunkModificationJob(controller.ChunkData[0].Data, brush, isAdding);
-        var task = this.GenerationQueue.RequestChunkGeneration(controller.Coordinates, 0, modificationJob);
-
-        task.ContinueWith(t =>
-        {
-            if (t.Status != TaskStatus.RanToCompletion)
-                return;
-
-            if (t.Result.MeshData.Vertices.Count == 0)
-                return;
-
-            Mesh mesh = this.Generator.GenerateMesh(t.Result, this.Configuration);
-            ChunkRenderData renderData = new ChunkRenderData(controller.Coordinates, t.Result, mesh, controller.transform.localToWorldMatrix);
-
-            controller.ApplyChunkData(renderData);
-        }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
     /// <summary>
@@ -200,12 +131,12 @@ public class ChunkManager : MonoBehaviour
 
                     if (Layout.PreviousActiveChunks.TryGetValue(neighborCoord, out var chunk))
                     {
-                        ChunkController controller = Chunks[chunk];
+                        ChunkController controller = Chunks[chunk].Controller;
                         Bounds chunkBounds = new Bounds(controller.transform.position + chunkSize * bufferMultiplier, chunkSize);
 
                         if (brushBounds.Intersects(chunkBounds))
                         {
-                            RequestChunkModification(controller, brush, isAdding);
+                            Renderer.RequestModification(controller, brush, isAdding);
                         }
                     }
                 }
@@ -219,75 +150,22 @@ public class ChunkManager : MonoBehaviour
     /// </summary>
     private async Task UpdateChunks()
     {
-        if (IsBusy || !IsInitialized)
+        if (!IsInitialized)
             return;
-        IsBusy = true;
 
-        Stopwatch sw = new Stopwatch();
-        sw.Start();
+        layoutCts.Cancel();
+        layoutCts = new CancellationTokenSource();
 
-        int active = 0;
-        int created = 0;
-        int remove = 0;
-
-        await foreach (var entry in Layout.StreamChunkLayoutUpdate(Follower.position))
+        await foreach (var entry in Layout.StreamChunkLayoutUpdate(Follower.position, layoutCts.Token))
         {
-            await Task.Yield();
-
             // Is this chunk no longer active?
             if (entry.IsStale)
             {
-                this.GenerationQueue.CancelChunkGeneration(entry.Coordinates);
-                remove++;
+                this.Renderer.RemoveChunk(entry.Coordinates);
                 continue;
             }
 
-            // Does this chunk already exist?
-            if (Chunks.TryGetValue(entry.Coordinates, out var newChunk))
-            {
-                newChunk.LODIndex = entry.LOD;
-            }
-            else
-            {
-                ChunkController newController = Factory.CreateChunkController
-                    (entry.Coordinates, cancellationToken.Token);
-                newController.LODIndex = entry.LOD;
-
-                Chunks[entry.Coordinates] = newController;
-                created++;
-            }
-
-            active++;
-        }
-
-        this.IsBusy = false;
-        sw.Stop();
-
-        UnityEngine.Debug.Log($"Created Chunks: {created}, Active Chunks: {active}, removed chunks {remove}, time {sw.ElapsedMilliseconds}MS");
-    }
-
-    /// <summary>
-    /// Update the chunk visibility based on what the follower can see.
-    /// </summary>
-    private void UpdateChunkVisibility()
-    {
-        Vector3 camForward = Follower.transform.forward;
-
-        foreach (var chunk in Chunks)
-        {
-            Vector3 chunkCenter = chunk.Value.transform.position + new Vector3(this.Configuration.ChunkSize, this.Configuration.ChunkSize, this.Configuration.ChunkSize) * 0.5f;
-            Vector3 toChunk = (chunkCenter - Follower.transform.position);
-
-            // Always render closeup chunks.
-            if (toChunk.magnitude < 40f)
-            {
-                chunk.Value.gameObject.SetActive(true);
-                continue;
-            }
-
-            float dot = Vector3.Dot(camForward, toChunk.normalized);
-            bool isRoughlyInFront = dot > 0f;
-            chunk.Value.gameObject.SetActive(isRoughlyInFront);
+            Renderer.UpdateOrRequestChunk(entry.Coordinates, entry.LOD);
         }
     }
 }

@@ -1,6 +1,5 @@
 using SingularityGroup.HotReload;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,32 +24,9 @@ public class ChunkController : MonoBehaviour
     public Dictionary<int, ChunkRenderData> ChunkData = new Dictionary<int, ChunkRenderData>();
 
     /// <summary>
-    /// Tells whether this chunk needs to be regenerated.
-    /// </summary>
-    private bool IsDirty = true;
-
-    /// <summary>
-    /// Token used to help with cancelling async processes.
-    /// </summary>
-    private CancellationToken cancellationToken;
-
-    /// <summary>
     /// The LOD for this specific chunk to render.
     /// </summary>
-    public int LODIndex
-    {
-        get { return this.lodIndex; }
-        set 
-        {
-            // This should not be an issue, but it happened once.
-            if (value == this.lodIndex)
-                return;
-
-            this.lodIndex = value; 
-            this.IsDirty = true; 
-        }
-    }
-    private int lodIndex = 0;
+    public int LOD {  get; set; }
 
     private void Awake()
     {
@@ -62,20 +38,6 @@ public class ChunkController : MonoBehaviour
         // Add a foliage generator too.
         if (this.GetComponent<FoliageGenerator>() == null)
             this.AddComponent<FoliageGenerator>();
-    }
-
-    private void Update()
-    {
-        if (IsDirty)
-        {
-            IsDirty = false;
-
-            // Do we need to generate the chunk?
-            if (!this.ChunkData.TryGetValue(this.LODIndex, out ChunkRenderData chunkData))
-            {
-                this.chunkManager.RequestNewChunkGeneration(this);
-            }
-        }
     }
 
     /// <summary>
@@ -92,23 +54,20 @@ public class ChunkController : MonoBehaviour
         this.name = $"Chunk X:{Coordinates.x} Y:{Coordinates.y} Z:{Coordinates.z}";
 
         this.chunkManager = manager;
-        this.LODIndex = lodIndex;
-
-        this.cancellationToken = cancellationToken;
-        this.IsDirty = true;
+        this.LOD = lodIndex;
     }
 
     /// <summary>
     /// Reset the controller back to its default state so that another controller could be set.
     /// </summary>
-    public void Reset()
+    public void ResetController()
     {
+        Debug.Log("Reset");
+
         // Properties.
         this.chunkManager = null;
         this.Coordinates = default;
         this.ChunkData = new Dictionary<int, ChunkRenderData>();
-        this.cancellationToken = default;
-        this.IsDirty = false;
 
         // Components.
         this.GetComponent<MeshFilter>().mesh = null;
@@ -128,6 +87,6 @@ public class ChunkController : MonoBehaviour
         this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
         this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
         
-        this.GetComponent<FoliageGenerator>().ApplyMap(renderData, cancellationToken);
+        this.GetComponent<FoliageGenerator>().ApplyMap(renderData);
     }
 }

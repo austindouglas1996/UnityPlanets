@@ -68,6 +68,8 @@ public class ChunkPool
     /// <param name="controller"></param>
     public void Release(ChunkController controller)
     {
+        controller.ResetController();
+        controller.name = "ReleasedToPool";
         controller.gameObject.SetActive(false);
         controller.transform.SetParent(parent);
         pool.Push(controller);

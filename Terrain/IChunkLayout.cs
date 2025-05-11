@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// A structure class to help with a simple response from <see cref="GetActiveChunkCoordinates(Vector3)"/>.
@@ -52,19 +53,11 @@ public interface IChunkLayout
     bool ShouldUpdateLayout(Vector3 followerPosition);
 
     /// <summary>
-    /// Returns a list of chunk coordinates that should be active (loaded and rendered)
-    /// based on the position of the follower in <see cref="ChunkManager"/>
-    /// </summary>
-    /// <param name="followerPosition">The world-space position of the object being followed.</param>
-    /// <returns>A list of <see cref="Vector3Int"/> coordinates representing active chunks.</returns>
-    Task<ChunkLayoutResponse> GetChunkLayoutUpdate(Vector3 followerPosition);
-
-    /// <summary>
     /// Returns an enumerable of chunk coordinates that should be active, or removed.
     /// </summary>
     /// <param name="followerPosition"></param>
     /// <returns></returns>
-    IAsyncEnumerable<ChunkLayoutEntryInfo> StreamChunkLayoutUpdate(Vector3 followerPosition);
+    IAsyncEnumerable<ChunkLayoutEntryInfo> StreamChunkLayoutUpdate(Vector3 followerPosition, [EnumeratorCancellation] CancellationToken token = default);
 
     /// <summary>
     /// Determines the level of detail (LOD) that should be used for a given chunk
