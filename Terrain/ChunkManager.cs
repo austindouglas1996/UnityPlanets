@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -158,11 +157,6 @@ public class ChunkManager : MonoBehaviour
 
         await foreach (var entry in Layout.StreamChunkLayoutUpdate(Follower.position, layoutCts.Token))
         {
-            if (entry.Coordinates == new Vector3Int(-3,6,3))
-            {
-                string b = "";
-            }
-
             // Is this chunk no longer active?
             if (entry.IsStale)
             {
@@ -172,5 +166,7 @@ public class ChunkManager : MonoBehaviour
 
             Renderer.UpdateOrRequestChunk(entry.Coordinates, entry.LOD);
         }
+
+        Debug.Log("Finished layout.");
     }
 }

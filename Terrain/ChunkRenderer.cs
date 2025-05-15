@@ -23,7 +23,7 @@ public class ChunkRenderer : MonoBehaviour
         {
             if (chunk.RenderType == ChunkRenderType.GPU && chunk.IsActive)
             {
-                //Graphics.DrawMesh(chunk.Mesh, chunk.LocalToWorld, material, 0);
+                Graphics.DrawMesh(chunk.Mesh, chunk.LocalToWorld, material, 0);
             }
         }
 
@@ -50,7 +50,7 @@ public class ChunkRenderer : MonoBehaviour
         this.cancellationToken = new CancellationTokenSource();
         this.chunkManager = this.GetComponent<ChunkManager>();
 
-        this.generationQueue = new ChunkGenerationQueue(chunkManager.Follower, this.chunkManager.Generator, this.chunkManager.Configuration, cancellationToken.Token);
+        this.generationQueue = new ChunkGenerationQueue(chunkManager.Follower, this.chunkManager.Generator, this.chunkManager.Colorizer, this.chunkManager.Configuration, cancellationToken.Token);
     }
 
     public void UpdateOrRequestChunk(Vector3Int coordinate, int lodIndex)
@@ -132,10 +132,6 @@ public class ChunkRenderer : MonoBehaviour
 
             // Generate mesh and apply color.
             Mesh mesh = this.chunkManager.Generator.GenerateMesh(t.Result, this.chunkManager.Configuration);
-            this.chunkManager.Colorizer.UpdateChunkColors(t.Result, transform, this.chunkManager.Configuration);
-
-            mesh.colors = t.Result.MeshData.VerticeColors;
-
             ChunkRenderData renderData = new ChunkRenderData(coordinates, t.Result, mesh, transform);
 
             this.SubmitChunk(renderData);

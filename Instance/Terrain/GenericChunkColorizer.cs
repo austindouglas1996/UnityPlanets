@@ -7,13 +7,14 @@ public abstract class GenericChunkColorizer : IChunkColorizer
     public Color[] GenerateVertexColors(MeshData meshData, Matrix4x4 localToWorld, float[,] surfaceMap, IChunkConfiguration configuration)
     {
         Color[] colors = new Color[meshData.Vertices.Count];
-
-        // Pre-sort biomes (optional if not already sorted)
         var sortedBiomes = configuration.Biomes.OrderBy(b => b.MinSurface).ToList();
+
+        bool isActiveChunk = meshData.LODIndex == 0;
 
         for (int i = 0; i < meshData.Vertices.Count; i++)
         {
             Vector3 worldPos = localToWorld.MultiplyPoint3x4(meshData.Vertices[i]);
+
             float height = worldPos.y;
 
             Biome lowerBiome = sortedBiomes[0];

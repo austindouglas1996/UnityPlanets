@@ -4,6 +4,7 @@ using System;
 using UnityEngine;
 using System.Threading;
 using System.Collections.ObjectModel;
+using NUnit.Framework.Interfaces;
 
 public class ChunkGenerationQueue
 {
@@ -38,6 +39,11 @@ public class ChunkGenerationQueue
     private IChunkGenerator chunkGenerator;
 
     /// <summary>
+    /// The colorizer used to color meshes.
+    /// </summary>
+    private IChunkColorizer chunkColorizer;
+
+    /// <summary>
     /// The configuration used for chunk generation.
     /// </summary>
     private IChunkConfiguration chunkConfiguration;
@@ -45,7 +51,7 @@ public class ChunkGenerationQueue
     /// <summary>
     /// Initialize a new instance of the <see cref="ChunkGenerationQueue"/> class.
     /// </summary>
-    public ChunkGenerationQueue(Transform follower, IChunkGenerator chunkGenerator, IChunkConfiguration configuration, CancellationToken token)
+    public ChunkGenerationQueue(Transform follower, IChunkGenerator chunkGenerator, IChunkColorizer colorizer, IChunkConfiguration configuration, CancellationToken token)
     {
         if (follower == null)
             throw new ArgumentNullException(nameof(follower));
@@ -56,10 +62,11 @@ public class ChunkGenerationQueue
 
         this.follower = follower;
         this.chunkGenerator = chunkGenerator;
+        this.chunkColorizer = colorizer;
         this.chunkConfiguration = configuration;
         this.cancellationToken = token;
 
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < 16; i++)
         {
             workerTasks.Add(Task.Run(() => WorkerLoop(cancellationToken)));
         }
@@ -179,7 +186,17 @@ public class ChunkGenerationQueue
                 ChunkData result;
 
                 if (job.ModificationJob == null)
+                {
                     result = chunkGenerator.GenerateNewChunk(job.Coordinates, job.LODIndex, chunkConfiguration, job.Token);
+
+                    Vector3 worldPos = new Vector3(
+                        job.Coordinates.x * chunkConfiguration.ChunkSize,
+                        job.Coordinates.y * chunkConfiguration.ChunkSize,
+                        job.Coordinates.z * chunkConfiguration.ChunkSize);
+
+                    Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
+                    chunkColorizer.UpdateChunkColors(result, transform, chunkConfiguration);
+                }
                 else
                 {
                     ChunkModificationJob mod = job.ModificationJob;

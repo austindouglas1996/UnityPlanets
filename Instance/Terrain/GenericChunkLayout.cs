@@ -65,12 +65,12 @@ public abstract class GenericChunkLayout : IChunkLayout
     /// The minimum amount of space that all previous active chunks should be disgarded as the follower
     /// has travelled too far for their positions to be relevant. 
     /// </summary>
-    public float MinChangeForFullReset { get; protected set; } = 200f;
+    public float MinChangeForFullReset { get; protected set; } = 500f;
 
     /// <summary>
     /// The minimum distance the player should walk before agreeing to update the layout.
     /// </summary>
-    public float MinChangeToUpdateLayout { get; set; } = 20f;
+    public float MinChangeToUpdateLayout { get; set; } = 300f;
 
     /// <summary>
     /// Returns whether the player has travelled far enough we should update the layout.
@@ -151,7 +151,7 @@ public abstract class GenericChunkLayout : IChunkLayout
         int distance = Mathf.Max(dx, dz);
 
         // Each tier is 12 chunks wide.
-        int lod = distance / 2;
+        int lod = distance / 12;
 
         // Clamp to a max LOD of 5, anything over 5 does not render.
         return Mathf.Min(lod, 5);

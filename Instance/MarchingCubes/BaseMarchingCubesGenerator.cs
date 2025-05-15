@@ -273,6 +273,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         mesh.triangles = data.Triangles.ToArray();
         mesh.normals = data.Normals.ToArray();
         mesh.uv = data.UVs.ToArray();
+        mesh.colors = data.VerticeColors;
         mesh.RecalculateBounds();
 
         return mesh;
@@ -289,6 +290,8 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
 
         float iso = Options.ISOLevel;
 
+        float[] values = new float[8];
+
         for (int x = 0; x < chunkSize; x += step)
         {
             for (int y = 0; y < chunkSize; y += step)
@@ -296,7 +299,6 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
                 for (int z = 0; z < chunkSize; z += step)
                 {
                     // Sample the 8 corners of a voxel cube
-                    float[] values = new float[8];
                     for (int i = 0; i < 8; i++)
                     {
                         Vector3 offset = CornerOffsets[i]; // defined below
