@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TMPro;
 using Unity.VisualScripting;
 using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
@@ -51,8 +52,57 @@ public class ChunkManager : MonoBehaviour
     /// </summary>
     private bool IsInitialized = false;
 
+    private TextMeshProUGUI debugText;
+
+    private void Start()
+    {
+        // Create Canvas
+        GameObject canvasObj = new GameObject("RuntimeCanvas");
+        Canvas canvas = canvasObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+
+        // Attach to camera so it moves with it
+        Camera mainCamera = Camera.main;
+        if (mainCamera != null)
+        {
+            canvasObj.transform.SetParent(mainCamera.transform);
+            canvasObj.transform.localPosition = new Vector3(0, 0, 20); // 2 units in front of camera
+            canvasObj.transform.localRotation = Quaternion.identity;
+        }
+
+        RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+        canvasRect.sizeDelta = new Vector2(10, 10); // size of the canvas in world units
+
+        // Create Text object
+        GameObject textObj = new GameObject("ChunkText", typeof(RectTransform));
+        textObj.transform.SetParent(canvasObj.transform, false);
+
+        debugText = textObj.AddComponent<TextMeshProUGUI>();
+        debugText.fontSize = 2; // smaller font size for world space
+        debugText.color = Color.white;
+        debugText.alignment = TextAlignmentOptions.Center;
+        debugText.text = "Active Chunks: 0";
+
+        RectTransform rectTransform = debugText.rectTransform;
+        rectTransform.sizeDelta = new Vector2(50, 80);
+        rectTransform.anchoredPosition = Vector2.zero;
+    }
+
+    private float firstChunk = -1;
+
     private async void Update()
     {
+        if (Time.time > 20f)
+            return;
+
+        if (firstChunk == -1 && Chunks.Count > 0)
+            firstChunk = Time.time;
+
+        debugText.text = $"" +
+            $"Active Chunks: {Chunks.Count}\n" +
+            $"First Chunk: {firstChunk:F1} sec\n" +
+            $"Total Time: {Time.time:F1} sec";
+
         if (Layout.ShouldUpdateLayout(Follower.position))
         {
             await UpdateChunks();
