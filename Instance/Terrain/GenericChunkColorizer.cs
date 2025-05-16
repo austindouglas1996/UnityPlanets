@@ -4,7 +4,7 @@ using static UnityEngine.Rendering.STP;
 
 public abstract class GenericChunkColorizer : IChunkColorizer
 {
-    public Color[] GenerateVertexColors(MeshData meshData, Matrix4x4 localToWorld, float[,] surfaceMap, IChunkConfiguration configuration)
+    public Color[] GenerateVertexColors(MeshData meshData, Matrix4x4 localToWorld, IChunkConfiguration configuration)
     {
         Color[] colors = new Color[meshData.Vertices.Count];
         var sortedBiomes = configuration.Biomes.OrderBy(b => b.MinSurface).ToList();
@@ -48,7 +48,7 @@ public abstract class GenericChunkColorizer : IChunkColorizer
             return;
 
         // Base color.
-        var colors = GenerateVertexColors(chunk.MeshData, localToWorld, chunk.SurfaceMap, config);
+        var colors = GenerateVertexColors(chunk.MeshData, localToWorld, config);
 
         // Modifications
         foreach (ITerrainModifier modifier in config.Modifiers)

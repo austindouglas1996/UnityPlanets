@@ -11,7 +11,7 @@ public class ChunkRenderer : MonoBehaviour
     public bool AutomaticallyHideChunksOutOfView = true;
 
     private ChunkManager chunkManager;
-    private ChunkGenerationQueue generationQueue;
+    public ChunkGenerationQueue generationQueue;
 
     private CancellationTokenSource cancellationToken;
 

@@ -92,6 +92,7 @@ public class FoliageGenerator : MonoBehaviour
 
     private List<TrianglePOS> GetRandomPositionsInTriangles(ChunkData data, Matrix4x4 matrix, int multiply = 1, bool alignY = true)
     {
+        /*
         List<TrianglePOS> positions = new List<TrianglePOS>();
 
         try
@@ -160,6 +161,8 @@ public class FoliageGenerator : MonoBehaviour
         }
 
         return positions;
+        */
+        return null;
     }
 
     /// <summary>

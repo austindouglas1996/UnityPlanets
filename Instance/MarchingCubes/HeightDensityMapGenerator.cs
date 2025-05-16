@@ -9,73 +9,52 @@ public class HeightDensityMapGenerator : GenericDensityMapGenerator
     {
     }
 
-    protected override float GetValueForWorldPosition(float worldX, float worldY, float worldZ)
+    protected override float GetHeightForWorldPosition(float worldX, float worldZ)
     {
-        Vector3 worldPos = new Vector3(worldX, worldY, worldZ);
+        float x = worldX + Options.Seed;
+        float z = worldZ + Options.Seed;
 
-        // CONTINENT SHAPE: where oceans, landmasses are
-        float continentNoise = Perlin.Fbm(
-            (worldX + Options.Seed) * Options.ContinentFrequency,
-            (worldZ + Options.Seed) * Options.ContinentFrequency,
-            3
-        );
-        continentNoise = Mathf.Clamp01((continentNoise + 1f) * 0.5f);
-        continentNoise = Mathf.SmoothStep(0f, 1f, continentNoise);
+        // CONTINENT SHAPE
+        float continentNoise = Perlin.Fbm(x * Options.ContinentFrequency, z * Options.ContinentFrequency, 3);
+        continentNoise = Mathf.SmoothStep(0f, 1f, (continentNoise + 1f) * 0.5f);
 
-        // DETAIL NOISE: small hills and bumps
-        float detailNoise = Perlin.Fbm(
-            (worldX + Options.Seed + 1234) * Options.DetailFrequency,
-            (worldZ + Options.Seed + 1234) * Options.DetailFrequency,
-            6
-        );
+        // DETAIL
+        float detailNoise = Perlin.Fbm((x + 1234f) * Options.DetailFrequency, (z + 1234f) * Options.DetailFrequency, 3);
 
-        // FLATNESS NOISE: makes terrain flatter where needed
-        float flatness = Perlin.Fbm(
-            (worldX + Options.Seed + 5555) * Options.FlatnessFrequency,
-            (worldZ + Options.Seed + 5555) * Options.FlatnessFrequency,
-            4
-        );
+        // FLATNESS
+        float flatness = Perlin.Fbm((x + 5555f) * Options.FlatnessFrequency, (z + 5555f) * Options.FlatnessFrequency, 2);
         flatness = Mathf.Clamp01((flatness + 1f) * 0.5f);
-        flatness = Mathf.Pow(1f - flatness, Options.FlatnessStrength); 
+        flatness = Mathf.Pow(1f - flatness, Options.FlatnessStrength);
 
-        // MOUNTAIN MASK: Where mountains *can* appear
-        float mountainMask = Perlin.Fbm(
-            (worldX + Options.Seed + 9999) * 0.001f, 
-            (worldZ + Options.Seed + 9999) * 0.001f,
-            3
-        );
-        mountainMask = Mathf.Clamp01((mountainMask + 1f) * 0.5f);  // normalize
+        // MOUNTAIN MASK
+        float mountainMask = Perlin.Fbm((x + 9999f) * 0.001f, (z + 9999f) * 0.001f, 2);
+        mountainMask = Mathf.Clamp01((mountainMask + 1f) * 0.5f);
+        float mountainWeight = Mathf.SmoothStep(0.85f, 1f, mountainMask);
 
-        // Should we allow mountains here?
-        bool allowMountains = mountainMask > 0.9f;
+        // MOUNTAIN NOISE
+        float mountainNoise = Perlin.Fbm((x + 999f) * Options.MountainFrequency, (z + 999f) * Options.MountainFrequency, 3);
+        mountainNoise = Mathf.Pow(mountainNoise, Options.MountainSharpness) * mountainWeight;
 
-        // Now only build mountain noise if allowed
-        float mountainNoise = 0f;
-        if (allowMountains)
-        {
-            mountainNoise = Perlin.Fbm(
-                (worldX + Options.Seed + 999) * Options.MountainFrequency,
-                (worldZ + Options.Seed + 999) * Options.MountainFrequency,
-                5
-            );
-            mountainNoise = Mathf.Pow(mountainNoise, Options.MountainSharpness);  // sharper peaks
-        }
-
-        // Calculate the terrain height at this (X,Z)
         float rawTerrainHeight =
-            continentNoise * Options.ContinentAmplitude +           // base continents
-            mountainNoise * Options.MountainAmplitude +             // mountains (only in mask zones)
-            detailNoise * Options.DetailAmplitude * flatness;       // detail bumps scaled by flatness
+            continentNoise * Options.ContinentAmplitude +
+            mountainNoise * Options.MountainAmplitude +
+            detailNoise * Options.DetailAmplitude * flatness;
 
-        float normalizedHeight = Mathf.InverseLerp(0f, Options.ContinentAmplitude + Options.MountainAmplitude, rawTerrainHeight);
+        // Normalize + remap
+        float normalizedHeight = rawTerrainHeight / (Options.ContinentAmplitude + Options.MountainAmplitude);
         float remappedHeight = Options.TerrainShapeCurve.Evaluate(normalizedHeight);
-
         float finalHeight = remappedHeight * Options.TotalHeightScale;
 
-        float value = -(worldY - finalHeight);
-
-        return value;
+        return finalHeight;
     }
+
+    protected override float GetValueForWorldPosition(float worldX, float worldY, float worldZ)
+    {
+        return -(worldY - GetHeightForWorldPosition(worldX,worldZ));
+    }
+
+    
+
 
 
     public override MeshData GenerateMeshData(float[,,] densityMap, Vector3 chunkOffset, int lodIndex = 5)

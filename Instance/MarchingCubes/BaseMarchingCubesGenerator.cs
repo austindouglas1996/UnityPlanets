@@ -149,7 +149,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         }
 
         MeshData data = new MeshData(lodIndex, Vertices, Triangles, UVs);
-        Flatten(densityMap, data);
+        //Flatten(densityMap, data);
 
         return data;
     }
@@ -282,7 +282,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     private System.Random random = new System.Random();
     public bool ShouldGenerateChunk(Vector3Int chunkCoords, int chunkSize)
     {
-        int step = chunkSize / 4; // Check every 1/4th of the chunk
+        int step = chunkSize / 2; // Check every 1/4th of the chunk
 
         int worldX = chunkCoords.x * chunkSize;
         int worldY = chunkCoords.y * chunkSize;
@@ -298,6 +298,9 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
             {
                 for (int z = 0; z < chunkSize; z += step)
                 {
+                    bool hasAbove = false;
+                    bool hasBelow = false;
+
                     // Sample the 8 corners of a voxel cube
                     for (int i = 0; i < 8; i++)
                     {
@@ -306,18 +309,12 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
                         int sy = (int)(worldY + y + offset.y * step);
                         int sz = (int)(worldZ + z + offset.z * step);
 
-                        values[i] = GetValueForWorldPosition(sx, sy, sz);
-                    }
-
-                    // Check for surface intersection
-                    bool hasAbove = false, hasBelow = false;
-                    foreach (float v in values)
-                    {
+                        float v = GetValueForWorldPosition(sx, sy, sz);
                         if (v >= iso) hasAbove = true;
-                        if (v < iso) hasBelow = true;
+                        else hasBelow = true;
 
                         if (hasAbove && hasBelow)
-                            return true; // surface crosses this cube
+                            return true; // surface detected
                     }
                 }
             }
@@ -337,6 +334,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="worldZ"></param>
     /// <returns></returns>
     protected abstract float GetValueForWorldPosition(float worldX, float worldY, float worldZ);
+    protected abstract float GetHeightForWorldPosition(float worldX, float worldZ);
 
     /// <summary>
     /// Sample a world position to find the normals for lighting.

@@ -11,30 +11,48 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
     public override DensityMapData Generate(int chunkSize, Vector3Int chunkCoordinates, int lodIndex)
     {
         int stepSize = 1 << lodIndex;
+        int limit = chunkSize + 1;
 
-        Vector3Int size = new Vector3Int(chunkSize, chunkSize, chunkSize);
         DensityMapData mapData = CreateEmptyChunk(chunkSize, lodIndex);
+        var densityMap = mapData.DensityMap;
 
-        if (!ShouldGenerateChunk(chunkCoordinates, chunkSize))
+        if (!ShouldGenerateChunk(chunkCoordinates, 16))
         {
             return mapData;
         }
 
-        for (int x = 0; x < size.x + 1; x += stepSize)
+        int baseX = chunkCoordinates.x * chunkSize;
+        int baseY = chunkCoordinates.y * chunkSize;
+        int baseZ = chunkCoordinates.z * chunkSize;
+
+        float[,] heightCache = new float[limit, limit];
+
+        // First pass: calculate height at each (x,z)
+        for (int x = 0; x < limit; x += stepSize)
         {
-            for (int y = 0; y < size.y + 1; y += stepSize)
+            int worldX = baseX + x;
+            for (int z = 0; z < limit; z += stepSize)
             {
-                for (int z = 0; z < size.z + 1; z += stepSize)
+                int worldZ = baseZ + z;
+                heightCache[x, z] = GetHeightForWorldPosition(worldX, worldZ);
+            }
+        }
+
+        // Second pass: fill the 3D density map
+        for (int x = 0; x < limit; x += stepSize)
+        {
+            int worldX = baseX + x;
+            for (int y = 0; y < limit; y += stepSize)
+            {
+                int worldY = baseY + y;
+                for (int z = 0; z < limit; z += stepSize)
                 {
-                    int worldX = chunkCoordinates.x * size.x + x;
-                    int worldY = chunkCoordinates.y * size.y + y;
-                    int worldZ = chunkCoordinates.z * size.z + z;
+                    int worldZ = baseZ + z;
 
-                    float val = GetValueForWorldPosition(worldX, worldY, worldZ);
-                    mapData.DensityMap[x, y, z] = val;
+                    float height = heightCache[x, z];
+                    float val = -(worldY - height); // same shape logic
 
-                    if (mapData.SurfaceMap[x, z] < 0f && val > Options.ISOLevel)
-                        mapData.SurfaceMap[x, z] = y - 1;
+                    densityMap[x, y, z] = val;
                 }
             }
         }
@@ -42,25 +60,11 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
         return mapData;
     }
 
+
     private DensityMapData CreateEmptyChunk(int size, int lodIndex)
     {
         float[,,] densityMap = new float[size + 1, size + 1, size + 1];
-        for (int x = 0; x <= size; x++)
-            for (int y = 0; y <= size; y++)
-                for (int z = 0; z <= size; z++)
-                    densityMap[x, y, z] = 0; // fully empty
 
-        float[,] surfaceMap = new float[size + 1, size + 1];
-        for (int x = 0; x <= size; x++)
-            for (int z = 0; z <= size; z++)
-                surfaceMap[x, z] = -1f;
-
-        float[,,] foliageMask = new float[size + 1, size + 1, size + 1];
-        for (int x = 0; x <= size; x++)
-            for (int y = 0; y <= size; y++)
-                for (int z = 0; z <= size; z++)
-                    foliageMask[x, y, z] = 1f; // still allow trees, etc.
-
-        return new DensityMapData(densityMap, surfaceMap, foliageMask, lodIndex);
+        return new DensityMapData(densityMap,lodIndex);
     }
 }

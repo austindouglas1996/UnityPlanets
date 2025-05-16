@@ -5,6 +5,7 @@ using UnityEngine;
 using System.Threading;
 using System.Collections.ObjectModel;
 using NUnit.Framework.Interfaces;
+using System.Text;
 
 public class ChunkGenerationQueue
 {
@@ -66,10 +67,15 @@ public class ChunkGenerationQueue
         this.chunkConfiguration = configuration;
         this.cancellationToken = token;
 
-        for (int i = 0; i < 16; i++)
+        for (int i = 0; i < 12; i++)
         {
             workerTasks.Add(Task.Run(() => WorkerLoop(cancellationToken)));
         }
+    }
+
+    public int GetQueueCount
+    {
+        get { return generationQueue.Count; }
     }
 
     /// <summary>
@@ -108,9 +114,16 @@ public class ChunkGenerationQueue
 
             ChunkGenerationJob newJob = new(coordinates, LODIndex, new CancellationTokenSource(), null);
 
-            // Register job as active
-            pendingJobs[coordinates] = newJob;
-            generationQueue.Enqueue(newJob, GetPriorityOfChunk(coordinates));
+            try
+            {
+                // Register job as active
+                pendingJobs[coordinates] = newJob;
+                generationQueue.Enqueue(newJob, GetPriorityOfChunk(coordinates));
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError(ex);
+            }
 
             return newJob.Completion.Task;
         }
@@ -189,7 +202,13 @@ public class ChunkGenerationQueue
                 {
                     result = chunkGenerator.GenerateNewChunk(job.Coordinates, job.LODIndex, chunkConfiguration, job.Token);
 
-    
+                    Vector3 worldPos = new Vector3(
+                                        job.Coordinates.x * chunkConfiguration.ChunkSize,
+                                        job.Coordinates.y * chunkConfiguration.ChunkSize,
+                                        job.Coordinates.z * chunkConfiguration.ChunkSize);
+
+                    Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
+                    chunkColorizer.UpdateChunkColors(result, transform, chunkConfiguration);
                 }
                 else
                 {

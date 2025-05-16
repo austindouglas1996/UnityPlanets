@@ -90,18 +90,38 @@ public class ChunkManager : MonoBehaviour
 
     private float firstChunk = -1;
 
+    private Queue<int> queueHistory = new Queue<int>();
+    private const int maxQueueHistory = 30; // Store last 30 frames
+    public float timeStop = 20f;
+
+
     private async void Update()
     {
-        if (Time.time > 20f)
-            return;
+        if (Time.time < timeStop)
+        {
+            if (firstChunk == -1 && Chunks.Count > 0)
+                firstChunk = Time.time;
 
-        if (firstChunk == -1 && Chunks.Count > 0)
-            firstChunk = Time.time;
+            int currentQueueCount = this.Renderer.generationQueue.GetQueueCount;
+            queueHistory.Enqueue(currentQueueCount);
 
-        debugText.text = $"" +
-            $"Active Chunks: {Chunks.Count}\n" +
-            $"First Chunk: {firstChunk:F1} sec\n" +
-            $"Total Time: {Time.time:F1} sec";
+            if (queueHistory.Count > maxQueueHistory)
+                queueHistory.Dequeue();
+
+            int maxQueue = 0, sumQueue = 0;
+            foreach (var count in queueHistory)
+            {
+                sumQueue += count;
+                if (count > maxQueue) maxQueue = count;
+            }
+            float avgQueue = (float)sumQueue / queueHistory.Count;
+
+            debugText.text = $"" +
+                $"Active Chunks: {Chunks.Count}\n" +
+                $"First Chunk: {firstChunk:F1} sec\n" +
+                $"Total Time: {Time.time:F1} sec\n" +
+                $"Queue: {currentQueueCount} (avg: {avgQueue:F1}, max: {maxQueue})";
+        }
 
         if (Layout.ShouldUpdateLayout(Follower.position))
         {
