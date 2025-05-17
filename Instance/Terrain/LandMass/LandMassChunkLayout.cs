@@ -13,9 +13,4 @@ public class LandMassChunkLayout : GenericChunkLayout
         Configuration = configuration;
         Generator = generator.CreateMapGenerator(configuration);
     }
-
-    protected override ChunkResponse GetChunkResponse(Vector3Int followerCoordinates, Vector3Int coordinates)
-    {
-        return ChunkResponse.Surface;
-    }
 }

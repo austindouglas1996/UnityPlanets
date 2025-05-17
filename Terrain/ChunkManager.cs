@@ -123,7 +123,7 @@ public class ChunkManager : MonoBehaviour
                 $"Queue: {currentQueueCount} (avg: {avgQueue:F1}, max: {maxQueue})";
         }
 
-        if (Layout.ShouldUpdateLayout(Follower.position))
+        if (Layout.ShouldUpdateLayout())
         {
             await UpdateChunks();
         }
@@ -198,9 +198,11 @@ public class ChunkManager : MonoBehaviour
 
                     Vector3Int neighborCoord = hitPosCoord + new Vector3Int(x, y, z);
 
-                    if (Layout.PreviousActiveChunks.TryGetValue(neighborCoord, out var chunk))
+                    if (Layout.PreviousActiveChunks.Contains(neighborCoord))
                     {
-                        ChunkController controller = Chunks[chunk].Controller;
+                        ChunkRenderData chunk = this.Chunks[neighborCoord];
+
+                        ChunkController controller = chunk.Controller;
                         Bounds chunkBounds = new Bounds(controller.transform.position + chunkSize * bufferMultiplier, chunkSize);
 
                         if (brushBounds.Intersects(chunkBounds))
@@ -225,12 +227,7 @@ public class ChunkManager : MonoBehaviour
         layoutCts.Cancel();
         layoutCts = new CancellationTokenSource();
 
-        Vector3Int followerChunkPos = new Vector3Int(
-            Mathf.FloorToInt(Follower.position.x / 16),
-            Mathf.FloorToInt(Follower.position.y / 16),
-            Mathf.FloorToInt(Follower.position.z / 16));
-
-        var bounds = Layout.GetDesiredChunkBounds(Follower.position);
+        var bounds = Layout.GetActiveChunksAroundFollower();
         var chunkPositions = new List<Vector3Int>();
 
         int chunks = 0;
@@ -244,7 +241,7 @@ public class ChunkManager : MonoBehaviour
                 chunks = 0;
             }
 
-            Renderer.UpdateOrRequestChunk(pos, followerChunkPos, Layout.GetRenderDetail(followerChunkPos, pos));
+            Renderer.UpdateOrRequestChunk(pos, Layout.GetRenderDetail(pos));
         }
 
         Debug.Log("Finished layout.");

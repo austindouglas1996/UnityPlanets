@@ -5,38 +5,6 @@ using System.Threading;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A structure class to help with a simple response from <see cref="GetActiveChunkCoordinates(Vector3)"/>.
-/// </summary>
-public class ChunkLayoutResponse
-{
-    public ChunkLayoutResponse(HashSet<ChunkLayoutEntryInfo> active, HashSet<Vector3Int> remove)
-    {
-        this.ActiveChunks = active;
-        this.RemoveChunks = remove;
-    }
-
-    public HashSet<ChunkLayoutEntryInfo> ActiveChunks;
-    public HashSet<Vector3Int> RemoveChunks;
-}
-
-/// <summary>
-/// A structure to hold information on a chunks coordinates, and its LOD.
-/// </summary>
-public class ChunkLayoutEntryInfo
-{
-    public ChunkLayoutEntryInfo(Vector3Int coordinates, int lod, bool isStale = false) 
-    {
-        this.Coordinates = coordinates;
-        this.LOD = lod;
-        this.IsStale = isStale;
-    }
-
-    public Vector3Int Coordinates {  get; set; }
-    public int LOD;
-    public bool IsStale { get; private set; }
-}
-
-/// <summary>
 /// Defines the layout and visibility logic for chunks in the terrain system.
 /// Used to determine which chunks should be active and at what level of detail (LOD).
 /// </summary>
@@ -45,27 +13,40 @@ public interface IChunkLayout
     /// <summary>
     /// A list of previously active chunks.
     /// </summary>
-    HashSet<Vector3Int> PreviousActiveChunks { get; }
+    BoundsInt PreviousActiveChunks { get; }
+
+    /// <summary>
+    /// Gets or sets the follower.
+    /// </summary>
+    Transform Follower { get; set; }
+
+    /// <summary>
+    /// Gets or sets the world position of the follower in a thread-safe way.
+    /// </summary>
+    Vector3 FollowerWorldPosition { get; set; }
+
+    /// <summary>
+    /// Gets the follower position in world coordinates.
+    /// </summary>
+    Vector3Int FollowerCoordinates { get; }
 
     /// <summary>
     /// Simple function on whether the layout should be updated.
     /// </summary>
-    bool ShouldUpdateLayout(Vector3 followerPosition);
+    bool ShouldUpdateLayout();
 
     /// <summary>
-    /// Returns an enumerable of chunk coordinates that should be active, or removed.
+    /// Retrieves the chunks around the follower based on chunk configuration using a BoundsInt to save on
+    /// disk and memory space for fast collection speeds.
     /// </summary>
-    /// <param name="followerPosition"></param>
     /// <returns></returns>
-    IAsyncEnumerable<ChunkLayoutEntryInfo> StreamChunkLayoutUpdate(Vector3 followerPosition, [EnumeratorCancellation] CancellationToken token = default);
-    BoundsInt GetDesiredChunkBounds(Vector3 followerPosition);
+    BoundsInt GetActiveChunksAroundFollower(bool initial = false);
 
     /// <summary>
     /// Determines the level of detail (LOD) that should be used for a given chunk
     /// based on its distance to the followed object.
     /// </summary>
-    /// <param name="followerCoordinates">The chunk coordinate of the follower (e.g., player or camera).</param>
     /// <param name="chunkCoordinate">The chunk coordinate being evaluated.</param>
     /// <returns>An integer representing the LOD level (lower = higher detail).</returns>
-    int GetRenderDetail(Vector3Int followerCoordinates, Vector3Int chunkCoordinate);
+    int GetRenderDetail(Vector3Int chunkCoordinate);
 }

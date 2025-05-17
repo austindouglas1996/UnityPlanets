@@ -53,7 +53,7 @@ public class ChunkRenderer : MonoBehaviour
         this.generationQueue = new ChunkGenerationQueue(this.chunkManager.Layout, this, this.chunkManager.Generator, this.chunkManager.Colorizer, this.chunkManager.Configuration, cancellationToken.Token);
     }
 
-    public void UpdateOrRequestChunk(Vector3Int coordinate, Vector3Int followerCoord, int lodIndex)
+    public void UpdateOrRequestChunk(Vector3Int coordinate, int lodIndex)
     {
         if (this.chunkManager.Chunks.TryGetValue(coordinate, out var chunk))
         {
@@ -65,7 +65,7 @@ public class ChunkRenderer : MonoBehaviour
             }
         }
 
-        RequestGeneration(coordinate, followerCoord, lodIndex);
+        RequestGeneration(coordinate, lodIndex);
     }
 
     /// <summary>
@@ -113,9 +113,9 @@ public class ChunkRenderer : MonoBehaviour
     /// Request a chunk be generated based on a <see cref="ChunkController"/> data.
     /// </summary>
     /// <param name="controller"></param>
-    protected void RequestGeneration(Vector3Int coordinates, Vector3Int followerCoord, int lodIndex)
+    protected void RequestGeneration(Vector3Int coordinates, int lodIndex)
     {
-        var task = this.generationQueue.RequestChunkGeneration(coordinates, followerCoord, lodIndex);
+        var task = this.generationQueue.RequestChunkGeneration(coordinates, this.chunkManager.Layout.FollowerCoordinates, lodIndex);
         task.ContinueWith(t =>
         {
             if (t.Status != TaskStatus.RanToCompletion)
