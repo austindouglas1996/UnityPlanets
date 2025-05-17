@@ -8,6 +8,7 @@ using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
 using UnityEngine.InputSystem.XR;
 using VHierarchy.Libs;
+using static UnityEditor.PlayerSettings;
 
 /// <summary>
 /// Manages all active chunks in the world. Handles loading, unloading, re-coloring,
@@ -66,7 +67,7 @@ public class ChunkManager : MonoBehaviour
         if (mainCamera != null)
         {
             canvasObj.transform.SetParent(mainCamera.transform);
-            canvasObj.transform.localPosition = new Vector3(0, 0, 20); // 2 units in front of camera
+            canvasObj.transform.localPosition = new Vector3(-10, -5, 20); // 2 units in front of camera
             canvasObj.transform.localRotation = Quaternion.identity;
         }
 
@@ -78,7 +79,7 @@ public class ChunkManager : MonoBehaviour
         textObj.transform.SetParent(canvasObj.transform, false);
 
         debugText = textObj.AddComponent<TextMeshProUGUI>();
-        debugText.fontSize = 2; // smaller font size for world space
+        debugText.fontSize = 1; // smaller font size for world space
         debugText.color = Color.white;
         debugText.alignment = TextAlignmentOptions.Center;
         debugText.text = "Active Chunks: 0";
@@ -120,7 +121,7 @@ public class ChunkManager : MonoBehaviour
                 $"Active Chunks: {Chunks.Count}\n" +
                 $"First Chunk: {firstChunk:F1} sec\n" +
                 $"Total Time: {Time.time:F1} sec\n" +
-                $"Queue: {currentQueueCount} (avg: {avgQueue:F1}, max: {maxQueue})";
+                $"Queue: {currentQueueCount}\n";
         }
 
         this.UpdateLayout();
@@ -187,9 +188,9 @@ public class ChunkManager : MonoBehaviour
     public void ModifyTerrain(TerrainBrush brush, bool isAdding, float bufferMultiplier = 0.5f, CancellationToken token = default)
     {
         Bounds brushBounds = brush.GetBrushBounds();
-        Vector3 chunkSize = new Vector3(Configuration.ChunkSize, Configuration.ChunkSize, Configuration.ChunkSize);
+        Vector3 chunkSize = new Vector3(Configuration.ChunkSize, 16, Configuration.ChunkSize);
 
-        Vector3Int hitPosCoord = Layout.ToCoordinates(brush.WorldHitPoint);
+        Vector3Int hitPosCoord = Layout.ToCoordinates(brush.WorldHitPoint, 0);
 
         // Check all neighbors in a 3x3x3 cube around the hit position
         for (int x = -1; x <= 1; x++)
@@ -231,23 +232,52 @@ public class ChunkManager : MonoBehaviour
         layoutCts.Cancel();
         layoutCts = new CancellationTokenSource();
 
-        var bounds = Layout.GetActiveChunksAroundFollower();
-        var chunkPositions = new List<Vector3Int>();
-
         int chunks = 0;
 
-        foreach (var pos in bounds.allPositionsWithin)
+        for (int lod = 0; lod <= 5; lod++)
         {
-            chunks++;
-            if (chunks > 750)
-            {
-                await Task.Yield();
-                chunks = 0;
-            }
+            int chunkSize = Configuration.ChunkSize << lod;
+            int range = GetRangeForLOD(lod); // in chunks
 
-            Renderer.RequestGeneration(pos, Layout.GetRenderDetail(pos));
+            Vector3Int center = new Vector3Int(
+                Layout.FollowerCoordinates.x >> lod,
+                Layout.FollowerCoordinates.y >> lod,
+                Layout.FollowerCoordinates.z >> lod
+            );
+
+            if (range == 0)
+                continue;
+
+            for (int x = -range; x <= range; x++)
+                for (int z = -range; z <= range; z++)
+                    for (int y = -6; y <= 6; y++)
+                    {
+                        if (chunks > 150)
+                        {
+                            await Task.Yield();
+                            chunks = 0;
+                        }
+
+                        Vector3Int coord = center + new Vector3Int(x, 0, z);
+                        Renderer.RequestGeneration(coord, lod);
+                    }
         }
 
         Debug.Log("Finished layout.");
     }
+
+    private int GetRangeForLOD(int lod)
+    {
+        switch (lod)
+        {
+            case 0: return 0; // High detail near player
+            case 1: return 4;
+            case 2: return 4;
+            case 3: return 4;
+            case 4: return 1;
+            case 5: return 4;
+            default: return 0;
+        }
+    }
+
 }

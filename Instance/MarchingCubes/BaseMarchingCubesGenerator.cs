@@ -285,10 +285,10 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     private System.Random random = new System.Random();
     public bool ShouldGenerateChunk(Vector3Int chunkCoords, int chunkSize)
     {
-        int step = chunkSize / 2; // Check every 1/4th of the chunk
+        int step = chunkSize / 2;
 
         int worldX = chunkCoords.x * chunkSize;
-        int worldY = chunkCoords.y * chunkSize;
+        int worldY = chunkCoords.y * 16;
         int worldZ = chunkCoords.z * chunkSize;
 
         float iso = Options.ISOLevel;

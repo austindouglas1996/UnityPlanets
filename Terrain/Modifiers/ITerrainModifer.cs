@@ -6,7 +6,7 @@ public interface ITerrainModifier
 
 public interface IModifyDensity : ITerrainModifier
 {
-    void ModifyDensity(ref float[,,] densityMap, Vector3Int coordinates, DensityMapOptions options);
+    void ModifyDensity(ref DensityMap densityMap, Vector3Int coordinates, DensityMapOptions options);
 }
 
 public interface IModifyColor : ITerrainModifier

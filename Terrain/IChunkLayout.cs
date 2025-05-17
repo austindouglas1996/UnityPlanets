@@ -36,25 +36,18 @@ public interface IChunkLayout
     bool ShouldUpdateLayout();
 
     /// <summary>
-    /// Retrieves the chunks around the follower based on chunk configuration using a BoundsInt to save on
-    /// disk and memory space for fast collection speeds.
-    /// </summary>
-    /// <returns></returns>
-    BoundsInt GetActiveChunksAroundFollower(bool initial = false);
-
-    /// <summary>
     /// Convert a vector into world position.
     /// </summary>
     /// <param name="coordinates"></param>
     /// <returns></returns>
-    Vector3 ToWorld(Vector3Int coordinates);
+    Vector3 ToWorld(Vector3Int coordinates, int lodIndex);
 
     /// <summary>
     /// Convert a vector into coordinates based on chunkSize.
     /// </summary>
     /// <param name="world"></param>
     /// <returns></returns>
-    Vector3Int ToCoordinates(Vector3 world);
+    Vector3Int ToCoordinates(Vector3 world, int lodIndex);
 
     /// <summary>
     /// Determines the level of detail (LOD) that should be used for a given chunk

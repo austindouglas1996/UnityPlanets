@@ -33,15 +33,14 @@ public abstract class GenericChunkGenerator : IChunkGenerator
         var gen = CreateMapGenerator(config);
         var map = gen.Generate(config.ChunkSize, coordinates, lodIndex);
 
-        /*
         foreach (var modifier in config.Modifiers)
         {
-            if (modifier is IModifyDensity densityMod)
-                densityMod.ModifyDensity(ref map.DensityMap, coordinates, config.MapOptions);
+            //if (modifier is IModifyDensity densityMod)
+                //densityMod.ModifyDensity(ref map.DensityMap, coordinates, config.MapOptions);
 
-            if (modifier is IModifyFoliageMask foliageMod)
-                foliageMod.ModifyFoliageMask(ref map.FoliageMask, coordinates);
-        }*/
+            //if (modifier is IModifyFoliageMask foliageMod)
+                //foliageMod.ModifyFoliageMask(ref map.FoliageMask, coordinates);
+        }
 
         MeshData data = gen.GenerateMeshData(map.DensityMap, Vector3.zero, map.LODIndex);
         return new ChunkData(map.DensityMap, data);

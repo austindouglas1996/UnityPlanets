@@ -206,7 +206,7 @@ public class ChunkGenerationQueue
                 {
                     result = chunkGenerator.GenerateNewChunk(job.Coordinates, job.LODIndex, chunkConfiguration, job.Token);
 
-                    Vector3 worldPos = this.Layout.ToWorld(job.Coordinates);
+                    Vector3 worldPos = this.Layout.ToWorld(job.Coordinates, job.LODIndex);
 
                     Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
                     chunkColorizer.UpdateChunkColors(result, transform, chunkConfiguration);

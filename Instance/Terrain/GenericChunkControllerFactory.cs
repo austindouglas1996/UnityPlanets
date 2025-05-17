@@ -13,7 +13,7 @@ public abstract class GenericChunkControllerFactory : IChunkControllerFactory
         GameObject newGO = new GameObject();
         newGO.AddComponent<ChunkController>();
 
-        chunkPool = new ChunkPool(newGO, 2800, manager.transform);
+        chunkPool = new ChunkPool(newGO, 600, manager.transform);
     }
 
     protected ChunkPool Pool
@@ -27,14 +27,14 @@ public abstract class GenericChunkControllerFactory : IChunkControllerFactory
         get { return chunkManager; }
     }
 
-    public virtual ChunkController CreateChunkController(Vector3Int coordinates, CancellationToken cancellationToken)
+    public virtual ChunkController CreateChunkController(Vector3Int coordinates, int lodIndex, CancellationToken cancellationToken)
     {
         ChunkController newChunk = chunkPool.GetController();
-        newChunk.transform.position = this.chunkManager.Layout.ToWorld(coordinates);
+        newChunk.transform.position = this.chunkManager.Layout.ToWorld(coordinates, lodIndex);
         newChunk.transform.parent = chunkManager.transform;
 
         // Give 0 for the LOD as other LODS will not be rendered as objects.
-        newChunk.Initialize(this.chunkManager, coordinates, 0, cancellationToken);
+        newChunk.Initialize(this.chunkManager, coordinates, lodIndex, cancellationToken);
 
         return newChunk;
     }

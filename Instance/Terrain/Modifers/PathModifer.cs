@@ -73,7 +73,7 @@ public class PathModifer : IModifyDensity, IModifyColor, IModifyFoliageMask
         }
     }
 
-    public void ModifyDensity(ref float[,,] densityMap, Vector3Int coordinates, DensityMapOptions options)
+    public void ModifyDensity(ref DensityMap densityMap, Vector3Int coordinates, DensityMapOptions options)
     {
         foreach (var path in paths)
         {
@@ -119,11 +119,11 @@ public class PathModifer : IModifyDensity, IModifyColor, IModifyFoliageMask
         }
     }
 
-    private void ModifyDensity(PathEntry path, ref float[,,] densityMap, Vector3Int coordinates, DensityMapOptions options)
+    private void ModifyDensity(PathEntry path, ref DensityMap densityMap, Vector3Int coordinates, DensityMapOptions options)
     {
-        int sizeX = densityMap.GetLength(0);
-        int sizeY = densityMap.GetLength(1);
-        int sizeZ = densityMap.GetLength(2);
+        int sizeX = densityMap.SizeX;
+        int sizeY = densityMap.SizeY;
+        int sizeZ = densityMap.SizeZ;
 
         for (int x = 0; x < sizeX; x++)
             for (int y = 0; y < sizeY; y++)

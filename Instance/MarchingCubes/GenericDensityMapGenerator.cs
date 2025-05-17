@@ -8,21 +8,22 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
     {
     }
 
-    public override DensityMapData Generate(int chunkSize, Vector3Int chunkCoordinates, int lodIndex)
+    public override DensityMapData Generate(int baseChunkSize, Vector3Int chunkCoordinates, int lodIndex)
     {
         int stepSize = 1 << lodIndex;
+        int chunkSize = baseChunkSize << lodIndex;
         int limit = chunkSize + 1;
 
         DensityMapData mapData = CreateEmptyChunk(chunkSize, lodIndex);
         var densityMap = mapData.DensityMap;
 
-        if (!ShouldGenerateChunk(chunkCoordinates, 16))
+        if (!ShouldGenerateChunk(chunkCoordinates, chunkSize))
         {
             return mapData;
         }
 
         int baseX = chunkCoordinates.x * chunkSize;
-        int baseY = chunkCoordinates.y * chunkSize;
+        int baseY = chunkCoordinates.y * baseChunkSize;
         int baseZ = chunkCoordinates.z * chunkSize;
 
         float[,] heightCache = new float[limit, limit];
@@ -59,7 +60,6 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
 
         return mapData;
     }
-
 
     private DensityMapData CreateEmptyChunk(int size, int lodIndex)
     {

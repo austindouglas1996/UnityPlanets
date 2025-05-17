@@ -110,7 +110,7 @@ public class ChunkRenderer : MonoBehaviour
             if (t.Result.MeshData.Vertices.Count == 0)
                 return;
 
-            Vector3 worldPos = chunkManager.Layout.ToWorld(coordinates);
+            Vector3 worldPos = chunkManager.Layout.ToWorld(coordinates, lodIndex);
             Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
 
             // Generate mesh and apply color.
@@ -129,6 +129,13 @@ public class ChunkRenderer : MonoBehaviour
     private void SubmitNewChunk(ChunkRenderData chunkRenderData)
     {
         var coord = chunkRenderData.Coordinates;
+        var controller = chunkManager.Factory.CreateChunkController(coord, chunkRenderData.LOD, this.cancellationToken.Token);
+        chunkRenderData.Controller = controller;
+        chunkRenderData.RenderType = ChunkRenderType.GameObject;
+        chunkManager.Chunks[coord] = chunkRenderData;
+        controller.ApplyChunkData(chunkRenderData);
+
+        /*
         if (chunkRenderData.LOD == 0)
         {
             var controller = chunkManager.Factory.CreateChunkController(coord, this.cancellationToken.Token);
@@ -141,7 +148,7 @@ public class ChunkRenderer : MonoBehaviour
         {
             chunkRenderData.RenderType = ChunkRenderType.GPU;
             chunkRenderData.Controller = null;
-        }
+        }*/
         
         chunkManager.Chunks[coord] = chunkRenderData;
     }
@@ -158,7 +165,7 @@ public class ChunkRenderer : MonoBehaviour
             // GPU to GO.
             if (!ExistingIsGO && lod == 0)
             {
-                var controller = chunkManager.Factory.CreateChunkController(coord, this.cancellationToken.Token);
+                var controller = chunkManager.Factory.CreateChunkController(coord, lod, this.cancellationToken.Token);
                 chunkRenderData.Controller = controller;
                 chunkRenderData.RenderType = ChunkRenderType.GameObject;
 
