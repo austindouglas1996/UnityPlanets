@@ -35,6 +35,11 @@ public class ChunkGenerationQueue
     private Transform follower;
 
     /// <summary>
+    /// The layout used to help with generating chunks.
+    /// </summary>
+    private IChunkLayout Layout;
+
+    /// <summary>
     /// The generator used to generate.
     /// </summary>
     private IChunkGenerator chunkGenerator;
@@ -49,10 +54,12 @@ public class ChunkGenerationQueue
     /// </summary>
     private IChunkConfiguration chunkConfiguration;
 
+    private ChunkRenderer render;
+
     /// <summary>
     /// Initialize a new instance of the <see cref="ChunkGenerationQueue"/> class.
     /// </summary>
-    public ChunkGenerationQueue(Transform follower, IChunkGenerator chunkGenerator, IChunkColorizer colorizer, IChunkConfiguration configuration, CancellationToken token)
+    public ChunkGenerationQueue(Transform follower, IChunkLayout layout, ChunkRenderer render, IChunkGenerator chunkGenerator, IChunkColorizer colorizer, IChunkConfiguration configuration, CancellationToken token)
     {
         if (follower == null)
             throw new ArgumentNullException(nameof(follower));
@@ -62,12 +69,14 @@ public class ChunkGenerationQueue
             throw new ArgumentNullException(nameof(configuration));
 
         this.follower = follower;
+        this.Layout = layout;
         this.chunkGenerator = chunkGenerator;
         this.chunkColorizer = colorizer;
         this.chunkConfiguration = configuration;
         this.cancellationToken = token;
+        this.render = render;
 
-        for (int i = 0; i < 12; i++)
+        for (int i = 0; i < 6; i++)
         {
             workerTasks.Add(Task.Run(() => WorkerLoop(cancellationToken)));
         }
@@ -189,9 +198,12 @@ public class ChunkGenerationQueue
 
             if (job.Token.IsCancellationRequested)
             {
-                job.Completion.TrySetCanceled();
-                pendingJobs.Remove(job.Coordinates);
-                continue;
+                lock (queueLock)
+                {
+                    job.Completion.TrySetCanceled();
+                    pendingJobs.Remove(job.Coordinates);
+                    continue;
+                }
             }
 
             try
@@ -222,7 +234,11 @@ public class ChunkGenerationQueue
                 }
 
                 job.Completion.TrySetResult(result);
-                pendingJobs.Remove(job.Coordinates);
+
+                lock (queueLock)
+                {
+                    pendingJobs.Remove(job.Coordinates);
+                }
             }
             catch (OperationCanceledException)
             {

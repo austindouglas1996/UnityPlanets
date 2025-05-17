@@ -58,6 +58,7 @@ public interface IChunkLayout
     /// <param name="followerPosition"></param>
     /// <returns></returns>
     IAsyncEnumerable<ChunkLayoutEntryInfo> StreamChunkLayoutUpdate(Vector3 followerPosition, [EnumeratorCancellation] CancellationToken token = default);
+    BoundsInt GetDesiredChunkBounds(Vector3 followerPosition);
 
     /// <summary>
     /// Determines the level of detail (LOD) that should be used for a given chunk

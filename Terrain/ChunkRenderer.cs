@@ -50,7 +50,7 @@ public class ChunkRenderer : MonoBehaviour
         this.cancellationToken = new CancellationTokenSource();
         this.chunkManager = this.GetComponent<ChunkManager>();
 
-        this.generationQueue = new ChunkGenerationQueue(chunkManager.Follower, this.chunkManager.Generator, this.chunkManager.Colorizer, this.chunkManager.Configuration, cancellationToken.Token);
+        this.generationQueue = new ChunkGenerationQueue(chunkManager.Follower, this.chunkManager.Layout, this, this.chunkManager.Generator, this.chunkManager.Colorizer, this.chunkManager.Configuration, cancellationToken.Token);
     }
 
     public void UpdateOrRequestChunk(Vector3Int coordinate, int lodIndex)

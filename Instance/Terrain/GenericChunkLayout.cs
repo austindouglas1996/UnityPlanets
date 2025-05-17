@@ -88,6 +88,33 @@ public abstract class GenericChunkLayout : IChunkLayout
         return false;
     }
 
+    public BoundsInt GetDesiredChunkBounds(Vector3 followerPosition)
+    {  
+        // Set the new position.
+        this.LastFollowerPosition = followerPosition;
+
+        int chunkSize = Configuration.ChunkSize;
+
+        Vector3Int followerChunkPos = new Vector3Int(
+            Mathf.FloorToInt(followerPosition.x / chunkSize),
+            Mathf.FloorToInt(followerPosition.y / chunkSize),
+            Mathf.FloorToInt(followerPosition.z / chunkSize)
+        );
+
+        int horizontalRange = 96; // adjust based on LOD/draw distance
+        int verticalRange = 6;    // for flat terrain, Y can be narrow
+
+        Vector3Int min = followerChunkPos - new Vector3Int(horizontalRange, verticalRange, horizontalRange);
+        Vector3Int size = new Vector3Int(
+            horizontalRange * 2 + 1,
+            verticalRange * 2 + 1,
+            horizontalRange * 2 + 1
+        );
+
+        return new BoundsInt(min, size);
+    }
+
+
     /// <summary>
     /// Get a set of active that should be rendered but by streaming the results to reduce the process time.
     /// </summary>

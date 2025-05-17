@@ -225,16 +225,14 @@ public class ChunkManager : MonoBehaviour
         layoutCts.Cancel();
         layoutCts = new CancellationTokenSource();
 
-        await foreach (var entry in Layout.StreamChunkLayoutUpdate(Follower.position, layoutCts.Token))
-        {
-            // Is this chunk no longer active?
-            if (entry.IsStale)
-            {
-                this.Renderer.RemoveChunk(entry.Coordinates);
-                continue;
-            }
+        Vector3Int followerChunkPos = new Vector3Int(
+            Mathf.FloorToInt(Follower.position.x / 16),
+            Mathf.FloorToInt(Follower.position.y / 16),
+            Mathf.FloorToInt(Follower.position.z / 16));
 
-            Renderer.UpdateOrRequestChunk(entry.Coordinates, entry.LOD);
+        foreach (var pos in Layout.GetDesiredChunkBounds(Follower.position).allPositionsWithin)
+        {
+            Renderer.UpdateOrRequestChunk(pos, Layout.GetRenderDetail(followerChunkPos, pos));
         }
 
         Debug.Log("Finished layout.");
