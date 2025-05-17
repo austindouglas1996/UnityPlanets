@@ -23,7 +23,7 @@ public class SphereDensityMapGenerator : HeightDensityMapGenerator
         return (bumpyRadius - dist) * 0.05f;
     }
 
-    public override MeshData GenerateMeshData(float[,,] densityMap, Vector3 chunkOffset, int lodIndex = 6)
+    public override MeshData GenerateMeshData(DensityMap densityMap, Vector3 chunkOffset, int lodIndex = 6)
     {
         MeshData initialData = base.GenerateMeshData(densityMap, chunkOffset, lodIndex);
         Vector2[] uvs = new Vector2[initialData.Vertices.Count];

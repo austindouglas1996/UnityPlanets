@@ -4,6 +4,7 @@ using System.Drawing;
 using UnityEngine;
 using static FoliageGenerator;
 using static UnityEditor.Searcher.SearcherWindow.Alignment;
+using static UnityEngine.Mesh;
 
 /// <summary>
 /// Base class for implementing marching cube terrain generation.
@@ -43,13 +44,13 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="densityMap">3D density values for the chunk (includes +1 padding).</param>
     /// <param name="chunkOffset">World-space offset for this chunk's origin.</param>
     /// <returns>MeshData containing vertices, triangles, and optional UVs.</returns>
-    public virtual MeshData GenerateMeshData(float[,,] densityMap, Vector3 chunkOffset, int lodIndex = 5)
+    public virtual MeshData GenerateMeshData(DensityMap densityMap, Vector3 chunkOffset, int lodIndex = 5)
     {
         int stepSize = 1 << lodIndex;
 
-        int densityWidth = densityMap.GetLength(0);
-        int densityHeight = densityMap.GetLength(1);
-        int densityDepth = densityMap.GetLength(2);
+        int densityWidth = densityMap.SizeX;
+        int densityHeight = densityMap.SizeY;
+        int densityDepth = densityMap.SizeZ;
 
         int width = densityWidth - stepSize;
         int height = densityHeight - stepSize;
@@ -62,19 +63,19 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
             for (int y = 0; y < densityHeight; y += stepSize)
                 for (int z = 0; z < densityDepth; z += stepSize)
                 {
-                    float d = densityMap[x, y, z];
+                    float d = densityMap.Get(x,y,z);
                     if (d < minDensity) minDensity = d;
                     if (d > maxDensity) maxDensity = d;
                 }
 
         if (minDensity > Options.ISOLevel || maxDensity < Options.ISOLevel)
         {
-            return new MeshData(0, new(), new(), new());
+            return new MeshData(-1, new(), new(), new());
         }
 
         var Vertices = new List<Vector3>();
         var Triangles = new List<int>();
-        var UVs = new List<Vector2>(); // unused, can be removed maybe later
+        var UVs = new List<Vector2>(); // unused, can be removed if not used
 
         for (int x = 0; x < width; x += stepSize)
         {
@@ -93,7 +94,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
                         int cy = y + (int)offset.y;
                         int cz = z + (int)offset.z;
 
-                        cornerVals[i] = densityMap[cx, cy, cz];
+                        cornerVals[i] = densityMap.Get(cx, cy, cz);
                         cornerPos[i] = new Vector3(cx, cy, cz) + chunkOffset;
                     }
 
@@ -143,18 +144,20 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
                         Triangles.Add(baseIndex + 0);
                         Triangles.Add(baseIndex + 1);
                         Triangles.Add(baseIndex + 2);
+
                     }
                 }
             }
         }
 
         MeshData data = new MeshData(lodIndex, Vertices, Triangles, UVs);
+
         Flatten(densityMap, data);
 
         return data;
     }
 
-    private void Flatten(float[,,] densityMap, MeshData data)
+    private void Flatten(DensityMap densityMap, MeshData data)
     {
         List<Vector3> flatVertices = new List<Vector3>();
         List<Vector3> flatNormals = new List<Vector3>();
@@ -215,11 +218,11 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="chunkPos">Chunk position in chunk space.</param>
     /// <param name="hitPoint">World-space location the brush is applied to.</param>
     /// <param name="isAdding">If true, adds density; otherwise subtracts.</param>
-    public virtual void ModifyMapWithBrush(TerrainBrush brush, ref float[,,] densityMap, Vector3Int chunkPos, bool isAdding)
+    public virtual void ModifyMapWithBrush(TerrainBrush brush, ref DensityMap densityMap, Vector3Int chunkPos, bool isAdding)
     {
-        int width = densityMap.GetLength(0) - 1;
-        int height = densityMap.GetLength(1) - 1;
-        int depth = densityMap.GetLength(2) - 1;
+        int width = densityMap.SizeX - 1;
+        int height = densityMap.SizeY - 1;
+        int depth = densityMap.SizeZ - 1;
 
         Vector3 chunkWorldOrigin = new Vector3(
             chunkPos.x * width,
@@ -265,7 +268,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// </summary>
     /// <param name="data">The mesh data to convert.</param>
     /// <returns>A generated Unity Mesh.</returns>
-    public virtual Mesh GenerateMesh(float[,,] densityMap, MeshData data)
+    public virtual Mesh GenerateMesh(DensityMap densityMap, MeshData data)
     {
         Mesh mesh = new Mesh();
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
@@ -362,7 +365,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="pos"></param>
     /// <param name="densityMap"></param>
     /// <returns></returns>
-    private Vector3 SampleDensityGradientLOD0(Vector3 pos, float[,,] densityMap)
+    private Vector3 SampleDensityGradientLOD0(Vector3 pos, DensityMap densityMap)
     {
         float delta = 0.01f;
 
@@ -376,7 +379,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         return new Vector3(dx, dy, dz);
     }
 
-    private float SampleDensity(Vector3 pos, float[,,] densityMap)
+    private float SampleDensity(Vector3 pos, DensityMap densityMap)
     {
         int x0 = Mathf.FloorToInt(pos.x);
         int y0 = Mathf.FloorToInt(pos.y);
@@ -390,12 +393,12 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         float ty = pos.y - y0;
         float tz = pos.z - z0;
 
-        x0 = Mathf.Clamp(x0, 0, densityMap.GetLength(0) - 1);
-        x1 = Mathf.Clamp(x1, 0, densityMap.GetLength(0) - 1);
-        y0 = Mathf.Clamp(y0, 0, densityMap.GetLength(1) - 1);
-        y1 = Mathf.Clamp(y1, 0, densityMap.GetLength(1) - 1);
-        z0 = Mathf.Clamp(z0, 0, densityMap.GetLength(2) - 1);
-        z1 = Mathf.Clamp(z1, 0, densityMap.GetLength(2) - 1);
+        x0 = Mathf.Clamp(x0, 0, densityMap.SizeX - 1);
+        x1 = Mathf.Clamp(x1, 0, densityMap.SizeX - 1);
+        y0 = Mathf.Clamp(y0, 0, densityMap.SizeY - 1);
+        y1 = Mathf.Clamp(y1, 0, densityMap.SizeY - 1);
+        z0 = Mathf.Clamp(z0, 0, densityMap.SizeZ - 1);
+        z1 = Mathf.Clamp(z1, 0, densityMap.SizeZ - 1);
 
         float c000 = densityMap[x0, y0, z0];
         float c100 = densityMap[x1, y0, z0];

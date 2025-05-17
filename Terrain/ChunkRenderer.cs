@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Drawing;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -75,7 +76,7 @@ public class ChunkRenderer : MonoBehaviour
             Mesh mesh = this.chunkManager.Generator.GenerateMesh(t.Result, this.chunkManager.Configuration);
             ChunkRenderData renderData = new ChunkRenderData(controller.Coordinates, t.Result, mesh, controller.transform.localToWorldMatrix);
 
-            SubmitChunk(renderData);
+            SubmitExistingChunk(renderData);
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
@@ -116,7 +117,7 @@ public class ChunkRenderer : MonoBehaviour
             Mesh mesh = this.chunkManager.Generator.GenerateMesh(t.Result, this.chunkManager.Configuration);
             ChunkRenderData renderData = new ChunkRenderData(coordinates, t.Result, mesh, transform);
 
-            this.SubmitChunk(renderData);
+            this.SubmitNewChunk(renderData);
 
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
@@ -125,7 +126,27 @@ public class ChunkRenderer : MonoBehaviour
     /// Submit a chunk to be rendered into the world.
     /// </summary>
     /// <param name="chunkRenderData"></param>
-    public void SubmitChunk(ChunkRenderData chunkRenderData)
+    private void SubmitNewChunk(ChunkRenderData chunkRenderData)
+    {
+        var coord = chunkRenderData.Coordinates;
+        if (chunkRenderData.LOD == 0)
+        {
+            var controller = chunkManager.Factory.CreateChunkController(coord, this.cancellationToken.Token);
+            chunkRenderData.Controller = controller;
+            chunkRenderData.RenderType = ChunkRenderType.GameObject;
+            chunkManager.Chunks[coord] = chunkRenderData;
+            controller.ApplyChunkData(chunkRenderData);
+        }
+        else
+        {
+            chunkRenderData.RenderType = ChunkRenderType.GPU;
+            chunkRenderData.Controller = null;
+        }
+        
+        chunkManager.Chunks[coord] = chunkRenderData;
+    }
+
+    private void SubmitExistingChunk(ChunkRenderData chunkRenderData)
     {
         var coord = chunkRenderData.Coordinates;
         int lod = chunkRenderData.LOD;
@@ -164,21 +185,6 @@ public class ChunkRenderer : MonoBehaviour
                 chunkRenderData.RenderType = ChunkRenderType.GPU;
             }
         }
-        else if (lod == 0)
-        {
-            var controller = chunkManager.Factory.CreateChunkController(coord, this.cancellationToken.Token);
-            chunkRenderData.Controller = controller;
-            chunkRenderData.RenderType = ChunkRenderType.GameObject;
-            chunkManager.Chunks[coord] = chunkRenderData;
-            controller.ApplyChunkData(chunkRenderData);
-        }
-        else
-        {
-            chunkRenderData.RenderType = ChunkRenderType.GPU;
-            chunkRenderData.Controller = null;
-        }
-        
-        chunkManager.Chunks[coord] = chunkRenderData;
     }
 
     /// <summary>
