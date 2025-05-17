@@ -115,7 +115,7 @@ public class ChunkRenderer : MonoBehaviour
     /// <param name="controller"></param>
     protected void RequestGeneration(Vector3Int coordinates, int lodIndex)
     {
-        var task = this.generationQueue.RequestChunkGeneration(coordinates, this.chunkManager.Layout.FollowerCoordinates, lodIndex);
+        var task = this.generationQueue.RequestChunkGeneration(coordinates, lodIndex);
         task.ContinueWith(t =>
         {
             if (t.Status != TaskStatus.RanToCompletion)

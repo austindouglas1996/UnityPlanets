@@ -74,7 +74,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
 
         var Vertices = new List<Vector3>();
         var Triangles = new List<int>();
-        var UVs = new List<Vector2>(); // unused, can be removed if not used
+        var UVs = new List<Vector2>(); // unused, can be removed maybe later
 
         for (int x = 0; x < width; x += stepSize)
         {

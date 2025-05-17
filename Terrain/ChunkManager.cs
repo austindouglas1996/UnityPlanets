@@ -123,10 +123,18 @@ public class ChunkManager : MonoBehaviour
                 $"Queue: {currentQueueCount} (avg: {avgQueue:F1}, max: {maxQueue})";
         }
 
+        this.UpdateLayout();
+
         if (Layout.ShouldUpdateLayout())
         {
             await UpdateChunks();
         }
+    }
+
+    private void UpdateLayout()
+    {
+        this.Layout.Follower = this.Follower;
+        this.Layout.FollowerWorldPosition = this.Follower.position;
     }
 
     private void OnDisable()

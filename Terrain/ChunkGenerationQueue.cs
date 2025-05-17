@@ -97,7 +97,7 @@ public class ChunkGenerationQueue
     /// <param name="LODIndex"></param>
     /// <param name="generationTask"></param>
     /// <returns></returns>
-    public Task<ChunkData> RequestChunkGeneration(Vector3Int coordinates, Vector3Int followerCoord, int LODIndex)
+    public Task<ChunkData> RequestChunkGeneration(Vector3Int coordinates, int LODIndex)
     {
         lock (queueLock) 
         {
@@ -119,7 +119,7 @@ public class ChunkGenerationQueue
             {
                 // Register job as active
                 pendingJobs[coordinates] = newJob;
-                generationQueue.Enqueue(newJob, GetPriorityOfChunk(followerCoord, coordinates));
+                generationQueue.Enqueue(newJob, GetPriorityOfChunk(coordinates));
             }
             catch (Exception ex)
             {
@@ -248,10 +248,10 @@ public class ChunkGenerationQueue
     /// </summary>
     /// <param name="coordinates"></param>
     /// <returns></returns>
-    private int GetPriorityOfChunk(Vector3Int followerCoord, Vector3Int coordinates)
+    private int GetPriorityOfChunk(Vector3Int coordinates)
     {
-        int dx = Mathf.Abs(coordinates.x - followerCoord.x);
-        int dz = Mathf.Abs(coordinates.z - followerCoord.y);
+        int dx = Mathf.Abs(coordinates.x - this.Layout.FollowerCoordinates.x);
+        int dz = Mathf.Abs(coordinates.z - this.Layout.FollowerCoordinates.y);
 
         return Math.Max(dx, dz);
     }
