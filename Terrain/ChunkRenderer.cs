@@ -53,21 +53,6 @@ public class ChunkRenderer : MonoBehaviour
         this.generationQueue = new ChunkGenerationQueue(this.chunkManager.Layout, this, this.chunkManager.Generator, this.chunkManager.Colorizer, this.chunkManager.Configuration, cancellationToken.Token);
     }
 
-    public void UpdateOrRequestChunk(Vector3Int coordinate, int lodIndex)
-    {
-        if (this.chunkManager.Chunks.TryGetValue(coordinate, out var chunk))
-        {
-            // Same LOD, no changes.
-            if (chunk.LOD == lodIndex)
-            {
-                this.SubmitChunk(chunk);
-                return;
-            }
-        }
-
-        RequestGeneration(coordinate, lodIndex);
-    }
-
     /// <summary>
     /// Request a chunk be updated due to player modifications.
     /// </summary>
@@ -113,7 +98,7 @@ public class ChunkRenderer : MonoBehaviour
     /// Request a chunk be generated based on a <see cref="ChunkController"/> data.
     /// </summary>
     /// <param name="controller"></param>
-    protected void RequestGeneration(Vector3Int coordinates, int lodIndex)
+    public void RequestGeneration(Vector3Int coordinates, int lodIndex)
     {
         var task = this.generationQueue.RequestChunkGeneration(coordinates, lodIndex);
         task.ContinueWith(t =>
@@ -124,10 +109,7 @@ public class ChunkRenderer : MonoBehaviour
             if (t.Result.MeshData.Vertices.Count == 0)
                 return;
 
-            Vector3 worldPos = new Vector3(
-                coordinates.x * chunkManager.Configuration.ChunkSize,
-                coordinates.y * chunkManager.Configuration.ChunkSize,
-                coordinates.z * chunkManager.Configuration.ChunkSize);
+            Vector3 worldPos = chunkManager.Layout.ToWorld(coordinates);
             Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
 
             // Generate mesh and apply color.

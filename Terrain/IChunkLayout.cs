@@ -43,6 +43,20 @@ public interface IChunkLayout
     BoundsInt GetActiveChunksAroundFollower(bool initial = false);
 
     /// <summary>
+    /// Convert a vector into world position.
+    /// </summary>
+    /// <param name="coordinates"></param>
+    /// <returns></returns>
+    Vector3 ToWorld(Vector3Int coordinates);
+
+    /// <summary>
+    /// Convert a vector into coordinates based on chunkSize.
+    /// </summary>
+    /// <param name="world"></param>
+    /// <returns></returns>
+    Vector3Int ToCoordinates(Vector3 world);
+
+    /// <summary>
     /// Determines the level of detail (LOD) that should be used for a given chunk
     /// based on its distance to the followed object.
     /// </summary>

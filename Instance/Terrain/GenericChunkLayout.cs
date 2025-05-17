@@ -43,21 +43,25 @@ public abstract class GenericChunkLayout : IChunkLayout
     /// <summary>
     /// Gets or sets the follower world position to be thread safe.
     /// </summary>
-    public Vector3 FollowerWorldPosition { get; set; }
+    public Vector3 FollowerWorldPosition
+    {
+        get {  return followerWorldPosition; }
+        set
+        {
+            followerWorldPosition = value;
+            followerCoordinates = this.ToCoordinates(FollowerWorldPosition);
+        }
+    }
+    private Vector3 followerWorldPosition;
 
     /// <summary>
     /// Gets the chunk coordinates of the follower.
     /// </summary>
     public Vector3Int FollowerCoordinates
     {
-        get
-        {
-            return new Vector3Int(
-            Mathf.FloorToInt(FollowerWorldPosition.x / Configuration.ChunkSize),
-            Mathf.FloorToInt(FollowerWorldPosition.y / Configuration.ChunkSize),
-            Mathf.FloorToInt(FollowerWorldPosition.z / Configuration.ChunkSize));
-        }
+        get { return followerCoordinates; }
     }
+    private Vector3Int followerCoordinates;
 
     /// <summary>
     /// The last known follower position.
@@ -128,5 +132,31 @@ public abstract class GenericChunkLayout : IChunkLayout
 
         // Clamp to a max LOD of 5, anything over 5 does not render.
         return Mathf.Min(lod, 5);
+    }
+
+    /// <summary>
+    /// Return a set of coordinates to world position.
+    /// </summary>
+    /// <param name="coordinates"></param>
+    /// <returns></returns>
+    public Vector3 ToWorld(Vector3Int coordinates)
+    {
+        return new Vector3(
+                coordinates.x * Configuration.ChunkSize,
+                coordinates.y * Configuration.ChunkSize,
+                coordinates.z * Configuration.ChunkSize);
+    }
+
+    /// <summary>
+    /// Return a world position in world coordinates.
+    /// </summary>
+    /// <param name="world"></param>
+    /// <returns></returns>
+    public Vector3Int ToCoordinates(Vector3 world)
+    {
+        return new Vector3Int(
+                Mathf.FloorToInt(world.x / Configuration.ChunkSize),
+                Mathf.FloorToInt(world.y / Configuration.ChunkSize),
+                Mathf.FloorToInt(world.z / Configuration.ChunkSize));
     }
 }

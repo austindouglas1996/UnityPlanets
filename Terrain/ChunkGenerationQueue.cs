@@ -68,7 +68,7 @@ public class ChunkGenerationQueue
         this.cancellationToken = token;
         this.render = render;
 
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < 8; i++)
         {
             workerTasks.Add(Task.Run(() => WorkerLoop(cancellationToken)));
         }
@@ -119,7 +119,7 @@ public class ChunkGenerationQueue
             {
                 // Register job as active
                 pendingJobs[coordinates] = newJob;
-                generationQueue.Enqueue(newJob, GetPriorityOfChunk(coordinates));
+                generationQueue.Enqueue(newJob, LODIndex == 0 ? GetPriorityOfChunk(coordinates) : 999);
             }
             catch (Exception ex)
             {
@@ -206,10 +206,7 @@ public class ChunkGenerationQueue
                 {
                     result = chunkGenerator.GenerateNewChunk(job.Coordinates, job.LODIndex, chunkConfiguration, job.Token);
 
-                    Vector3 worldPos = new Vector3(
-                                        job.Coordinates.x * chunkConfiguration.ChunkSize,
-                                        job.Coordinates.y * chunkConfiguration.ChunkSize,
-                                        job.Coordinates.z * chunkConfiguration.ChunkSize);
+                    Vector3 worldPos = this.Layout.ToWorld(job.Coordinates);
 
                     Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
                     chunkColorizer.UpdateChunkColors(result, transform, chunkConfiguration);

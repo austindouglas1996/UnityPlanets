@@ -189,11 +189,7 @@ public class ChunkManager : MonoBehaviour
         Bounds brushBounds = brush.GetBrushBounds();
         Vector3 chunkSize = new Vector3(Configuration.ChunkSize, Configuration.ChunkSize, Configuration.ChunkSize);
 
-        Vector3Int hitPosCoord = new Vector3Int(
-            Mathf.FloorToInt(brush.WorldHitPoint.x / Configuration.ChunkSize),
-            Mathf.FloorToInt(brush.WorldHitPoint.y / Configuration.ChunkSize),
-            Mathf.FloorToInt(brush.WorldHitPoint.z / Configuration.ChunkSize)
-        );
+        Vector3Int hitPosCoord = Layout.ToCoordinates(brush.WorldHitPoint);
 
         // Check all neighbors in a 3x3x3 cube around the hit position
         for (int x = -1; x <= 1; x++)
@@ -243,13 +239,13 @@ public class ChunkManager : MonoBehaviour
         foreach (var pos in bounds.allPositionsWithin)
         {
             chunks++;
-            if (chunks > 1000)
+            if (chunks > 750)
             {
                 await Task.Yield();
                 chunks = 0;
             }
 
-            Renderer.UpdateOrRequestChunk(pos, Layout.GetRenderDetail(pos));
+            Renderer.RequestGeneration(pos, Layout.GetRenderDetail(pos));
         }
 
         Debug.Log("Finished layout.");

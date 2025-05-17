@@ -34,6 +34,14 @@ public class ChunkController : MonoBehaviour
             this.AddComponent<FoliageGenerator>();
     }
 
+    private void Start()
+    {
+        // Set the shader and material for this controller.
+        var meshRenderer = GetComponent<MeshRenderer>();
+        meshRenderer.material = new Material(Shader.Find("Shader Graphs/VertexColor"));
+        meshRenderer.material.SetFloat("_Smoothness", 0f);
+    }
+
     /// <summary>
     /// Initialize the base components used throughout this controller.
     /// </summary>
@@ -65,7 +73,6 @@ public class ChunkController : MonoBehaviour
 
         // Components.
         this.GetComponent<MeshFilter>().mesh = null;
-        this.GetComponent<MeshRenderer>().material = null;
         this.GetComponent<MeshCollider>().sharedMaterial = null;
     }
 
@@ -83,11 +90,6 @@ public class ChunkController : MonoBehaviour
 
             this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
             this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
-
-            // Set the shader and material for this controller.
-            var meshRenderer = GetComponent<MeshRenderer>();
-            meshRenderer.material = new Material(Shader.Find("Shader Graphs/VertexColor"));
-            meshRenderer.material.SetFloat("_Smoothness", 0f);
 
             //this.GetComponent<FoliageGenerator>().ApplyMap(renderData);
         }
