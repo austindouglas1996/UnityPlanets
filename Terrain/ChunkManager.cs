@@ -230,9 +230,21 @@ public class ChunkManager : MonoBehaviour
             Mathf.FloorToInt(Follower.position.y / 16),
             Mathf.FloorToInt(Follower.position.z / 16));
 
-        foreach (var pos in Layout.GetDesiredChunkBounds(Follower.position).allPositionsWithin)
+        var bounds = Layout.GetDesiredChunkBounds(Follower.position);
+        var chunkPositions = new List<Vector3Int>();
+
+        int chunks = 0;
+
+        foreach (var pos in bounds.allPositionsWithin)
         {
-            Renderer.UpdateOrRequestChunk(pos, Layout.GetRenderDetail(followerChunkPos, pos));
+            chunks++;
+            if (chunks > 1000)
+            {
+                await Task.Yield();
+                chunks = 0;
+            }
+
+            Renderer.UpdateOrRequestChunk(pos, followerChunkPos, Layout.GetRenderDetail(followerChunkPos, pos));
         }
 
         Debug.Log("Finished layout.");

@@ -50,10 +50,10 @@ public class ChunkRenderer : MonoBehaviour
         this.cancellationToken = new CancellationTokenSource();
         this.chunkManager = this.GetComponent<ChunkManager>();
 
-        this.generationQueue = new ChunkGenerationQueue(chunkManager.Follower, this.chunkManager.Layout, this, this.chunkManager.Generator, this.chunkManager.Colorizer, this.chunkManager.Configuration, cancellationToken.Token);
+        this.generationQueue = new ChunkGenerationQueue(this.chunkManager.Layout, this, this.chunkManager.Generator, this.chunkManager.Colorizer, this.chunkManager.Configuration, cancellationToken.Token);
     }
 
-    public void UpdateOrRequestChunk(Vector3Int coordinate, int lodIndex)
+    public void UpdateOrRequestChunk(Vector3Int coordinate, Vector3Int followerCoord, int lodIndex)
     {
         if (this.chunkManager.Chunks.TryGetValue(coordinate, out var chunk))
         {
@@ -65,7 +65,7 @@ public class ChunkRenderer : MonoBehaviour
             }
         }
 
-        RequestGeneration(coordinate, lodIndex);
+        RequestGeneration(coordinate, followerCoord, lodIndex);
     }
 
     /// <summary>
@@ -113,9 +113,9 @@ public class ChunkRenderer : MonoBehaviour
     /// Request a chunk be generated based on a <see cref="ChunkController"/> data.
     /// </summary>
     /// <param name="controller"></param>
-    protected void RequestGeneration(Vector3Int coordinates, int lodIndex)
+    protected void RequestGeneration(Vector3Int coordinates, Vector3Int followerCoord, int lodIndex)
     {
-        var task = this.generationQueue.RequestChunkGeneration(coordinates, lodIndex);
+        var task = this.generationQueue.RequestChunkGeneration(coordinates, followerCoord, lodIndex);
         task.ContinueWith(t =>
         {
             if (t.Status != TaskStatus.RanToCompletion)
@@ -143,7 +143,7 @@ public class ChunkRenderer : MonoBehaviour
     /// Submit a chunk to be rendered into the world.
     /// </summary>
     /// <param name="chunkRenderData"></param>
-    protected void SubmitChunk(ChunkRenderData chunkRenderData)
+    public void SubmitChunk(ChunkRenderData chunkRenderData)
     {
         var coord = chunkRenderData.Coordinates;
         int lod = chunkRenderData.LOD;

@@ -149,7 +149,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         }
 
         MeshData data = new MeshData(lodIndex, Vertices, Triangles, UVs);
-        //Flatten(densityMap, data);
+        Flatten(densityMap, data);
 
         return data;
     }

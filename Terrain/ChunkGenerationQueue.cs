@@ -30,11 +30,6 @@ public class ChunkGenerationQueue
     private bool isProcessing = false;
 
     /// <summary>
-    /// The follower used to calculate priority.
-    /// </summary>
-    private Transform follower;
-
-    /// <summary>
     /// The layout used to help with generating chunks.
     /// </summary>
     private IChunkLayout Layout;
@@ -59,16 +54,13 @@ public class ChunkGenerationQueue
     /// <summary>
     /// Initialize a new instance of the <see cref="ChunkGenerationQueue"/> class.
     /// </summary>
-    public ChunkGenerationQueue(Transform follower, IChunkLayout layout, ChunkRenderer render, IChunkGenerator chunkGenerator, IChunkColorizer colorizer, IChunkConfiguration configuration, CancellationToken token)
+    public ChunkGenerationQueue(IChunkLayout layout, ChunkRenderer render, IChunkGenerator chunkGenerator, IChunkColorizer colorizer, IChunkConfiguration configuration, CancellationToken token)
     {
-        if (follower == null)
-            throw new ArgumentNullException(nameof(follower));
         if (chunkGenerator == null)
             throw new ArgumentNullException(nameof(chunkGenerator));
         if (configuration == null)
             throw new ArgumentNullException(nameof(configuration));
 
-        this.follower = follower;
         this.Layout = layout;
         this.chunkGenerator = chunkGenerator;
         this.chunkColorizer = colorizer;
@@ -105,7 +97,7 @@ public class ChunkGenerationQueue
     /// <param name="LODIndex"></param>
     /// <param name="generationTask"></param>
     /// <returns></returns>
-    public Task<ChunkData> RequestChunkGeneration(Vector3Int coordinates, int LODIndex)
+    public Task<ChunkData> RequestChunkGeneration(Vector3Int coordinates, Vector3Int followerCoord, int LODIndex)
     {
         lock (queueLock) 
         {
@@ -127,7 +119,7 @@ public class ChunkGenerationQueue
             {
                 // Register job as active
                 pendingJobs[coordinates] = newJob;
-                generationQueue.Enqueue(newJob, GetPriorityOfChunk(coordinates));
+                generationQueue.Enqueue(newJob, GetPriorityOfChunk(followerCoord, coordinates));
             }
             catch (Exception ex)
             {
@@ -256,16 +248,10 @@ public class ChunkGenerationQueue
     /// </summary>
     /// <param name="coordinates"></param>
     /// <returns></returns>
-    private int GetPriorityOfChunk(Vector3Int coordinates)
+    private int GetPriorityOfChunk(Vector3Int followerCoord, Vector3Int coordinates)
     {
-        Vector3 worldPos = this.follower.transform.position;
-
-        Vector2Int followerChunkCoord = new Vector2Int(
-            Mathf.FloorToInt(worldPos.x / chunkConfiguration.ChunkSize),
-            Mathf.FloorToInt(worldPos.z / chunkConfiguration.ChunkSize));
-
-        int dx = Mathf.Abs(coordinates.x - followerChunkCoord.x);
-        int dz = Mathf.Abs(coordinates.z - followerChunkCoord.y);
+        int dx = Mathf.Abs(coordinates.x - followerCoord.x);
+        int dz = Mathf.Abs(coordinates.z - followerCoord.y);
 
         return Math.Max(dx, dz);
     }
