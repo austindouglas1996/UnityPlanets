@@ -18,8 +18,15 @@ public class ChunkRenderer : MonoBehaviour
 
     private Quaternion LastFollowerRotation;
 
+    public bool isInitialized = false;
+
     private void LateUpdate()
     {
+        if (!isInitialized)
+        {
+            return;
+        }
+
         foreach (var chunk in this.chunkManager.Chunks.Values)
         {
             if (chunk.RenderType == ChunkRenderType.GPU && chunk.IsActive)
@@ -52,6 +59,8 @@ public class ChunkRenderer : MonoBehaviour
         this.chunkManager = this.GetComponent<ChunkManager>();
 
         this.generationQueue = new ChunkGenerationQueue(this.chunkManager.Layout, this, this.chunkManager.Generator, this.chunkManager.Colorizer, this.chunkManager.Configuration, cancellationToken.Token);
+
+        isInitialized = true;
     }
 
     /// <summary>

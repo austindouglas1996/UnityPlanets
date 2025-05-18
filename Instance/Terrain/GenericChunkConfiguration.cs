@@ -8,6 +8,7 @@ public class GenericChunkConfiguration : IChunkConfiguration
     [SerializeField] private int chunkSize = 32;
     [SerializeField] private ChunkRenderRange renderRange = new ChunkRenderRange();
     [SerializeField] private DensityMapOptions densityMapOptions;
+    [SerializeField] private Material vertexColorMaterial;
 
     public int ChunkSize => chunkSize;
     public ChunkRenderRange RenderDistanceInChunks => renderRange;

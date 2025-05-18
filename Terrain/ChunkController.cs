@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,8 +38,11 @@ public class ChunkController : MonoBehaviour
     {
         // Set the shader and material for this controller.
         var meshRenderer = GetComponent<MeshRenderer>();
-        meshRenderer.material = new Material(Shader.Find("Shader Graphs/VertexColor"));
-        meshRenderer.material.SetFloat("_Smoothness", 0f);
+
+        Material mat = new Material(Shader.Find("Shader Graphs/VertexColor"));
+        mat.SetFloat("_Smoothness", 0f);
+
+        meshRenderer.sharedMaterial = mat;
     }
 
     /// <summary>

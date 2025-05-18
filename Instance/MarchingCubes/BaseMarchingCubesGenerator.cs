@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using System.Drawing;
 using UnityEngine;
-using static FoliageGenerator;
-using static UnityEditor.Searcher.SearcherWindow.Alignment;
-using static UnityEngine.Mesh;
 
 /// <summary>
 /// Base class for implementing marching cube terrain generation.
@@ -60,7 +57,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         float maxDensity = float.MinValue;
 
         for (int x = 0; x < densityWidth; x += stepSize)
-            for (int y = 0; y < densityHeight; y += stepSize)
+            for (int y = 0; y < densityHeight; y += 1)
                 for (int z = 0; z < densityDepth; z += stepSize)
                 {
                     float d = densityMap.Get(x,y,z);
@@ -151,6 +148,11 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         }
 
         MeshData data = new MeshData(lodIndex, Vertices, Triangles, UVs);
+
+        if (Vertices.Count > 0)
+        {
+            string es = "";
+        }
 
         Flatten(densityMap, data);
 
@@ -277,7 +279,8 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         mesh.normals = data.Normals.ToArray();
         mesh.uv = data.UVs.ToArray();
         mesh.colors = data.VerticeColors;
-        mesh.RecalculateBounds();
+        mesh.RecalculateBounds(); 
+        //mesh.UploadMeshData(true);
 
         return mesh;
     }

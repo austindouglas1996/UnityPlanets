@@ -26,36 +26,43 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
         int baseY = chunkCoordinates.y * baseChunkSize;
         int baseZ = chunkCoordinates.z * chunkSize;
 
-        float[,] heightCache = new float[limit, limit];
-
-        // First pass: calculate height at each (x,z)
-        for (int x = 0; x < limit; x += stepSize)
+        try
         {
-            int worldX = baseX + x;
-            for (int z = 0; z < limit; z += stepSize)
-            {
-                int worldZ = baseZ + z;
-                heightCache[x, z] = GetHeightForWorldPosition(worldX, worldZ);
-            }
-        }
+            float[,] heightCache = new float[limit, limit];
 
-        // Second pass: fill the 3D density map
-        for (int x = 0; x < limit; x += stepSize)
-        {
-            int worldX = baseX + x;
-            for (int y = 0; y < limit; y += stepSize)
+            // First pass: calculate height at each (x,z)
+            for (int x = 0; x < limit; x += stepSize)
             {
-                int worldY = baseY + y;
+                int worldX = baseX + x;
                 for (int z = 0; z < limit; z += stepSize)
                 {
                     int worldZ = baseZ + z;
-
-                    float height = heightCache[x, z];
-                    float val = -(worldY - height); // same shape logic
-
-                    densityMap.Set(x,y,z,val);
+                    heightCache[x, z] = GetHeightForWorldPosition(worldX, worldZ);
                 }
             }
+
+            // Second pass: fill the 3D density map
+            for (int x = 0; x < limit; x += stepSize)
+            {
+                int worldX = baseX + x;
+                for (int y = 0; y < 17; y += 1)
+                {
+                    int worldY = baseY + y;
+                    for (int z = 0; z < limit; z += stepSize)
+                    {
+                        int worldZ = baseZ + z;
+
+                        float height = heightCache[x, z];
+                        float val = -(worldY - height); // same shape logic
+
+                        densityMap.Set(x, y, z, val);
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e);
         }
 
         return mapData;
@@ -63,6 +70,6 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
 
     private DensityMapData CreateEmptyChunk(int size, int lodIndex)
     {
-        return new DensityMapData(new DensityMap(size+1,size+1,size+1),lodIndex);
+        return new DensityMapData(new DensityMap(size+1,16+1,size+1),lodIndex);
     }
 }

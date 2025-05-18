@@ -1,14 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TMPro;
-using Unity.VisualScripting;
-using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
-using UnityEngine.InputSystem.XR;
-using VHierarchy.Libs;
-using static UnityEditor.PlayerSettings;
 
 /// <summary>
 /// Manages all active chunks in the world. Handles loading, unloading, re-coloring,
@@ -57,6 +51,9 @@ public class ChunkManager : MonoBehaviour
 
     private void Start()
     {
+        System.GC.Collect();
+        Resources.UnloadUnusedAssets();
+
         // Create Canvas
         GameObject canvasObj = new GameObject("RuntimeCanvas");
         Canvas canvas = canvasObj.AddComponent<Canvas>();
@@ -98,7 +95,7 @@ public class ChunkManager : MonoBehaviour
 
     private async void Update()
     {
-        if (Time.time < timeStop)
+        if (Time.time < timeStop && this.Renderer.isInitialized)
         {
             if (firstChunk == -1 && Chunks.Count > 0)
                 firstChunk = Time.time;
@@ -118,7 +115,7 @@ public class ChunkManager : MonoBehaviour
             float avgQueue = (float)sumQueue / queueHistory.Count;
 
             debugText.text = $"" +
-                $"Active Chunks: {Chunks.Count}\n" +
+                $"Chunks: {Chunks.Count}\n" +
                 $"First Chunk: {firstChunk:F1} sec\n" +
                 $"Total Time: {Time.time:F1} sec\n" +
                 $"Queue: {currentQueueCount}\n";
@@ -141,6 +138,11 @@ public class ChunkManager : MonoBehaviour
     private void OnDisable()
     {
         cancellationToken.Cancel();
+    }
+
+    private void Awake()
+    {
+        this.Renderer = this.GetComponent<ChunkRenderer>();
     }
 
     /// <summary>
@@ -171,7 +173,6 @@ public class ChunkManager : MonoBehaviour
         this.Factory = factory;
         this.Generator = generator;
 
-        this.Renderer = this.GetComponent<ChunkRenderer>();
         this.Renderer.Initialize(factory);
 
         this.IsInitialized = true;
@@ -241,7 +242,7 @@ public class ChunkManager : MonoBehaviour
 
             Vector3Int center = new Vector3Int(
                 Layout.FollowerCoordinates.x >> lod,
-                Layout.FollowerCoordinates.y >> lod,
+                Layout.FollowerCoordinates.y / 16,
                 Layout.FollowerCoordinates.z >> lod
             );
 
@@ -250,7 +251,7 @@ public class ChunkManager : MonoBehaviour
 
             for (int x = -range; x <= range; x++)
                 for (int z = -range; z <= range; z++)
-                    for (int y = -6; y <= 6; y++)
+                    for (int y = 0; y <= 20; y++)
                     {
                         if (chunks > 150)
                         {
@@ -258,7 +259,7 @@ public class ChunkManager : MonoBehaviour
                             chunks = 0;
                         }
 
-                        Vector3Int coord = center + new Vector3Int(x, 0, z);
+                        Vector3Int coord = center + new Vector3Int(x, y, z);
                         Renderer.RequestGeneration(coord, lod);
                     }
         }
@@ -270,12 +271,12 @@ public class ChunkManager : MonoBehaviour
     {
         switch (lod)
         {
-            case 0: return 0; // High detail near player
-            case 1: return 4;
-            case 2: return 4;
+            case 0: return 32; // High detail near player
+            case 1: return 2;
+            case 2: return 2;
             case 3: return 4;
-            case 4: return 1;
-            case 5: return 4;
+            case 4: return 4;
+            case 5: return 1;
             default: return 0;
         }
     }

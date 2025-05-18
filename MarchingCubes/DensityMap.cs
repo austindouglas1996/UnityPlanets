@@ -1,4 +1,6 @@
+
 using System.Runtime.CompilerServices;
+using UnityEngine;
 
 public class DensityMap
 {
@@ -26,7 +28,14 @@ public class DensityMap
 
     public void Set(int x, int y, int z, float value)
     {
-        _values[GetIndex(x, y, z)] = value;
+        try
+        {
+            _values[GetIndex(x, y, z)] = value;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogException(e);
+        }
     }
 
     public float this[int x, int y, int z]
