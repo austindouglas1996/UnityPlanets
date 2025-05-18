@@ -23,7 +23,7 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
         }
 
         int baseX = chunkCoordinates.x * chunkSize;
-        int baseY = chunkCoordinates.y * baseChunkSize;
+        int baseY = chunkCoordinates.y * chunkSize;
         int baseZ = chunkCoordinates.z * chunkSize;
 
         try
@@ -45,7 +45,7 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
             for (int x = 0; x < limit; x += stepSize)
             {
                 int worldX = baseX + x;
-                for (int y = 0; y < 17; y += 1)
+                for (int y = 0; y < limit; y += 1)
                 {
                     int worldY = baseY + y;
                     for (int z = 0; z < limit; z += stepSize)
@@ -70,6 +70,6 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
 
     private DensityMapData CreateEmptyChunk(int size, int lodIndex)
     {
-        return new DensityMapData(new DensityMap(size+1,16+1,size+1),lodIndex);
+        return new DensityMapData(new DensityMap(size+1, size + 1, size+1),lodIndex);
     }
 }

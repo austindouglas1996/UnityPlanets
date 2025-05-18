@@ -121,7 +121,7 @@ public abstract class GenericChunkLayout : IChunkLayout
         int chunkSize = Configuration.ChunkSize << lodIndex;
         return new Vector3(
             coordinates.x * chunkSize,
-            coordinates.y * 16,
+            coordinates.y * chunkSize,
             coordinates.z * chunkSize);
     }
 
@@ -135,7 +135,7 @@ public abstract class GenericChunkLayout : IChunkLayout
         int chunkSize = Configuration.ChunkSize << lodIndex;
         return new Vector3Int(
             Mathf.FloorToInt(world.x / chunkSize),
-            Mathf.FloorToInt(world.y / 16),
+            Mathf.FloorToInt(world.y / chunkSize),
             Mathf.FloorToInt(world.z / chunkSize));
     }
 }

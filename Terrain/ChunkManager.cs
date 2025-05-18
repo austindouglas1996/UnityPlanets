@@ -167,7 +167,7 @@ public class ChunkManager : MonoBehaviour
     public void ModifyTerrain(TerrainBrush brush, bool isAdding, float bufferMultiplier = 0.5f, CancellationToken token = default)
     {
         Bounds brushBounds = brush.GetBrushBounds();
-        Vector3 chunkSize = new Vector3(Configuration.ChunkSize, 16, Configuration.ChunkSize);
+        Vector3 chunkSize = new Vector3(Configuration.ChunkSize, Configuration.ChunkSize, Configuration.ChunkSize);
 
         Vector3Int hitPosCoord = Layout.ToCoordinates(brush.WorldHitPoint, 0);
 
@@ -220,7 +220,7 @@ public class ChunkManager : MonoBehaviour
 
             Vector3Int center = new Vector3Int(
                 Layout.FollowerCoordinates.x >> lod,
-                Layout.FollowerCoordinates.y / 16,
+                Layout.FollowerCoordinates.y >> lod,
                 Layout.FollowerCoordinates.z >> lod
             );
 
@@ -229,7 +229,7 @@ public class ChunkManager : MonoBehaviour
 
             for (int x = -range; x <= range; x++)
                 for (int z = -range; z <= range; z++)
-                    for (int y = 0; y <= 20; y++)
+                    for (int y = -5; y <= 20; y++)
                     {
                         if (chunks > 150)
                         {
@@ -249,10 +249,10 @@ public class ChunkManager : MonoBehaviour
     {
         switch (lod)
         {
-            case 0: return 32; // High detail near player
-            case 1: return 0;
-            case 2: return 0;
-            case 3: return 0;
+            case 0: return 48; // High detail near player
+            case 1: return 6;
+            case 2: return 6;
+            case 3: return 6;
             case 4: return 0;
             case 5: return 0;
             default: return 0;

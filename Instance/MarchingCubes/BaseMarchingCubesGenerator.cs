@@ -57,7 +57,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         float maxDensity = float.MinValue;
 
         for (int x = 0; x < densityWidth; x += stepSize)
-            for (int y = 0; y < densityHeight; y += 1)
+            for (int y = 0; y < densityHeight; y += stepSize)
                 for (int z = 0; z < densityDepth; z += stepSize)
                 {
                     float d = densityMap.Get(x,y,z);
@@ -285,7 +285,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         int step = chunkSize / 2;
 
         int worldX = chunkCoords.x * chunkSize;
-        int worldY = chunkCoords.y * 16;
+        int worldY = chunkCoords.y * chunkSize;
         int worldZ = chunkCoords.z * chunkSize;
 
         float iso = Options.ISOLevel;
