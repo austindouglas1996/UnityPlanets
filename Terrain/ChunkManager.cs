@@ -199,10 +199,6 @@ public class ChunkManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Rebuilds the list of active chunks based on the follower’s current position.
-    /// Adds new chunks and removes out-of-range ones.
-    /// </summary>
     private async Task UpdateChunks()
     {
         if (!IsInitialized)
@@ -212,24 +208,36 @@ public class ChunkManager : MonoBehaviour
         layoutCts = new CancellationTokenSource();
 
         int chunks = 0;
+        Vector3Int playerCoord = Layout.FollowerCoordinates;
+
+        int previousMaxRange = 0;
 
         for (int lod = 0; lod <= 5; lod++)
         {
             int chunkSize = Configuration.ChunkSize << lod;
-            int range = GetRangeForLOD(lod); // in chunks
-
-            Vector3Int center = new Vector3Int(
-                Layout.FollowerCoordinates.x >> lod,
-                Layout.FollowerCoordinates.y >> lod,
-                Layout.FollowerCoordinates.z >> lod
-            );
-
+            int range = GetRangeForLOD(lod);
             if (range == 0)
                 continue;
 
-            for (int x = -range; x <= range; x++)
-                for (int z = -range; z <= range; z++)
-                    for (int y = -5; y <= 20; y++)
+            Vector3Int center = new Vector3Int(
+                playerCoord.x >> lod,
+                playerCoord.y >> lod,
+                playerCoord.z >> lod
+            );
+
+            int minRange = previousMaxRange;
+            int maxRange = previousMaxRange + range; // Inclusive
+            previousMaxRange = maxRange - 1;
+
+            for (int x = -maxRange; x <= maxRange; x++)
+            {
+                for (int z = -maxRange; z <= maxRange; z++)
+                {
+                    int dist = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
+                    if (dist < minRange || dist > maxRange)
+                        continue;
+
+                    for (int y = -10; y <= 25; y++)
                     {
                         if (chunks > 150)
                         {
@@ -239,20 +247,25 @@ public class ChunkManager : MonoBehaviour
 
                         Vector3Int coord = center + new Vector3Int(x, y, z);
                         Renderer.RequestGeneration(coord, lod);
+                        chunks++;
                     }
+                }
+            }
         }
 
         Debug.Log("Finished layout.");
     }
 
+
+
     private int GetRangeForLOD(int lod)
     {
         switch (lod)
         {
-            case 0: return 48; // High detail near player
-            case 1: return 6;
-            case 2: return 6;
-            case 3: return 6;
+            case 0: return 1; // High detail near player
+            case 1: return 1;
+            case 2: return 0;
+            case 3: return 0;
             case 4: return 0;
             case 5: return 0;
             default: return 0;

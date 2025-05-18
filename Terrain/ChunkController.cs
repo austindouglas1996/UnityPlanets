@@ -45,7 +45,6 @@ public class ChunkController : MonoBehaviour
     public void Initialize(Vector3Int coordinates, CancellationToken cancellationToken = default)
     {
         this.Coordinates = coordinates;
-        this.name = $"Chunk X:{Coordinates.x} Y:{Coordinates.y} Z:{Coordinates.z}";
     }
 
     /// <summary>
@@ -72,6 +71,7 @@ public class ChunkController : MonoBehaviour
     {
         try
         {
+            this.name = $"Chunk LOD:{renderData.LOD} X:{Coordinates.x} Y:{Coordinates.y} Z:{Coordinates.z}";
             this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
             this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
 
