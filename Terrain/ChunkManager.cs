@@ -250,11 +250,11 @@ public class ChunkManager : MonoBehaviour
         switch (lod)
         {
             case 0: return 32; // High detail near player
-            case 1: return 2;
-            case 2: return 2;
-            case 3: return 4;
-            case 4: return 4;
-            case 5: return 1;
+            case 1: return 0;
+            case 2: return 0;
+            case 3: return 0;
+            case 4: return 0;
+            case 5: return 0;
             default: return 0;
         }
     }
