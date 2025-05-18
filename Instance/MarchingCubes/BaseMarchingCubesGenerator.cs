@@ -149,11 +149,6 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
 
         MeshData data = new MeshData(lodIndex, Vertices, Triangles, UVs);
 
-        if (Vertices.Count > 0)
-        {
-            string es = "";
-        }
-
         Flatten(densityMap, data);
 
         return data;
@@ -279,8 +274,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         mesh.normals = data.Normals.ToArray();
         mesh.uv = data.UVs.ToArray();
         mesh.colors = data.VerticeColors;
-        mesh.RecalculateBounds(); 
-        //mesh.UploadMeshData(true);
+        mesh.RecalculateBounds();
 
         return mesh;
     }
@@ -329,9 +323,6 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         return false;
     }
 
-
-
-
     /// <summary>
     /// Retrieve the value for a given position.
     /// </summary>
@@ -340,6 +331,14 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="worldZ"></param>
     /// <returns></returns>
     protected abstract float GetValueForWorldPosition(float worldX, float worldY, float worldZ);
+
+    /// <summary>
+    /// Retrieve the height value for a given X/Y position. Added to help with performance since
+    /// the height will not change over an X/Y range.
+    /// </summary>
+    /// <param name="worldX"></param>
+    /// <param name="worldZ"></param>
+    /// <returns></returns>
     protected abstract float GetHeightForWorldPosition(float worldX, float worldZ);
 
     /// <summary>

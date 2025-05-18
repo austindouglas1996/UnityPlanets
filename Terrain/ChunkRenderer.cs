@@ -71,7 +71,8 @@ public class ChunkRenderer : MonoBehaviour
     /// <param name="isAdding"></param>
     public void RequestModification(ChunkController controller, TerrainBrush brush, bool isAdding)
     {
-        ChunkModificationJob modificationJob = new ChunkModificationJob(controller.ChunkData[0].Data, brush, isAdding);
+        throw new System.NotImplementedException("ChunkModificationJob needs chunkData back.");
+        ChunkModificationJob modificationJob = new ChunkModificationJob(null, brush, isAdding);
         var task = this.generationQueue.RequestChunkModification(controller.Coordinates, 0, modificationJob);
 
         task.ContinueWith(t =>

@@ -49,8 +49,6 @@ public class ChunkGenerationQueue
     /// </summary>
     private IChunkConfiguration chunkConfiguration;
 
-    private ChunkRenderer render;
-
     /// <summary>
     /// Initialize a new instance of the <see cref="ChunkGenerationQueue"/> class.
     /// </summary>
@@ -66,7 +64,6 @@ public class ChunkGenerationQueue
         this.chunkColorizer = colorizer;
         this.chunkConfiguration = configuration;
         this.cancellationToken = token;
-        this.render = render;
 
         for (int i = 0; i < 8; i++)
         {
@@ -74,6 +71,9 @@ public class ChunkGenerationQueue
         }
     }
 
+    /// <summary>
+    /// Retrieve the queue count for debug purposes.
+    /// </summary>
     public int GetQueueCount
     {
         get { return generationQueue.Count; }

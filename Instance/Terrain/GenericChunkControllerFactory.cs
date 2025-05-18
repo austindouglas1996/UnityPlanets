@@ -34,7 +34,7 @@ public abstract class GenericChunkControllerFactory : IChunkControllerFactory
         newChunk.transform.parent = chunkManager.transform;
 
         // Give 0 for the LOD as other LODS will not be rendered as objects.
-        newChunk.Initialize(this.chunkManager, coordinates, lodIndex, cancellationToken);
+        newChunk.Initialize(coordinates, cancellationToken);
 
         return newChunk;
     }

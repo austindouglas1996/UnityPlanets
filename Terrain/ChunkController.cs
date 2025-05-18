@@ -15,17 +15,6 @@ using UnityEngine.AI;
 public class ChunkController : MonoBehaviour
 {
     public Vector3Int Coordinates;
-    private ChunkManager chunkManager;
-
-    /// <summary>
-    /// A collection of <see cref="ChunkData"/> based on LOD index for easy rendering.
-    /// </summary>
-    public Dictionary<int, ChunkRenderData> ChunkData = new Dictionary<int, ChunkRenderData>();
-
-    /// <summary>
-    /// The LOD for this specific chunk to render.
-    /// </summary>
-    public int LOD {  get; set; }
 
     private void Awake()
     {
@@ -53,13 +42,10 @@ public class ChunkController : MonoBehaviour
     /// <param name="config">Configuration used for mesh noise.</param>
     /// <param name="coordinates">Coordinates of this chunk.</param>
     /// <exception cref="System.ArgumentNullException"></exception>
-    public void Initialize(ChunkManager manager, Vector3Int coordinates, int lodIndex, CancellationToken cancellationToken = default)
+    public void Initialize(Vector3Int coordinates, CancellationToken cancellationToken = default)
     {
         this.Coordinates = coordinates;
         this.name = $"Chunk X:{Coordinates.x} Y:{Coordinates.y} Z:{Coordinates.z}";
-
-        this.chunkManager = manager;
-        this.LOD = lodIndex;
     }
 
     /// <summary>
@@ -70,9 +56,7 @@ public class ChunkController : MonoBehaviour
         Debug.Log("Reset");
 
         // Properties.
-        this.chunkManager = null;
         this.Coordinates = default;
-        this.ChunkData = new Dictionary<int, ChunkRenderData>();
 
         // Components.
         this.GetComponent<MeshFilter>().mesh = null;
@@ -88,9 +72,6 @@ public class ChunkController : MonoBehaviour
     {
         try
         {
-            this.LOD = renderData.LOD;
-            this.ChunkData[renderData.LOD] = renderData;
-
             this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
             this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
 

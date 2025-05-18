@@ -15,11 +15,6 @@ public interface IChunkConfiguration
     int ChunkSize { get; }
 
     /// <summary>
-    /// Size (in voxels) for how far in each direction chunks should be rendered.
-    /// </summary>
-    ChunkRenderRange RenderDistanceInChunks { get; }
-
-    /// <summary>
     /// Density Options used for marching cubes generator.
     /// </summary>
     DensityMapOptions MapOptions { get; }
