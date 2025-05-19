@@ -60,7 +60,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
             for (int y = 0; y < densityHeight; y += stepSize)
                 for (int z = 0; z < densityDepth; z += stepSize)
                 {
-                    float d = densityMap.Get(x,y,z);
+                    float d = densityMap.GetLocal(x,y,z);
                     if (d < minDensity) minDensity = d;
                     if (d > maxDensity) maxDensity = d;
                 }
@@ -91,8 +91,8 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
                         int cy = y + (int)offset.y;
                         int cz = z + (int)offset.z;
 
-                        cornerVals[i] = densityMap.Get(cx, cy, cz);
-                        cornerPos[i] = new Vector3(cx, cy, cz) + chunkOffset;
+                        cornerVals[i] = densityMap.GetLocal(cx, cy, cz);
+                        cornerPos[i] = new Vector3(cx, cy, cz) * stepSize + chunkOffset;
                     }
 
                     int cubeIndex = 0;

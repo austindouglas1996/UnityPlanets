@@ -225,18 +225,15 @@ public class ChunkManager : MonoBehaviour
                 playerCoord.z >> lod
             );
 
-            int minRange = previousMaxRange;
+            int minRange = Mathf.Max(0, previousMaxRange - 2);
             int maxRange = previousMaxRange + range; // Inclusive
-            previousMaxRange = maxRange - 1;
+            previousMaxRange = maxRange;
 
             for (int x = -maxRange; x <= maxRange; x++)
             {
                 for (int z = -maxRange; z <= maxRange; z++)
                 {
-                    int dist = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
-                    if (dist < minRange || dist > maxRange)
-                        continue;
-
+ 
                     for (int y = -10; y <= 25; y++)
                     {
                         if (chunks > 150)
@@ -262,12 +259,12 @@ public class ChunkManager : MonoBehaviour
     {
         switch (lod)
         {
-            case 0: return 1; // High detail near player
-            case 1: return 1;
-            case 2: return 0;
-            case 3: return 0;
-            case 4: return 0;
-            case 5: return 0;
+            case 0: return 32; // High detail near player
+            case 1: return 2;
+            case 2: return 2;
+            case 3: return 2;
+            case 4: return 1;
+            case 5: return 1;
             default: return 0;
         }
     }

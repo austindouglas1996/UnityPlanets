@@ -45,7 +45,7 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
             for (int x = 0; x < limit; x += stepSize)
             {
                 int worldX = baseX + x;
-                for (int y = 0; y < limit; y += 1)
+                for (int y = 0; y < limit; y += stepSize)
                 {
                     int worldY = baseY + y;
                     for (int z = 0; z < limit; z += stepSize)
@@ -55,7 +55,7 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
                         float height = heightCache[x, z];
                         float val = -(worldY - height); // same shape logic
 
-                        densityMap.Set(x, y, z, val);
+                        densityMap.SetWorld(x, y, z, val);
                     }
                 }
             }
@@ -70,6 +70,6 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
 
     private DensityMapData CreateEmptyChunk(int size, int lodIndex)
     {
-        return new DensityMapData(new DensityMap(size+1, size + 1, size+1),lodIndex);
+        return new DensityMapData(new DensityMap(size, size, size, lodIndex),lodIndex);
     }
 }
