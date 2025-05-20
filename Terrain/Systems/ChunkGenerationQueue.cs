@@ -72,14 +72,6 @@ public class ChunkGenerationQueue
     }
 
     /// <summary>
-    /// Retrieve the queue count for debug purposes.
-    /// </summary>
-    public int GetQueueCount
-    {
-        get { return generationQueue.Count; }
-    }
-
-    /// <summary>
     /// A cancellation token to help with cancelling all jobs when the game is closed.
     /// </summary>
     public CancellationToken CancellationToken
@@ -163,6 +155,15 @@ public class ChunkGenerationQueue
                 pendingJobs.Remove(coordinates);
             }
         }
+    }
+
+    /// <summary>
+    /// Provide a breif status on what is going in the system.
+    /// </summary>
+    /// <returns></returns>
+    public override string ToString()
+    {
+        return $"Pending:{pendingJobs.Count}\nGen. Queue:{generationQueue.Count}\nWorkers:{workerTasks.Count}\n";
     }
 
     /// <summary>

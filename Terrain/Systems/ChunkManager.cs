@@ -95,8 +95,8 @@ public class ChunkManager : MonoBehaviour
         {
             debugText.text = $"" +
                 $"Chunks: {Chunks.Count}\n" +
-                $"Total Time: {Time.time:F1} sec\n" +
-                $"Queue: {this.Renderer.generationQueue.GetQueueCount}\n";
+                $"Total Time: {Time.time:F1} sec\n" + 
+                $"{this.Renderer.generationQueue.ToString()}\n";
         }
 
         this.UpdateLayout();

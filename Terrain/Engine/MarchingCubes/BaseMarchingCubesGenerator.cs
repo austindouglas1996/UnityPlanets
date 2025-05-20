@@ -261,8 +261,9 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     }
 
     private System.Random random = new System.Random();
-    public bool ShouldGenerateChunk(Vector3Int chunkCoords, int chunkSize)
+    public bool ShouldGenerateChunk(Vector3Int chunkCoords)
     {
+        int chunkSize = this.Options.ChunkSize;
         int step = chunkSize / 2;
 
         int worldX = chunkCoords.x * chunkSize;
