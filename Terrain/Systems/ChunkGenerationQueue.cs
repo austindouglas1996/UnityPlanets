@@ -200,27 +200,8 @@ public class ChunkGenerationQueue
 
             try
             {
-                ChunkData result;
-
-                if (job.ModificationJob == null)
-                {
-                    result = chunkGenerator.GenerateNewChunk(job.Coordinates, job.LODIndex, chunkConfiguration, job.Token);
-
-                    Vector3 worldPos = this.Layout.ToWorld(job.Coordinates, job.LODIndex);
-
-                    Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
-                    chunkColorizer.UpdateChunkColors(result, transform, chunkConfiguration);
-                }
-                else
-                {
-                    ChunkModificationJob mod = job.ModificationJob;
-
-                    chunkGenerator.ApplyTerrainBrush(mod.ExistingData, chunkConfiguration, mod.Brush, job.Coordinates, mod.IsAdding, job.Token);
-                    chunkGenerator.RegenerateMeshData(mod.ExistingData, chunkConfiguration, job.Token);
-
-                    // We set the original data back.
-                    result = mod.ExistingData;
-                }
+                ChunkData result = job.ModificationJob == null ?
+                    WorkerNewChunk(job) : WorkerModifyChunk(job);
 
                 job.Completion.TrySetResult(result);
 
@@ -238,6 +219,39 @@ public class ChunkGenerationQueue
                 job.Completion.TrySetException(ex);
             }
         }
+    }
+
+    /// <summary>
+    /// Generate a new chunk given a <see cref="ChunkGenerationJob"/>.
+    /// </summary>
+    /// <param name="job"></param>
+    /// <returns></returns>
+    private ChunkData WorkerNewChunk(ChunkGenerationJob job)
+    {
+        ChunkData result = chunkGenerator.GenerateNewChunk(job.Coordinates, job.LODIndex, chunkConfiguration, job.Token);
+
+        Vector3 worldPos = this.Layout.ToWorld(job.Coordinates, job.LODIndex);
+
+        Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
+        chunkColorizer.UpdateChunkColors(result, transform, chunkConfiguration);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Generate a chunk with modified values given a <see cref="ChunkGenerationJob"/>.
+    /// </summary>
+    /// <param name="job"></param>
+    /// <returns></returns>
+    private ChunkData WorkerModifyChunk(ChunkGenerationJob job)
+    {
+        ChunkModificationJob mod = job.ModificationJob;
+
+        chunkGenerator.ApplyTerrainBrush(mod.ExistingData, chunkConfiguration, mod.Brush, job.Coordinates, mod.IsAdding, job.Token);
+        chunkGenerator.RegenerateMeshData(mod.ExistingData, chunkConfiguration, job.Token);
+
+        // We set the original data back.
+        return mod.ExistingData;
     }
 
     /// <summary>

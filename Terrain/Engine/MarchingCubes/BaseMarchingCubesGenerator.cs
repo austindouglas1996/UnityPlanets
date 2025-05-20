@@ -362,6 +362,12 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         return new Vector3(dx, dy, dz);
     }
 
+    /// <summary>
+    /// Sample a density value point to find normals for lighting.
+    /// </summary>
+    /// <param name="pos"></param>
+    /// <param name="densityMap"></param>
+    /// <returns></returns>
     private float SampleDensity(Vector3 pos, DensityMap densityMap)
     {
         int x0 = Mathf.FloorToInt(pos.x);
