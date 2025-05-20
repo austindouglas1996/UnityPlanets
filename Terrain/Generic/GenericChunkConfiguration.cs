@@ -5,12 +5,9 @@ using UnityEngine;
 [Serializable]
 public class GenericChunkConfiguration : IChunkConfiguration
 {
-    [SerializeField] private int chunkSize = 32;
     [SerializeField] private DensityMapOptions densityMapOptions;
     [SerializeField] private Material vertexColorMaterial;
-
-    public int ChunkSize => chunkSize;
-    public DensityMapOptions MapOptions => densityMapOptions;
+    public DensityMapOptions DensityOptions => densityMapOptions;
 
     /// <summary>
     /// A collection of biomes to use throughout the generation.

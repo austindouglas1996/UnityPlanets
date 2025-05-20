@@ -118,7 +118,7 @@ public abstract class GenericChunkLayout : IChunkLayout
     /// <returns></returns>
     public Vector3 ToWorld(Vector3Int coordinates, int lodIndex)
     {
-        int chunkSize = Configuration.ChunkSize << lodIndex;
+        int chunkSize = Configuration.DensityOptions.ChunkSize << lodIndex;
         return new Vector3(
             coordinates.x * chunkSize,
             coordinates.y * chunkSize,
@@ -132,7 +132,7 @@ public abstract class GenericChunkLayout : IChunkLayout
     /// <returns></returns>
     public Vector3Int ToCoordinates(Vector3 world, int lodIndex)
     {
-        int chunkSize = Configuration.ChunkSize << lodIndex;
+        int chunkSize = Configuration.DensityOptions.ChunkSize << lodIndex;
         return new Vector3Int(
             Mathf.FloorToInt(world.x / chunkSize),
             Mathf.FloorToInt(world.y / chunkSize),

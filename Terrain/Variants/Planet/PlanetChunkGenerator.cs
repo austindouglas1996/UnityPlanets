@@ -9,6 +9,6 @@ public class PlanetChunkGenerator : GenericChunkGenerator
 
     public override BaseMarchingCubeGenerator CreateMapGenerator(IChunkConfiguration config)
     {
-        return new SphereDensityMapGenerator(planet.Center, planet.PlanetRadius, config.MapOptions);
+        return new SphereDensityMapGenerator(planet.Center, planet.PlanetRadius, config.DensityOptions);
     }
 }

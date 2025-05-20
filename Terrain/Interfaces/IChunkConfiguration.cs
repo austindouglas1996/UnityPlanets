@@ -10,14 +10,9 @@ using UnityEngine;
 public interface IChunkConfiguration
 {
     /// <summary>
-    /// Size (in voxels) for one side of a chunk.
-    /// </summary>
-    int ChunkSize { get; }
-
-    /// <summary>
     /// Density Options used for marching cubes generator.
     /// </summary>
-    DensityMapOptions MapOptions { get; }
+    DensityMapOptions DensityOptions { get; }
 
     /// <summary>
     /// Biomes to use when generating chunks.

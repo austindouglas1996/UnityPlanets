@@ -6,7 +6,7 @@ public class LandMassChunkGenerator : GenericChunkGenerator
     public override BaseMarchingCubeGenerator CreateMapGenerator(IChunkConfiguration config)
     {
         if (mapGenerator == null)
-            mapGenerator = new HeightDensityMapGenerator(config.MapOptions);
+            mapGenerator = new HeightDensityMapGenerator(config.DensityOptions);
 
         return mapGenerator;
     }

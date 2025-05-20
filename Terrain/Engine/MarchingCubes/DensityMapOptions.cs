@@ -12,6 +12,11 @@ public enum NoiseType
 public class DensityMapOptions
 {
     [Header("Global Settings")]
+
+    [Tooltip("Base sized used for all chunk rendering. LOD of chunks will further expand this value.")]
+    [SerializeField] public int ChunkSize => 16;
+    public Vector3 ChunkSize3 { get { return new Vector3(ChunkSize,ChunkSize,ChunkSize); } }
+
     [Tooltip("Seed used for all noise generation. Keeps terrain consistent across sessions.")]
     public int Seed = 0;
 

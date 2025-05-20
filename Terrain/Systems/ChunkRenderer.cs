@@ -211,7 +211,7 @@ public class ChunkRenderer : MonoBehaviour
 
         foreach (var chunk in this.chunkManager.Chunks)
         {
-            Vector3 size = new Vector3(this.chunkManager.Configuration.ChunkSize, this.chunkManager.Configuration.ChunkSize, this.chunkManager.Configuration.ChunkSize);
+            Vector3 size = this.chunkManager.Configuration.DensityOptions.ChunkSize3;
             Vector3 chunkCenter = chunk.Value.LocalToWorld.GetPosition() + size * 0.5f;
             Vector3 toChunk = (chunkCenter - chunkManager.Follower.transform.position);
 

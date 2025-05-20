@@ -20,7 +20,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
         token.ThrowIfCancellationRequested();
 
         var gen = CreateMapGenerator(config);
-        var map = gen.Generate(config.ChunkSize, coordinates, lodIndex);
+        var map = gen.Generate(coordinates, lodIndex);
 
         foreach (var modifier in config.Modifiers)
         {

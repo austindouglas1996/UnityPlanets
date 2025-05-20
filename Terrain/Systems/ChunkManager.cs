@@ -167,7 +167,7 @@ public class ChunkManager : MonoBehaviour
     public void ModifyTerrain(TerrainBrush brush, bool isAdding, float bufferMultiplier = 0.5f, CancellationToken token = default)
     {
         Bounds brushBounds = brush.GetBrushBounds();
-        Vector3 chunkSize = new Vector3(Configuration.ChunkSize, Configuration.ChunkSize, Configuration.ChunkSize);
+        Vector3 chunkSize = Configuration.DensityOptions.ChunkSize3;
 
         Vector3Int hitPosCoord = Layout.ToCoordinates(brush.WorldHitPoint, 0);
 
@@ -214,7 +214,7 @@ public class ChunkManager : MonoBehaviour
 
         for (int lod = 0; lod <= 5; lod++)
         {
-            int chunkSize = Configuration.ChunkSize << lod;
+            int chunkSize = Configuration.DensityOptions.ChunkSize << lod;
             int range = GetRangeForLOD(lod);
             if (range == 0)
                 continue;
