@@ -10,16 +10,15 @@ public enum ChunkRenderType
 
 public class ChunkRenderData
 {
-    public ChunkRenderData(Vector3Int coordinates, ChunkData data, Mesh mesh, Matrix4x4 localToWorld)
+    public ChunkRenderData(Vector3Int coordinates, ChunkData data, Matrix4x4 localToWorld)
     {
         Coordinates = coordinates;
         Data = data;
-        Mesh = mesh;
         LocalToWorld = localToWorld;
         RenderType = ChunkRenderType.GPU;
     }
 
-    public ChunkRenderData(ChunkController controller, ChunkData data, Mesh mesh)
+    public ChunkRenderData(ChunkController controller, ChunkData data)
     {
         this.Controller = controller;
         this.Coordinates = controller.Coordinates;
@@ -41,11 +40,21 @@ public class ChunkRenderData
 
     public Vector3Int Coordinates {  get; set; }
     public ChunkData Data { get; set; }
-    public Mesh Mesh { get; set; }
+    public Mesh Mesh
+    {
+        get
+        {
+            if (mesh == null)
+                mesh = Data.GenerateMesh();
+
+            return mesh;
+        }
+    }
+    private Mesh mesh;
     public Matrix4x4 LocalToWorld {  get; set; }
     public ChunkRenderType RenderType { get; set; }
 
     public ChunkController? Controller { get; set; }
 
-    public int LOD => Data?.MeshData?.LODIndex ?? -1;
+    public int LOD => Data?.LOD ?? -1;
 }

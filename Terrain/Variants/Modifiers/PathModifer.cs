@@ -65,7 +65,7 @@ public class PathModifer : IModifyDensity, IModifyColor, IModifyFoliageMask
 
     }
 
-    public void ModifyColor(ref Color[] vertexColors, MeshData meshData, Matrix4x4 localToWorld, IChunkConfiguration config)
+    public void ModifyColor(ref Color32[] vertexColors, MeshData meshData, Matrix4x4 localToWorld, IChunkConfiguration config)
     {
         foreach (var path in paths)
         {
@@ -89,7 +89,7 @@ public class PathModifer : IModifyDensity, IModifyColor, IModifyFoliageMask
         }
     }
 
-    private void ModifyColor(PathEntry path, ref Color[] vertexColors, MeshData meshData, Matrix4x4 localToWorld, IChunkConfiguration config)
+    private void ModifyColor(PathEntry path, ref Color32[] vertexColors, MeshData meshData, Matrix4x4 localToWorld, IChunkConfiguration config)
     {
         for (int i = 0; i < meshData.Vertices.Count; i++)
         {

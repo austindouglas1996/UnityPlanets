@@ -9,17 +9,6 @@ using UnityEngine;
 public abstract class GenericChunkGenerator : IChunkGenerator
 {
     /// <summary>
-    /// Builds a Mesh from the given chunk data.
-    /// </summary>
-    /// <param name="chunk">The chunk to build the mesh from.</param>
-    /// <param name="config">The chunk config used for generation.</param>
-    /// <returns>A generated Mesh.</returns>
-    public virtual Mesh GenerateMesh(ChunkData chunk, IChunkConfiguration config)
-    {
-        return CreateMapGenerator(config).GenerateMesh(chunk.DensityMap, chunk.MeshData);
-    }
-
-    /// <summary>
     /// Generates a new chunk from coordinates using the provided configuration.
     /// </summary>
     /// <param name="coordinates">The chunk coordinates in the world.</param>
@@ -42,8 +31,8 @@ public abstract class GenericChunkGenerator : IChunkGenerator
                 //foliageMod.ModifyFoliageMask(ref map.FoliageMask, coordinates);
         }
 
-        MeshData data = gen.GenerateMeshData(map.DensityMap, Vector3.zero, map.LODIndex);
-        return new ChunkData(map.DensityMap, data);
+        MeshData data = gen.GenerateMeshData(map, Vector3.zero, lodIndex);
+        return new ChunkData(map, data, lodIndex);
     }
 
     /// <summary>
@@ -71,7 +60,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     public virtual void RegenerateMeshData(ChunkData data, IChunkConfiguration config, CancellationToken token = default)
     {
         token.ThrowIfCancellationRequested();
-        data.MeshData = CreateMapGenerator(config).GenerateMeshData(data.DensityMap, Vector3.zero, data.MeshData.LODIndex);
+        data.MeshData = CreateMapGenerator(config).GenerateMeshData(data.DensityMap, Vector3.zero, data.LOD);
     }
 
     /// <summary>

@@ -4,12 +4,14 @@ using static UnityEngine.Rendering.STP;
 
 public abstract class GenericChunkColorizer : IChunkColorizer
 {
-    public Color[] GenerateVertexColors(MeshData meshData, Matrix4x4 localToWorld, IChunkConfiguration configuration)
+    public Color32[] GenerateVertexColors(ChunkData chunk, Matrix4x4 localToWorld, IChunkConfiguration configuration)
     {
-        Color[] colors = new Color[meshData.Vertices.Count];
+        MeshData meshData = chunk.MeshData;
+
+        Color32[] colors = new Color32[meshData.Vertices.Count];
         var sortedBiomes = configuration.Biomes.OrderBy(b => b.MinSurface).ToList();
 
-        bool isActiveChunk = meshData.LODIndex == 0;
+        bool isActiveChunk = chunk.LOD == 0;
 
         for (int i = 0; i < meshData.Vertices.Count; i++)
         {
@@ -32,11 +34,11 @@ public abstract class GenericChunkColorizer : IChunkColorizer
 
             float blendFactor = Mathf.InverseLerp(lowerBiome.MinSurface, upperBiome.MinSurface, height);
 
-            Color lowerColor = lowerBiome.SurfaceColorRange.Evaluate(0f);
-            Color upperColor = upperBiome.SurfaceColorRange.Evaluate(1f);
+            Color32 lowerColor = lowerBiome.SurfaceColorRange.Evaluate(0f);
+            Color32 upperColor = upperBiome.SurfaceColorRange.Evaluate(1f);
 
             // Blend between biome colors based on the height blend factor
-            colors[i] = Color.Lerp(lowerColor, upperColor, blendFactor);
+            colors[i] = Color32.Lerp(lowerColor, upperColor, blendFactor);
         }
 
         return colors;
@@ -48,7 +50,7 @@ public abstract class GenericChunkColorizer : IChunkColorizer
             return;
 
         // Base color.
-        var colors = GenerateVertexColors(chunk.MeshData, localToWorld, config);
+        var colors = GenerateVertexColors(chunk, localToWorld, config);
 
         // Modifications
         foreach (ITerrainModifier modifier in config.Modifiers)
@@ -57,6 +59,6 @@ public abstract class GenericChunkColorizer : IChunkColorizer
                 colorMod.ModifyColor(ref colors, chunk.MeshData, localToWorld, config);
         }
 
-        chunk.MeshData.VerticeColors = colors;
+        chunk.MeshData.Colors = colors;
     }
 }

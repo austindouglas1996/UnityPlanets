@@ -32,7 +32,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="chunkSize">Size of the chunk (assumed cubic).</param>
     /// <param name="chunkCoordinates">Coordinates of the chunk in chunk space.</param>
     /// <returns>A 3D float array representing density values.</returns>
-    public abstract DensityMapData Generate(int chunkSize, Vector3Int chunkCoordinates, int lodIndex);
+    public abstract DensityMap Generate(int chunkSize, Vector3Int chunkCoordinates, int lodIndex);
 
     /// <summary>
     /// Generates mesh data from a given density map using the marching cubes algorithm.
@@ -67,7 +67,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
 
         if (minDensity > Options.ISOLevel || maxDensity < Options.ISOLevel)
         {
-            return new MeshData(-1, new(), new(), new());
+            return new MeshData(new(), new(), new());
         }
 
         var Vertices = new List<Vector3>();
@@ -147,14 +147,14 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
             }
         }
 
-        MeshData data = new MeshData(lodIndex, Vertices, Triangles, UVs);
+        MeshData data = new MeshData(Vertices, Triangles, UVs);
 
-        Flatten(densityMap, data);
+        Flatten(densityMap, data, lodIndex);
 
         return data;
     }
 
-    private void Flatten(DensityMap densityMap, MeshData data)
+    private void Flatten(DensityMap densityMap, MeshData data, int lodIndex)
     {
         List<Vector3> flatVertices = new List<Vector3>();
         List<Vector3> flatNormals = new List<Vector3>();
@@ -172,9 +172,9 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
             Vector3 v2 = data.Vertices[i2];
 
             // Inside the flat shading loop:
-            Vector3 gradient0 = data.LODIndex == 0 ? SampleDensityGradientLOD0(v0, densityMap) : SampleDensityGradient(v0, data.LODIndex);
-            Vector3 gradient1 = data.LODIndex == 0 ? SampleDensityGradientLOD0(v1, densityMap) : SampleDensityGradient(v1, data.LODIndex);
-            Vector3 gradient2 = data.LODIndex == 0 ? SampleDensityGradientLOD0(v2, densityMap) : SampleDensityGradient(v2, data.LODIndex);
+            Vector3 gradient0 = lodIndex == 0 ? SampleDensityGradientLOD0(v0, densityMap) : SampleDensityGradient(v0, lodIndex);
+            Vector3 gradient1 = lodIndex == 0 ? SampleDensityGradientLOD0(v1, densityMap) : SampleDensityGradient(v1, lodIndex);
+            Vector3 gradient2 = lodIndex == 0 ? SampleDensityGradientLOD0(v2, densityMap) : SampleDensityGradient(v2, lodIndex);
 
             // Average gradient for the face
             Vector3 faceNormal = -(gradient0 + gradient1 + gradient2) / 3f;
@@ -258,25 +258,6 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
                 }
             }
         }
-    }
-
-    /// <summary>
-    /// Converts processed MeshData into a Unity Mesh object.
-    /// </summary>
-    /// <param name="data">The mesh data to convert.</param>
-    /// <returns>A generated Unity Mesh.</returns>
-    public virtual Mesh GenerateMesh(DensityMap densityMap, MeshData data)
-    {
-        Mesh mesh = new Mesh();
-        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-        mesh.vertices = data.Vertices.ToArray();
-        mesh.triangles = data.Triangles.ToArray();
-        mesh.normals = data.Normals.ToArray();
-        mesh.uv = data.UVs.ToArray();
-        mesh.colors = data.VerticeColors;
-        mesh.RecalculateBounds();
-
-        return mesh;
     }
 
     private System.Random random = new System.Random();

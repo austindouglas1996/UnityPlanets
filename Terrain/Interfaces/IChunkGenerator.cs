@@ -38,13 +38,4 @@ public interface IChunkGenerator
     /// <param name="config">Chunk configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     void RegenerateMeshData(ChunkData data, IChunkConfiguration config, CancellationToken token = default);
-
-    /// <summary>
-    /// Builds a mesh from the chunk's density data.
-    /// Called after initial generation or terrain modification.
-    /// </summary>
-    /// <param name="chunk">The chunk to build a mesh for.</param>
-    /// <param name="config">Chunk configuration.</param>
-    /// <returns>The generated mesh.</returns>
-    Mesh GenerateMesh(ChunkData chunk, IChunkConfiguration config);
 }

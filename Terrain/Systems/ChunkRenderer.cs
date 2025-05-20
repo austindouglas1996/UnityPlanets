@@ -83,8 +83,7 @@ public class ChunkRenderer : MonoBehaviour
             if (t.Result.MeshData.Vertices.Count == 0)
                 return;
 
-            Mesh mesh = this.chunkManager.Generator.GenerateMesh(t.Result, this.chunkManager.Configuration);
-            ChunkRenderData renderData = new ChunkRenderData(controller.Coordinates, t.Result, mesh, controller.transform.localToWorldMatrix);
+            ChunkRenderData renderData = new ChunkRenderData(controller.Coordinates, t.Result, controller.transform.localToWorldMatrix);
 
             SubmitExistingChunk(renderData);
         }, TaskScheduler.FromCurrentSynchronizationContext());
@@ -124,8 +123,7 @@ public class ChunkRenderer : MonoBehaviour
             Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
 
             // Generate mesh and apply color.
-            Mesh mesh = this.chunkManager.Generator.GenerateMesh(t.Result, this.chunkManager.Configuration);
-            ChunkRenderData renderData = new ChunkRenderData(coordinates, t.Result, mesh, transform);
+            ChunkRenderData renderData = new ChunkRenderData(coordinates, t.Result, transform);
 
             this.SubmitNewChunk(renderData);
 
