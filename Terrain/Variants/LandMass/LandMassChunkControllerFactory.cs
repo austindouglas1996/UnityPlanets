@@ -3,8 +3,8 @@ using UnityEngine;
 
 public class LandMassChunkControllerFactory : GenericChunkControllerFactory
 {
-    public LandMassChunkControllerFactory(int preloadChunks, ChunkManager manager) 
-        : base(preloadChunks, manager)
+    public LandMassChunkControllerFactory(int preloadChunks, IChunkServices services, Transform parent) 
+        : base(preloadChunks, services, parent)
     {
 
     }

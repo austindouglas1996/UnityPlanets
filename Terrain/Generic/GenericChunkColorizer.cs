@@ -1,62 +1,62 @@
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using static UnityEngine.Rendering.STP;
 
 public abstract class GenericChunkColorizer : IChunkColorizer
 {
-    public Color32[] GenerateVertexColors(ChunkData chunk, Matrix4x4 localToWorld, IChunkConfiguration configuration)
+    private List<Biome> biomes;
+    private IChunkConfiguration configuration;
+
+    protected GenericChunkColorizer(IChunkConfiguration configuration)
     {
-        MeshData meshData = chunk.MeshData;
-
-        Color32[] colors = new Color32[meshData.Vertices.Count];
-        var sortedBiomes = configuration.Biomes.OrderBy(b => b.MinSurface).ToList();
-
-        bool isActiveChunk = chunk.LOD == 0;
-
-        for (int i = 0; i < meshData.Vertices.Count; i++)
-        {
-            Vector3 worldPos = localToWorld.MultiplyPoint3x4(meshData.Vertices[i]);
-
-            float height = worldPos.y;
-
-            Biome lowerBiome = sortedBiomes[0];
-            Biome upperBiome = sortedBiomes[1];
-
-            for (int b = 0; b < sortedBiomes.Count - 1; b++)
-            {
-                if (height >= sortedBiomes[b].MinSurface && height < sortedBiomes[b + 1].MinSurface)
-                {
-                    lowerBiome = sortedBiomes[b];
-                    upperBiome = sortedBiomes[b + 1];
-                    break;
-                }
-            }
-
-            float blendFactor = Mathf.InverseLerp(lowerBiome.MinSurface, upperBiome.MinSurface, height);
-
-            Color32 lowerColor = lowerBiome.SurfaceColorRange.Evaluate(0f);
-            Color32 upperColor = upperBiome.SurfaceColorRange.Evaluate(1f);
-
-            // Blend between biome colors based on the height blend factor
-            colors[i] = Color32.Lerp(lowerColor, upperColor, blendFactor);
-        }
-
-        return colors;
+        this.configuration = configuration;
     }
 
-    public void UpdateChunkColors(ChunkData chunk, Matrix4x4 localToWorld, IChunkConfiguration config)
+    public Color32 GetColorForVertice(Vector3 vertice)
+    {
+        if (biomes == null)
+            SortBiomes();
+
+        Biome lowerBiome = biomes[0];
+        Biome upperBiome = biomes[1];
+
+        for (int b = 0; b < biomes.Count - 1; b++)
+        {
+            if (vertice.y >= biomes[b].MinSurface && vertice.y < biomes[b + 1].MinSurface)
+            {
+                lowerBiome = biomes[b];
+                upperBiome = biomes[b + 1];
+                break;
+            }
+        }
+
+        float blendFactor = Mathf.InverseLerp(lowerBiome.MaxSurface, upperBiome.MinSurface, vertice.y);
+
+        Color32 lowerColor = lowerBiome.SurfaceColorRange.Evaluate(0f);
+        Color32 upperColor = upperBiome.SurfaceColorRange.Evaluate(1f);
+
+        // Blend between biome colors based on the height blend factor
+        return Color32.Lerp(lowerColor, upperColor, blendFactor);
+    }
+
+    private void SortBiomes()
+    {
+        this.biomes = configuration.Biomes.OrderBy(b => b.MinSurface).ToList();
+    }
+
+    public void UpdateChunkColors(ChunkData chunk, Matrix4x4 localToWorld)
     {
         if (chunk.MeshData.Vertices.Count == 0)
             return;
 
-        // Base color.
-        var colors = GenerateVertexColors(chunk, localToWorld, config);
+        var colors = chunk.MeshData.Colors;
 
         // Modifications
-        foreach (ITerrainModifier modifier in config.Modifiers)
+        foreach (ITerrainModifier modifier in configuration.Modifiers)
         {
             if (modifier is IModifyColor colorMod)
-                colorMod.ModifyColor(ref colors, chunk.MeshData, localToWorld, config);
+                colorMod.ModifyColor(ref colors, chunk.MeshData, localToWorld);
         }
 
         chunk.MeshData.Colors = colors;

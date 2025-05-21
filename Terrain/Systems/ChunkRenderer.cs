@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem.XR;
 
@@ -12,6 +13,7 @@ public class ChunkRenderer : MonoBehaviour
     public bool AutomaticallyHideChunksOutOfView = true;
 
     private ChunkManager chunkManager;
+    private IChunkServices chunkServices;
     public ChunkGenerationQueue generationQueue;
 
     private CancellationTokenSource cancellationToken;
@@ -50,7 +52,7 @@ public class ChunkRenderer : MonoBehaviour
 
     private Material material;
 
-    public void Initialize(IChunkControllerFactory factory)
+    public void Initialize(ChunkManager manager, IChunkServices services)
     {
         material = new Material(Shader.Find("Shader Graphs/VertexColor"));
         material.SetFloat("_Smoothness", 0f);
@@ -58,7 +60,7 @@ public class ChunkRenderer : MonoBehaviour
         this.cancellationToken = new CancellationTokenSource();
         this.chunkManager = this.GetComponent<ChunkManager>();
 
-        this.generationQueue = new ChunkGenerationQueue(this.chunkManager.Layout, this, this.chunkManager.Generator, this.chunkManager.Colorizer, this.chunkManager.Configuration, cancellationToken.Token);
+        this.generationQueue = new ChunkGenerationQueue(services, cancellationToken.Token);
 
         isInitialized = true;
     }
@@ -98,7 +100,7 @@ public class ChunkRenderer : MonoBehaviour
         if (this.chunkManager.Chunks.TryGetValue(coordinate, out var chunk))
         {
             if (chunk.Controller != null)
-                this.chunkManager.Factory.Release(chunk.Controller);
+                this.chunkServices.ControllerFactory.Release(chunk.Controller);
 
             this.generationQueue.CancelChunkGeneration(coordinate);
         }
@@ -119,7 +121,7 @@ public class ChunkRenderer : MonoBehaviour
             if (t.Result.MeshData.Vertices.Count == 0)
                 return;
 
-            Vector3 worldPos = chunkManager.Layout.ToWorld(coordinates, lodIndex);
+            Vector3 worldPos = this.chunkServices.Layout.ToWorld(coordinates, lodIndex);
             Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
 
             // Generate mesh and apply color.
@@ -137,7 +139,7 @@ public class ChunkRenderer : MonoBehaviour
     private void SubmitNewChunk(ChunkRenderData chunkRenderData)
     {
         var coord = chunkRenderData.Coordinates;
-        var controller = chunkManager.Factory.CreateChunkController(coord, chunkRenderData.LOD, this.cancellationToken.Token);
+        var controller = this.chunkServices.ControllerFactory.CreateChunkController(coord, chunkRenderData.LOD, this.cancellationToken.Token);
         chunkRenderData.Controller = controller;
         chunkRenderData.RenderType = ChunkRenderType.GameObject;
         chunkManager.Chunks[coord] = chunkRenderData;
@@ -173,7 +175,7 @@ public class ChunkRenderer : MonoBehaviour
             // GPU to GO.
             if (!ExistingIsGO && lod == 0)
             {
-                var controller = chunkManager.Factory.CreateChunkController(coord, lod, this.cancellationToken.Token);
+                var controller = this.chunkServices.ControllerFactory.CreateChunkController(coord, lod, this.cancellationToken.Token);
                 chunkRenderData.Controller = controller;
                 chunkRenderData.RenderType = ChunkRenderType.GameObject;
 
@@ -183,7 +185,7 @@ public class ChunkRenderer : MonoBehaviour
             else if (ExistingIsGO && lod > 0)
             {
                 if (existing.Controller != null)
-                    chunkManager.Factory.Release(existing.Controller);
+                    this.chunkServices.ControllerFactory.Release(existing.Controller);
 
                 chunkRenderData.RenderType = ChunkRenderType.GPU;
                 chunkRenderData.Controller = null;
@@ -211,7 +213,7 @@ public class ChunkRenderer : MonoBehaviour
 
         foreach (var chunk in this.chunkManager.Chunks)
         {
-            Vector3 size = this.chunkManager.Configuration.DensityOptions.ChunkSize3;
+            Vector3 size = this.chunkServices.Configuration.DensityOptions.ChunkSize3;
             Vector3 chunkCenter = chunk.Value.LocalToWorld.GetPosition() + size * 0.5f;
             Vector3 toChunk = (chunkCenter - chunkManager.Follower.transform.position);
 

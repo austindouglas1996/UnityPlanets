@@ -4,16 +4,18 @@ using UnityEngine;
 public abstract class GenericChunkControllerFactory : IChunkControllerFactory
 {
     private ChunkPool chunkPool;
-    private ChunkManager chunkManager;
+    private IChunkServices chunkServices;
+    private Transform parent;
 
-    public GenericChunkControllerFactory(int preloadChunks, ChunkManager manager)
+    public GenericChunkControllerFactory(int preloadChunks, IChunkServices services, Transform parent)
     {
-        this.chunkManager = manager;
+        this.chunkServices = services;
+        this.parent = parent;
 
         GameObject newGO = new GameObject();
         newGO.AddComponent<ChunkController>();
 
-        chunkPool = new ChunkPool(newGO, 600, manager.transform);
+        chunkPool = new ChunkPool(newGO, 600, parent);
     }
 
     protected ChunkPool Pool
@@ -22,16 +24,11 @@ public abstract class GenericChunkControllerFactory : IChunkControllerFactory
         set { chunkPool = value; }
     }
 
-    protected ChunkManager ChunkManager
-    {
-        get { return chunkManager; }
-    }
-
     public virtual ChunkController CreateChunkController(Vector3Int coordinates, int lodIndex, CancellationToken cancellationToken)
     {
         ChunkController newChunk = chunkPool.GetController();
-        newChunk.transform.position = this.chunkManager.Layout.ToWorld(coordinates, lodIndex);
-        newChunk.transform.parent = chunkManager.transform;
+        newChunk.transform.position = this.chunkServices.Layout.ToWorld(coordinates, lodIndex);
+        newChunk.transform.parent = parent;
 
         // Give 0 for the LOD as other LODS will not be rendered as objects.
         newChunk.Initialize(coordinates, cancellationToken);

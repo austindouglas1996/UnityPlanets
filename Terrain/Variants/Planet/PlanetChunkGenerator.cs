@@ -1,14 +1,17 @@
 public class PlanetChunkGenerator : GenericChunkGenerator
 {
     private Planet planet;
+    private PlanetChunkColorizer colorizer;
 
-    public PlanetChunkGenerator(Planet planet)
+    public PlanetChunkGenerator(Planet planet, PlanetChunkColorizer colorizer)
+        : base (planet.ChunkConfiguration)
     {
         this.planet = planet;
+        this.colorizer = colorizer;
     }
 
-    public override BaseMarchingCubeGenerator CreateMapGenerator(IChunkConfiguration config)
+    public override BaseMarchingCubeGenerator CreateMapGenerator()
     {
-        return new SphereDensityMapGenerator(planet.Center, planet.PlanetRadius, config.DensityOptions);
+        return new SphereDensityMapGenerator(colorizer, planet.Center, planet.PlanetRadius, Configuration.DensityOptions);
     }
 }

@@ -12,7 +12,7 @@ public class PlanetChunkLayout : GenericChunkLayout
         : base(configuration)
     {
         this.Planet = planet;
-        Generator = generator.CreateMapGenerator(configuration);
+        Generator = generator.CreateMapGenerator();
     }
 
     public new PlanetChunkConfiguration Configuration

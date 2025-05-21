@@ -24,6 +24,7 @@ public class PathModifer : IModifyDensity, IModifyColor, IModifyFoliageMask
 
     public PathModifer()
     {
+
         // Central dirt path across the middle
         paths.Add(new PathEntry
         {
@@ -62,14 +63,13 @@ public class PathModifer : IModifyDensity, IModifyColor, IModifyFoliageMask
             OuterRadius = 3f,
             Color = new Color(0.3f, 0.2f, 0.12f) // Shady trail
         });
-
     }
 
-    public void ModifyColor(ref Color32[] vertexColors, MeshData meshData, Matrix4x4 localToWorld, IChunkConfiguration config)
+    public void ModifyColor(ref Color32[] vertexColors, MeshData meshData, Matrix4x4 localToWorld)
     {
         foreach (var path in paths)
         {
-            ModifyColor(path, ref vertexColors, meshData, localToWorld, config);
+            ModifyColor(path, ref vertexColors, meshData, localToWorld);
         }
     }
 
@@ -89,7 +89,7 @@ public class PathModifer : IModifyDensity, IModifyColor, IModifyFoliageMask
         }
     }
 
-    private void ModifyColor(PathEntry path, ref Color32[] vertexColors, MeshData meshData, Matrix4x4 localToWorld, IChunkConfiguration config)
+    private void ModifyColor(PathEntry path, ref Color32[] vertexColors, MeshData meshData, Matrix4x4 localToWorld)
     {
         for (int i = 0; i < meshData.Vertices.Count; i++)
         {

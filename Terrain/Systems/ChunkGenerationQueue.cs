@@ -30,39 +30,16 @@ public class ChunkGenerationQueue
     private bool isProcessing = false;
 
     /// <summary>
-    /// The layout used to help with generating chunks.
+    /// A collection of services to help with chunk generation.
     /// </summary>
-    private IChunkLayout Layout;
-
-    /// <summary>
-    /// The generator used to generate.
-    /// </summary>
-    private IChunkGenerator chunkGenerator;
-
-    /// <summary>
-    /// The colorizer used to color meshes.
-    /// </summary>
-    private IChunkColorizer chunkColorizer;
-
-    /// <summary>
-    /// The configuration used for chunk generation.
-    /// </summary>
-    private IChunkConfiguration chunkConfiguration;
+    private IChunkServices chunkServices;
 
     /// <summary>
     /// Initialize a new instance of the <see cref="ChunkGenerationQueue"/> class.
     /// </summary>
-    public ChunkGenerationQueue(IChunkLayout layout, ChunkRenderer render, IChunkGenerator chunkGenerator, IChunkColorizer colorizer, IChunkConfiguration configuration, CancellationToken token)
+    public ChunkGenerationQueue(IChunkServices services, CancellationToken token)
     {
-        if (chunkGenerator == null)
-            throw new ArgumentNullException(nameof(chunkGenerator));
-        if (configuration == null)
-            throw new ArgumentNullException(nameof(configuration));
-
-        this.Layout = layout;
-        this.chunkGenerator = chunkGenerator;
-        this.chunkColorizer = colorizer;
-        this.chunkConfiguration = configuration;
+        this.chunkServices = services;
         this.cancellationToken = token;
 
         for (int i = 0; i < 8; i++)
@@ -218,6 +195,7 @@ public class ChunkGenerationQueue
             catch (Exception ex)
             {
                 job.Completion.TrySetException(ex);
+                Debug.LogError(ex);
             }
         }
     }
@@ -229,12 +207,12 @@ public class ChunkGenerationQueue
     /// <returns></returns>
     private ChunkData WorkerNewChunk(ChunkGenerationJob job)
     {
-        ChunkData result = chunkGenerator.GenerateNewChunk(job.Coordinates, job.LODIndex, chunkConfiguration, job.Token);
+        ChunkData result = chunkServices.Generator.GenerateNewChunk(job.Coordinates, job.LODIndex, job.Token);
 
-        Vector3 worldPos = this.Layout.ToWorld(job.Coordinates, job.LODIndex);
+        Vector3 worldPos = chunkServices.Layout.ToWorld(job.Coordinates, job.LODIndex);
 
         Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
-        chunkColorizer.UpdateChunkColors(result, transform, chunkConfiguration);
+        chunkServices.Colorizer.UpdateChunkColors(result, transform);
 
         return result;
     }
@@ -248,8 +226,8 @@ public class ChunkGenerationQueue
     {
         ChunkModificationJob mod = job.ModificationJob;
 
-        chunkGenerator.ApplyTerrainBrush(mod.ExistingData, chunkConfiguration, mod.Brush, job.Coordinates, mod.IsAdding, job.Token);
-        chunkGenerator.RegenerateMeshData(mod.ExistingData, chunkConfiguration, job.Token);
+        chunkServices.Generator.ApplyTerrainBrush(mod.ExistingData, mod.Brush, job.Coordinates, mod.IsAdding, job.Token);
+        chunkServices.Generator.RegenerateMeshData(mod.ExistingData, job.Token);
 
         // We set the original data back.
         return mod.ExistingData;
@@ -262,8 +240,8 @@ public class ChunkGenerationQueue
     /// <returns></returns>
     private int GetPriorityOfChunk(Vector3Int coordinates)
     {
-        int dx = Mathf.Abs(coordinates.x - this.Layout.FollowerCoordinates.x);
-        int dz = Mathf.Abs(coordinates.z - this.Layout.FollowerCoordinates.y);
+        int dx = Mathf.Abs(coordinates.x - this.chunkServices.Layout.FollowerCoordinates.x);
+        int dz = Mathf.Abs(coordinates.z - this.chunkServices.Layout.FollowerCoordinates.y);
 
         return Math.Max(dx, dz);
     }

@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(ChunkManager))]
-public class LandMass : MonoBehaviour
+public class LandMass : MonoBehaviour, IChunkServices
 {
     [Tooltip("The main character of the world. The object we should spawn chunks around.")]
     public Transform Follower;
@@ -11,15 +11,26 @@ public class LandMass : MonoBehaviour
 
     private ChunkManager chunkManager;
 
+    private LandMassChunkColorizer colorizer;
+    private LandMassChunkGenerator generator;
+    private LandMassChunkLayout layout;
+    private LandMassChunkControllerFactory factory;
+
     private void Awake()
     {
         this.chunkManager = this.GetComponent<ChunkManager>();
 
-        var generator = new LandMassChunkGenerator();
-        var layout = new LandMassChunkLayout(generator, ChunkConfiguration);
-        var factory = new LandMassChunkControllerFactory(200, this.chunkManager);
-        var colorizer = new LandMassChunkColorizer();
+        colorizer = new LandMassChunkColorizer(ChunkConfiguration);
+        generator = new LandMassChunkGenerator(this);
+        layout = new LandMassChunkLayout(generator, ChunkConfiguration);
+        factory = new LandMassChunkControllerFactory(200, this, this.chunkManager.transform);
 
-        this.chunkManager.Initialize(this.Follower, ChunkConfiguration, layout, colorizer, factory, generator);
+        this.chunkManager.Initialize(this.Follower, this);
     }
+
+    IChunkConfiguration IChunkServices.Configuration => this.ChunkConfiguration;
+    IChunkLayout IChunkServices.Layout => this.layout;
+    IChunkGenerator IChunkServices.Generator => this.generator;
+    IChunkControllerFactory IChunkServices.ControllerFactory => this.factory;
+    IChunkColorizer IChunkServices.Colorizer => this.colorizer;
 }

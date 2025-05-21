@@ -11,7 +11,7 @@ public interface IModifyDensity : ITerrainModifier
 
 public interface IModifyColor : ITerrainModifier
 {
-    void ModifyColor(ref Color32[] vertexColors, MeshData meshData, Matrix4x4 localToWorld, IChunkConfiguration config);
+    void ModifyColor(ref Color32[] vertexColors, MeshData meshData, Matrix4x4 localToWorld);
 }
 
 public interface IModifyFoliageMask : ITerrainModifier

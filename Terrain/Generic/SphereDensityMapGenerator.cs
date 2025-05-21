@@ -7,8 +7,8 @@ public class SphereDensityMapGenerator : HeightDensityMapGenerator
     private Vector3 PlanetCenter;
     private float PlanetRadius;
 
-    public SphereDensityMapGenerator(Vector3 planetCenter, float planetRadius, DensityMapOptions mapOptions)
-        : base(mapOptions)
+    public SphereDensityMapGenerator(PlanetChunkColorizer color, Vector3 planetCenter, float planetRadius, DensityMapOptions mapOptions)
+        : base(color,mapOptions)
     {
         this.PlanetCenter = planetCenter;
         this.PlanetRadius = planetRadius;

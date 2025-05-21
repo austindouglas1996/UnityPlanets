@@ -11,6 +11,6 @@ public class LandMassChunkLayout : GenericChunkLayout
         : base(configuration)
     {
         Configuration = configuration;
-        Generator = generator.CreateMapGenerator(configuration);
+        Generator = generator.CreateMapGenerator();
     }
 }

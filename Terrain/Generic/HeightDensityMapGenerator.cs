@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class HeightDensityMapGenerator : GenericDensityMapGenerator
 {
-    public HeightDensityMapGenerator(DensityMapOptions options) : base(options)
+    public HeightDensityMapGenerator(IChunkColorizer color, DensityMapOptions options) : base(color, options)
     {
     }
 

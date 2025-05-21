@@ -10,14 +10,22 @@ using UnityEngine;
 public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
 {
     /// <summary>
+    /// Used to help with vertex coloring.
+    /// </summary>
+    private IChunkColorizer _colorizer;
+
+    /// <summary>
     /// Creates a new marching cube generator with the given density options.
     /// </summary>
     /// <param name="options">The configuration used for density generation and surface thresholds.</param>
-    public BaseMarchingCubeGenerator(DensityMapOptions options)
+    public BaseMarchingCubeGenerator(IChunkColorizer colorizer, DensityMapOptions options)
     {
+        if (colorizer == null)
+            throw new ArgumentNullException("colorizer is null.");
         if (options == null)
             throw new System.ArgumentNullException("options is null.");
 
+        this._colorizer = colorizer;
         this.Options = options;
     }
 
@@ -71,6 +79,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         }
 
         var Vertices = new List<Vector3>();
+        var Colors = new List<Color32>();
         var Triangles = new List<int>();
         var UVs = new List<Vector2>(); // unused, can be removed if not used
 
@@ -138,6 +147,10 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
                         Vertices.Add(v2);
                         Vertices.Add(v3);
 
+                        Colors.Add(this._colorizer.GetColorForVertice(v1));
+                        Colors.Add(this._colorizer.GetColorForVertice(v2));
+                        Colors.Add(this._colorizer.GetColorForVertice(v3));
+
                         Triangles.Add(baseIndex + 0);
                         Triangles.Add(baseIndex + 1);
                         Triangles.Add(baseIndex + 2);
@@ -148,6 +161,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         }
 
         MeshData data = new MeshData(Vertices, Triangles, UVs);
+        data.Colors = Colors.ToArray();
 
         Flatten(densityMap, data, lodIndex);
 

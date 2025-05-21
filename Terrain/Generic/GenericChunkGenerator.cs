@@ -8,6 +8,17 @@ using UnityEngine;
 /// </summary>
 public abstract class GenericChunkGenerator : IChunkGenerator
 {
+    private IChunkConfiguration configuration;
+    public GenericChunkGenerator(IChunkConfiguration configuration)
+    {
+        this.configuration = configuration;
+    }
+
+    protected IChunkConfiguration Configuration
+    {
+        get { return configuration; }
+    }
+
     /// <summary>
     /// Generates a new chunk from coordinates using the provided configuration.
     /// </summary>
@@ -15,14 +26,14 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="config">The chunk configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>The generated chunk data.</returns>
-    public virtual ChunkData GenerateNewChunk(Vector3Int coordinates, int lodIndex, IChunkConfiguration config, CancellationToken token = default)
+    public virtual ChunkData GenerateNewChunk(Vector3Int coordinates, int lodIndex, CancellationToken token = default)
     {
         token.ThrowIfCancellationRequested();
 
-        var gen = CreateMapGenerator(config);
+        var gen = CreateMapGenerator();
         var map = gen.Generate(coordinates, lodIndex);
 
-        foreach (var modifier in config.Modifiers)
+        foreach (var modifier in configuration.Modifiers)
         {
             //if (modifier is IModifyDensity densityMod)
                 //densityMod.ModifyDensity(ref map.DensityMap, coordinates, config.MapOptions);
@@ -44,11 +55,11 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="chunkPos">The chunk position in the world.</param>
     /// <param name="addingOrSubtracting">True if adding, false if subtracting.</param>
     /// <param name="token">Optional cancellation token.</param>
-    public virtual void ApplyTerrainBrush(ChunkData data, IChunkConfiguration config, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default)
+    public virtual void ApplyTerrainBrush(ChunkData data, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default)
     {
         token.ThrowIfCancellationRequested();
 
-        CreateMapGenerator(config).ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, addingOrSubtracting);
+        CreateMapGenerator().ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, addingOrSubtracting);
     }
 
     /// <summary>
@@ -57,10 +68,10 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="data">The chunk data to update.</param>
     /// <param name="config">The chunk config.</param>
     /// <param name="token">Optional cancellation token.</param>
-    public virtual void RegenerateMeshData(ChunkData data, IChunkConfiguration config, CancellationToken token = default)
+    public virtual void RegenerateMeshData(ChunkData data, CancellationToken token = default)
     {
         token.ThrowIfCancellationRequested();
-        data.MeshData = CreateMapGenerator(config).GenerateMeshData(data.DensityMap, Vector3.zero, data.LOD);
+        data.MeshData = CreateMapGenerator().GenerateMeshData(data.DensityMap, Vector3.zero, data.LOD);
     }
 
     /// <summary>
@@ -68,5 +79,5 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// </summary>
     /// <param name="config">The chunk configuration.</param>
     /// <returns>A new BaseMarchingCubeGenerator instance.</returns>
-    public abstract BaseMarchingCubeGenerator CreateMapGenerator(IChunkConfiguration config);
+    public abstract BaseMarchingCubeGenerator CreateMapGenerator();
 }

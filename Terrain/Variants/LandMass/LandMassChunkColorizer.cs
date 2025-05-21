@@ -6,5 +6,7 @@ using static UnityEngine.Rendering.STP;
 
 public class LandMassChunkColorizer : GenericChunkColorizer
 {
-
+    public LandMassChunkColorizer(IChunkConfiguration configuration) : base(configuration)
+    {
+    }
 }

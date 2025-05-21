@@ -7,13 +7,11 @@ using UnityEngine;
 public interface IChunkColorizer
 {
     /// <summary>
-    /// Applies colors to the given mesh based on the chunk's data and transform.
+    /// Retrieve the lerped color based on a position in world space.
     /// </summary>
-    /// <param name="meshData">The mesh data to apply colors to.</param>
-    /// <param name="localToWorld">Transform matrix used to convert positions for color calculations.</param>
-    /// <param name="configuration">Chunk configuration info.</param>
-    /// <returns>An array of colors to assign to the mesh.</returns>
-    Color32[] GenerateVertexColors(ChunkData chunk, Matrix4x4 localToWorld, IChunkConfiguration configuration);
+    /// <param name="vertice"></param>
+    /// <returns></returns>
+    Color32 GetColorForVertice(Vector3 vertice);
 
     /// <summary>
     /// Applies generated chunk colors, along with colors found in <see cref="IChunkConfiguration.Modifiers"/>
@@ -21,5 +19,5 @@ public interface IChunkColorizer
     /// <param name="chunk"></param>
     /// <param name="localToWorld"></param>
     /// <param name="config"></param>
-    void UpdateChunkColors(ChunkData chunk, Matrix4x4 localToWorld, IChunkConfiguration config);
+    void UpdateChunkColors(ChunkData chunk, Matrix4x4 localToWorld);
 }

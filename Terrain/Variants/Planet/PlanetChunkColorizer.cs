@@ -4,7 +4,8 @@ using static UnityEngine.Rendering.STP;
 
 public class PlanetChunkColorizer : GenericChunkColorizer
 {
-    public PlanetChunkColorizer()
+    public PlanetChunkColorizer(PlanetChunkConfiguration config)
+        : base(config)
     {
     }
 }

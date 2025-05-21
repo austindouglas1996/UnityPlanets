@@ -21,14 +21,7 @@ public class ChunkManager : MonoBehaviour
     /// </summary>
     [HideInInspector] public Transform Follower;
 
-    /// <summary>
-    /// Chunk configurations.
-    /// </summary>
-    public IChunkConfiguration Configuration;
-    public IChunkColorizer Colorizer;
-    public IChunkLayout Layout;
-    public IChunkControllerFactory Factory;
-    public IChunkGenerator Generator;
+    private IChunkServices Services;
     private ChunkRenderer Renderer;
 
     /// <summary>
@@ -102,7 +95,7 @@ public class ChunkManager : MonoBehaviour
 
         this.UpdateLayout();
 
-        if (Layout.ShouldUpdateLayout())
+        if (this.Services.Layout.ShouldUpdateLayout())
         {
             await UpdateChunks();
         }
@@ -110,8 +103,8 @@ public class ChunkManager : MonoBehaviour
 
     private void UpdateLayout()
     {
-        this.Layout.Follower = this.Follower;
-        this.Layout.FollowerWorldPosition = this.Follower.position;
+        this.Services.Layout.Follower = this.Follower;
+        this.Services.Layout.FollowerWorldPosition = this.Follower.position;
     }
 
     private void OnDisable()
@@ -131,28 +124,12 @@ public class ChunkManager : MonoBehaviour
     /// <param name="layout">Logic to determine visible chunk positions.</param>
     /// <param name="factory">Factory that builds new chunk controllers.</param>
     /// <exception cref="System.ArgumentNullException">If any required dependency is missing.</exception>
-    public void Initialize(Transform follower, IChunkConfiguration configuration, IChunkLayout layout, IChunkColorizer colorizer, IChunkControllerFactory factory, IChunkGenerator generator)
+    public void Initialize(Transform follower, IChunkServices services)
     {
-        if (configuration == null)
-            throw new System.ArgumentNullException("Configuration is null.");
-        if (layout == null)
-            throw new System.ArgumentNullException("Layout is null.");
-        if (colorizer == null)
-            throw new System.ArgumentNullException("Color is null.");
-        if (factory == null)
-            throw new System.ArgumentNullException("Factory is null.");
-        if (generator == null)
-            throw new System.ArgumentNullException("Generator is null.");
-
         this.Follower = follower;
+        this.Services = services;
 
-        this.Configuration = configuration;
-        this.Layout = layout;
-        this.Colorizer = colorizer;
-        this.Factory = factory;
-        this.Generator = generator;
-
-        this.Renderer.Initialize(factory);
+        this.Renderer.Initialize(this, this.Services);
 
         this.IsInitialized = true;
     }
@@ -168,9 +145,9 @@ public class ChunkManager : MonoBehaviour
     public void ModifyTerrain(TerrainBrush brush, bool isAdding, float bufferMultiplier = 0.5f, CancellationToken token = default)
     {
         Bounds brushBounds = brush.GetBrushBounds();
-        Vector3 chunkSize = Configuration.DensityOptions.ChunkSize3;
+        Vector3 chunkSize = this.Services.Configuration.DensityOptions.ChunkSize3;
 
-        Vector3Int hitPosCoord = Layout.ToCoordinates(brush.WorldHitPoint, 0);
+        Vector3Int hitPosCoord = this.Services.Layout.ToCoordinates(brush.WorldHitPoint, 0);
 
         // Check all neighbors in a 3x3x3 cube around the hit position
         for (int x = -1; x <= 1; x++)
@@ -183,7 +160,7 @@ public class ChunkManager : MonoBehaviour
 
                     Vector3Int neighborCoord = hitPosCoord + new Vector3Int(x, y, z);
 
-                    if (Layout.PreviousActiveChunks.Contains(neighborCoord))
+                    if (this.Services.Layout.PreviousActiveChunks.Contains(neighborCoord))
                     {
                         ChunkRenderData chunk = this.Chunks[neighborCoord];
 
@@ -209,13 +186,13 @@ public class ChunkManager : MonoBehaviour
         layoutCts = new CancellationTokenSource();
 
         int chunks = 0;
-        Vector3Int playerCoord = Layout.FollowerCoordinates;
+        Vector3Int playerCoord = this.Services.Layout.FollowerCoordinates;
 
         int previousMaxRange = 0;
 
         for (int lod = 0; lod <= 5; lod++)
         {
-            int chunkSize = Configuration.DensityOptions.ChunkSize << lod;
+            int chunkSize = this.Services.Configuration.DensityOptions.ChunkSize << lod;
             int range = GetRangeForLOD(lod);
             if (range == 0)
                 continue;

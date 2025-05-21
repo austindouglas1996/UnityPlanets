@@ -3,8 +3,8 @@ using UnityEngine;
 
 public class PlanetChunkControllerFactory : GenericChunkControllerFactory
 {
-    public PlanetChunkControllerFactory(Planet planet, int preloadChunks, ChunkManager manager)
-        : base(preloadChunks, manager)
+    public PlanetChunkControllerFactory(Planet planet, int preloadChunks, IChunkServices services, Transform parent)
+        : base(preloadChunks, services, parent)
     {
     }
 }
