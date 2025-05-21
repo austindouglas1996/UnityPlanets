@@ -154,7 +154,6 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
                         Triangles.Add(baseIndex + 0);
                         Triangles.Add(baseIndex + 1);
                         Triangles.Add(baseIndex + 2);
-
                     }
                 }
             }

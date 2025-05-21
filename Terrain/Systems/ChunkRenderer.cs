@@ -60,6 +60,7 @@ public class ChunkRenderer : MonoBehaviour
         this.cancellationToken = new CancellationTokenSource();
         this.chunkManager = this.GetComponent<ChunkManager>();
 
+        this.chunkServices = services;
         this.generationQueue = new ChunkGenerationQueue(services, cancellationToken.Token);
 
         isInitialized = true;
@@ -115,19 +116,26 @@ public class ChunkRenderer : MonoBehaviour
         var task = this.generationQueue.RequestChunkGeneration(coordinates, lodIndex);
         task.ContinueWith(t =>
         {
-            if (t.Status != TaskStatus.RanToCompletion)
-                return;
+            try
+            {
+                if (t.Status != TaskStatus.RanToCompletion)
+                    return;
 
-            if (t.Result.MeshData.Vertices.Count == 0)
-                return;
+                if (t.Result.MeshData.Vertices.Count == 0)
+                    return;
 
-            Vector3 worldPos = this.chunkServices.Layout.ToWorld(coordinates, lodIndex);
-            Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
+                Vector3 worldPos = this.chunkServices.Layout.ToWorld(coordinates, lodIndex);
+                Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
 
-            // Generate mesh and apply color.
-            ChunkRenderData renderData = new ChunkRenderData(coordinates, t.Result, transform);
+                // Generate mesh and apply color.
+                ChunkRenderData renderData = new ChunkRenderData(coordinates, t.Result, transform);
 
-            this.SubmitNewChunk(renderData);
+                this.SubmitNewChunk(renderData);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogException(ex);
+            }
 
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
