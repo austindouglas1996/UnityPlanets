@@ -7,7 +7,7 @@ using System.Collections.ObjectModel;
 using NUnit.Framework.Interfaces;
 using System.Text;
 
-public class ChunkGenerationQueue
+public class ChunkGenerationProcessor
 {
     /// <summary>
     /// A dictionary of active chunks with their jobs. Allows for one respective job, but also
@@ -35,9 +35,9 @@ public class ChunkGenerationQueue
     private IChunkServices chunkServices;
 
     /// <summary>
-    /// Initialize a new instance of the <see cref="ChunkGenerationQueue"/> class.
+    /// Initialize a new instance of the <see cref="ChunkGenerationProcessor"/> class.
     /// </summary>
-    public ChunkGenerationQueue(IChunkServices services, CancellationToken token)
+    public ChunkGenerationProcessor(IChunkServices services, CancellationToken token)
     {
         this.chunkServices = services;
         this.cancellationToken = token;

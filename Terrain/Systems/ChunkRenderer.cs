@@ -14,7 +14,7 @@ public class ChunkRenderer : MonoBehaviour
 
     private ChunkManager chunkManager;
     private IChunkServices chunkServices;
-    public ChunkGenerationQueue generationQueue;
+    public ChunkGenerationProcessor generationQueue;
 
     private CancellationTokenSource cancellationToken;
 
@@ -61,7 +61,7 @@ public class ChunkRenderer : MonoBehaviour
         this.chunkManager = this.GetComponent<ChunkManager>();
 
         this.chunkServices = services;
-        this.generationQueue = new ChunkGenerationQueue(services, cancellationToken.Token);
+        this.generationQueue = new ChunkGenerationProcessor(services, cancellationToken.Token);
 
         isInitialized = true;
     }
@@ -132,6 +132,7 @@ public class ChunkRenderer : MonoBehaviour
 
                 this.SubmitNewChunk(renderData);
             }
+            catch (System.OperationCanceledException) { }
             catch (System.Exception ex)
             {
                 Debug.LogException(ex);

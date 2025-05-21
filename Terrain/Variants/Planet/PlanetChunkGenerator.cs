@@ -10,8 +10,14 @@ public class PlanetChunkGenerator : GenericChunkGenerator
         this.colorizer = colorizer;
     }
 
-    public override BaseMarchingCubeGenerator CreateMapGenerator()
+    protected override BaseMarchingCubeGenerator Generator
     {
-        return new SphereDensityMapGenerator(colorizer, planet.Center, planet.PlanetRadius, Configuration.DensityOptions);
+        get
+        {
+            if (generator == null)
+                generator = new SphereDensityMapGenerator(colorizer, planet.Center, planet.PlanetRadius, Configuration.DensityOptions);
+            return generator;
+        }
     }
+    private SphereDensityMapGenerator generator;
 }

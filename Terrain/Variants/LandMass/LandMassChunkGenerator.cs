@@ -9,12 +9,14 @@ public class LandMassChunkGenerator : GenericChunkGenerator
         this.colorizer = services.Colorizer;
     }
 
-    private HeightDensityMapGenerator mapGenerator;
-    public override BaseMarchingCubeGenerator CreateMapGenerator()
+    protected override BaseMarchingCubeGenerator Generator
     {
-        if (mapGenerator == null)
-            mapGenerator = new HeightDensityMapGenerator(colorizer,Configuration.DensityOptions);
-
-        return mapGenerator;
+        get 
+        { 
+            if (this.generator == null)
+                this.generator = new HeightDensityMapGenerator(colorizer, Configuration.DensityOptions);
+            return this.generator;
+        }
     }
+    private HeightDensityMapGenerator generator;
 }

@@ -5,12 +5,8 @@ using UnityEngine;
 
 public class LandMassChunkLayout : GenericChunkLayout
 {
-    private BaseMarchingCubeGenerator Generator;
-
-    public LandMassChunkLayout(LandMassChunkGenerator generator, LandMassChunkConfiguration configuration)
+    public LandMassChunkLayout(LandMassChunkConfiguration configuration)
         : base(configuration)
     {
-        Configuration = configuration;
-        Generator = generator.CreateMapGenerator();
     }
 }

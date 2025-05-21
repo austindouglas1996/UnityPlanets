@@ -19,6 +19,8 @@ public abstract class GenericChunkGenerator : IChunkGenerator
         get { return configuration; }
     }
 
+    protected abstract BaseMarchingCubeGenerator Generator { get; }
+
     /// <summary>
     /// Generates a new chunk from coordinates using the provided configuration.
     /// </summary>
@@ -30,8 +32,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     {
         token.ThrowIfCancellationRequested();
 
-        var gen = CreateMapGenerator();
-        var map = gen.Generate(coordinates, lodIndex);
+        var map = Generator.Generate(coordinates, lodIndex);
 
         foreach (var modifier in configuration.Modifiers)
         {
@@ -42,7 +43,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
                 //foliageMod.ModifyFoliageMask(ref map.FoliageMask, coordinates);
         }
 
-        MeshData data = gen.GenerateMeshData(map, Vector3.zero, lodIndex);
+        MeshData data = Generator.GenerateMeshData(map, Vector3.zero, lodIndex);
         return new ChunkData(map, data, lodIndex);
     }
 
@@ -59,7 +60,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     {
         token.ThrowIfCancellationRequested();
 
-        CreateMapGenerator().ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, addingOrSubtracting);
+        Generator.ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, addingOrSubtracting);
     }
 
     /// <summary>
@@ -71,13 +72,6 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     public virtual void RegenerateMeshData(ChunkData data, CancellationToken token = default)
     {
         token.ThrowIfCancellationRequested();
-        data.MeshData = CreateMapGenerator().GenerateMeshData(data.DensityMap, Vector3.zero, data.LOD);
+        data.MeshData = Generator.GenerateMeshData(data.DensityMap, Vector3.zero, data.LOD);
     }
-
-    /// <summary>
-    /// Creates a new instance of the map generator based on the config.
-    /// </summary>
-    /// <param name="config">The chunk configuration.</param>
-    /// <returns>A new BaseMarchingCubeGenerator instance.</returns>
-    public abstract BaseMarchingCubeGenerator CreateMapGenerator();
 }

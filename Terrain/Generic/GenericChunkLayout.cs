@@ -14,7 +14,12 @@ using UnityEngine;
 /// to help with reducing code reuse.
 /// </summary>
 public abstract class GenericChunkLayout : IChunkLayout
-{
+{    
+    /// <summary>
+    /// Configuration used for chunk generation.
+    /// </summary>
+    private IChunkConfiguration Configuration;
+
     /// <summary>
     /// Initializes a new instance of <see cref="GenericChunkLayout"/>
     /// </summary>
@@ -23,11 +28,6 @@ public abstract class GenericChunkLayout : IChunkLayout
     {
         this.Configuration = configuration;
     }
-
-    /// <summary>
-    /// Configuration used for chunk generation.
-    /// </summary>
-    public IChunkConfiguration Configuration;
 
     /// <summary>
     /// Returns the <see cref="BoundsInt"/> of the last collection of active chunks around the follower.

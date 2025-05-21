@@ -21,6 +21,5 @@ public class GenericChunkConfiguration : IChunkConfiguration
     public List<ITerrainModifier> Modifiers => modifiers; 
     [SerializeField] private List<ITerrainModifier> modifiers = new()
     {
-        new PathModifer()
     };
 }

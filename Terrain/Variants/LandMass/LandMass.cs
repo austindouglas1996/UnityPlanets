@@ -22,7 +22,7 @@ public class LandMass : MonoBehaviour, IChunkServices
 
         colorizer = new LandMassChunkColorizer(ChunkConfiguration);
         generator = new LandMassChunkGenerator(this);
-        layout = new LandMassChunkLayout(generator, ChunkConfiguration);
+        layout = new LandMassChunkLayout(ChunkConfiguration);
         factory = new LandMassChunkControllerFactory(200, this, this.chunkManager.transform);
 
         this.chunkManager.Initialize(this.Follower, this);
