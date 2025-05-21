@@ -30,8 +30,6 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <returns>The generated chunk data.</returns>
     public virtual ChunkData GenerateNewChunk(Vector3Int coordinates, int lodIndex, CancellationToken token = default)
     {
-        token.ThrowIfCancellationRequested();
-
         var map = Generator.Generate(coordinates, lodIndex);
 
         foreach (var modifier in configuration.Modifiers)
@@ -58,8 +56,6 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="token">Optional cancellation token.</param>
     public virtual void ApplyTerrainBrush(ChunkData data, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default)
     {
-        token.ThrowIfCancellationRequested();
-
         Generator.ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, addingOrSubtracting);
     }
 
@@ -71,7 +67,6 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="token">Optional cancellation token.</param>
     public virtual void RegenerateMeshData(ChunkData data, CancellationToken token = default)
     {
-        token.ThrowIfCancellationRequested();
         data.MeshData = Generator.GenerateMeshData(data.DensityMap, Vector3.zero, data.LOD);
     }
 }

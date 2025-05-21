@@ -41,7 +41,6 @@ public class MeshData
         mesh.triangles = Triangles.ToArray();
         mesh.normals = Normals.ToArray();
         mesh.uv = UVs.ToArray();
-        mesh.colors = null;
         mesh.colors32 = Colors;
 
         // Hmm should we keep this?
