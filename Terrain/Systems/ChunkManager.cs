@@ -84,14 +84,6 @@ public class ChunkManager : MonoBehaviour
 
     private async void Update()
     {
-        if (Time.time < timeStop && this.Renderer.isInitialized)
-        {
-            debugText.text = $"" +
-                $"Chunks: {Chunks.Count}\n" +
-                $"Total Time: {Time.time:F1} sec\n" +
-                $"Total Time: {Time.time:F1} sec\n" +
-                $"{this.Renderer.generationQueue.ToString()}\n";
-        }
 
         this.UpdateLayout();
 
