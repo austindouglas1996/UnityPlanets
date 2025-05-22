@@ -77,13 +77,18 @@ public class ChunkManager : MonoBehaviour
         RectTransform rectTransform = debugText.rectTransform;
         rectTransform.sizeDelta = new Vector2(50, 80);
         rectTransform.anchoredPosition = Vector2.zero;
+
+        sw = new System.Diagnostics.Stopwatch();
+        sw.Start();
     }
 
     public float timeStop = 20f;
-
+    private System.Diagnostics.Stopwatch sw;
 
     private async void Update()
     {
+        this.debugText.text = this.Chunks.Count.ToString() + "\n" +
+            sw.Elapsed.TotalSeconds.ToString();
 
         this.UpdateLayout();
 
@@ -230,7 +235,7 @@ public class ChunkManager : MonoBehaviour
     {
         switch (lod)
         {
-            case 0: return 0; // High detail near player
+            case 0: return 64; // High detail near player
             case 1: return 2;
             case 2: return 2;
             case 3: return 2;

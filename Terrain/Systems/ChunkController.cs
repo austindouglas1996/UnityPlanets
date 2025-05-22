@@ -73,6 +73,7 @@ public class ChunkController : MonoBehaviour
         try
         {
             var Coordinates = this.ChunkContext.Coordinates;
+            this.transform.position -= new Vector3(0, renderData.Context.LODIndex * 10, 0);
             this.name = this.ChunkContext.ToString();
             this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
             this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
