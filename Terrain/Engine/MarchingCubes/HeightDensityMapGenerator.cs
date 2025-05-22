@@ -52,25 +52,4 @@ public class HeightDensityMapGenerator : GenericDensityMapGenerator
     {
         return -(worldY - GetHeightForWorldPosition(worldX,worldZ));
     }
-
-    
-
-
-
-    public override MeshData GenerateMeshData(DensityMap densityMap, Vector3 chunkOffset, int lodIndex = 5)
-    {
-        MeshData initialData = base.GenerateMeshData(densityMap, chunkOffset, lodIndex);
-        Vector2[] uvs = new Vector2[initialData.Vertices.Count];
-
-        for (int i = 0; i < initialData.Vertices.Count; i++)
-        {
-            Vector3 v = initialData.Vertices[i].normalized;
-            uvs[i] = new Vector2(v.x,v.y);
-        }
-
-        // Set the UV with our modified data.
-        initialData.UVs = uvs.ToList();
-
-        return initialData;
-    }
 }
