@@ -28,9 +28,9 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="config">The chunk configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>The generated chunk data.</returns>
-    public virtual ChunkData GenerateNewChunk(Vector3Int coordinates, int lodIndex, CancellationToken token = default)
+    public virtual ChunkData GenerateNewChunk(ChunkContext context, CancellationToken token = default)
     {
-        var map = Generator.Generate(coordinates, lodIndex);
+        var map = Generator.Generate(context);
 
         foreach (var modifier in configuration.Modifiers)
         {
@@ -41,8 +41,8 @@ public abstract class GenericChunkGenerator : IChunkGenerator
                 //foliageMod.ModifyFoliageMask(ref map.FoliageMask, coordinates);
         }
 
-        MeshData data = Generator.GenerateMeshData(map, Vector3.zero, lodIndex);
-        return new ChunkData(map, data, lodIndex);
+        MeshData data = Generator.GenerateMeshData(map, Vector3.zero, context.LODIndex);
+        return new ChunkData(map, data, context);
     }
 
     /// <summary>
@@ -54,9 +54,9 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="chunkPos">The chunk position in the world.</param>
     /// <param name="addingOrSubtracting">True if adding, false if subtracting.</param>
     /// <param name="token">Optional cancellation token.</param>
-    public virtual void ApplyTerrainBrush(ChunkData data, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default)
+    public virtual void ApplyTerrainBrush(ChunkData data, TerrainBrush brush, ChunkContext context, bool addingOrSubtracting, CancellationToken token = default)
     {
-        Generator.ModifyMapWithBrush(brush, ref data.DensityMap, chunkPos, addingOrSubtracting);
+        Generator.ModifyMapWithBrush(brush, ref data.DensityMap, context.Coordinates, addingOrSubtracting);
     }
 
     /// <summary>
@@ -67,6 +67,6 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="token">Optional cancellation token.</param>
     public virtual void RegenerateMeshData(ChunkData data, CancellationToken token = default)
     {
-        data.MeshData = Generator.GenerateMeshData(data.DensityMap, Vector3.zero, data.LOD);
+        data.MeshData = Generator.GenerateMeshData(data.DensityMap, Vector3.zero, data.Context.LODIndex);
     }
 }

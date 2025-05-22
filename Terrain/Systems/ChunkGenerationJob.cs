@@ -18,17 +18,15 @@ public class ChunkModificationJob
 
 public class ChunkGenerationJob
 {
-    public ChunkGenerationJob(Vector3Int coordinates, int lODIndex, CancellationTokenSource cts, ChunkModificationJob modificationJob = null)
+    public ChunkGenerationJob(ChunkContext context, CancellationTokenSource cts, ChunkModificationJob modificationJob = null)
     {
-        Coordinates = coordinates;
-        LODIndex = lODIndex;
+        Context = context;
         Completion = new TaskCompletionSource<ChunkData>(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationSource = cts;
         ModificationJob = modificationJob;
     }
 
-    public Vector3Int Coordinates { get; private set; }
-    public int LODIndex { get; private set; }
+    public ChunkContext Context { get; private set; }
 
     public TaskCompletionSource<ChunkData> Completion;
 

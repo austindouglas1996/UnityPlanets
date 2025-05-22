@@ -1,3 +1,4 @@
+
 using System;
 using UnityEngine;
 
@@ -10,9 +11,9 @@ public enum ChunkRenderType
 
 public class ChunkRenderData
 {
-    public ChunkRenderData(Vector3Int coordinates, ChunkData data, Matrix4x4 localToWorld)
+    public ChunkRenderData(ChunkContext context, ChunkData data, Matrix4x4 localToWorld)
     {
-        Coordinates = coordinates;
+        Context = context;
         Data = data;
         LocalToWorld = localToWorld;
         RenderType = ChunkRenderType.GPU;
@@ -21,7 +22,6 @@ public class ChunkRenderData
     public ChunkRenderData(ChunkController controller, ChunkData data)
     {
         this.Controller = controller;
-        this.Coordinates = controller.Coordinates;
         this.Data = data;
         this.LocalToWorld = controller.transform.localToWorldMatrix;
         this.RenderType = ChunkRenderType.GameObject;
@@ -38,7 +38,7 @@ public class ChunkRenderData
     }
     private bool isActive = true;
 
-    public Vector3Int Coordinates {  get; set; }
+    public ChunkContext Context { get; set; }
     public ChunkData Data { get; set; }
     public Mesh Mesh
     {
@@ -56,5 +56,5 @@ public class ChunkRenderData
 
     public ChunkController? Controller { get; set; }
 
-    public int LOD => Data?.LOD ?? -1;
+    public int LOD => Data?.Context.LODIndex ?? -1;
 }

@@ -14,7 +14,7 @@ using UnityEngine.AI;
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
 public class ChunkController : MonoBehaviour
 {
-    public Vector3Int Coordinates;
+    public ChunkContext ChunkContext;
 
     private void Awake()
     {
@@ -42,9 +42,10 @@ public class ChunkController : MonoBehaviour
     /// <param name="config">Configuration used for mesh noise.</param>
     /// <param name="coordinates">Coordinates of this chunk.</param>
     /// <exception cref="System.ArgumentNullException"></exception>
-    public void Initialize(Vector3Int coordinates, CancellationToken cancellationToken = default)
+    public void Initialize(ChunkContext context, CancellationToken cancellationToken = default)
     {
-        this.Coordinates = coordinates;
+        this.ChunkContext = context;
+        this.transform.position = context.WorldPosition;
     }
 
     /// <summary>
@@ -55,7 +56,7 @@ public class ChunkController : MonoBehaviour
         Debug.Log("Reset");
 
         // Properties.
-        this.Coordinates = default;
+        this.ChunkContext = default;
 
         // Components.
         this.GetComponent<MeshFilter>().mesh = null;
@@ -71,7 +72,8 @@ public class ChunkController : MonoBehaviour
     {
         try
         {
-            this.name = $"Chunk LOD:{renderData.LOD} X:{Coordinates.x} Y:{Coordinates.y} Z:{Coordinates.z}";
+            var Coordinates = this.ChunkContext.Coordinates;
+            this.name = this.ChunkContext.ToString();
             this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
             this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
 

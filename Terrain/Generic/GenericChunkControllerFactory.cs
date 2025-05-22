@@ -24,14 +24,12 @@ public abstract class GenericChunkControllerFactory : IChunkControllerFactory
         set { chunkPool = value; }
     }
 
-    public virtual ChunkController CreateChunkController(Vector3Int coordinates, int lodIndex, CancellationToken cancellationToken)
+    public virtual ChunkController CreateChunkController(ChunkContext context, CancellationToken cancellationToken)
     {
         ChunkController newChunk = chunkPool.GetController();
-        newChunk.transform.position = this.chunkServices.Layout.ToWorld(coordinates, lodIndex);
         newChunk.transform.parent = parent;
 
-        // Give 0 for the LOD as other LODS will not be rendered as objects.
-        newChunk.Initialize(coordinates, cancellationToken);
+        newChunk.Initialize(context, cancellationToken);
 
         return newChunk;
     }

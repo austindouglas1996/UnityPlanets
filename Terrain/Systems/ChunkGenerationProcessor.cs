@@ -66,29 +66,29 @@ public class ChunkGenerationProcessor
     /// <param name="LODIndex"></param>
     /// <param name="generationTask"></param>
     /// <returns></returns>
-    public Task<ChunkData> RequestChunkGeneration(Vector3Int coordinates, int LODIndex)
+    public Task<ChunkData> RequestChunkGeneration(ChunkContext context)
     {
         lock (queueLock) 
         {
             // Try to find an existing job. If for some reason we 
             // have a job of the same LOD, return it. If not
             // LOD must have changed so cancel active.
-            if (pendingJobs.TryGetValue(coordinates, out var job))
+            if (pendingJobs.TryGetValue(context.Coordinates, out var job))
             {
-                if (job.LODIndex == LODIndex)
+                if (job.Context.LODIndex == context.LODIndex)
                     return job.Completion.Task;
 
                 job.Cancel();
-                pendingJobs.Remove(coordinates);
+                pendingJobs.Remove(context.Coordinates);
             }
 
-            ChunkGenerationJob newJob = new(coordinates, LODIndex, new CancellationTokenSource(), null);
+            ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), null);
 
             try
             {
                 // Register job as active
-                pendingJobs[coordinates] = newJob;
-                generationQueue.Enqueue(newJob, LODIndex == 0 ? GetPriorityOfChunk(coordinates) : 999);
+                pendingJobs[context.Coordinates] = newJob;
+                generationQueue.Enqueue(newJob, context.LODIndex == 0 ? GetPriorityOfChunk(context.Coordinates) : 999);
             }
             catch (Exception ex)
             {
@@ -106,11 +106,11 @@ public class ChunkGenerationProcessor
     /// <param name="LODIndex"></param>
     /// <param name="modificationJob"></param>
     /// <returns></returns>
-    public Task<ChunkData> RequestChunkModification(Vector3Int coordinates, int LODIndex, ChunkModificationJob modificationJob = null)
+    public Task<ChunkData> RequestChunkModification(ChunkContext context, ChunkModificationJob modificationJob = null)
     {
         lock (queueLock)
         {
-            ChunkGenerationJob newJob = new(coordinates, LODIndex, new CancellationTokenSource(), modificationJob);
+            ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), modificationJob);
 
             generationQueue.Enqueue(newJob, -1);
 
@@ -171,7 +171,7 @@ public class ChunkGenerationProcessor
                 lock (queueLock)
                 {
                     job.Completion.TrySetCanceled();
-                    pendingJobs.Remove(job.Coordinates);
+                    pendingJobs.Remove(job.Context.Coordinates);
                     continue;
                 }
             }
@@ -185,7 +185,7 @@ public class ChunkGenerationProcessor
 
                 lock (queueLock)
                 {
-                    pendingJobs.Remove(job.Coordinates);
+                    pendingJobs.Remove(job.Context.Coordinates);
                 }
             }
             catch (OperationCanceledException)
@@ -207,11 +207,9 @@ public class ChunkGenerationProcessor
     /// <returns></returns>
     private ChunkData WorkerNewChunk(ChunkGenerationJob job)
     {
-        ChunkData result = chunkServices.Generator.GenerateNewChunk(job.Coordinates, job.LODIndex, job.Token);
+        ChunkData result = chunkServices.Generator.GenerateNewChunk(job.Context, job.Token);
 
-        Vector3 worldPos = chunkServices.Layout.ToWorld(job.Coordinates, job.LODIndex);
-
-        Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
+        Matrix4x4 transform = Matrix4x4.TRS(job.Context.WorldPosition, Quaternion.identity, Vector3.one);
         chunkServices.Colorizer.UpdateChunkColors(result, transform);
 
         return result;
@@ -226,7 +224,7 @@ public class ChunkGenerationProcessor
     {
         ChunkModificationJob mod = job.ModificationJob;
 
-        chunkServices.Generator.ApplyTerrainBrush(mod.ExistingData, mod.Brush, job.Coordinates, mod.IsAdding, job.Token);
+        chunkServices.Generator.ApplyTerrainBrush(mod.ExistingData, mod.Brush, job.Context, mod.IsAdding, job.Token);
         chunkServices.Generator.RegenerateMeshData(mod.ExistingData, job.Token);
 
         // We set the original data back.

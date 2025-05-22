@@ -76,7 +76,7 @@ public class ChunkRenderer : MonoBehaviour
     {
         throw new System.NotImplementedException("ChunkModificationJob needs chunkData back.");
         ChunkModificationJob modificationJob = new ChunkModificationJob(null, brush, isAdding);
-        var task = this.generationQueue.RequestChunkModification(controller.Coordinates, 0, modificationJob);
+        var task = this.generationQueue.RequestChunkModification(controller.ChunkContext, modificationJob);
 
         task.ContinueWith(t =>
         {
@@ -86,7 +86,7 @@ public class ChunkRenderer : MonoBehaviour
             if (t.Result.MeshData.Vertices.Count == 0)
                 return;
 
-            ChunkRenderData renderData = new ChunkRenderData(controller.Coordinates, t.Result, controller.transform.localToWorldMatrix);
+            ChunkRenderData renderData = new ChunkRenderData(controller.ChunkContext, t.Result, controller.transform.localToWorldMatrix);
 
             SubmitExistingChunk(renderData);
         }, TaskScheduler.FromCurrentSynchronizationContext());
@@ -111,9 +111,9 @@ public class ChunkRenderer : MonoBehaviour
     /// Request a chunk be generated based on a <see cref="ChunkController"/> data.
     /// </summary>
     /// <param name="controller"></param>
-    public void RequestGeneration(Vector3Int coordinates, int lodIndex)
+    public void RequestGeneration(ChunkContext context)
     {
-        var task = this.generationQueue.RequestChunkGeneration(coordinates, lodIndex);
+        var task = this.generationQueue.RequestChunkGeneration(context);
         task.ContinueWith(t =>
         {
             try
@@ -124,11 +124,10 @@ public class ChunkRenderer : MonoBehaviour
                 if (t.Result.MeshData.Vertices.Count == 0)
                     return;
 
-                Vector3 worldPos = this.chunkServices.Layout.ToWorld(coordinates, lodIndex);
-                Matrix4x4 transform = Matrix4x4.TRS(worldPos, Quaternion.identity, Vector3.one);
+                Matrix4x4 transform = Matrix4x4.TRS(context.WorldPosition, Quaternion.identity, Vector3.one);
 
                 // Generate mesh and apply color.
-                ChunkRenderData renderData = new ChunkRenderData(coordinates, t.Result, transform);
+                ChunkRenderData renderData = new ChunkRenderData(context, t.Result, transform);
 
                 this.SubmitNewChunk(renderData);
             }
@@ -147,8 +146,8 @@ public class ChunkRenderer : MonoBehaviour
     /// <param name="chunkRenderData"></param>
     private void SubmitNewChunk(ChunkRenderData chunkRenderData)
     {
-        var coord = chunkRenderData.Coordinates;
-        var controller = this.chunkServices.ControllerFactory.CreateChunkController(coord, chunkRenderData.LOD, this.cancellationToken.Token);
+        var coord = chunkRenderData.Context.Coordinates;
+        var controller = this.chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
         chunkRenderData.Controller = controller;
         chunkRenderData.RenderType = ChunkRenderType.GameObject;
         chunkManager.Chunks[coord] = chunkRenderData;
@@ -174,17 +173,17 @@ public class ChunkRenderer : MonoBehaviour
 
     private void SubmitExistingChunk(ChunkRenderData chunkRenderData)
     {
-        var coord = chunkRenderData.Coordinates;
+        var coord = chunkRenderData.Context.Coordinates;
         int lod = chunkRenderData.LOD;
 
-        if (this.chunkManager.Chunks.TryGetValue(chunkRenderData.Coordinates, out var existing))
+        if (this.chunkManager.Chunks.TryGetValue(chunkRenderData.Context.Coordinates, out var existing))
         {
             bool ExistingIsGO = existing.RenderType == ChunkRenderType.GameObject;
 
             // GPU to GO.
             if (!ExistingIsGO && lod == 0)
             {
-                var controller = this.chunkServices.ControllerFactory.CreateChunkController(coord, lod, this.cancellationToken.Token);
+                var controller = this.chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
                 chunkRenderData.Controller = controller;
                 chunkRenderData.RenderType = ChunkRenderType.GameObject;
 

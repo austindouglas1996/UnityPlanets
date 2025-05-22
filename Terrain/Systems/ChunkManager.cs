@@ -213,7 +213,8 @@ public class ChunkManager : MonoBehaviour
                         }
 
                         Vector3Int coord = center + new Vector3Int(x, y, z);
-                        Renderer.RequestGeneration(coord, lod);
+                        ChunkContext newContext = new ChunkContext(coord, lod, this.Services);
+                        Renderer.RequestGeneration(newContext);
                         chunks++;
                     }
                 }

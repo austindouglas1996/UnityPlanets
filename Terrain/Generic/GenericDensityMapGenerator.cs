@@ -8,15 +8,18 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
     {
     }
 
-    public override DensityMap Generate(Vector3Int chunkCoordinates, int lodIndex)
+    public override DensityMap Generate(ChunkContext context)
     {
+        int lodIndex = context.LODIndex;
+        Vector3Int chunkCoordinates = context.Coordinates;
+
         int stepSize = 1 << lodIndex;
         int chunkSize = this.Options.ChunkSize << lodIndex;
         int limit = chunkSize + 1;
 
         DensityMap densityMap = CreateEmptyChunk(chunkSize, lodIndex);
 
-        if (!ShouldGenerateChunk(chunkCoordinates, lodIndex))
+        if (!ShouldGenerateChunk(context))
         {
             return densityMap;
         }

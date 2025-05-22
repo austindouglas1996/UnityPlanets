@@ -40,7 +40,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="chunkSize">Size of the chunk (assumed cubic).</param>
     /// <param name="chunkCoordinates">Coordinates of the chunk in chunk space.</param>
     /// <returns>A 3D float array representing density values.</returns>
-    public abstract DensityMap Generate(Vector3Int chunkCoordinates, int lodIndex);
+    public abstract DensityMap Generate(ChunkContext context);
 
     /// <summary>
     /// Generates mesh data from a given density map using the marching cubes algorithm.
@@ -274,8 +274,11 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     }
 
     private System.Random random = new System.Random();
-    public bool ShouldGenerateChunk(Vector3Int chunkCoords, int lodIndex)
+    public bool ShouldGenerateChunk(ChunkContext context)
     {
+        int lodIndex = context.LODIndex;
+        Vector3Int chunkCoords = context.Coordinates;
+
         int chunkSize = this.Options.ChunkSize << lodIndex;
         int step = chunkSize / 2;
 

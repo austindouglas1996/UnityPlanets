@@ -14,7 +14,7 @@ public interface IChunkControllerFactory
     /// <param name="config">Chunk configuration.</param>
     /// <param name="parent">The parent transform to attach the chunk to.</param>
     /// <returns>A new <see cref="ChunkController"/> instance.</returns>
-    ChunkController CreateChunkController(Vector3Int coordinates, int lodIndex, CancellationToken cancellationToken = default);
+    ChunkController CreateChunkController(ChunkContext context, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Release a chunk as no longer being used by the player.
