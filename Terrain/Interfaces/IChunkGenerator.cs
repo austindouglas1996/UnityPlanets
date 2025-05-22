@@ -28,7 +28,7 @@ public interface IChunkGenerator
     /// <param name="chunkPos">Chunk grid position.</param>
     /// <param name="addingOrSubtracting">True to add terrain, false to remove it.</param>
     /// <param name="token">Optional cancellation token.</param>
-    void ApplyTerrainBrush(ChunkData data, TerrainBrush brush, Vector3Int chunkPos, bool addingOrSubtracting, CancellationToken token = default);
+    void ApplyTerrainBrush(ChunkData data, TerrainBrush brush, Vector3Int chunkCoord, bool addingOrSubtracting, CancellationToken token = default);
 
     /// <summary>
     /// Updates a chunk after it has been modified — usually to regenerate mesh data.
