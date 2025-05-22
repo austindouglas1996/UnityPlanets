@@ -229,7 +229,7 @@ public class ChunkManager : MonoBehaviour
     {
         switch (lod)
         {
-            case 0: return 3; // High detail near player
+            case 0: return 0; // High detail near player
             case 1: return 2;
             case 2: return 2;
             case 3: return 2;

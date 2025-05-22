@@ -16,7 +16,7 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
 
         DensityMap densityMap = CreateEmptyChunk(chunkSize, lodIndex);
 
-        if (!ShouldGenerateChunk(chunkCoordinates))
+        if (!ShouldGenerateChunk(chunkCoordinates, lodIndex))
         {
             return densityMap;
         }

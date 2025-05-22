@@ -57,9 +57,9 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         int densityHeight = densityMap.SizeY;
         int densityDepth = densityMap.SizeZ;
 
-        int width = densityWidth - stepSize;
-        int height = densityHeight - stepSize;
-        int depth = densityDepth - stepSize;
+        int width = densityWidth - 1;
+        int height = densityHeight - 1;
+        int depth = densityDepth - 1;
 
         float minDensity = float.MaxValue;
         float maxDensity = float.MinValue;
@@ -274,9 +274,9 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     }
 
     private System.Random random = new System.Random();
-    public bool ShouldGenerateChunk(Vector3Int chunkCoords)
+    public bool ShouldGenerateChunk(Vector3Int chunkCoords, int lodIndex)
     {
-        int chunkSize = this.Options.ChunkSize;
+        int chunkSize = this.Options.ChunkSize << lodIndex;
         int step = chunkSize / 2;
 
         int worldX = chunkCoords.x * chunkSize;
