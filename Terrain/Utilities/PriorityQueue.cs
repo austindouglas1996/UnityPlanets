@@ -68,6 +68,29 @@ public class PriorityQueue<T>
         }
     }
 
+    public bool Remove(T item)
+    {
+        int index = heap.FindIndex(entry => EqualityComparer<T>.Default.Equals(entry.Item, item));
+        if (index == -1)
+            return false;
+
+        int lastIndex = heap.Count - 1;
+        if (index != lastIndex)
+        {
+            heap[index] = heap[lastIndex];
+            heap.RemoveAt(lastIndex);
+            HeapifyDown(index);
+            HeapifyUp(index);
+        }
+        else
+        {
+            heap.RemoveAt(index);
+        }
+
+        return true;
+    }
+
+
     public bool TryDequeue(out T item)
     {
         if (heap.Count > 0)

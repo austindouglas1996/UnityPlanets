@@ -11,13 +11,6 @@ using UnityEngine.InputSystem;
 public class ChunkGenerationProcessor
 {
     /// <summary>
-    /// A dictionary of active chunks with their jobs. Allows for one respective job, but also
-    /// works with LOD so past jobs are cancelled before being queued. 
-    /// </summary>
-    private readonly Dictionary<ChunkJobKey, ChunkGenerationJob> pendingJobs = new Dictionary<ChunkJobKey, ChunkGenerationJob>();
-    private readonly object pendingJobsLock = new();
-
-    /// <summary>
     /// A collection of jobs to be executed yet. Seperate from active jobs, this runs the actual
     /// task.
     /// </summary>
@@ -69,24 +62,22 @@ public class ChunkGenerationProcessor
     /// <returns></returns>
     public Task<ChunkData> RequestChunkGeneration(ChunkContext context)
     {
-        lock (queueLock) 
-        {
-            var key = new ChunkJobKey(context.Coordinates, context.LODIndex);
-            ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), null);
+        var key = new ChunkJobKey(context.Coordinates, context.LODIndex);
+        ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), null);
 
-            try
+        try
+        {
+            lock (queueLock)
             {
-                // Register job as active
-                pendingJobs[key] = newJob;
                 generationQueue.Enqueue(newJob, context.LODIndex == 0 ? GetPriorityOfChunk(context.Coordinates) : 999);
             }
-            catch (Exception ex)
-            {
-                Debug.LogError(ex);
-            }
-
-            return newJob.Completion.Task;
         }
+        catch (Exception ex)
+        {
+            Debug.LogError(ex);
+        }
+
+        return newJob.Completion.Task;
     }
 
     /// <summary>
@@ -98,14 +89,14 @@ public class ChunkGenerationProcessor
     /// <returns></returns>
     public Task<ChunkData> RequestChunkModification(ChunkContext context, ChunkModificationJob modificationJob = null)
     {
+        ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), modificationJob);
+
         lock (queueLock)
         {
-            ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), modificationJob);
-
             generationQueue.Enqueue(newJob, -1);
-
-            return newJob.Completion.Task;
         }
+
+        return newJob.Completion.Task;
     }
 
     /// <summary>
@@ -116,12 +107,9 @@ public class ChunkGenerationProcessor
     {
         lock (queueLock)
         {
-            var key = new ChunkJobKey(coordinates, lodIndex);
-            if (pendingJobs.TryGetValue(key, out var job))
-            {
-                job.Cancel();
-                pendingJobs.Remove(key);
-            }
+            // This is nasty and should probably not be done like this, but it works?
+            // ChunkGenerationJob has an IEqualityComparer to only compare coordinates/LOD.
+            this.generationQueue.Remove(new ChunkGenerationJob(new ChunkContext(coordinates, lodIndex, null), null, null));
         }
     }
 
@@ -131,7 +119,7 @@ public class ChunkGenerationProcessor
     /// <returns></returns>
     public override string ToString()
     {
-        return $"Pending:{pendingJobs.Count}\nGen. Queue:{generationQueue.Count}\nWorkers:{workerTasks.Count}\n";
+        return $"Gen. Queue:{generationQueue.Count}\nWorkers:{workerTasks.Count}\n";
     }
 
     /// <summary>
@@ -150,8 +138,6 @@ public class ChunkGenerationProcessor
                 if (generationQueue.Count > 0)
                 {
                     job = generationQueue.Dequeue();
-                    pendingJobs.Remove(job.Context.Coordinates);
-
                     if (job.Token.IsCancellationRequested)
                     {
                         job.Completion.TrySetCanceled();

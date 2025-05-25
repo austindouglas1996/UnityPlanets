@@ -101,7 +101,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
                         int cz = z + (int)offset.z;
 
                         cornerVals[i] = densityMap.GetLocal(cx, cy, cz);
-                        cornerPos[i] = new Vector3(cx, cy, cz) * stepSize + chunkOffset;
+                        cornerPos[i] = new Vector3(cx, cy, cz) * stepSize;
                     }
 
                     int cubeIndex = 0;
@@ -147,9 +147,9 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
                         Vertices.Add(v2);
                         Vertices.Add(v3);
 
-                        Colors.Add(this._colorizer.GetColorForVertice(v1));
-                        Colors.Add(this._colorizer.GetColorForVertice(v2));
-                        Colors.Add(this._colorizer.GetColorForVertice(v3));
+                        Colors.Add(this._colorizer.GetColorForVertice(v1 + chunkOffset));
+                        Colors.Add(this._colorizer.GetColorForVertice(v2 + chunkOffset));
+                        Colors.Add(this._colorizer.GetColorForVertice(v3 + chunkOffset));
 
                         Triangles.Add(baseIndex + 0);
                         Triangles.Add(baseIndex + 1);

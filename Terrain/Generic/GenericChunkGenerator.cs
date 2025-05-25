@@ -41,7 +41,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
                 //foliageMod.ModifyFoliageMask(ref map.FoliageMask, coordinates);
         }
 
-        MeshData data = Generator.GenerateMeshData(map, Vector3.zero, context.LODIndex);
+        MeshData data = Generator.GenerateMeshData(map, context.WorldPosition, context.LODIndex);
         return new ChunkData(map, data, context);
     }
 

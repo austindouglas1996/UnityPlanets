@@ -142,11 +142,10 @@ public abstract class GenericChunkLayout : IChunkLayout
     private static readonly float[] LodSinks = new float[]
     {
         0f,
-        5f,            // LOD1
-        10f,           // LOD2
-        25f,          // LOD3
-        45f,         // LOD4
-        75f         // LOD5
+        1f,            // LOD1
+        5f,           // LOD2
+        10f,          // LOD3
+        25f,         // LOD4
     };
 
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -39,7 +40,7 @@ public class ChunkModificationJob
     public bool IsAdding { get; private set; }
 }
 
-public class ChunkGenerationJob
+public class ChunkGenerationJob : IEqualityComparer<ChunkGenerationJob>
 {
     public ChunkGenerationJob(ChunkContext context, CancellationTokenSource cts, ChunkModificationJob modificationJob = null)
     {
@@ -62,5 +63,19 @@ public class ChunkGenerationJob
     {
         if (!CancellationSource.IsCancellationRequested)
             CancellationSource.Cancel();
+    }
+
+    public bool Equals(ChunkGenerationJob x, ChunkGenerationJob y)
+    {
+        if (x == null || y == null)
+            return false;
+
+        return x.Context.Coordinates == y.Context.Coordinates &&
+               x.Context.LODIndex == y.Context.LODIndex;
+    }
+
+    public int GetHashCode(ChunkGenerationJob obj)
+    {
+        return HashCode.Combine(obj.Context.Coordinates, obj.Context.LODIndex);
     }
 }

@@ -203,9 +203,9 @@ public class ChunkQuadTree
     private void RequestVerticalSliceGeneration()
     {
         // Set global variable.
-        this.verticalChunksExpected = 15;
+        this.verticalChunksExpected = 31;
 
-        for (int y = 0; y < 16; y++)
+        for (int y = 0; y < 32; y++)
         {
             var coord = new Vector3Int(coordinates.x,coordinates.y + y,coordinates.z);
 

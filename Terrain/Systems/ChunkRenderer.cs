@@ -103,7 +103,7 @@ public class ChunkRenderer : MonoBehaviour
             if (chunk.Controller != null)
                 this.chunkServices.ControllerFactory.Release(chunk.Controller);
 
-            this.generationQueue.CancelChunkGeneration(coordinate);
+            this.generationQueue.CancelChunkGeneration(coordinate, chunk.LOD);
         }
     }
 

@@ -215,15 +215,21 @@ public class ChunkManager : MonoBehaviour
         // Determine world-aligned base position (bottom-left corner of 2×2)
         Vector3 startPos = playerPos - centerOffset;
 
-        Vector3 chunkWorldPos = new Vector3(-32, 0, 16);
+        for (int dx = -16; dx <= 16; dx++)
+        {
+            for (int dz = -16; dz <= 16; dz++)
+            {
+                Vector3 chunkWorldPos = startPos + new Vector3(dx * chunkSize, 0, dz * chunkSize);
 
-        Bounds bounds = new Bounds(
-            chunkWorldPos + new Vector3(chunkSize / 2f, chunkSize / 2f, chunkSize / 2f),
-            new Vector3(chunkSize, chunkSize, chunkSize)
-        );
+                Bounds bounds = new Bounds(
+                    chunkWorldPos + new Vector3(chunkSize / 2f, chunkSize / 2f, chunkSize / 2f),
+                    new Vector3(chunkSize, chunkSize, chunkSize)
+                );
 
-        var root = new ChunkQuadTree(Services, Renderer, bounds);
-        RootTrees.Add(root);
+                var root = new ChunkQuadTree(Services, Renderer, bounds);
+                RootTrees.Add(root);
+            }
+        }
 
         Debug.Log("Finished creating LOD5 root chunks.");
     }
