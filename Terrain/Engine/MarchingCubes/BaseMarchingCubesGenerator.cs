@@ -47,9 +47,9 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// Automatically skips generation if the entire chunk is empty or solid.
     /// </summary>
     /// <param name="densityMap">3D density values for the chunk (includes +1 padding).</param>
-    /// <param name="chunkOffset">World-space offset for this chunk's origin.</param>
+    /// <param name="chunkWorldPosition">World-space offset for this chunk's origin.</param>
     /// <returns>MeshData containing vertices, triangles, and optional UVs.</returns>
-    public virtual MeshData GenerateMeshData(DensityMap densityMap, Vector3 chunkOffset, int lodIndex = 5)
+    public virtual MeshData GenerateMeshData(DensityMap densityMap, Vector3 chunkWorldPosition, int lodIndex = 5)
     {
         int stepSize = 1 << lodIndex;
 
@@ -147,9 +147,9 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
                         Vertices.Add(v2);
                         Vertices.Add(v3);
 
-                        Colors.Add(this._colorizer.GetColorForVertice(v1 + chunkOffset));
-                        Colors.Add(this._colorizer.GetColorForVertice(v2 + chunkOffset));
-                        Colors.Add(this._colorizer.GetColorForVertice(v3 + chunkOffset));
+                        Colors.Add(this._colorizer.GetColorForVertice(v1 + chunkWorldPosition));
+                        Colors.Add(this._colorizer.GetColorForVertice(v2 + chunkWorldPosition));
+                        Colors.Add(this._colorizer.GetColorForVertice(v3 + chunkWorldPosition));
 
                         Triangles.Add(baseIndex + 0);
                         Triangles.Add(baseIndex + 1);
