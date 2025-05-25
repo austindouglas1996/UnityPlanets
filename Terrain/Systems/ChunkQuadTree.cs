@@ -95,7 +95,7 @@ public class ChunkQuadTree
                 this.Status = ChunkStatus.SecondStage;
 
             if (renderData != null)
-                VerticalChildren[renderData.Context.Coordinates] = renderData;
+                VerticalChildren[coordinates] = renderData;
         }
     }
 
@@ -139,30 +139,37 @@ public class ChunkQuadTree
     /// </summary>
     public void SubDivide()
     {
-        if (this.LODIndex == 0 || this.Status != ChunkStatus.SecondStage)
-            return;
+        try
+        {
+            if (this.LODIndex == 0 || this.Status != ChunkStatus.SecondStage)
+                return;
 
-        Vector3 size = Bounds.size / 2f;
-        Vector3 center = Bounds.center;
-        Vector3Int baseCoord = this.coordinates; 
+            Vector3 size = Bounds.size / 2f;
+            Vector3 center = Bounds.center;
+            Vector3Int baseCoord = this.coordinates;
 
-        int cx = baseCoord.x * 2;
-        int cy = baseCoord.y;
-        int cz = baseCoord.z * 2;
+            int cx = baseCoord.x * 2;
+            int cy = baseCoord.y;
+            int cz = baseCoord.z * 2;
 
-        if (this.RenderData != null)
-            this.RenderData.IsActive = false;
+            if (this.RenderData != null)
+                this.RenderData.IsActive = false;
 
-        foreach (var child in VerticalChildren.Values)
-            if (child != null)
-                child.IsActive = false;
+            foreach (var child in VerticalChildren.Values)
+                if (child != null)
+                    child.IsActive = false;
 
-        Children[0] = CreateChild(new Vector3Int(cx + 1, cy, cz + 1)); // NE
-        Children[1] = CreateChild(new Vector3Int(cx + 0, cy, cz + 1)); // NW
-        Children[2] = CreateChild(new Vector3Int(cx + 1, cy, cz + 0)); // SE
-        Children[3] = CreateChild(new Vector3Int(cx + 0, cy, cz + 0)); // SW
+            Children[0] = CreateChild(new Vector3Int(cx + 1, cy, cz + 1)); // NE
+            Children[1] = CreateChild(new Vector3Int(cx + 0, cy, cz + 1)); // NW
+            Children[2] = CreateChild(new Vector3Int(cx + 1, cy, cz + 0)); // SE
+            Children[3] = CreateChild(new Vector3Int(cx + 0, cy, cz + 0)); // SW
 
-        this.Status = ChunkStatus.Subdivided;
+            this.Status = ChunkStatus.Subdivided;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogException(e);
+        }
     }
 
     /// <summary>
@@ -202,20 +209,27 @@ public class ChunkQuadTree
     /// </summary>
     private void RequestVerticalSliceGeneration()
     {
-        // Set global variable.
-        this.verticalChunksExpected = 31;
-
-        for (int y = 0; y < 32; y++)
+        try
         {
-            var coord = new Vector3Int(coordinates.x,coordinates.y + y,coordinates.z);
+            // Set global variable.
+            this.verticalChunksExpected = 31;
 
-            if (coord == this.coordinates)
-                continue;
+            for (int y = -16; y < 16; y++)
+            {
+                var coord = new Vector3Int(coordinates.x, coordinates.y + y, coordinates.z);
 
-            var context = new ChunkContext(coord, LODIndex, services);
-            VerticalChildren.Add(coord, null);
+                if (coord == this.coordinates)
+                    continue;
 
-            renderer.RequestGeneration(context, this); // Still pass this as quadNode, we will handle it later.
+                var context = new ChunkContext(coord, LODIndex, services);
+                VerticalChildren.Add(coord, null);
+
+                renderer.RequestGeneration(context, this); // Still pass this as quadNode, we will handle it later.
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogException(e);
         }
     }
 

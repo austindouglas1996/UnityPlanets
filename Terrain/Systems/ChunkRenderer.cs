@@ -157,6 +157,13 @@ public class ChunkRenderer : MonoBehaviour
     {
         var coord = chunkRenderData.Context.Coordinates;
 
+        var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
+        chunkRenderData.Controller = controller;
+        chunkRenderData.RenderType = ChunkRenderType.GameObject;
+        chunkManager.Chunks[coord] = chunkRenderData;
+        controller.ApplyChunkData(chunkRenderData);
+
+        /*
         if (chunkRenderData.LOD == 0)
         {
             var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
@@ -169,7 +176,7 @@ public class ChunkRenderer : MonoBehaviour
         {
             chunkRenderData.RenderType = ChunkRenderType.GPU;
             chunkRenderData.Controller = null;
-        }
+        }*/
         
         chunkManager.Chunks[coord] = chunkRenderData;
     }

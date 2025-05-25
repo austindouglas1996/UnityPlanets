@@ -49,6 +49,7 @@ public class ChunkManager : MonoBehaviour
 
     private TextMeshProUGUI debugText;
 
+
     private void Start()
     {
         System.GC.Collect();
