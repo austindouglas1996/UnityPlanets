@@ -6,6 +6,7 @@ using System.Threading;
 using System.Collections.ObjectModel;
 using NUnit.Framework.Interfaces;
 using System.Text;
+using UnityEngine.InputSystem;
 
 public class ChunkGenerationProcessor
 {
@@ -70,14 +71,13 @@ public class ChunkGenerationProcessor
     {
         lock (queueLock) 
         {
-
-
+            var key = new ChunkJobKey(context.Coordinates, context.LODIndex);
             ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), null);
 
             try
             {
                 // Register job as active
-                pendingJobs[context.Coordinates] = newJob;
+                pendingJobs[key] = newJob;
                 generationQueue.Enqueue(newJob, context.LODIndex == 0 ? GetPriorityOfChunk(context.Coordinates) : 999);
             }
             catch (Exception ex)
@@ -112,14 +112,15 @@ public class ChunkGenerationProcessor
     /// Cancel a chunk generation task if one exists.
     /// </summary>
     /// <param name="coordinates"></param>
-    public void CancelChunkGeneration(Vector3Int coordinates)
+    public void CancelChunkGeneration(Vector3Int coordinates, int lodIndex)
     {
         lock (queueLock)
         {
-            if (pendingJobs.TryGetValue(coordinates, out var job))
+            var key = new ChunkJobKey(coordinates, lodIndex);
+            if (pendingJobs.TryGetValue(key, out var job))
             {
                 job.Cancel();
-                pendingJobs.Remove(coordinates);
+                pendingJobs.Remove(key);
             }
         }
     }
