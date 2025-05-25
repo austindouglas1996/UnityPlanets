@@ -47,6 +47,10 @@ public class ChunkRenderData
             if (mesh == null)
                 mesh = Data.GenerateMesh();
 
+            // Free resources.
+            if (RenderType == ChunkRenderType.GPU)
+                this.Data.MeshData = null;
+
             return mesh;
         }
     }

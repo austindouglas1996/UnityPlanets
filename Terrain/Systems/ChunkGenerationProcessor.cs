@@ -13,7 +13,7 @@ public class ChunkGenerationProcessor
     /// A dictionary of active chunks with their jobs. Allows for one respective job, but also
     /// works with LOD so past jobs are cancelled before being queued. 
     /// </summary>
-    private readonly Dictionary<Vector3Int, ChunkGenerationJob> pendingJobs = new Dictionary<Vector3Int, ChunkGenerationJob>();
+    private readonly Dictionary<ChunkJobKey, ChunkGenerationJob> pendingJobs = new Dictionary<ChunkJobKey, ChunkGenerationJob>();
     private readonly object pendingJobsLock = new();
 
     /// <summary>
@@ -70,17 +70,7 @@ public class ChunkGenerationProcessor
     {
         lock (queueLock) 
         {
-            // Try to find an existing job. If for some reason we 
-            // have a job of the same LOD, return it. If not
-            // LOD must have changed so cancel active.
-            if (pendingJobs.TryGetValue(context.Coordinates, out var job))
-            {
-                if (job.Context.LODIndex == context.LODIndex)
-                    return job.Completion.Task;
 
-                job.Cancel();
-                pendingJobs.Remove(context.Coordinates);
-            }
 
             ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), null);
 

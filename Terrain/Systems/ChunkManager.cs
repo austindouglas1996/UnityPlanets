@@ -32,6 +32,12 @@ public class ChunkManager : MonoBehaviour
     private CancellationTokenSource layoutCts = new CancellationTokenSource();
 
     /// <summary>
+    /// A collection of tree roots used to make and establish the chunks. These roots
+    /// will be used for subdivision when making new chunks.
+    /// </summary>
+    private List<ChunkQuadTree> RootTrees = new List<ChunkQuadTree>();
+
+    /// <summary>
     /// A collection of active chunks in the game world.
     /// </summary>
     public Dictionary<Vector3Int, ChunkRenderData> Chunks = new Dictionary<Vector3Int, ChunkRenderData>();
@@ -86,6 +92,15 @@ public class ChunkManager : MonoBehaviour
     public float timeStop = 20f;
     private System.Diagnostics.Stopwatch sw;
 
+    float[] lodThresholds = new float[]
+{
+    128f,    // LOD0 chunks should only exist if player is within 32m
+    256f,    // LOD1 exists if player is within 64m
+    512f,   // LOD2 exists within 128m
+    1024f,   // LOD3
+    2048f   // LOD4
+};
+
     private async void Update()
     {
         this.debugText.text = this.Chunks.Count.ToString() + "\n" +
@@ -93,17 +108,19 @@ public class ChunkManager : MonoBehaviour
             sw.Elapsed.TotalSeconds.ToString();
 
         this.UpdateLayout();
-
-        if (this.Services.Layout.ShouldUpdateLayout())
-        {
-            await UpdateChunks();
-        }
     }
 
     private void UpdateLayout()
     {
+        Vector3 pos = this.Follower.position;
+
         this.Services.Layout.Follower = this.Follower;
-        this.Services.Layout.FollowerWorldPosition = this.Follower.position;
+        this.Services.Layout.FollowerWorldPosition = pos;
+
+        foreach (var root in RootTrees)
+        {
+            root.Update(pos, lodThresholds);
+        }
     }
 
     private void OnDisable()
@@ -131,6 +148,8 @@ public class ChunkManager : MonoBehaviour
         this.Renderer.Initialize(this, this.Services);
 
         this.IsInitialized = true;
+
+        InitializeRootChunks();
     }
 
     /// <summary>
@@ -176,7 +195,7 @@ public class ChunkManager : MonoBehaviour
         }
     }
 
-    private async Task UpdateChunks()
+    private void InitializeRootChunks()
     {
         if (!IsInitialized)
             return;
@@ -184,65 +203,28 @@ public class ChunkManager : MonoBehaviour
         layoutCts.Cancel();
         layoutCts = new CancellationTokenSource();
 
-        int chunks = 0;
-        Vector3Int playerCoord = this.Services.Layout.FollowerCoordinates;
+        int lod = 4;
+        int chunkSize = this.Services.Configuration.DensityOptions.ChunkSize << lod;
 
-        int previousMaxRange = 0;
-        for (int lod = 0; lod <= 5; lod++)
-        {
-            int chunkSize = this.Services.Configuration.DensityOptions.ChunkSize << lod;
-            int range = GetRangeForLOD(lod);
-            if (range == 0)
-                continue;
+        // Use world position (float) instead of grid coord
+        Vector3 playerPos = this.Follower.transform.position;
 
-            Vector3Int center = new Vector3Int(
-                playerCoord.x >> lod,
-                playerCoord.y >> lod,
-                playerCoord.z >> lod
-            );
+        // Convert to chunk-aligned center
+        Vector3 centerOffset = new Vector3(chunkSize / 2f, 0, chunkSize / 2f);
 
-            int minRange = previousMaxRange + 1;
-            int maxRange = previousMaxRange + range;
-            previousMaxRange = maxRange;
+        // Determine world-aligned base position (bottom-left corner of 2×2)
+        Vector3 startPos = playerPos - centerOffset;
 
-            for (int x = -maxRange; x <= maxRange; x++)
-            {
-                for (int z = -maxRange; z <= maxRange; z++)
-                {
-                    for (int y = -10; y <= 25; y++)
-                    {
-                        if (chunks > 150)
-                        {
-                            await Task.Yield();
-                            chunks = 0;
-                        }
+        Vector3 chunkWorldPos = new Vector3(-32, 0, 16);
 
-                        Vector3Int coord = center + new Vector3Int(x, y, z);
-                        ChunkContext newContext = new ChunkContext(coord, lod, this.Services);
-                        Renderer.RequestGeneration(newContext);
-                        chunks++;
-                    }
-                }
-            }
-        }
+        Bounds bounds = new Bounds(
+            chunkWorldPos + new Vector3(chunkSize / 2f, chunkSize / 2f, chunkSize / 2f),
+            new Vector3(chunkSize, chunkSize, chunkSize)
+        );
 
-        Debug.Log("Finished layout.");
+        var root = new ChunkQuadTree(Services, Renderer, bounds);
+        RootTrees.Add(root);
+
+        Debug.Log("Finished creating LOD5 root chunks.");
     }
-
-
-
-    private int GetRangeForLOD(int lod)
-    {
-        switch (lod)
-        {
-            case 0: return 24; // High detail near player
-            case 1: return 6;
-            case 2: return 4;
-            case 3: return 0;
-            case 4: return 0;
-            case 5: return 0;
-            default: return 0;
-        }
-    }
-
 }

@@ -118,11 +118,15 @@ public class ChunkRenderer : MonoBehaviour
         {
             try
             {
-                if (t.Status != TaskStatus.RanToCompletion)
+                if (t.Status != TaskStatus.RanToCompletion
+                || t.Result.MeshData.Vertices.Count == 0)
+                {
+                    // We still return a value here so the 
+                    // tree does not keep waiting for a child that is never
+                    // going to come ):
+                    quadNode.SetRenderData(context.Coordinates, null);
                     return;
-
-                if (t.Result.MeshData.Vertices.Count == 0)
-                    return;
+                }
 
                 Matrix4x4 transform = Matrix4x4.TRS(context.WorldPosition, Quaternion.identity, Vector3.one);
 
@@ -132,7 +136,9 @@ public class ChunkRenderer : MonoBehaviour
                 this.SubmitNewChunk(renderData);
 
                 if (quadNode != null)
-                    quadNode.SetRenderData(renderData);
+                {
+                    quadNode.SetRenderData(context.Coordinates, renderData);
+                }
             }
             catch (System.OperationCanceledException) { }
             catch (System.Exception ex)
