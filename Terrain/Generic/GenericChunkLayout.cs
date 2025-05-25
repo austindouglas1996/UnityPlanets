@@ -121,7 +121,7 @@ public abstract class GenericChunkLayout : IChunkLayout
         int chunkSize = Configuration.DensityOptions.ChunkSize << lodIndex;
         return new Vector3(
             coordinates.x * chunkSize,
-            coordinates.y * chunkSize,
+            (coordinates.y * chunkSize) - LodSinks[lodIndex],
             coordinates.z * chunkSize);
     }
 
@@ -138,4 +138,15 @@ public abstract class GenericChunkLayout : IChunkLayout
             Mathf.FloorToInt(world.y / chunkSize),
             Mathf.FloorToInt(world.z / chunkSize));
     }
+
+    private static readonly float[] LodSinks = new float[]
+    {
+        0f,
+        5f,            // LOD1
+        10f,           // LOD2
+        25f,          // LOD3
+        45f,         // LOD4
+        75f         // LOD5
+    };
+
 }

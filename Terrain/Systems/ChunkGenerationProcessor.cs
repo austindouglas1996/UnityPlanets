@@ -157,23 +157,22 @@ public class ChunkGenerationProcessor
             lock (queueLock)
             {
                 if (generationQueue.Count > 0)
+                {
                     job = generationQueue.Dequeue();
+                    pendingJobs.Remove(job.Context.Coordinates);
+
+                    if (job.Token.IsCancellationRequested)
+                    {
+                        job.Completion.TrySetCanceled();
+                        continue;
+                    }
+                }
             }
 
             if (job == null)
             {
-                await Task.Delay(10, token); // Slight pause before polling again
+                await Task.Delay(1, token); // Slight pause before polling again
                 continue;
-            }
-
-            if (job.Token.IsCancellationRequested)
-            {
-                lock (queueLock)
-                {
-                    job.Completion.TrySetCanceled();
-                    pendingJobs.Remove(job.Context.Coordinates);
-                    continue;
-                }
             }
 
             try
@@ -182,11 +181,6 @@ public class ChunkGenerationProcessor
                     WorkerNewChunk(job) : WorkerModifyChunk(job);
 
                 job.Completion.TrySetResult(result);
-
-                lock (queueLock)
-                {
-                    pendingJobs.Remove(job.Context.Coordinates);
-                }
             }
             catch (OperationCanceledException)
             {

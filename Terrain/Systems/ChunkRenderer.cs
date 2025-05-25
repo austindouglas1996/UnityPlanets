@@ -111,7 +111,7 @@ public class ChunkRenderer : MonoBehaviour
     /// Request a chunk be generated based on a <see cref="ChunkController"/> data.
     /// </summary>
     /// <param name="controller"></param>
-    public void RequestGeneration(ChunkContext context)
+    public void RequestGeneration(ChunkContext context, ChunkQuadTree quadNode = null)
     {
         var task = this.generationQueue.RequestChunkGeneration(context);
         task.ContinueWith(t =>
@@ -130,6 +130,9 @@ public class ChunkRenderer : MonoBehaviour
                 ChunkRenderData renderData = new ChunkRenderData(context, t.Result, transform);
 
                 this.SubmitNewChunk(renderData);
+
+                if (quadNode != null)
+                    quadNode.SetRenderData(renderData);
             }
             catch (System.OperationCanceledException) { }
             catch (System.Exception ex)
@@ -147,16 +150,10 @@ public class ChunkRenderer : MonoBehaviour
     private void SubmitNewChunk(ChunkRenderData chunkRenderData)
     {
         var coord = chunkRenderData.Context.Coordinates;
-        var controller = this.chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
-        chunkRenderData.Controller = controller;
-        chunkRenderData.RenderType = ChunkRenderType.GameObject;
-        chunkManager.Chunks[coord] = chunkRenderData;
-        controller.ApplyChunkData(chunkRenderData);
 
-        /*
         if (chunkRenderData.LOD == 0)
         {
-            var controller = chunkManager.Factory.CreateChunkController(coord, this.cancellationToken.Token);
+            var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
             chunkRenderData.Controller = controller;
             chunkRenderData.RenderType = ChunkRenderType.GameObject;
             chunkManager.Chunks[coord] = chunkRenderData;
@@ -166,7 +163,7 @@ public class ChunkRenderer : MonoBehaviour
         {
             chunkRenderData.RenderType = ChunkRenderType.GPU;
             chunkRenderData.Controller = null;
-        }*/
+        }
         
         chunkManager.Chunks[coord] = chunkRenderData;
     }

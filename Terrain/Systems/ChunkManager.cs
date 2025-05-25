@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 
 /// <summary>
@@ -88,6 +89,7 @@ public class ChunkManager : MonoBehaviour
     private async void Update()
     {
         this.debugText.text = this.Chunks.Count.ToString() + "\n" +
+            this.Renderer.generationQueue.ToString() + "\n" +
             sw.Elapsed.TotalSeconds.ToString();
 
         this.UpdateLayout();
@@ -186,7 +188,6 @@ public class ChunkManager : MonoBehaviour
         Vector3Int playerCoord = this.Services.Layout.FollowerCoordinates;
 
         int previousMaxRange = 0;
-
         for (int lod = 0; lod <= 5; lod++)
         {
             int chunkSize = this.Services.Configuration.DensityOptions.ChunkSize << lod;
@@ -200,15 +201,14 @@ public class ChunkManager : MonoBehaviour
                 playerCoord.z >> lod
             );
 
-            int minRange = Mathf.Max(0, previousMaxRange - 2);
-            int maxRange = previousMaxRange + range; // Inclusive
+            int minRange = previousMaxRange + 1;
+            int maxRange = previousMaxRange + range;
             previousMaxRange = maxRange;
 
             for (int x = -maxRange; x <= maxRange; x++)
             {
                 for (int z = -maxRange; z <= maxRange; z++)
                 {
- 
                     for (int y = -10; y <= 25; y++)
                     {
                         if (chunks > 150)
@@ -235,12 +235,12 @@ public class ChunkManager : MonoBehaviour
     {
         switch (lod)
         {
-            case 0: return 64; // High detail near player
-            case 1: return 2;
-            case 2: return 2;
-            case 3: return 2;
-            case 4: return 1;
-            case 5: return 1;
+            case 0: return 24; // High detail near player
+            case 1: return 6;
+            case 2: return 4;
+            case 3: return 0;
+            case 4: return 0;
+            case 5: return 0;
             default: return 0;
         }
     }
