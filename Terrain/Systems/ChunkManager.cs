@@ -94,12 +94,12 @@ public class ChunkManager : MonoBehaviour
     private System.Diagnostics.Stopwatch sw;
 
     float[] lodThresholds = new float[]
-{    // LOD0 chunks should only exist if player is within 32m
-    256f,    // LOD1 exists if player is within 64m
-    512f,   // LOD2 exists within 128m
-    1024f,   // LOD3
+{ 
+    256f,
+    512f,
+    1024f, 
     2048f,
-    3056f,// LOD4
+    3056f,
 };
 
     private async void Update()

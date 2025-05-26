@@ -1,5 +1,6 @@
 
 using System;
+using Unity.VisualScripting;
 using UnityEngine;
 
 [Serializable]
@@ -33,7 +34,8 @@ public class ChunkRenderData
         set
         {
             isActive = value;
-            this.Controller?.gameObject.SetActive(value);
+            if (this.Controller != null && this.Controller.gameObject.activeSelf != value)
+                this.Controller.gameObject.SetActive(value);
         }
     }
     private bool isActive = true;

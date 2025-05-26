@@ -98,12 +98,25 @@ public class ChunkRenderer : MonoBehaviour
     /// <param name="coordinate"></param>
     public void RemoveChunk(Vector3Int coordinate)
     {
-        if (this.chunkManager.Chunks.TryGetValue(coordinate, out var chunk))
+        try
         {
-            if (chunk.Controller != null)
-                this.chunkServices.ControllerFactory.Release(chunk.Controller);
+            if (this.chunkManager.Chunks.TryGetValue(coordinate, out var chunk))
+            {
+                if (chunk.Controller != null)
+                    this.chunkServices.ControllerFactory.Release(chunk.Controller);
 
-            this.generationQueue.CancelChunkGeneration(coordinate, chunk.LOD);
+                this.generationQueue.CancelChunkGeneration(coordinate, chunk.LOD);
+
+                this.chunkManager.Chunks.Remove(coordinate);
+            }
+            else
+            {
+                throw new System.ArgumentException($"Failed to find chunk {coordinate}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogException(e);
         }
     }
 
