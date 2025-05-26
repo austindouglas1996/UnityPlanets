@@ -1,6 +1,7 @@
 using System.Buffers.Text;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -10,8 +11,7 @@ public enum ChunkStatus
 {
     Uninitialized,
     Loading,
-    FirstStage,
-    SecondStage,
+    Finished,
     Subdivided
 }
 
@@ -30,6 +30,9 @@ public class ChunkQuadTree
     private int verticalChunksReady = 0;
     private int verticalChunksExpected = 0;
 
+    private bool initialUpdateCalled = false;
+    private bool isHidden = false;
+
     public ChunkQuadTree(IChunkServices services, ChunkRenderer renderer, Bounds bounds, ChunkQuadTree? parent = null)
     {
         this.services = services;
@@ -37,13 +40,10 @@ public class ChunkQuadTree
         this.Bounds = bounds;
         this.Parent = parent;
 
-        Status = ChunkStatus.Loading;
+        this.Status = ChunkStatus.Uninitialized;
 
-        LODIndex = parent == null ? 4 : Mathf.Max(0, parent.LODIndex - 1);
-        coordinates = BoundsToCoordinate(bounds, LODIndex);
-
-        // Renderer will automatically update the RenderData once generation is complete.
-        this.renderer.RequestGeneration(new ChunkContext(coordinates, LODIndex, services), this);
+        this.LODIndex = parent == null ? 4 : Mathf.Max(0, parent.LODIndex - 1);
+        this.coordinates = BoundsToCoordinate(bounds, LODIndex);
     }
 
     /// <summary>
@@ -85,14 +85,13 @@ public class ChunkQuadTree
         if (coordinates == this.coordinates)
         {
             this.RenderData = renderData;
-            this.Status = ChunkStatus.FirstStage; 
-            this.RequestVerticalSliceGeneration();
+            this.RequestVerticalChildrenGeneration();
         }
         else if (this.VerticalChildren.ContainsKey(coordinates))
         {
             this.verticalChunksReady++;
             if (this.verticalChunksReady == verticalChunksExpected)
-                this.Status = ChunkStatus.SecondStage;
+                this.Status = ChunkStatus.Finished;
 
             if (renderData != null)
                 VerticalChildren[coordinates] = renderData;
@@ -106,16 +105,67 @@ public class ChunkQuadTree
     /// <param name="lodThresholds"></param>
     public void Update(Vector3 followerWorldPosition, float[] lodThresholds)
     {
-        float distance = Vector3.Distance(followerWorldPosition, this.Bounds.center);
-
         if (this.Status == ChunkStatus.Subdivided)
         {
             foreach (var child in Children)
                 child?.Update(followerWorldPosition, lodThresholds);
+
+            if (!isHidden)
+            {
+                bool childrenReady = Children.All(c => c != null && c.Status == ChunkStatus.Finished);
+                if (childrenReady)
+                {
+                    if (this.RenderData != null)
+                        this.RenderData.IsActive = false;
+
+                    foreach (var child in VerticalChildren.Values)
+                        if (child != null)
+                            child.IsActive = false;
+
+                    this.isHidden = true;
+                }
+            }
+
+            return;
         }
-        else if (distance < lodThresholds[this.LODIndex])
+
+        float distance = Vector3.Distance(followerWorldPosition, this.Bounds.center);
+
+        if (!initialUpdateCalled)
         {
-            this.SubDivide();
+            this.UpdateInitial(followerWorldPosition, distance, lodThresholds);
+            return;
+        }
+
+        if (this.Status == ChunkStatus.Finished)
+        {
+            bool canSubdivide = distance < lodThresholds[this.LODIndex]
+                && this.Status == ChunkStatus.Finished;
+
+            if (canSubdivide)
+                this.SubDivide(followerWorldPosition);
+        }
+    }
+
+    /// <summary>
+    /// Initial update to help with handling if we should subdivide now, or request generation.
+    /// </summary>
+    /// <param name="followerWorldPosition"></param>
+    /// <param name="distance"></param>
+    /// <param name="lodThresholds"></param>
+    private void UpdateInitial(Vector3 followerWorldPosition, float distance, float[] lodThresholds)
+    {
+        if (initialUpdateCalled || this.Status != ChunkStatus.Uninitialized) return;
+        initialUpdateCalled = true;
+
+        bool canSubdivide = this.LODIndex != 0 && distance < lodThresholds[this.LODIndex];
+        if (canSubdivide)
+        {
+            this.SubDivide(followerWorldPosition);
+        }
+        else
+        {
+            this.RequestInitialGeneration();
         }
     }
 
@@ -137,11 +187,11 @@ public class ChunkQuadTree
     /// Subdivides this node into 4 children with a lower LOD (more detail). 
     /// Will do nothing if already subdivided, not ready, or this node is already LOD0.
     /// </summary>
-    public void SubDivide()
+    public void SubDivide(Vector3 followerWorldPosition)
     {
         try
         {
-            if (this.LODIndex == 0 || this.Status != ChunkStatus.SecondStage)
+            if (this.LODIndex == 0 || this.Status == ChunkStatus.Loading)
                 return;
 
             Vector3 size = Bounds.size / 2f;
@@ -151,13 +201,6 @@ public class ChunkQuadTree
             int cx = baseCoord.x * 2;
             int cy = baseCoord.y;
             int cz = baseCoord.z * 2;
-
-            if (this.RenderData != null)
-                this.RenderData.IsActive = false;
-
-            foreach (var child in VerticalChildren.Values)
-                if (child != null)
-                    child.IsActive = false;
 
             Children[0] = CreateChild(new Vector3Int(cx + 1, cy, cz + 1)); // NE
             Children[1] = CreateChild(new Vector3Int(cx + 0, cy, cz + 1)); // NW
@@ -205,16 +248,27 @@ public class ChunkQuadTree
     }
 
     /// <summary>
+    /// Request this node generation.
+    /// </summary>
+    private void RequestInitialGeneration()
+    {
+        this.Status = ChunkStatus.Loading;
+
+        // Renderer will automatically update the RenderData once generation is complete.
+        this.renderer.RequestGeneration(new ChunkContext(coordinates, LODIndex, services), this);
+    }
+
+    /// <summary>
     /// Request the vertical chunks part of this root node be generated.
     /// </summary>
-    private void RequestVerticalSliceGeneration()
+    private void RequestVerticalChildrenGeneration()
     {
         try
         {
             // Set global variable.
             this.verticalChunksExpected = 31;
 
-            for (int y = -16; y < 16; y++)
+            for (int y = 1; y < 32; y++)
             {
                 var coord = new Vector3Int(coordinates.x, coordinates.y + y, coordinates.z);
 
