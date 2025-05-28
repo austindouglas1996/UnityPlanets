@@ -94,13 +94,14 @@ public class ChunkManager : MonoBehaviour
     private System.Diagnostics.Stopwatch sw;
 
     float[] lodThresholds = new float[]
-{ 
-    256f,
-    512f,
-    1024f, 
-    2048f,
-    3056f,
-};
+    {
+    192f,    // LOD0 — very close to player, only fine detail
+    368f,    // LOD1 — close-range but less detailed
+    548f,   // LOD2 — mid-range terrain silhouette
+    796f,   // LOD3 — distant terrain
+    900f,   // LOD4 — very far terrain
+    };
+
 
     private async void Update()
     {
@@ -216,9 +217,9 @@ public class ChunkManager : MonoBehaviour
         // Determine world-aligned base position (bottom-left corner of 2×2)
         Vector3 startPos = playerPos - centerOffset;
 
-        for (int dx = -16; dx <= 16; dx++)
+        for (int dx = -8; dx <= 8; dx++)
         {
-            for (int dz = -16; dz <= 16; dz++)
+            for (int dz = -8; dz <= 8; dz++)
             {
                 Vector3 chunkWorldPos = startPos + new Vector3(dx * chunkSize, 0, dz * chunkSize);
 

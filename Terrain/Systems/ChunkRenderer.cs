@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Drawing;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.VisualScripting;
@@ -95,28 +96,18 @@ public class ChunkRenderer : MonoBehaviour
     /// <summary>
     /// Remove a chunk from all jobs and collections.
     /// </summary>
-    /// <param name="coordinate"></param>
-    public void RemoveChunk(Vector3Int coordinate)
+    /// <param name="renderData"></param>
+    public void RemoveChunk(ChunkRenderData renderData)
     {
-        try
-        {
-            if (this.chunkManager.Chunks.TryGetValue(coordinate, out var chunk))
-            {
-                if (chunk.Controller != null)
-                    this.chunkServices.ControllerFactory.Release(chunk.Controller);
+        Vector3Int coord = renderData.Context.Coordinates;
 
-                this.generationQueue.CancelChunkGeneration(coordinate, chunk.LOD);
+        if (renderData.Controller != null)
+            this.chunkServices.ControllerFactory.Release(renderData.Controller);
 
-                this.chunkManager.Chunks.Remove(coordinate);
-            }
-            else
-            {
-                throw new System.ArgumentException($"Failed to find chunk {coordinate}");
-            }
-        }
-        catch (System.Exception e)
+        ChunkRenderData crd = this.chunkManager.Chunks[coord];
+        if (crd == renderData)
         {
-            Debug.LogException(e);
+            this.chunkManager.Chunks.Remove(coord);
         }
     }
 
@@ -148,6 +139,11 @@ public class ChunkRenderer : MonoBehaviour
 
                 this.SubmitNewChunk(renderData);
 
+                if (chunkManager.Chunks[context.Coordinates] == null)
+                {
+                    string edsa = "";
+                }
+
                 if (quadNode != null)
                 {
                     quadNode.SetRenderData(context.Coordinates, renderData);
@@ -168,30 +164,36 @@ public class ChunkRenderer : MonoBehaviour
     /// <param name="chunkRenderData"></param>
     private void SubmitNewChunk(ChunkRenderData chunkRenderData)
     {
-        var coord = chunkRenderData.Context.Coordinates;
-
-        var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
-        chunkRenderData.Controller = controller;
-        chunkRenderData.RenderType = ChunkRenderType.GameObject;
-        chunkManager.Chunks[coord] = chunkRenderData;
-        controller.ApplyChunkData(chunkRenderData);
-
-        /*
-        if (chunkRenderData.LOD == 0)
+        try
         {
+            var coord = chunkRenderData.Context.Coordinates;
+
             var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
             chunkRenderData.Controller = controller;
             chunkRenderData.RenderType = ChunkRenderType.GameObject;
-            chunkManager.Chunks[coord] = chunkRenderData;
             controller.ApplyChunkData(chunkRenderData);
+
+            /*
+            if (chunkRenderData.LOD == 0)
+            {
+                var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
+                chunkRenderData.Controller = controller;
+                chunkRenderData.RenderType = ChunkRenderType.GameObject;
+                chunkManager.Chunks[coord] = chunkRenderData;
+                controller.ApplyChunkData(chunkRenderData);
+            }
+            else
+            {
+                chunkRenderData.RenderType = ChunkRenderType.GPU;
+                chunkRenderData.Controller = null;
+            }*/
+
+            chunkManager.Chunks[coord] = chunkRenderData;
         }
-        else
+        catch (System.Exception e)
         {
-            chunkRenderData.RenderType = ChunkRenderType.GPU;
-            chunkRenderData.Controller = null;
-        }*/
-        
-        chunkManager.Chunks[coord] = chunkRenderData;
+            Debug.LogException(e);
+        }
     }
 
     private void SubmitExistingChunk(ChunkRenderData chunkRenderData)

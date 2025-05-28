@@ -71,7 +71,7 @@ public class ChunkGenerationJob : IEqualityComparer<ChunkGenerationJob>
             return false;
 
         return x.Context.Coordinates == y.Context.Coordinates &&
-               x.Context.LODIndex == y.Context.LODIndex;
+            x.Context.LODIndex == y.Context.LODIndex;
     }
 
     public int GetHashCode(ChunkGenerationJob obj)

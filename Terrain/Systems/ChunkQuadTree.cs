@@ -233,7 +233,7 @@ public class ChunkQuadTree : IDisposable
     {
         try
         {
-            for (int y = 1; y < 32; y++)
+            for (int y = 1; y < EXPECTED_CHILDREN +1; y++)
             {
                 var coord = new Vector3Int(coordinates.x, coordinates.y + y, coordinates.z);
 
@@ -293,6 +293,19 @@ public class ChunkQuadTree : IDisposable
             int cy = baseCoord.y;
             int cz = baseCoord.z * 2;
 
+            if (this.RenderData != null)
+                this.renderer.RemoveChunk(this.RenderData);
+
+            foreach (var vchild in VerticalChildren)
+            {
+                if (vchild.Value == null)
+                    continue;
+
+                this.renderer.RemoveChunk(vchild.Value);
+            }
+
+            this.VerticalChildren.Clear();
+
             Children[0] = CreateChild(new Vector3Int(cx + 1, cy, cz + 1)); // NE
             Children[1] = CreateChild(new Vector3Int(cx + 0, cy, cz + 1)); // NW
             Children[2] = CreateChild(new Vector3Int(cx + 1, cy, cz + 0)); // SE
@@ -339,13 +352,13 @@ public class ChunkQuadTree : IDisposable
                 if (vchild.Value == null)
                     continue;
 
-                this.renderer.RemoveChunk(vchild.Key);
+                this.renderer.RemoveChunk(vchild.Value);
             }
 
             child.DisposeChildren();
 
             if (child.RenderData != null)
-                this.renderer.RemoveChunk(child.coordinates);
+                this.renderer.RemoveChunk(child.RenderData);
 
             child.Dispose();
         }

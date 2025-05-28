@@ -103,13 +103,13 @@ public class ChunkGenerationProcessor
     /// Cancel a chunk generation task if one exists.
     /// </summary>
     /// <param name="coordinates"></param>
-    public void CancelChunkGeneration(Vector3Int coordinates, int lodIndex)
+    public bool CancelChunkGeneration(Vector3Int coordinates, int lodIndex)
     {
         lock (queueLock)
         {
             // This is nasty and should probably not be done like this, but it works?
             // ChunkGenerationJob has an IEqualityComparer to only compare coordinates/LOD.
-            this.generationQueue.Remove(new ChunkGenerationJob(new ChunkContext(coordinates, lodIndex, null), null, null));
+            return this.generationQueue.Remove(new ChunkGenerationJob(new ChunkContext(coordinates, lodIndex, null), null, null));
         }
     }
 
@@ -148,7 +148,7 @@ public class ChunkGenerationProcessor
 
             if (job == null)
             {
-                await Task.Delay(1, token); // Slight pause before polling again
+                await Task.Delay(1, token);
                 continue;
             }
 
@@ -156,7 +156,6 @@ public class ChunkGenerationProcessor
             {
                 ChunkData result = job.ModificationJob == null ?
                     WorkerNewChunk(job) : WorkerModifyChunk(job);
-
                 job.Completion.TrySetResult(result);
             }
             catch (OperationCanceledException)
