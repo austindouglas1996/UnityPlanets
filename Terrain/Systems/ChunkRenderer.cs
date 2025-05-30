@@ -68,47 +68,23 @@ public class ChunkRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Request a chunk be updated due to player modifications.
-    /// </summary>
-    /// <param name="controller"></param>
-    /// <param name="brush"></param>
-    /// <param name="isAdding"></param>
-    public void RequestModification(ChunkController controller, TerrainBrush brush, bool isAdding)
-    {
-        throw new System.NotImplementedException("ChunkModificationJob needs chunkData back.");
-        ChunkModificationJob modificationJob = new ChunkModificationJob(null, brush, isAdding);
-        var task = this.generationQueue.RequestChunkModification(controller.ChunkContext, modificationJob);
-
-        task.ContinueWith(t =>
-        {
-            if (t.Status != TaskStatus.RanToCompletion)
-                return;
-
-            if (t.Result.MeshData.Vertices.Count == 0)
-                return;
-
-            ChunkRenderData renderData = new ChunkRenderData(controller.ChunkContext, t.Result, controller.transform.localToWorldMatrix);
-
-            SubmitExistingChunk(renderData);
-        }, TaskScheduler.FromCurrentSynchronizationContext());
-    }
-
-    /// <summary>
     /// Remove a chunk from all jobs and collections.
     /// </summary>
     /// <param name="renderData"></param>
     public void RemoveChunk(ChunkRenderData renderData)
     {
-        Vector3Int coord = renderData.Context.Coordinates;
+        if (renderData == null)
+        {
+            return;
+        }
 
         if (renderData.Controller != null)
-            this.chunkServices.ControllerFactory.Release(renderData.Controller);
-
-        ChunkRenderData crd = this.chunkManager.Chunks[coord];
-        if (crd == renderData)
         {
-            this.chunkManager.Chunks.Remove(coord);
+            this.chunkServices.ControllerFactory.Release(renderData.Controller);
+            renderData.Controller = null;
         }
+
+        this.chunkManager.Chunks.Remove(renderData.Context);
     }
 
     /// <summary>
@@ -136,13 +112,9 @@ public class ChunkRenderer : MonoBehaviour
 
                 // Generate mesh and apply color.
                 ChunkRenderData renderData = new ChunkRenderData(context, t.Result, transform);
+                renderData.TREE = quadNode;
 
                 this.SubmitNewChunk(renderData);
-
-                if (chunkManager.Chunks[context.Coordinates] == null)
-                {
-                    string edsa = "";
-                }
 
                 if (quadNode != null)
                 {
@@ -188,7 +160,7 @@ public class ChunkRenderer : MonoBehaviour
                 chunkRenderData.Controller = null;
             }*/
 
-            chunkManager.Chunks[coord] = chunkRenderData;
+            chunkManager.Chunks[chunkRenderData.Context] = chunkRenderData;
         }
         catch (System.Exception e)
         {
@@ -201,7 +173,7 @@ public class ChunkRenderer : MonoBehaviour
         var coord = chunkRenderData.Context.Coordinates;
         int lod = chunkRenderData.LOD;
 
-        if (this.chunkManager.Chunks.TryGetValue(chunkRenderData.Context.Coordinates, out var existing))
+        if (this.chunkManager.Chunks.TryGetValue(chunkRenderData.Context, out var existing))
         {
             bool ExistingIsGO = existing.RenderType == ChunkRenderType.GameObject;
 

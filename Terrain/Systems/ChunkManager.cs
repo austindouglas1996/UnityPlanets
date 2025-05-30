@@ -40,7 +40,7 @@ public class ChunkManager : MonoBehaviour
     /// <summary>
     /// A collection of active chunks in the game world.
     /// </summary>
-    public Dictionary<Vector3Int, ChunkRenderData> Chunks = new Dictionary<Vector3Int, ChunkRenderData>();
+    public Dictionary<ChunkContext, ChunkRenderData> Chunks = new Dictionary<ChunkContext, ChunkRenderData>();
 
     /// <summary>
     /// Returns whether <see cref="Initialize(IChunkConfiguration, IChunkLayout, IChunkControllerFactory)"/> has been successful.
@@ -97,9 +97,9 @@ public class ChunkManager : MonoBehaviour
     {
     192f,    // LOD0 — very close to player, only fine detail
     368f,    // LOD1 — close-range but less detailed
-    548f,   // LOD2 — mid-range terrain silhouette
-    796f,   // LOD3 — distant terrain
-    900f,   // LOD4 — very far terrain
+    748f,   // LOD2 — mid-range terrain silhouette
+    996f,   // LOD3 — distant terrain
+    1300f,   // LOD4 — very far terrain
     };
 
 
@@ -154,49 +154,6 @@ public class ChunkManager : MonoBehaviour
         InitializeRootChunks();
     }
 
-    /// <summary>
-    /// Modifies all chunks that intersect the brush area.
-    /// Used when the player adds or removes terrain.
-    /// </summary>
-    /// <param name="brush">The terrain brush to apply.</param>
-    /// <param name="isAdding">True to add terrain, false to remove.</param>
-    /// <param name="bufferMultiplier">Optional chunk bounds buffer.</param>
-    /// <param name="token">Optional cancellation token.</param>
-    public void ModifyTerrain(TerrainBrush brush, bool isAdding, float bufferMultiplier = 0.5f, CancellationToken token = default)
-    {
-        Bounds brushBounds = brush.GetBrushBounds();
-        Vector3 chunkSize = this.Services.Configuration.DensityOptions.ChunkSize3;
-
-        Vector3Int hitPosCoord = this.Services.Layout.ToCoordinates(brush.WorldHitPoint, 0);
-
-        // Check all neighbors in a 3x3x3 cube around the hit position
-        for (int x = -1; x <= 1; x++)
-        {
-            for (int y = -1; y <= 1; y++)
-            {
-                for (int z = -1; z <= 1; z++)
-                {
-                    token.ThrowIfCancellationRequested();
-
-                    Vector3Int neighborCoord = hitPosCoord + new Vector3Int(x, y, z);
-
-                    if (this.Services.Layout.PreviousActiveChunks.Contains(neighborCoord))
-                    {
-                        ChunkRenderData chunk = this.Chunks[neighborCoord];
-
-                        ChunkController controller = chunk.Controller;
-                        Bounds chunkBounds = new Bounds(controller.transform.position + chunkSize * bufferMultiplier, chunkSize);
-
-                        if (brushBounds.Intersects(chunkBounds))
-                        {
-                            Renderer.RequestModification(controller, brush, isAdding);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private void InitializeRootChunks()
     {
         if (!IsInitialized)
@@ -212,24 +169,31 @@ public class ChunkManager : MonoBehaviour
         Vector3 playerPos = this.Follower.transform.position;
 
         // Convert to chunk-aligned center
-        Vector3 centerOffset = new Vector3(chunkSize / 2f, 0, chunkSize / 2f);
+        Vector3 centerOffset = new Vector3(chunkSize / 2f, chunkSize / 2f, chunkSize / 2f);
 
-        // Determine world-aligned base position (bottom-left corner of 2×2)
+        // Determine base world position (bottom-left-near corner of 2×2×2 cube)
         Vector3 startPos = playerPos - centerOffset;
 
-        for (int dx = -8; dx <= 8; dx++)
+        for (int dx = -16; dx <= 16; dx++)
         {
-            for (int dz = -8; dz <= 8; dz++)
+            for (int dy = -4; dy <= 4; dy++)
             {
-                Vector3 chunkWorldPos = startPos + new Vector3(dx * chunkSize, 0, dz * chunkSize);
+                for (int dz = -16; dz <= 16; dz++)
+                {
+                    Vector3 chunkWorldPos = startPos + new Vector3(
+                        dx * chunkSize,
+                        dy * chunkSize,
+                        dz * chunkSize
+                    );
 
-                Bounds bounds = new Bounds(
-                    chunkWorldPos + new Vector3(chunkSize / 2f, chunkSize / 2f, chunkSize / 2f),
-                    new Vector3(chunkSize, chunkSize, chunkSize)
-                );
+                    Bounds bounds = new Bounds(
+                        chunkWorldPos + Vector3.one * (chunkSize / 2f),
+                        Vector3.one * chunkSize
+                    );
 
-                var root = new ChunkQuadTree(Services, Renderer, bounds);
-                RootTrees.Add(root);
+                    var root = new ChunkQuadTree(Services, Renderer, bounds);
+                    RootTrees.Add(root);
+                }
             }
         }
 

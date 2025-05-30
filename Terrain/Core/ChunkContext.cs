@@ -1,6 +1,7 @@
+using System;
 using UnityEngine;
 
-public class ChunkContext
+public class ChunkContext : IEquatable<ChunkContext>
 {
     public ChunkContext(Vector3Int coordinates, int lODIndex, IChunkServices services)
     {
@@ -15,6 +16,27 @@ public class ChunkContext
 
 
     public Vector3 WorldPosition => Services.Layout.ToWorld(Coordinates, LODIndex);
+
+    public override bool Equals(object obj) => Equals(obj as ChunkContext);
+
+    public bool Equals(ChunkContext other)
+    {
+        if (other is null)
+            return false;
+
+        return Coordinates.Equals(other.Coordinates) && LODIndex == other.LODIndex;
+    }
+
+    public override int GetHashCode()
+    {
+        unchecked
+        {
+            int hash = 17;
+            hash = hash * 31 + Coordinates.GetHashCode();
+            hash = hash * 31 + LODIndex.GetHashCode();
+            return hash;
+        }
+    }
 
     public override string ToString()
     {

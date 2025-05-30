@@ -39,7 +39,6 @@ public class TerrainEditor : MonoBehaviour
 
         if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, layerMask))
         {
-            chunkManager.ModifyTerrain(CreateBrush(hit.point), adding);
         }
     }
 

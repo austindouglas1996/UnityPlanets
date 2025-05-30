@@ -34,11 +34,15 @@ public class ChunkRenderData
         set
         {
             isActive = value;
-            if (this.Controller != null && this.Controller.gameObject.activeSelf != value)
+            if (this.Controller != null)
                 this.Controller.gameObject.SetActive(value);
         }
     }
     private bool isActive = true;
+
+    public bool ShouldDestroy = false;
+
+    public ChunkQuadTree TREE { get; set; }
 
     public ChunkContext Context { get; set; }
     public ChunkData Data { get; set; }
