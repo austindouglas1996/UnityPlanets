@@ -1,11 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.UIElements;
-using UnityEngine.XR;
 
 /// <summary>
 /// A helper class to help with drawing large batches of entities. Items like grass, flowers, rocks rendering will increase using an instance like this.
@@ -14,8 +10,6 @@ using UnityEngine.XR;
 /// </summary>
 public class MeshBatchDrawer
 {
-    private const int MAX_BATCH_SIZE = 1023; // Unity's instance batch limit
-
     private class MeshBatchItem
     {
         public MeshBatchItem(int meshIndex)
@@ -26,15 +20,6 @@ public class MeshBatchDrawer
         public int MeshIndex;
         public List<Matrix4x4> Positions = new List<Matrix4x4>();
         public List<Vector4> Colors = new();
-    }
-
-    private struct MeshDrawItem
-    {
-        public Mesh Mesh;
-        public int SubMeshIndex;
-        public Material Material;
-        public List<Matrix4x4> Positions;
-        public List<Vector4> Colors;
     }
 
     private class MeshBatch
@@ -106,11 +91,19 @@ public class MeshBatchDrawer
         }
     }
 
+    private struct MeshDrawItem
+    {
+        public Mesh Mesh;
+        public int SubMeshIndex;
+        public Material Material;
+        public List<Matrix4x4> Positions;
+        public List<Vector4> Colors;
+    }
+
     private Dictionary<GameObject, List<MeshLOD>> Meshes = new Dictionary<GameObject, List<MeshLOD>>();
     private List<MeshBatch> Batches = new List<MeshBatch>();
     private List<MeshDrawItem> DrawList = new List<MeshDrawItem>();
 
-    private Vector3 LastFollowerPosition;
     private Quaternion LastFollowerRotation;
 
     /// <summary>
@@ -120,10 +113,18 @@ public class MeshBatchDrawer
     /// <param name="follower"></param>
     public MeshBatchDrawer(Camera follower)
     {
+        _Instance = this;
+
         this.Batches.Add(new MeshBatch());
         this.Follower = follower;
-        this.LastFollowerPosition = follower.transform.position;
     }
+
+    public static MeshBatchDrawer Instance
+    {
+        get { return _Instance; }
+        private set { _Instance = value; }
+    }
+    private static MeshBatchDrawer _Instance;
 
     /// <summary>
     /// The camera object the LOD objects should be chosen based on. Something like <see cref="Camera.main"/>
@@ -194,11 +195,27 @@ public class MeshBatchDrawer
     }
 
     /// <summary>
-    /// Reset the distance from the last known follower position.
+    /// Render the instances of each active batch using <see cref="Graphics.DrawMeshInstanced(Mesh, int, Material, List{Matrix4x4})"/>. This method is a bit more
+    /// efficent than native Unity rendering as we will automatically use a FrustumPlane to determine what should be rendered.
     /// </summary>
-    public void UpdateFollowerPosition()
+    private void RenderInstances()
     {
-        this.LastFollowerPosition = Follower.transform.position;
+        int count = 0;
+
+        foreach (var drawItem in this.DrawList)
+        {
+            if (drawItem.Positions.Count < 50)
+                continue;
+
+            MaterialPropertyBlock props = new MaterialPropertyBlock();
+            props.SetVectorArray("_InstanceColor", drawItem.Colors.ToArray());
+
+            Graphics.DrawMeshInstanced(drawItem.Mesh, drawItem.SubMeshIndex, drawItem.Material, drawItem.Positions, props);
+
+            count += drawItem.Positions.Count;
+        }
+
+        Debug.Log($"Drawn {count}");
     }
 
     /// <summary>
@@ -226,35 +243,46 @@ public class MeshBatchDrawer
                     if (entry.Value.MeshIndex == -1)
                         throw new System.ArgumentException("Mesh LOD index is invalid.");
 
-                    var mesh = Meshes.ElementAt(entry.Value.MeshIndex).Value;
-                    int meshLodIndex = mesh.Count - 1 < lodIndex ? 0 : lodIndex;
-                    var meshLod = mesh[meshLodIndex];
+                    var meshVariants = Meshes.ElementAt(entry.Value.MeshIndex).Value;
+                    int meshLodIndex = meshVariants.Count - 1 < lodIndex ? 0 : lodIndex;
+                    var meshLod = meshVariants[meshLodIndex];
+                    Mesh desiredMesh = meshLod.Mesh;
 
-                    MeshDrawItem newItem = new MeshDrawItem();
-                    newItem.Mesh = mesh[meshLodIndex].Mesh;
-                    newItem.SubMeshIndex = 0;
-                    newItem.Material = meshLod.Mat;
-                    newItem.Positions = entry.Value.Positions;
-                    newItem.Colors = entry.Value.Colors;
+                    var entryPositions = entry.Value.Positions;
+                    var entryColors = entry.Value.Colors;
 
-                    this.DrawList.Add(newItem);
+                    int added = 0;
+                    while (added < entryPositions.Count)
+                    {
+                        // Try to find an existing item with space
+                        MeshDrawItem item = this.DrawList.FirstOrDefault(
+                            r => r.Mesh == desiredMesh &&
+                                 r.Material == meshLod.Mat &&
+                                 r.Positions.Count < 1023);
+
+                        if (item.Mesh == null)
+                        {
+                            item = new MeshDrawItem
+                            {
+                                Mesh = desiredMesh,
+                                SubMeshIndex = 0,
+                                Material = meshLod.Mat,
+                                Positions = new List<Matrix4x4>(),
+                                Colors = new List<Vector4>()
+                            };
+
+                            this.DrawList.Add(item);
+                        }
+
+                        int spaceLeft = 1023 - item.Positions.Count;
+                        int toAdd = Math.Min(spaceLeft, entryPositions.Count - added);
+
+                        item.Positions.AddRange(entryPositions.GetRange(added, toAdd));
+                        item.Colors.AddRange(entryColors.GetRange(added, toAdd));
+                        added += toAdd;
+                    }
                 }
             }
-        }
-    }
-
-    /// <summary>
-    /// Render the instances of each active batch using <see cref="Graphics.DrawMeshInstanced(Mesh, int, Material, List{Matrix4x4})"/>. This method is a bit more
-    /// efficent than native Unity rendering as we will automatically use a FrustumPlane to determine what should be rendered.
-    /// </summary>
-    private void RenderInstances()
-    {
-        foreach (var drawItem in this.DrawList)
-        {
-            MaterialPropertyBlock props = new MaterialPropertyBlock();
-            props.SetVectorArray("_InstanceColor", drawItem.Colors.ToArray());
-
-            Graphics.DrawMeshInstanced(drawItem.Mesh, drawItem.SubMeshIndex, drawItem.Material, drawItem.Positions, props);
         }
     }
 

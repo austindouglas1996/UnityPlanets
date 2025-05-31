@@ -20,22 +20,11 @@ public class FoliageGenerator : MonoBehaviour
 
     private System.Random rand = new System.Random();
 
-    private void Awake()
-    {
-    }
-
-    private void Update()
-    {
-        if (foliageDrawer != null)
-            foliageDrawer.Update();
-    }
-
     public void ApplyMap(ChunkRenderData data, CancellationToken token = default)
     {
         List<TrianglePOS> positions = new List<TrianglePOS>();
 
-        foliageDrawer = null;
-        foliageDrawer = new MeshBatchDrawer(Camera.main);
+        foliageDrawer = MeshBatchDrawer.Instance;
 
         Matrix4x4 matrix = this.transform.localToWorldMatrix;
 

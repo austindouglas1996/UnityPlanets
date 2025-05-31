@@ -50,7 +50,7 @@ public class ChunkManager : MonoBehaviour
     private bool IsInitialized = false;
 
     private TextMeshProUGUI debugText;
-
+    private MeshBatchDrawer meshDrawer;
 
     private void Start()
     {
@@ -90,6 +90,8 @@ public class ChunkManager : MonoBehaviour
 
         sw = new System.Diagnostics.Stopwatch();
         sw.Start();
+
+        this.meshDrawer = new MeshBatchDrawer(Camera.main);
     }
 
     public float timeStop = 20f;
@@ -128,6 +130,12 @@ float[] lodThresholds = new float[]
 
             this.LastFollowerRotation = Follower.transform.rotation;
         }
+
+    }
+
+    private void LateUpdate()
+    {
+        this.meshDrawer.Update();
     }
 
     private void UpdateLayout()
