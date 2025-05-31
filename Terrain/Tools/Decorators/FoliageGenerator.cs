@@ -51,10 +51,10 @@ public class FoliageGenerator : MonoBehaviour
             }
         }
 
-        ProcessGrassPositions(positions);
+        ProcessGrassPositions(positions, data.LOD);
     }
 
-    private void ProcessGrassPositions(List<TrianglePOS> pos)
+    private void ProcessGrassPositions(List<TrianglePOS> pos, int chunkLod)
     {
         try
         {
@@ -73,9 +73,12 @@ public class FoliageGenerator : MonoBehaviour
                     foliageDrawer.Add(rock, tria.Position, rotation, rockScale, tria.Color);
                 }
 
-                Vector3 scale = Vector3.one * Random.Range(0.7f, 1.4f);
-                var grass = GenericStore.Instance.GetOneRandom("Grass");
-                foliageDrawer.Add(grass, tria.Position, rotation, scale, tria.Color);
+                if (chunkLod == 0)
+                {
+                    Vector3 scale = Vector3.one * Random.Range(0.7f, 1.4f);
+                    var grass = GenericStore.Instance.GetOneRandom("Grass");
+                    foliageDrawer.Add(grass, tria.Position, rotation, scale, tria.Color);
+                }
 
                 if (Random.value < rockChance) // Flower spawn, only if rock didn't spawn
                 {
@@ -132,15 +135,14 @@ public class FoliageGenerator : MonoBehaviour
                         Vector3 triangleNormal = Vector3.Cross(vertexB - vertexA, vertexC - vertexA).normalized;
                         Vector3 position = RandomPointInTriangle(vertexA, vertexB, vertexC) + triangleNormal * 0.01f;
 
-                        // Convert world position to local chunk voxel indices
-                        int localX = Mathf.RoundToInt(position.x - chunkOrigin.x);
-                        int localY = Mathf.RoundToInt(position.y - chunkOrigin.y);
-                        int localZ = Mathf.RoundToInt(position.z - chunkOrigin.z);
+                        // Compute local voxel-space position
+                        float voxelX = (position.x - chunkOrigin.x) / 16;
+                        float voxelY = (position.y - chunkOrigin.y) / 16;
+                        float voxelZ = (position.z - chunkOrigin.z) / 16;
 
-                        // Bounds check
-                        if (localX < 0 || localY < 0 || localZ < 0 ||
-                            localX >= sizeX || localY >= sizeY || localZ >= sizeZ)
-                            continue;
+                        int localX = Mathf.FloorToInt(voxelX);
+                        int localY = Mathf.FloorToInt(voxelY);
+                        int localZ = Mathf.FloorToInt(voxelZ);
 
                         // Respect foliage mask
                         //if (data.FoliageMask[localX, localY, localZ] <= 0f)

@@ -95,16 +95,17 @@ public class ChunkManager : MonoBehaviour
     public float timeStop = 20f;
     private System.Diagnostics.Stopwatch sw;
 
-    float[] lodThresholds = new float[]
-    {
-        10f,    // LOD0 — up close: player feet, terrain sculpting, grass
-        400f,   // LOD1 — near field: trees, paths
-        550f,   // LOD2 — visible terrain shape, some structure
-        700f,   // LOD3 — far terrain shape only
-        1000f,  // LOD4 — horizon terrain (proxy/shader only)
-    };
+float[] lodThresholds = new float[]
+{
+    5f,    // LOD0 — up close: player feet, terrain sculpting, grass
+    100f,  // LOD1 — near field: trees, paths
+    450f,  // LOD2 — visible terrain shape, some structure
+    700f,  // LOD3 — far terrain shape only
+    1000f, // LOD4 — horizon terrain (proxy/shader only)
+};
 
 
+    private Quaternion LastFollowerRotation;
 
     private void Update()
     {
@@ -116,6 +117,17 @@ public class ChunkManager : MonoBehaviour
             return;
 
         this.UpdateLayout();
+
+        float deltaAngle = Quaternion.Angle(LastFollowerRotation, Follower.transform.rotation);
+        if (deltaAngle >= 60f)
+        {
+            foreach (var root in RootTrees)
+            {
+                root.UpdateActiveStatus(this.Services.Layout.FollowerWorldPosition, Camera.main);
+            }
+
+            this.LastFollowerRotation = Follower.transform.rotation;
+        }
     }
 
     private void UpdateLayout()
@@ -128,6 +140,7 @@ public class ChunkManager : MonoBehaviour
         foreach (var root in RootTrees)
         {
             root.Update(pos, lodThresholds);
+            root.UpdateActiveStatus(pos, Camera.main);
         }
     }
 
@@ -140,7 +153,7 @@ public class ChunkManager : MonoBehaviour
         }
     }
 
-    private bool ShowRootGizmo = false;
+    [SerializeField] private bool ShowRootGizmo = false;
 
     private void OnDisable()
     {

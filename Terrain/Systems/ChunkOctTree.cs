@@ -121,6 +121,42 @@ public class ChunkOctTree
         this.Status = ChunkStatus.Finished;
     }
 
+    public void UpdateActiveStatus(Vector3 followerWorldPosition, Camera camera)
+    {
+        Bounds expandedBounds = new Bounds(this.Bounds.center, this.Bounds.size * 8f);
+        bool isPlayerNearby = this.Bounds.Contains(followerWorldPosition);
+
+        if (!isPlayerNearby)
+        {
+            Vector3 toChunk = (this.Bounds.center - camera.transform.position).normalized;
+            float angle = Vector3.Angle(camera.transform.forward, toChunk);
+
+            if (angle > 160f)
+            {
+                if (this.RenderData != null)
+                    this.RenderData.IsActive = false;
+
+                return;
+            }
+            else
+            {
+                if (this.RenderData != null)
+                    this.RenderData.IsActive = true;
+            }
+        }
+        else
+        {
+            if (this.RenderData != null)
+                this.RenderData.IsActive = true;
+        }
+
+        if (Children == null) return;
+        foreach (var child in this.Children)
+        {
+            child.UpdateActiveStatus(followerWorldPosition, camera);
+        }
+    }
+
     /// <summary>
     /// Called once a frame to help with deciding when to subdivide.
     /// </summary>
@@ -171,6 +207,9 @@ public class ChunkOctTree
         }
     }
 
+    /// <summary>
+    /// Update the visibility of this node.
+    /// </summary>
     private void UpdateVisibility()
     {
         if (this.isVisible 

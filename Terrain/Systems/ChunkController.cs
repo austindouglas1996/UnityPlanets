@@ -125,10 +125,7 @@ public class ChunkController : MonoBehaviour
             this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
             this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
 
-            if (renderData.LOD == 0)
-            {
-                //this.GetComponent<FoliageGenerator>().ApplyMap(renderData);
-            }
+            //this.GetComponent<FoliageGenerator>().ApplyMap(renderData);
         }
         catch (System.Exception e)
         {
