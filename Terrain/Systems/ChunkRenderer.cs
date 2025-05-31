@@ -10,9 +10,6 @@ using UnityEngine.InputSystem.XR;
 [RequireComponent (typeof(ChunkManager))]
 public class ChunkRenderer : MonoBehaviour
 {
-    [Tooltip("Should chunks the follower cannot see be automatically hidden?")]
-    public bool AutomaticallyHideChunksOutOfView = true;
-
     private ChunkManager chunkManager;
     private IChunkServices chunkServices;
     public ChunkGenerationProcessor generationQueue;
@@ -35,18 +32,6 @@ public class ChunkRenderer : MonoBehaviour
             if (chunk.RenderType == ChunkRenderType.GPU && chunk.IsActive)
             {
                 Graphics.DrawMesh(chunk.Mesh, chunk.LocalToWorld, material, 0);
-            }
-        }
-
-        if (AutomaticallyHideChunksOutOfView)
-        {
-            Quaternion currentRot = chunkManager.Follower.transform.rotation;
-            float angleDelta = Quaternion.Angle(LastFollowerRotation, currentRot);
-
-            if (angleDelta > 30f)
-            {
-                LastFollowerRotation = currentRot;
-                //UpdateVisibility();
             }
         }
     }
@@ -79,8 +64,12 @@ public class ChunkRenderer : MonoBehaviour
         }
 
         this.generationQueue.CancelChunkGeneration(renderData.Context.Coordinates, renderData.Context.LODIndex);
-        this.chunkServices.ControllerFactory.Release(renderData.Controller);
-        //renderData.Controller = null;
+
+        if (renderData.RenderType == ChunkRenderType.GameObject)
+        {
+            this.chunkServices.ControllerFactory.Release(renderData.Controller); 
+            renderData.Controller = null;
+        }
 
         this.chunkManager.Chunks.Remove(renderData.Context);
     }
@@ -137,17 +126,14 @@ public class ChunkRenderer : MonoBehaviour
     {
         try
         {
-            var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
-            chunkRenderData.SetController(controller);
-            chunkRenderData.RenderType = ChunkRenderType.GameObject;
-            chunkManager.Chunks[chunkRenderData.Context] = chunkRenderData;
-            controller.ApplyChunkData(chunkRenderData);
-
-            /*
             var coord = chunkRenderData.Context.Coordinates;
             if (chunkRenderData.LOD == 0)
             {
-
+                var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
+                chunkRenderData.Controller = controller;
+                chunkRenderData.RenderType = ChunkRenderType.GameObject;
+                chunkManager.Chunks[chunkRenderData.Context] = chunkRenderData;
+                controller.ApplyChunkData(chunkRenderData);
             }
             else
             {
@@ -156,37 +142,10 @@ public class ChunkRenderer : MonoBehaviour
             }
 
             chunkManager.Chunks[chunkRenderData.Context] = chunkRenderData;
-            */
         }
         catch (System.Exception e)
         {
             Debug.LogException(e);
-        }
-    }
-
-    /// <summary>
-    /// Update the chunk visibility of each chunk.
-    /// </summary>
-    private void UpdateVisibility()
-    {
-        Vector3 camForward = chunkManager.Follower.transform.forward;
-
-        foreach (var chunk in this.chunkManager.Chunks)
-        {
-            Vector3 size = this.chunkServices.Configuration.DensityOptions.ChunkSize3;
-            Vector3 chunkCenter = chunk.Value.LocalToWorld.GetPosition() + size * 0.5f;
-            Vector3 toChunk = (chunkCenter - chunkManager.Follower.transform.position);
-
-            // Always render closeup chunks.
-            if (toChunk.magnitude < 40f)
-            {
-                chunk.Value.IsActive = true;
-                continue;
-            }
-
-            float dot = Vector3.Dot(camForward, toChunk.normalized);
-            bool isRoughlyInFront = dot > 0f;
-            chunk.Value.IsActive = isRoughlyInFront;
         }
     }
 }

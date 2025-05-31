@@ -62,12 +62,7 @@ public class ChunkRenderData
     private Mesh mesh;
     public Matrix4x4 LocalToWorld {  get; set; }
     public ChunkRenderType RenderType { get; set; }
-    public ChunkController? Controller { get; private set; }
-
-    public void SetController(ChunkController controller)
-    {
-        this.Controller = controller;
-    }
+    public ChunkController? Controller { get; set; }
 
     public int LOD => Data?.Context.LODIndex ?? -1;
 }

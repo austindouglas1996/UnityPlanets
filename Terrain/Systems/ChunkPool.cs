@@ -88,6 +88,7 @@ public class ChunkPool
     private ChunkController CreateController(bool isActive = false)
     {
         var newChunk = GameObject.Instantiate(chunkPrefab);
+        newChunk.isStatic = true;
         newChunk.name = $"PooledChunk";
         newChunk.SetActive(isActive);
         newChunk.transform.SetParent(parent);
