@@ -184,7 +184,7 @@ public class MeshBatchDrawer
     public void Update()
     {
         float deltaAngle = Quaternion.Angle(LastFollowerRotation, Follower.transform.rotation);
-        if (deltaAngle >= 35f)
+        if (deltaAngle >= 10f)
         {
             this.UpdateDrawList();
             this.LastFollowerRotation = Follower.transform.rotation;

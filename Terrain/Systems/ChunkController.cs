@@ -16,7 +16,7 @@ using UnityEngine.AI;
 public class ChunkController : MonoBehaviour
 {
     public ChunkContext ChunkContext;
-    public ChunkOctTree Tree;
+    public ChunkRenderData RenderData;
 
     private void Awake()
     {
@@ -59,7 +59,7 @@ public class ChunkController : MonoBehaviour
         {
             // Properties.
             this.ChunkContext = default;
-            this.Tree = null;
+            this.RenderData = default;
 
             // Destroy
             Destroy(this.GetComponent<MeshFilter>().mesh);
@@ -80,7 +80,7 @@ public class ChunkController : MonoBehaviour
         if (this.ChunkContext == null) return;
 
         Gizmos.color = Color.white;
-        DrawBoundsRecursive(Tree);
+        DrawBoundsRecursive(RenderData.Tree);
     }
 
     private void DrawBoundsRecursive(ChunkOctTree node)
@@ -103,7 +103,7 @@ public class ChunkController : MonoBehaviour
 
     private void Update()
     {
-        if (this.Tree != null && this.Tree.RenderData == null)
+        if (this.RenderData != null && this.RenderData.Tree.RenderData == null)
         {
             this.ChunkContext.Services.ControllerFactory.Release(this);
         }
@@ -118,13 +118,17 @@ public class ChunkController : MonoBehaviour
     {
         try
         {
-            this.Tree = renderData.Tree;
+            this.RenderData = renderData;
+
             var Coordinates = this.ChunkContext.Coordinates;
             this.name = this.ChunkContext.ToString();
             this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
             this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
 
-            //this.GetComponent<FoliageGenerator>().ApplyMap(renderData);
+            if (renderData.LOD == 0)
+            {
+                //this.GetComponent<FoliageGenerator>().ApplyMap(renderData);
+            }
         }
         catch (System.Exception e)
         {

@@ -74,11 +74,6 @@ public class ChunkPool
         controller.gameObject.SetActive(false);
         controller.transform.SetParent(parent);
 
-        if (controller.Tree != null)
-        {
-            throw new System.Exception("Tree not null");
-        }
-
         if (!pool.Contains(controller))
         {
             pool.Push(controller);

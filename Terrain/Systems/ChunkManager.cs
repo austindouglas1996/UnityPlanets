@@ -97,7 +97,7 @@ public class ChunkManager : MonoBehaviour
 
     float[] lodThresholds = new float[]
     {
-        20f,    // LOD0 — up close: player feet, terrain sculpting, grass
+        10f,    // LOD0 — up close: player feet, terrain sculpting, grass
         400f,   // LOD1 — near field: trees, paths
         550f,   // LOD2 — visible terrain shape, some structure
         700f,   // LOD3 — far terrain shape only

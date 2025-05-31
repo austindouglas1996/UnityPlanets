@@ -18,13 +18,10 @@ public class FoliageGenerator : MonoBehaviour
     public float maxGrassHeight = 2.3f;
     public float grassDensity = 10f;
 
-    private GenericStore Store;
-
     private System.Random rand = new System.Random();
 
     private void Awake()
     {
-        this.Store = GenericStore.Instance;
     }
 
     private void Update()
@@ -59,40 +56,50 @@ public class FoliageGenerator : MonoBehaviour
 
     private void ProcessGrassPositions(List<TrianglePOS> pos)
     {
-        foreach (TrianglePOS tria in pos)
+        try
         {
-            float rockChance = 0.001f;
-            float treeChance = 0.005f;
-
-            float averageHeight = tria.Position.y;
-            Quaternion rotation = Quaternion.FromToRotation(Vector3.up, tria.Normal) * Quaternion.Euler(0, Random.Range(0, 360), 0);
-
-            if (Random.value < rockChance)
+            foreach (TrianglePOS tria in pos)
             {
-                Vector3 rockScale = Vector3.one * Random.Range(0.2f, 11f);
-                foliageDrawer.Add(this.Store.GetOneRandom("Rocks"), tria.Position, rotation, rockScale, tria.Color);
-            }
+                float rockChance = 0.001f;
+                float treeChance = 0.005f;
 
-            Vector3 scale = Vector3.one * Random.Range(0.7f, 1.4f);
-            foliageDrawer.Add(this.Store.GetOneRandom("Grass"), tria.Position, rotation, scale, tria.Color);
+                float averageHeight = tria.Position.y;
+                Quaternion rotation = Quaternion.FromToRotation(Vector3.up, tria.Normal) * Quaternion.Euler(0, Random.Range(0, 360), 0);
 
-            if (Random.value < rockChance) // Flower spawn, only if rock didn't spawn
-            {
-                Vector3 flowerScale = Vector3.one * Random.Range(1.3f, 2.5f);
-                foliageDrawer.Add(this.Store.GetOneRandom("Flowers"), tria.Position, rotation, flowerScale, tria.Color);
-            }
+                if (Random.value < rockChance)
+                {
+                    Vector3 rockScale = Vector3.one * Random.Range(0.2f, 11f);
+                    GameObject rock = GenericStore.Instance.GetOneRandom("Rocks");
+                    foliageDrawer.Add(rock, tria.Position, rotation, rockScale, tria.Color);
+                }
 
-            if (Random.value < treeChance)
-            {
-                Vector3 treeScale = Vector3.one * Random.Range(0.6f, 2f);
-                foliageDrawer.Add(this.Store.GetOneRandom("Trees"), tria.Position, Quaternion.Euler(0,0,0), treeScale, tria.Color);
+                Vector3 scale = Vector3.one * Random.Range(0.7f, 1.4f);
+                var grass = GenericStore.Instance.GetOneRandom("Grass");
+                foliageDrawer.Add(grass, tria.Position, rotation, scale, tria.Color);
+
+                if (Random.value < rockChance) // Flower spawn, only if rock didn't spawn
+                {
+                    Vector3 flowerScale = Vector3.one * Random.Range(1.3f, 2.5f);
+                    GameObject flower = GenericStore.Instance.GetOneRandom("Flowers");
+                    foliageDrawer.Add(flower, tria.Position, rotation, flowerScale, tria.Color);
+                }
+
+                if (Random.value < treeChance)
+                {
+                    Vector3 treeScale = Vector3.one * Random.Range(0.6f, 2f);
+                    GameObject tree = GenericStore.Instance.GetOneRandom("Trees");
+                    foliageDrawer.Add(tree, tria.Position, Quaternion.Euler(0, 0, 0), treeScale, tria.Color);
+                }
             }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogException(e);
         }
     }
 
     private List<TrianglePOS> GetRandomPositionsInTriangles(ChunkData data, Matrix4x4 matrix, int multiply = 1, bool alignY = true)
     {
-        /*
         List<TrianglePOS> positions = new List<TrianglePOS>();
 
         try
@@ -100,9 +107,9 @@ public class FoliageGenerator : MonoBehaviour
             if (multiply <= 0)
                 multiply = 1;
 
-            int sizeX = data.FoliageMask.GetLength(0);
-            int sizeY = data.FoliageMask.GetLength(1);
-            int sizeZ = data.FoliageMask.GetLength(2);
+            int sizeX = data.DensityMap.SizeX;
+            int sizeY = data.DensityMap.SizeY;
+            int sizeZ = data.DensityMap.SizeZ;
 
             Vector3 chunkOrigin = matrix.MultiplyPoint3x4(Vector3.zero);
 
@@ -136,12 +143,12 @@ public class FoliageGenerator : MonoBehaviour
                             continue;
 
                         // Respect foliage mask
-                        if (data.FoliageMask[localX, localY, localZ] <= 0f)
-                            continue;
+                        //if (data.FoliageMask[localX, localY, localZ] <= 0f)
+                            //continue;
 
-                        Color A = data.MeshData.VerticeColors[i];
-                        Color B = data.MeshData.VerticeColors[i + 1];
-                        Color C = data.MeshData.VerticeColors[i + 2];
+                        Color A = data.MeshData.Colors[i];
+                        Color B = data.MeshData.Colors[i + 1];
+                        Color C = data.MeshData.Colors[i + 2];
                         Color D = (A + B + C) / 3f;
 
                         positions.Add(new TrianglePOS() { Position = position, Normal = triangleNormal, Color = D });
@@ -149,7 +156,7 @@ public class FoliageGenerator : MonoBehaviour
                     }
                     catch (System.Exception ex)
                     {
-                        string rr = "";
+                        Debug.LogException(ex);
                     }
 
                 }
@@ -157,12 +164,10 @@ public class FoliageGenerator : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            string fd = "";
+            Debug.LogException(e);
         }
 
         return positions;
-        */
-        return null;
     }
 
     /// <summary>
