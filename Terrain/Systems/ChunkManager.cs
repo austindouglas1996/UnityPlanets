@@ -3,7 +3,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using TMPro;
 using Unity.VisualScripting;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
+using static UnityEditor.PlayerSettings;
 
 /// <summary>
 /// Manages all active chunks in the world. Handles loading, unloading, re-coloring,
@@ -104,11 +106,14 @@ public class ChunkManager : MonoBehaviour
 
 
 
-    private async void Update()
+    private void Update()
     {
         this.debugText.text = this.Chunks.Count.ToString() + "\n" +
             this.Renderer.generationQueue.ToString() + "\n" +
             sw.Elapsed.TotalSeconds.ToString();
+
+        if (Time.frameCount % 5 != 0)
+            return;
 
         this.UpdateLayout();
     }
@@ -125,6 +130,17 @@ public class ChunkManager : MonoBehaviour
             root.Update(pos, lodThresholds);
         }
     }
+
+    private void OnDrawGizmos()
+    {
+        if (!ShowRootGizmo) return;
+        foreach (var root in RootTrees)
+        {
+            Gizmos.DrawWireCube(root.Bounds.center, root.Bounds.size);
+        }
+    }
+
+    private bool ShowRootGizmo = false;
 
     private void OnDisable()
     {
@@ -175,11 +191,11 @@ public class ChunkManager : MonoBehaviour
         // Determine base world position (bottom-left-near corner of 2󫎾 cube)
         Vector3 startPos = playerPos - centerOffset;
 
-        for (int dx = -8; dx <= 8; dx++)
+        for (int dx = -8; dx < 8; dx++)
         {
-            for (int dy = -1; dy <= 2; dy++)
+            for (int dy = 0; dy < 2; dy++)
             {
-                for (int dz = -8; dz <= 8; dz++)
+                for (int dz = -8; dz < 8; dz++)
                 {
                     Vector3 chunkWorldPos = startPos + new Vector3(
                         dx * chunkSize,
@@ -188,7 +204,7 @@ public class ChunkManager : MonoBehaviour
                     );
 
                     Bounds bounds = new Bounds(
-                        chunkWorldPos + Vector3.one * (chunkSize / 2f),
+                        chunkWorldPos + Vector3.one * (chunkSize / 2),
                         Vector3.one * chunkSize
                     );
 
@@ -197,6 +213,7 @@ public class ChunkManager : MonoBehaviour
                 }
             }
         }
+
 
         Debug.Log("Finished creating LOD5 root chunks.");
     }

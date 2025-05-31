@@ -29,6 +29,11 @@ public class MeshData
     public bool IsEmpty => Vertices.Count == 0 || Triangles.Count == 0;
 
     /// <summary>
+    /// Returns whether this <see cref="MeshData"/> is an empty collection.
+    /// </summary>
+    public bool IsRenderable => Triangles.Count >= 3;
+
+    /// <summary>
     /// Converts processed MeshData into a Unity Mesh object.
     /// </summary>
     /// <param name="data">The mesh data to convert.</param>

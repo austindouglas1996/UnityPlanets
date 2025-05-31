@@ -9,6 +9,11 @@ public class HeightDensityMapGenerator : GenericDensityMapGenerator
     {
     }
 
+    protected float GetHeightForWorldPositionCheap(float worldX, float worldZ)
+    {
+        return Mathf.PerlinNoise(worldX * 0.01f, worldZ * 0.01f);
+    }
+
     protected override float GetHeightForWorldPosition(float worldX, float worldZ)
     {
         float x = worldX + Options.Seed;

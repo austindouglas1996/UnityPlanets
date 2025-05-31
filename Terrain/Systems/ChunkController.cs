@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +16,7 @@ using UnityEngine.AI;
 public class ChunkController : MonoBehaviour
 {
     public ChunkContext ChunkContext;
+    public ChunkOctTree Tree;
 
     private void Awake()
     {
@@ -53,16 +55,58 @@ public class ChunkController : MonoBehaviour
     /// </summary>
     public void ResetController()
     {
-        // Properties.
-        this.ChunkContext = default;
+        try
+        {
+            // Properties.
+            this.ChunkContext = default;
+            this.Tree = null;
 
-        // Destroy
-        Destroy(this.GetComponent<MeshFilter>().mesh);
-        Destroy(this.GetComponent<MeshCollider>().sharedMesh);
+            // Destroy
+            Destroy(this.GetComponent<MeshFilter>().mesh);
+            Destroy(this.GetComponent<MeshCollider>().sharedMesh);
 
-        // Components.
-        this.GetComponent<MeshFilter>().mesh = null;
-        this.GetComponent<MeshCollider>().sharedMaterial = null;
+            // Components.
+            this.GetComponent<MeshFilter>().mesh = null;
+            this.GetComponent<MeshCollider>().sharedMaterial = null;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError(e.Message);
+        }
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (this.ChunkContext == null) return;
+
+        Gizmos.color = Color.white;
+        DrawBoundsRecursive(Tree);
+    }
+
+    private void DrawBoundsRecursive(ChunkOctTree node)
+    {
+        if (node.RenderData != null)
+        {
+            Gizmos.color = Color.Lerp(Color.red, Color.green, node.LODIndex / 4f);
+            Gizmos.DrawWireCube(node.Bounds.center, node.Bounds.size);
+        }
+
+        if (node.Children != null)
+        {
+            foreach (var child in node.Children)
+            {
+                if (child != null)
+                    DrawBoundsRecursive(child);
+            }
+        }
+    }
+
+    private void Update()
+    {
+        if (this.Tree != null && this.Tree.RenderData == null)
+        {
+            this.ChunkContext.Services.ControllerFactory.Release(this);
+        }
     }
 
     /// <summary>
@@ -74,6 +118,7 @@ public class ChunkController : MonoBehaviour
     {
         try
         {
+            this.Tree = renderData.Tree;
             var Coordinates = this.ChunkContext.Coordinates;
             this.name = this.ChunkContext.ToString();
             this.GetComponent<MeshFilter>().mesh = renderData.Mesh;

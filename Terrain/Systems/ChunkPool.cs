@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using VHierarchy.Libs;
 
 /// <summary>
 /// A unique way to handle memory management with chunk objects. This will pool <see cref="ChunkController"/> objects to help
@@ -72,7 +73,16 @@ public class ChunkPool
         controller.name = "ReleasedToPool";
         controller.gameObject.SetActive(false);
         controller.transform.SetParent(parent);
-        pool.Push(controller);
+
+        if (controller.Tree != null)
+        {
+            throw new System.Exception("Tree not null");
+        }
+
+        if (!pool.Contains(controller))
+        {
+            pool.Push(controller);
+        }
     }
 
     /// <summary>

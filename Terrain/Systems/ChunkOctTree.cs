@@ -14,14 +14,14 @@ public enum ChunkStatus
     Uninitialized,
     Loading,
     Finished,
-    Subdivided
+    Subdivided,
+    DeepBranch
 }
 
 /// <summary>
 /// Represents a node in the terrain quadtree structure. Each node covers a chunk of terrain at a specific LOD.
 /// Nodes can subdivide into 4 children for higher detail as the player gets closer.
 /// </summary>
-[System.Serializable]
 public class ChunkOctTree
 {
     public int LODIndex;
@@ -30,7 +30,6 @@ public class ChunkOctTree
     private IChunkServices services;
     private ChunkRenderer renderer;
 
-    private bool isGenerated = false;
     private bool isVisible = true;
     private bool mergeRequested = false;
 
@@ -72,7 +71,7 @@ public class ChunkOctTree
     /// <summary>
     /// Child nodes (NE, NW, SE, SW) created if this node is subdivided.
     /// </summary>
-    public ChunkOctTree[] Children = new ChunkOctTree[8];
+    public ChunkOctTree[] Children = null;
 
     /// <summary>
     /// The render data generated for this chunk, assigned after async generation finishes.
@@ -88,10 +87,13 @@ public class ChunkOctTree
         if (this.RenderData != null)
             this.RenderData.IsActive = val;
 
-        foreach (var child in Children)
+        if (this.Children != null)
         {
-            if (child != null)
-                child.SetActive(val);
+            foreach (var child in Children)
+            {
+                if (child != null)
+                    child.SetActive(val);
+            }
         }
 
         isVisible = val;
@@ -103,7 +105,10 @@ public class ChunkOctTree
     public void Dispose()
     {
         if (this.RenderData != null)
+        {
             this.renderer.RemoveChunk(this.RenderData);
+            this.RenderData = null;
+        }
     }
 
     /// <summary>
@@ -112,12 +117,7 @@ public class ChunkOctTree
     /// <param name="renderData"></param>
     public void SetRenderData(Vector3Int coordinates, ChunkRenderData renderData)
     {
-        if (renderData != null)
-        {
-            this.RenderData = renderData;
-            this.isGenerated = true;
-        }
-
+        this.RenderData = renderData;
         this.Status = ChunkStatus.Finished;
     }
 
@@ -128,6 +128,16 @@ public class ChunkOctTree
     /// <param name="lodThresholds"></param>
     public void Update(Vector3 followerWorldPosition, float[] lodThresholds)
     {
+        if (this.Status == ChunkStatus.DeepBranch)
+        {
+            foreach (var child in Children)
+                child?.Update(followerWorldPosition, lodThresholds);
+
+            this.UpdateVisibility();
+
+            return;  
+        }
+
         if (this.mergeRequested)
         {
             this.TryFinalizeMerge();
@@ -135,11 +145,6 @@ public class ChunkOctTree
 
         float distance = Vector3.Distance(followerWorldPosition, this.Bounds.center);
         float threshold = lodThresholds[LODIndex];
-
-        if (this.Status == ChunkStatus.Uninitialized)
-        {
-            this.UpdateInitial(followerWorldPosition, distance, lodThresholds);
-        }
 
         if (this.Status == ChunkStatus.Subdivided)
         {
@@ -151,19 +156,34 @@ public class ChunkOctTree
                 this.Merge(followerWorldPosition);
             }
 
-            if (this.isVisible)
-            {
-                if (this.Children.All(r => r != null && r.Status == ChunkStatus.Finished))
-                {
-                    if (this.RenderData != null)
-                        this.RenderData.IsActive = false;
-                }
-            }
+            this.UpdateVisibility();
+        }
+
+        if (this.Status == ChunkStatus.Uninitialized)
+        {
+            this.UpdateInitial(followerWorldPosition, distance, lodThresholds);
+            return;
         }
 
         if (this.Status == ChunkStatus.Finished && distance < threshold)
         {
             this.SubDivide(followerWorldPosition);
+        }
+    }
+
+    private void UpdateVisibility()
+    {
+        if (this.isVisible 
+            && this.Status == ChunkStatus.Subdivided
+            && this.Children != null
+            && this.Children.All(r => r.Status == ChunkStatus.Finished)
+            && this.RenderData != null
+            ||
+            this.isVisible
+            && this.Status == ChunkStatus.DeepBranch)
+        {
+            this.Dispose();
+            this.isVisible = false;
         }
     }
 
@@ -181,7 +201,7 @@ public class ChunkOctTree
         if (canSubdivide)
         {
             this.Status = ChunkStatus.Finished;
-            this.SubDivide(followerWorldPosition, true);
+            this.SubDivide(followerWorldPosition);
         }
         else
         {
@@ -194,7 +214,7 @@ public class ChunkOctTree
     /// Subdivides this node into 4 children with a lower LOD (more detail). 
     /// Will do nothing if already subdivided, not ready, or this node is already LOD0.
     /// </summary>
-    private void SubDivide(Vector3 followerWorldPosition, bool initial = false)
+    private void SubDivide(Vector3 followerWorldPosition)
     {
         try
         {
@@ -202,6 +222,9 @@ public class ChunkOctTree
             {
                 return;
             }
+
+            if (Children == null)
+                Children = new ChunkOctTree[8];
 
             Vector3 size = Bounds.size / 2f;
             Vector3 center = Bounds.center;
@@ -221,6 +244,9 @@ public class ChunkOctTree
             Children[7] = CreateChild(new Vector3Int(cx + 1, cy + 1, cz + 1)); // Top NE
  
             this.Status = ChunkStatus.Subdivided;
+
+            if (this.Parent != null && this.Parent.Status != ChunkStatus.DeepBranch)
+                this.Parent.Status = ChunkStatus.DeepBranch;
         }
         catch (System.Exception e)
         {
@@ -262,12 +288,16 @@ public class ChunkOctTree
             child.Dispose();
         }
 
-        for (int i = 0; i < 4; i++)
-            Children[i] = null;
+        this.Children = null;
 
         this.mergeRequested = false;
-        this.Status = this.isGenerated ? ChunkStatus.Finished : ChunkStatus.Uninitialized;
+        this.Status = ChunkStatus.Uninitialized;
         this.SetActive(true);
+
+        if (this.Parent != null)
+        {
+            this.Parent.Status = ChunkStatus.Subdivided;
+        }
     }
 
     /// <summary>
@@ -280,13 +310,14 @@ public class ChunkOctTree
         int lod = this.LODIndex - 1;
         int chunkSize = services.Configuration.DensityOptions.ChunkSize << lod;
 
-        Vector3 worldPos = new Vector3(
+        Vector3 worldMin = new Vector3(
             chunkCoord.x * chunkSize,
             chunkCoord.y * chunkSize,
-            chunkCoord.z * chunkSize);
+            chunkCoord.z * chunkSize
+        );
 
-        Vector3 chunkOffset = Vector3.one * (chunkSize / 2f);
-        Bounds bounds = new Bounds(worldPos + chunkOffset, Vector3.one * chunkSize);
+        Vector3 boundsCenter = worldMin + Vector3.one * (chunkSize / 2f);
+        Bounds bounds = new Bounds(boundsCenter, Vector3.one * chunkSize);
 
         return new ChunkOctTree(services, renderer, bounds, this);
     }

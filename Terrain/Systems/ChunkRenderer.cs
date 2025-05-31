@@ -78,11 +78,9 @@ public class ChunkRenderer : MonoBehaviour
             return;
         }
 
-        if (renderData.Controller != null)
-        {
-            this.chunkServices.ControllerFactory.Release(renderData.Controller);
-            renderData.Controller = null;
-        }
+        this.generationQueue.CancelChunkGeneration(renderData.Context.Coordinates, renderData.Context.LODIndex);
+        this.chunkServices.ControllerFactory.Release(renderData.Controller);
+        //renderData.Controller = null;
 
         this.chunkManager.Chunks.Remove(renderData.Context);
     }
@@ -99,7 +97,8 @@ public class ChunkRenderer : MonoBehaviour
             try
             {
                 if (t.Status != TaskStatus.RanToCompletion
-                || t.Result.MeshData.Vertices.Count == 0)
+                || t.Result.MeshData.IsEmpty
+                || !t.Result.MeshData.IsRenderable)
                 {
                     // We still return a value here so the 
                     // tree does not keep waiting for a child that is never
@@ -112,6 +111,7 @@ public class ChunkRenderer : MonoBehaviour
 
                 // Generate mesh and apply color.
                 ChunkRenderData renderData = new ChunkRenderData(context, t.Result, transform);
+                renderData.Tree = quadNode;
 
                 this.SubmitNewChunk(renderData);
 
@@ -137,14 +137,17 @@ public class ChunkRenderer : MonoBehaviour
     {
         try
         {
+            var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
+            chunkRenderData.SetController(controller);
+            chunkRenderData.RenderType = ChunkRenderType.GameObject;
+            chunkManager.Chunks[chunkRenderData.Context] = chunkRenderData;
+            controller.ApplyChunkData(chunkRenderData);
+
+            /*
             var coord = chunkRenderData.Context.Coordinates;
             if (chunkRenderData.LOD == 0)
             {
-                var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
-                chunkRenderData.Controller = controller;
-                chunkRenderData.RenderType = ChunkRenderType.GameObject;
-                chunkManager.Chunks[chunkRenderData.Context] = chunkRenderData;
-                controller.ApplyChunkData(chunkRenderData);
+
             }
             else
             {
@@ -153,51 +156,11 @@ public class ChunkRenderer : MonoBehaviour
             }
 
             chunkManager.Chunks[chunkRenderData.Context] = chunkRenderData;
+            */
         }
         catch (System.Exception e)
         {
             Debug.LogException(e);
-        }
-    }
-
-    private void SubmitExistingChunk(ChunkRenderData chunkRenderData)
-    {
-        var coord = chunkRenderData.Context.Coordinates;
-        int lod = chunkRenderData.LOD;
-
-        if (this.chunkManager.Chunks.TryGetValue(chunkRenderData.Context, out var existing))
-        {
-            bool ExistingIsGO = existing.RenderType == ChunkRenderType.GameObject;
-
-            // GPU to GO.
-            if (!ExistingIsGO && lod == 0)
-            {
-                var controller = this.chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
-                chunkRenderData.Controller = controller;
-                chunkRenderData.RenderType = ChunkRenderType.GameObject;
-
-                controller.ApplyChunkData(chunkRenderData);
-            }
-            // GO to GPU
-            else if (ExistingIsGO && lod > 0)
-            {
-                if (existing.Controller != null)
-                    this.chunkServices.ControllerFactory.Release(existing.Controller);
-
-                chunkRenderData.RenderType = ChunkRenderType.GPU;
-                chunkRenderData.Controller = null;
-            }
-            // GO to GO (Update)
-            else if (ExistingIsGO && lod == 0)
-            {
-                if (existing.Controller != null)
-                    existing.Controller.ApplyChunkData(chunkRenderData);
-            }
-            // GPU to GPU (Update)
-            else if (!ExistingIsGO && lod > 0)
-            {
-                chunkRenderData.RenderType = ChunkRenderType.GPU;
-            }
         }
     }
 
