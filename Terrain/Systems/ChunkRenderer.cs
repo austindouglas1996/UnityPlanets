@@ -46,7 +46,7 @@ public class ChunkRenderer : MonoBehaviour
             if (angleDelta > 30f)
             {
                 LastFollowerRotation = currentRot;
-                UpdateVisibility();
+                //UpdateVisibility();
             }
         }
     }
@@ -91,7 +91,7 @@ public class ChunkRenderer : MonoBehaviour
     /// Request a chunk be generated based on a <see cref="ChunkController"/> data.
     /// </summary>
     /// <param name="controller"></param>
-    public void RequestGeneration(ChunkContext context, ChunkQuadTree quadNode = null)
+    public void RequestGeneration(ChunkContext context, ChunkOctTree quadNode = null)
     {
         var task = this.generationQueue.RequestChunkGeneration(context);
         task.ContinueWith(t =>
@@ -112,7 +112,6 @@ public class ChunkRenderer : MonoBehaviour
 
                 // Generate mesh and apply color.
                 ChunkRenderData renderData = new ChunkRenderData(context, t.Result, transform);
-                renderData.TREE = quadNode;
 
                 this.SubmitNewChunk(renderData);
 
@@ -139,26 +138,19 @@ public class ChunkRenderer : MonoBehaviour
         try
         {
             var coord = chunkRenderData.Context.Coordinates;
-
-            var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
-            chunkRenderData.Controller = controller;
-            chunkRenderData.RenderType = ChunkRenderType.GameObject;
-            controller.ApplyChunkData(chunkRenderData);
-
-            /*
             if (chunkRenderData.LOD == 0)
             {
                 var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
                 chunkRenderData.Controller = controller;
                 chunkRenderData.RenderType = ChunkRenderType.GameObject;
-                chunkManager.Chunks[coord] = chunkRenderData;
+                chunkManager.Chunks[chunkRenderData.Context] = chunkRenderData;
                 controller.ApplyChunkData(chunkRenderData);
             }
             else
             {
                 chunkRenderData.RenderType = ChunkRenderType.GPU;
                 chunkRenderData.Controller = null;
-            }*/
+            }
 
             chunkManager.Chunks[chunkRenderData.Context] = chunkRenderData;
         }

@@ -35,7 +35,7 @@ public class ChunkManager : MonoBehaviour
     /// A collection of tree roots used to make and establish the chunks. These roots
     /// will be used for subdivision when making new chunks.
     /// </summary>
-    private List<ChunkQuadTree> RootTrees = new List<ChunkQuadTree>();
+    private List<ChunkOctTree> RootTrees = new List<ChunkOctTree>();
 
     /// <summary>
     /// A collection of active chunks in the game world.
@@ -95,12 +95,13 @@ public class ChunkManager : MonoBehaviour
 
     float[] lodThresholds = new float[]
     {
-    192f,    // LOD0 — very close to player, only fine detail
-    368f,    // LOD1 — close-range but less detailed
-    748f,   // LOD2 — mid-range terrain silhouette
-    996f,   // LOD3 — distant terrain
-    1300f,   // LOD4 — very far terrain
+        20f,    // LOD0 — up close: player feet, terrain sculpting, grass
+        400f,   // LOD1 — near field: trees, paths
+        550f,   // LOD2 — visible terrain shape, some structure
+        700f,   // LOD3 — far terrain shape only
+        1000f,  // LOD4 — horizon terrain (proxy/shader only)
     };
+
 
 
     private async void Update()
@@ -174,11 +175,11 @@ public class ChunkManager : MonoBehaviour
         // Determine base world position (bottom-left-near corner of 2×2×2 cube)
         Vector3 startPos = playerPos - centerOffset;
 
-        for (int dx = -16; dx <= 16; dx++)
+        for (int dx = -8; dx <= 8; dx++)
         {
-            for (int dy = -4; dy <= 4; dy++)
+            for (int dy = -1; dy <= 2; dy++)
             {
-                for (int dz = -16; dz <= 16; dz++)
+                for (int dz = -8; dz <= 8; dz++)
                 {
                     Vector3 chunkWorldPos = startPos + new Vector3(
                         dx * chunkSize,
@@ -191,7 +192,7 @@ public class ChunkManager : MonoBehaviour
                         Vector3.one * chunkSize
                     );
 
-                    var root = new ChunkQuadTree(Services, Renderer, bounds);
+                    var root = new ChunkOctTree(Services, Renderer, bounds);
                     RootTrees.Add(root);
                 }
             }

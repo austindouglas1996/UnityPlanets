@@ -22,7 +22,7 @@ public enum ChunkStatus
 /// Nodes can subdivide into 4 children for higher detail as the player gets closer.
 /// </summary>
 [System.Serializable]
-public class ChunkQuadTree
+public class ChunkOctTree
 {
     public int LODIndex;
     private Vector3Int coordinates;
@@ -35,13 +35,13 @@ public class ChunkQuadTree
     private bool mergeRequested = false;
 
     /// <summary>
-    /// Initialize a new instance of the <see cref="ChunkQuadTree"/> class. 
+    /// Initialize a new instance of the <see cref="ChunkOctTree"/> class. 
     /// </summary>
     /// <param name="services"></param>
     /// <param name="renderer"></param>
     /// <param name="bounds"></param>
     /// <param name="parent"></param>
-    public ChunkQuadTree(IChunkServices services, ChunkRenderer renderer, Bounds bounds, ChunkQuadTree? parent = null)
+    public ChunkOctTree(IChunkServices services, ChunkRenderer renderer, Bounds bounds, ChunkOctTree? parent = null)
     {
         this.services = services;
         this.renderer = renderer;
@@ -67,12 +67,12 @@ public class ChunkQuadTree
     /// <summary>
     /// Parent node in the tree (if any).
     /// </summary>
-    public ChunkQuadTree? Parent { get; private set; }
+    public ChunkOctTree? Parent { get; private set; }
 
     /// <summary>
     /// Child nodes (NE, NW, SE, SW) created if this node is subdivided.
     /// </summary>
-    public ChunkQuadTree[] Children = new ChunkQuadTree[8];
+    public ChunkOctTree[] Children = new ChunkOctTree[8];
 
     /// <summary>
     /// The render data generated for this chunk, assigned after async generation finishes.
@@ -185,19 +185,9 @@ public class ChunkQuadTree
         }
         else
         {
-            this.RequestInitialGeneration();
+            this.Status = ChunkStatus.Loading;
+            this.renderer.RequestGeneration(new ChunkContext(coordinates, LODIndex, services), this);
         }
-    }
-
-    /// <summary>
-    /// Request this node generation.
-    /// </summary>
-    private void RequestInitialGeneration()
-    {
-        this.Status = ChunkStatus.Loading;
-
-        // Renderer will automatically update the RenderData once generation is complete.
-        this.renderer.RequestGeneration(new ChunkContext(coordinates, LODIndex, services), this);
     }
 
     /// <summary>
@@ -285,7 +275,7 @@ public class ChunkQuadTree
     /// </summary>
     /// <param name="chunkCoord"></param>
     /// <returns></returns>
-    private ChunkQuadTree CreateChild(Vector3Int chunkCoord)
+    private ChunkOctTree CreateChild(Vector3Int chunkCoord)
     {
         int lod = this.LODIndex - 1;
         int chunkSize = services.Configuration.DensityOptions.ChunkSize << lod;
@@ -298,7 +288,7 @@ public class ChunkQuadTree
         Vector3 chunkOffset = Vector3.one * (chunkSize / 2f);
         Bounds bounds = new Bounds(worldPos + chunkOffset, Vector3.one * chunkSize);
 
-        return new ChunkQuadTree(services, renderer, bounds, this);
+        return new ChunkOctTree(services, renderer, bounds, this);
     }
 
     /// <summary>

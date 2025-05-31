@@ -42,8 +42,6 @@ public class ChunkRenderData
 
     public bool ShouldDestroy = false;
 
-    public ChunkQuadTree TREE { get; set; }
-
     public ChunkContext Context { get; set; }
     public ChunkData Data { get; set; }
     public Mesh Mesh

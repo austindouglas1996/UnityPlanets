@@ -53,10 +53,6 @@ public class ChunkController : MonoBehaviour
     /// </summary>
     public void ResetController()
     {
-        Debug.Log("Reset");
-
-        TREE = null;
-
         // Properties.
         this.ChunkContext = default;
 
@@ -69,18 +65,6 @@ public class ChunkController : MonoBehaviour
         this.GetComponent<MeshCollider>().sharedMaterial = null;
     }
 
-    public bool gay = false;
-
-    private void Update()
-    {
-        if (gay == true)
-        {
-            string dumb = "";
-        }
-    }
-
-    [SerializeField] private ChunkQuadTree TREE;
-
     /// <summary>
     /// Update the chunk data on this controller.
     /// </summary>
@@ -90,8 +74,6 @@ public class ChunkController : MonoBehaviour
     {
         try
         {
-            this.TREE = renderData.TREE;
-
             var Coordinates = this.ChunkContext.Coordinates;
             this.name = this.ChunkContext.ToString();
             this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
