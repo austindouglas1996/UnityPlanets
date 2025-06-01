@@ -57,6 +57,9 @@ public class ChunkController : MonoBehaviour
     {
         try
         {
+            // Foliage
+            MeshBatchDrawer.Instance.Remove(this.ChunkContext.Coordinates);
+
             // Properties.
             this.ChunkContext = default;
             this.RenderData = default;

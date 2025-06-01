@@ -40,10 +40,10 @@ public class FoliageGenerator : MonoBehaviour
             }
         }
 
-        ProcessGrassPositions(positions, data.LOD);
+        ProcessGrassPositions(data, positions, data.LOD);
     }
 
-    private void ProcessGrassPositions(List<TrianglePOS> pos, int chunkLod)
+    private void ProcessGrassPositions(ChunkRenderData data, List<TrianglePOS> pos, int chunkLod)
     {
         try
         {
@@ -59,28 +59,28 @@ public class FoliageGenerator : MonoBehaviour
                 {
                     Vector3 rockScale = Vector3.one * Random.Range(0.2f, 11f);
                     GameObject rock = GenericStore.Instance.GetOneRandom("Rocks");
-                    foliageDrawer.Add(rock, tria.Position, rotation, rockScale, tria.Color);
+                    foliageDrawer.Add(data.Controller, rock, tria.Position, rotation, rockScale, tria.Color);
                 }
 
                 if (chunkLod == 0)
                 {
                     Vector3 scale = Vector3.one * Random.Range(0.7f, 1.4f);
                     var grass = GenericStore.Instance.GetOneRandom("Grass");
-                    foliageDrawer.Add(grass, tria.Position, rotation, scale, tria.Color);
+                    foliageDrawer.Add(data.Controller, grass, tria.Position, rotation, scale, tria.Color);
                 }
 
                 if (Random.value < rockChance) // Flower spawn, only if rock didn't spawn
                 {
                     Vector3 flowerScale = Vector3.one * Random.Range(1.3f, 2.5f);
                     GameObject flower = GenericStore.Instance.GetOneRandom("Flowers");
-                    foliageDrawer.Add(flower, tria.Position, rotation, flowerScale, tria.Color);
+                    foliageDrawer.Add(data.Controller, flower, tria.Position, rotation, flowerScale, tria.Color);
                 }
 
                 if (Random.value < treeChance)
                 {
                     Vector3 treeScale = Vector3.one * Random.Range(0.6f, 2f);
                     GameObject tree = GenericStore.Instance.GetOneRandom("Trees");
-                    foliageDrawer.Add(tree, tria.Position, Quaternion.Euler(0, 0, 0), treeScale, tria.Color);
+                    foliageDrawer.Add(data.Controller, tree, tria.Position, Quaternion.Euler(0, 0, 0), treeScale, tria.Color);
                 }
             }
         }

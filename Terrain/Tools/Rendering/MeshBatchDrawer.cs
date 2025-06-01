@@ -24,27 +24,16 @@ public class MeshBatchDrawer
 
     private class MeshBatch
     {
-        private int currentIndex = 0;
-        private float lastSeenDistance = 0;
-
-        public MeshBatch()
+        public MeshBatch(Vector3Int region, Bounds bounds)
         {
-            lastSeenDistance = float.MaxValue;
-            Entries = new Dictionary<int, MeshBatchItem>();
+            this.ChunkRegion = region;
+            this.RegionBounds = bounds;
         }
 
-        public Dictionary<int, MeshBatchItem> Entries;
-        public Bounds Bounds;
+        public Vector3Int ChunkRegion { get; set; }
+        public Bounds RegionBounds { get; set; }
 
-        public bool IsFull
-        {
-            get { return currentIndex >= 1023; }
-        }
-
-        public float FollowerDistance
-        {
-            get { return lastSeenDistance; }
-        }
+        public Dictionary<int, MeshBatchItem> Entries = new();
 
         public void Add(int meshIndex, Vector3 position, Quaternion rotation, Vector3 scale, Color customColor)
         {
@@ -58,36 +47,16 @@ public class MeshBatchDrawer
                 Entries.Add(meshIndex, new MeshBatchItem(meshIndex));
             }
 
-            if (currentIndex == 1)
-            {
-                Bounds = new Bounds(position, Vector3.one * 5f);
-            }
-
             MeshBatchItem currentBatch = Entries[meshIndex];
             currentBatch.Positions.Add(Matrix4x4.TRS(position, rotation, scale));
             currentBatch.Colors.Add(customColor);
-            currentIndex++;
-
-            Bounds.Encapsulate(position);
         }
 
         public bool InView(Plane[] frustumPlanes, Vector3 followerPosition)
         {
-            if (this.currentIndex == 0)
-                return false;
+            if (Entries.Count == 0) return false;
 
-            // Calculate the distance between the batch's center and the follower's position
-            float distanceToFollower = Vector3.Distance(Bounds.center, followerPosition);
-            lastSeenDistance = distanceToFollower;
-            //if (distanceToFollower > 150f)
-                //return false;
-
-            if (GeometryUtility.TestPlanesAABB(frustumPlanes, Bounds))
-            {
-                return true;
-            }
-
-            return false;
+            return GeometryUtility.TestPlanesAABB(frustumPlanes, this.RegionBounds);
         }
     }
 
@@ -100,9 +69,9 @@ public class MeshBatchDrawer
         public List<Vector4> Colors;
     }
 
-    private Dictionary<GameObject, List<MeshLOD>> Meshes = new Dictionary<GameObject, List<MeshLOD>>();
-    private List<MeshBatch> Batches = new List<MeshBatch>();
-    private List<MeshDrawItem> DrawList = new List<MeshDrawItem>();
+    private Dictionary<GameObject, List<MeshLOD>> Meshes = new();
+    private Dictionary<Vector3Int, MeshBatch> Batches = new();
+    private List<MeshDrawItem> DrawList = new();
 
     private Quaternion LastFollowerRotation;
 
@@ -114,8 +83,6 @@ public class MeshBatchDrawer
     public MeshBatchDrawer(Camera follower)
     {
         _Instance = this;
-
-        this.Batches.Add(new MeshBatch());
         this.Follower = follower;
     }
 
@@ -153,7 +120,7 @@ public class MeshBatchDrawer
     /// <param name="position"></param>
     /// <param name="rotation"></param>
     /// <param name="scale"></param>
-    public void Add(GameObject go, Vector3 position, Quaternion rotation, Vector3 scale, Color customColor)
+    public void Add(ChunkController controller, GameObject go, Vector3 position, Quaternion rotation, Vector3 scale, Color customColor)
     {
         float distanceToFollower = Vector3.Distance(position, Follower.transform.position);
         int lodIndex = GetLODIndex(distanceToFollower);
@@ -168,15 +135,22 @@ public class MeshBatchDrawer
         else
             meshIndex = this.Meshes.Keys.ToList().IndexOf(go); // NEED TO FIND A BETTER WAY OF THIS.
 
-        // Grab the last batch, create a new batch if full.
-        MeshBatch currentBatch = this.Batches.Last();
-        if (currentBatch.IsFull)
+        if (!this.Batches.TryGetValue(controller.ChunkContext.Coordinates, out MeshBatch batch))
         {
-            currentBatch = new MeshBatch();
-            this.Batches.Add(currentBatch);
+            batch = new MeshBatch(controller.ChunkContext.Coordinates, controller.RenderData.Tree.Bounds);
+            this.Batches[controller.ChunkContext.Coordinates] = batch;
         }
 
-        currentBatch.Add(meshIndex, position, rotation, scale, customColor);
+        batch.Add(meshIndex, position, rotation, scale, customColor);
+    }
+
+    /// <summary>
+    /// Remove a region.
+    /// </summary>
+    /// <param name="controller"></param>
+    public void Remove(Vector3Int coordinates)
+    {
+        this.Batches.Remove(coordinates);
     }
 
     /// <summary>
@@ -231,56 +205,56 @@ public class MeshBatchDrawer
         Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(Camera.main);
         Vector3 followerPosition = Follower.transform.position;
 
-        for (int i = 0; i < Batches.Count; i++)
+        foreach (var batch in this.Batches.Values)
         {
-            if (Batches[i].InView(frustumPlanes, followerPosition))
+            if (!batch.InView(frustumPlanes, followerPosition))
+                continue;
+
+            var distance = Vector3.Distance(batch.RegionBounds.center, followerPosition);
+            int lodIndex = GetLODIndex(distance);
+
+            foreach (KeyValuePair<int, MeshBatchItem> entry in batch.Entries)
             {
-                MeshBatch batch = Batches[i];
-                int lodIndex = GetLODIndex(batch.FollowerDistance);
+                if (entry.Value.MeshIndex == -1)
+                    throw new System.ArgumentException("Mesh LOD index is invalid.");
 
-                foreach (KeyValuePair<int, MeshBatchItem> entry in batch.Entries)
+                var meshVariants = Meshes.ElementAt(entry.Value.MeshIndex).Value;
+                int meshLodIndex = meshVariants.Count - 1 < lodIndex ? 0 : lodIndex;
+                var meshLod = meshVariants[meshLodIndex];
+                Mesh desiredMesh = meshLod.Mesh;
+
+                var entryPositions = entry.Value.Positions;
+                var entryColors = entry.Value.Colors;
+
+                int added = 0;
+                while (added < entryPositions.Count)
                 {
-                    if (entry.Value.MeshIndex == -1)
-                        throw new System.ArgumentException("Mesh LOD index is invalid.");
+                    // Try to find an existing item with space
+                    MeshDrawItem item = this.DrawList.FirstOrDefault(
+                        r => r.Mesh == desiredMesh &&
+                             r.Material == meshLod.Mat &&
+                             r.Positions.Count < 1023);
 
-                    var meshVariants = Meshes.ElementAt(entry.Value.MeshIndex).Value;
-                    int meshLodIndex = meshVariants.Count - 1 < lodIndex ? 0 : lodIndex;
-                    var meshLod = meshVariants[meshLodIndex];
-                    Mesh desiredMesh = meshLod.Mesh;
-
-                    var entryPositions = entry.Value.Positions;
-                    var entryColors = entry.Value.Colors;
-
-                    int added = 0;
-                    while (added < entryPositions.Count)
+                    if (item.Mesh == null)
                     {
-                        // Try to find an existing item with space
-                        MeshDrawItem item = this.DrawList.FirstOrDefault(
-                            r => r.Mesh == desiredMesh &&
-                                 r.Material == meshLod.Mat &&
-                                 r.Positions.Count < 1023);
-
-                        if (item.Mesh == null)
+                        item = new MeshDrawItem
                         {
-                            item = new MeshDrawItem
-                            {
-                                Mesh = desiredMesh,
-                                SubMeshIndex = 0,
-                                Material = meshLod.Mat,
-                                Positions = new List<Matrix4x4>(),
-                                Colors = new List<Vector4>()
-                            };
+                            Mesh = desiredMesh,
+                            SubMeshIndex = 0,
+                            Material = meshLod.Mat,
+                            Positions = new List<Matrix4x4>(),
+                            Colors = new List<Vector4>()
+                        };
 
-                            this.DrawList.Add(item);
-                        }
-
-                        int spaceLeft = 1023 - item.Positions.Count;
-                        int toAdd = Math.Min(spaceLeft, entryPositions.Count - added);
-
-                        item.Positions.AddRange(entryPositions.GetRange(added, toAdd));
-                        item.Colors.AddRange(entryColors.GetRange(added, toAdd));
-                        added += toAdd;
+                        this.DrawList.Add(item);
                     }
+
+                    int spaceLeft = 1023 - item.Positions.Count;
+                    int toAdd = Math.Min(spaceLeft, entryPositions.Count - added);
+
+                    item.Positions.AddRange(entryPositions.GetRange(added, toAdd));
+                    item.Colors.AddRange(entryColors.GetRange(added, toAdd));
+                    added += toAdd;
                 }
             }
         }
