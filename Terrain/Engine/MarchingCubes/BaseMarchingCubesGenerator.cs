@@ -162,7 +162,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         MeshData data = new MeshData(Vertices, Triangles, UVs);
         data.Colors = Colors.ToArray();
 
-        Flatten(densityMap, data, lodIndex);
+        //Flatten(densityMap, data, lodIndex);
 
         return data;
     }
