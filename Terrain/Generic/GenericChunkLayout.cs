@@ -91,6 +91,16 @@ public abstract class GenericChunkLayout : IChunkLayout
     }
 
     /// <summary>
+    /// Returns the chunk size for a given LOD level.
+    /// </summary>
+    /// <param name="lod"></param>
+    /// <returns></returns>
+    public int GetChunkSize(int lod)
+    {
+        return this.Configuration.DensityOptions.ChunkSize << lod;
+    }
+
+    /// <summary>
     /// Get the LOD for a given chunk based on the distance from a given follower.
     /// </summary>
     /// <param name="followerCoordinates"></param>
@@ -118,7 +128,7 @@ public abstract class GenericChunkLayout : IChunkLayout
     /// <returns></returns>
     public Vector3 ToWorld(Vector3Int coordinates, int lodIndex)
     {
-        int chunkSize = Configuration.DensityOptions.ChunkSize << lodIndex;
+        int chunkSize = GetChunkSize(lodIndex);
         return new Vector3(
             coordinates.x * chunkSize,
             (coordinates.y * chunkSize) - LodSinks[lodIndex],
@@ -132,7 +142,7 @@ public abstract class GenericChunkLayout : IChunkLayout
     /// <returns></returns>
     public Vector3Int ToCoordinates(Vector3 world, int lodIndex)
     {
-        int chunkSize = Configuration.DensityOptions.ChunkSize << lodIndex;
+        int chunkSize = GetChunkSize(lodIndex);
         return new Vector3Int(
             Mathf.FloorToInt(world.x / chunkSize),
             Mathf.FloorToInt(world.y / chunkSize),

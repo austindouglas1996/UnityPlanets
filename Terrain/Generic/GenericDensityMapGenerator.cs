@@ -14,7 +14,7 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
         Vector3Int chunkCoordinates = context.Coordinates;
 
         int stepSize = 1 << lodIndex;
-        int chunkSize = this.Options.ChunkSize << lodIndex;
+        int chunkSize = context.Services.Layout.GetChunkSize(lodIndex);
         int limit = chunkSize + 1;
 
         ScalerField3 densityMap = CreateEmptyChunk(chunkSize, lodIndex);

@@ -346,8 +346,7 @@ public class ChunkOctTree
     /// <returns></returns>
     private ChunkOctTree CreateChild(Vector3Int chunkCoord)
     {
-        int lod = this.LODIndex - 1;
-        int chunkSize = services.Configuration.DensityOptions.ChunkSize << lod;
+        int chunkSize = services.Layout.GetChunkSize(this.LODIndex - 1);
 
         Vector3 worldMin = new Vector3(
             chunkCoord.x * chunkSize,
@@ -369,7 +368,7 @@ public class ChunkOctTree
     /// <returns></returns>
     private Vector3Int BoundsToCoordinate(Bounds bounds, int lodIndex)
     {
-        int chunkSize = services.Configuration.DensityOptions.ChunkSize << lodIndex;
+        int chunkSize = services.Layout.GetChunkSize(lodIndex);
         Vector3 pos = bounds.min;
 
         return new Vector3Int(

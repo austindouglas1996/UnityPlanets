@@ -36,6 +36,13 @@ public interface IChunkLayout
     bool ShouldUpdateLayout();
 
     /// <summary>
+    /// Gets the chunk size for a given LOD level.
+    /// </summary>
+    /// <param name="lod"></param>
+    /// <returns></returns>
+    int GetChunkSize(int lod);
+
+    /// <summary>
     /// Convert a vector into world position.
     /// </summary>
     /// <param name="coordinates"></param>

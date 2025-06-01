@@ -279,7 +279,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         int lodIndex = context.LODIndex;
         Vector3Int chunkCoords = context.Coordinates;
 
-        int chunkSize = this.Options.ChunkSize << lodIndex;
+        int chunkSize = context.Services.Layout.GetChunkSize(lodIndex);
         int step = chunkSize / 2;
 
         int worldX = chunkCoords.x * chunkSize;

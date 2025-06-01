@@ -196,8 +196,7 @@ float[] lodThresholds = new float[]
         if (!IsInitialized)
             return;
 
-        int lod = 4;
-        int chunkSize = this.Services.Configuration.DensityOptions.ChunkSize << lod;
+        int chunkSize = this.Services.Layout.GetChunkSize(4);
 
         // Use world position (float) instead of grid coord
         Vector3 playerPos = this.Follower.transform.position;
