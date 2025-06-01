@@ -15,6 +15,9 @@ public class ChunkContext : IEquatable<ChunkContext>
         Coordinates = coordinates;
         LODIndex = lODIndex;
         Services = services;
+
+        WorldPosition = Services.Layout.ToWorld(Coordinates, LODIndex);
+        Transform = Matrix4x4.TRS(this.WorldPosition, Quaternion.identity, Vector3.one);
     }
 
     /// <summary>
@@ -35,7 +38,12 @@ public class ChunkContext : IEquatable<ChunkContext>
     /// <summary>
     /// World position of the chunk, derived from layout and coordinates.
     /// </summary>
-    public Vector3 WorldPosition => Services.Layout.ToWorld(Coordinates, LODIndex);
+    public Vector3 WorldPosition { get; private set; }
+
+    /// <summary>
+    /// Creates a transformation matrix.
+    /// </summary>
+    public Matrix4x4 Transform { get; }
 
     /// <summary>
     /// Standard object.Equals override for comparing context.

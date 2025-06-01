@@ -118,7 +118,7 @@ public class ChunkGenerationProcessor
         {
             // This is nasty and should probably not be done like this, but it works?
             // ChunkGenerationJob has an IEqualityComparer to only compare coordinates/LOD.
-            return this.generationQueue.Remove(new ChunkGenerationJob(new ChunkContext(coordinates, lodIndex, null), null, null));
+            return this.generationQueue.Remove(new ChunkGenerationJob(new ChunkContext(coordinates, lodIndex, this.chunkServices), null, null));
         }
     }
 
@@ -183,9 +183,7 @@ public class ChunkGenerationProcessor
     private ChunkData WorkerNewChunk(ChunkGenerationJob job)
     {
         ChunkData result = chunkServices.Generator.GenerateNewChunk(job.Context, job.Token);
-
-        Matrix4x4 transform = Matrix4x4.TRS(job.Context.WorldPosition, Quaternion.identity, Vector3.one);
-        chunkServices.Colorizer.UpdateChunkColors(result, transform);
+        chunkServices.Colorizer.UpdateChunkColors(result, job.Context.Transform);
 
         return result;
     }

@@ -96,10 +96,8 @@ public class ChunkRenderer : MonoBehaviour
                     return;
                 }
 
-                Matrix4x4 transform = Matrix4x4.TRS(context.WorldPosition, Quaternion.identity, Vector3.one);
-
                 // Generate mesh and apply color.
-                ChunkRenderData renderData = new ChunkRenderData(context, t.Result, transform);
+                ChunkRenderData renderData = new ChunkRenderData(context, t.Result, context.Transform);
                 renderData.Tree = quadNode;
 
                 this.SubmitNewChunk(renderData);

@@ -27,9 +27,6 @@ public class ChunkController : MonoBehaviour
         mat.SetFloat("_Smoothness", 0f);
 
         meshRenderer.sharedMaterial = mat;
-
-        if (this.GetComponent<FoliageGenerator>() == null)
-            this.AddComponent<FoliageGenerator>();
     }
 
     /// <summary>
@@ -123,6 +120,9 @@ public class ChunkController : MonoBehaviour
             this.name = this.ChunkContext.ToString();
             this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
             this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
+
+            if (this.GetComponent<FoliageGenerator>() == null)
+                this.AddComponent<FoliageGenerator>();
 
             this.GetComponent<FoliageGenerator>().ApplyMap(renderData);
         }

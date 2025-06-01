@@ -50,7 +50,7 @@ public class FoliageGenerator : MonoBehaviour
             foreach (TrianglePOS tria in pos)
             {
                 float rockChance = 0.001f;
-                float treeChance = 0.005f;
+                float treeChance = 0.002f;
 
                 float averageHeight = tria.Position.y;
                 Quaternion rotation = Quaternion.FromToRotation(Vector3.up, tria.Normal) * Quaternion.Euler(0, Random.Range(0, 360), 0);
