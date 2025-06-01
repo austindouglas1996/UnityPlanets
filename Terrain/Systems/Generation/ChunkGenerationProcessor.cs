@@ -1,40 +1,41 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Threading;
 using System;
 using UnityEngine;
-using System.Threading;
-using System.Collections.ObjectModel;
-using NUnit.Framework.Interfaces;
-using System.Text;
-using UnityEngine.InputSystem;
 
+/// <summary>
+/// Handles the asynchronous generation and modification of terrain chunks.
+/// Uses a priority queue to ensure high-importance chunks (near the player) are processed first.
+/// Spawns multiple worker threads that continuously process jobs in the background.
+/// </summary>
 public class ChunkGenerationProcessor
 {
     /// <summary>
-    /// A collection of jobs to be executed yet. Seperate from active jobs, this runs the actual
-    /// task.
+    /// A priority queue holding pending generation jobs.
+    /// LOD0 jobs are prioritized higher for near-player chunks.
     /// </summary>
     private PriorityQueue<ChunkGenerationJob> generationQueue = new PriorityQueue<ChunkGenerationJob>(new ChunkContextComparer());
     private readonly object queueLock = new();
 
     /// <summary>
-    /// A collection of tasks to run the process queue.
+    /// All background workers processing the job queue.
     /// </summary>
     private List<Task?> workerTasks = new();
     private bool isProcessing = false;
 
     /// <summary>
-    /// I don't 
+    /// Signal to wake up a worker when a new job arrives.
     /// </summary>
     private readonly SemaphoreSlim jobAvailableSignal = new SemaphoreSlim(0);
 
     /// <summary>
-    /// A collection of services to help with chunk generation.
+    /// Central services used during chunk generation (generator, colorizer, layout, etc.).
     /// </summary>
     private IChunkServices chunkServices;
 
     /// <summary>
-    /// Initialize a new instance of the <see cref="ChunkGenerationProcessor"/> class.
+    /// Construct a new generation processor, spin up a few worker threads.
     /// </summary>
     public ChunkGenerationProcessor(IChunkServices services, CancellationToken token)
     {
@@ -48,23 +49,19 @@ public class ChunkGenerationProcessor
     }
 
     /// <summary>
-    /// A cancellation token to help with cancelling all jobs when the game is closed.
+    /// Token to cancel all processing (e.g., game closing).
     /// </summary>
     public CancellationToken CancellationToken
     {
-        get { return cancellationToken; }
-        set { cancellationToken = value; }
+        get => cancellationToken;
+        set => cancellationToken = value;
     }
     private CancellationToken cancellationToken;
 
     /// <summary>
-    /// Request chunk generation for a given chunk. Given LOD, certain details are required to generate an appropiate job.
-    /// The job will then be tracked and cancelled if another job from the same coordinates is given. 
+    /// Request a new chunk to be generated asynchronously.
+    /// Prioritizes LOD0 chunks by proximity to the player.
     /// </summary>
-    /// <param name="coordinates"></param>
-    /// <param name="LODIndex"></param>
-    /// <param name="generationTask"></param>
-    /// <returns></returns>
     public Task<ChunkData> RequestChunkGeneration(ChunkContext context)
     {
         ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), null);
@@ -73,8 +70,8 @@ public class ChunkGenerationProcessor
         {
             lock (queueLock)
             {
-                // LOD0 closest to the player chunks should be prioritized.
-                generationQueue.Enqueue(newJob, context.LODIndex == 0 ? GetPriorityOfChunk(context.Coordinates) : 999);
+                int priority = context.LODIndex == 0 ? GetPriorityOfChunk(context.Coordinates) : 999;
+                generationQueue.Enqueue(newJob, priority);
                 jobAvailableSignal.Release();
             }
         }
@@ -87,20 +84,16 @@ public class ChunkGenerationProcessor
     }
 
     /// <summary>
-    /// Request a chunk generation for a given existing chunk. This chunk should be modified and given the highest of importance on updates.
+    /// Request a modification of an existing chunk (e.g., terrain brush).
+    /// These jobs are prioritized over everything.
     /// </summary>
-    /// <param name="coordinates"></param>
-    /// <param name="LODIndex"></param>
-    /// <param name="modificationJob"></param>
-    /// <returns></returns>
     public Task<ChunkData> RequestChunkModification(ChunkContext context, ChunkModificationJob modificationJob = null)
     {
         ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), modificationJob);
 
         lock (queueLock)
         {
-            // Modification games be completed over everything.
-            generationQueue.Enqueue(newJob, -1);
+            generationQueue.Enqueue(newJob, -1); // Highest priority
             jobAvailableSignal.Release();
         }
 
@@ -108,33 +101,29 @@ public class ChunkGenerationProcessor
     }
 
     /// <summary>
-    /// Cancel a chunk generation task if one exists.
+    /// Cancel a queued chunk generation job for the given coordinates/LOD.
     /// </summary>
-    /// <param name="coordinates"></param>
     public bool CancelChunkGeneration(Vector3Int coordinates, int lodIndex)
     {
         lock (queueLock)
         {
-            return this.generationQueue.RemoveWhere(job =>
+            return generationQueue.RemoveWhere(job =>
                 job.Context.Coordinates == coordinates &&
                 job.Context.LODIndex == lodIndex);
         }
     }
 
     /// <summary>
-    /// Provide a breif status on what is going in the system.
+    /// Status helper for debugging/logging.
     /// </summary>
-    /// <returns></returns>
     public override string ToString()
     {
         return $"Gen. Queue:{generationQueue.Count}\nWorkers:{workerTasks.Count}\n";
     }
 
     /// <summary>
-    /// A loop to go through each job and render the desired chunk.
+    /// Core worker loop—waits for jobs and executes them.
     /// </summary>
-    /// <param name="token"></param>
-    /// <returns></returns>
     private async Task WorkerLoop(CancellationToken token)
     {
         while (!token.IsCancellationRequested)
@@ -145,7 +134,7 @@ public class ChunkGenerationProcessor
 
             lock (queueLock)
             {
-                job = generationQueue.Dequeue(); 
+                job = generationQueue.Dequeue();
                 if (job == null)
                     continue;
             }
@@ -155,11 +144,13 @@ public class ChunkGenerationProcessor
                 job.Completion.TrySetCanceled();
                 continue;
             }
-            
+
             try
             {
-                ChunkData result = job.ModificationJob == null ?
-                    WorkerNewChunk(job) : WorkerModifyChunk(job);
+                ChunkData result = job.ModificationJob == null
+                    ? WorkerNewChunk(job)
+                    : WorkerModifyChunk(job);
+
                 job.Completion.TrySetResult(result);
             }
             catch (OperationCanceledException)
@@ -175,10 +166,8 @@ public class ChunkGenerationProcessor
     }
 
     /// <summary>
-    /// Generate a new chunk given a <see cref="ChunkGenerationJob"/>.
+    /// Generates a brand new chunk using generator and colorizer.
     /// </summary>
-    /// <param name="job"></param>
-    /// <returns></returns>
     private ChunkData WorkerNewChunk(ChunkGenerationJob job)
     {
         ChunkData result = chunkServices.Generator.GenerateNewChunk(job.Context, job.Token);
@@ -188,31 +177,26 @@ public class ChunkGenerationProcessor
     }
 
     /// <summary>
-    /// Generate a chunk with modified values given a <see cref="ChunkGenerationJob"/>.
+    /// Applies terrain brush to an existing chunk and updates its mesh.
     /// </summary>
-    /// <param name="job"></param>
-    /// <returns></returns>
     private ChunkData WorkerModifyChunk(ChunkGenerationJob job)
     {
-        ChunkModificationJob mod = job.ModificationJob;
+        var mod = job.ModificationJob;
 
         chunkServices.Generator.ApplyTerrainBrush(job.Context, mod.ExistingData, mod.Brush, mod.IsAdding, job.Token);
         chunkServices.Generator.RegenerateMeshData(mod.ExistingData, job.Token);
 
-        // We set the original data back.
         return mod.ExistingData;
     }
 
     /// <summary>
-    /// Return the priority of this chunk based on the distance from the follower.
+    /// Returns chunk priority based on distance to follower.
+    /// Lower values = closer = higher priority.
     /// </summary>
-    /// <param name="coordinates"></param>
-    /// <returns></returns>
     private int GetPriorityOfChunk(Vector3Int coordinates)
     {
-        int dx = Mathf.Abs(coordinates.x - this.chunkServices.Layout.FollowerCoordinates.x);
-        int dz = Mathf.Abs(coordinates.z - this.chunkServices.Layout.FollowerCoordinates.y);
-
+        int dx = Mathf.Abs(coordinates.x - chunkServices.Layout.FollowerCoordinates.x);
+        int dz = Mathf.Abs(coordinates.z - chunkServices.Layout.FollowerCoordinates.y);
         return Math.Max(dx, dz);
     }
 }
