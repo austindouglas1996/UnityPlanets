@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(ChunkManager))]
-public abstract class ChunkVariantBase<TConfig> : MonoBehaviour, IChunkServices where TConfig : IChunkConfiguration
+public abstract class VariantBase<TConfig> : MonoBehaviour, IChunkServices where TConfig : IChunkConfiguration
 {
     [Tooltip("The main character of the world. The object we should spawn chunks around.")]
     public Transform Follower;
