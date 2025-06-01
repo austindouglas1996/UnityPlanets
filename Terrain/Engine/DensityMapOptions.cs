@@ -1,12 +1,5 @@
 using System;
 using UnityEngine;
-public enum NoiseType
-{
-    Perlin,
-    Simplex,
-    Ridged,
-    Cellular
-}
 
 [Serializable]
 public class DensityMapOptions

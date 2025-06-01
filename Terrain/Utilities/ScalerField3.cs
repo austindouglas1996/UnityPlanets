@@ -3,14 +3,14 @@ using System;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
-public class DensityMap
+public class ScalerField3
 {
     private readonly float[] _values;
 
     public readonly int SizeX, SizeY, SizeZ;
     public readonly int StepSize;
 
-    public DensityMap(int logicalSizeX, int logicalSizeY, int logicalSizeZ, int lodIndex)
+    public ScalerField3(int logicalSizeX, int logicalSizeY, int logicalSizeZ, int lodIndex)
     {
         StepSize = 1 << lodIndex;
 

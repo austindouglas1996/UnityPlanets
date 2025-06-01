@@ -40,7 +40,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="chunkSize">Size of the chunk (assumed cubic).</param>
     /// <param name="chunkCoordinates">Coordinates of the chunk in chunk space.</param>
     /// <returns>A 3D float array representing density values.</returns>
-    public abstract DensityMap Generate(ChunkContext context);
+    public abstract ScalerField3 Generate(ChunkContext context);
 
     /// <summary>
     /// Generates mesh data from a given density map using the marching cubes algorithm.
@@ -49,7 +49,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="densityMap">3D density values for the chunk (includes +1 padding).</param>
     /// <param name="chunkWorldPosition">World-space offset for this chunk's origin.</param>
     /// <returns>MeshData containing vertices, triangles, and optional UVs.</returns>
-    public virtual MeshData GenerateMeshData(DensityMap densityMap, Vector3 chunkWorldPosition, int lodIndex = 5)
+    public virtual MeshData GenerateMeshData(ScalerField3 densityMap, Vector3 chunkWorldPosition, int lodIndex = 5)
     {
         int stepSize = 1 << lodIndex;
 
@@ -167,7 +167,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         return data;
     }
 
-    private void Flatten(DensityMap densityMap, MeshData data, int lodIndex)
+    private void Flatten(ScalerField3 densityMap, MeshData data, int lodIndex)
     {
         List<Vector3> flatVertices = new List<Vector3>();
         List<Vector3> flatNormals = new List<Vector3>();
@@ -228,7 +228,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="chunkPos">Chunk position in chunk space.</param>
     /// <param name="hitPoint">World-space location the brush is applied to.</param>
     /// <param name="isAdding">If true, adds density; otherwise subtracts.</param>
-    public virtual void ModifyMapWithBrush(TerrainBrush brush, ref DensityMap densityMap, Vector3Int chunkPos, bool isAdding)
+    public virtual void ModifyMapWithBrush(TerrainBrush brush, ref ScalerField3 densityMap, Vector3Int chunkPos, bool isAdding)
     {
         int width = densityMap.SizeX - 1;
         int height = densityMap.SizeY - 1;
@@ -365,7 +365,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="pos"></param>
     /// <param name="densityMap"></param>
     /// <returns></returns>
-    private Vector3 SampleDensityGradientLOD0(Vector3 pos, DensityMap densityMap)
+    private Vector3 SampleDensityGradientLOD0(Vector3 pos, ScalerField3 densityMap)
     {
         float delta = 0.01f;
 
@@ -385,7 +385,7 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// <param name="pos"></param>
     /// <param name="densityMap"></param>
     /// <returns></returns>
-    private float SampleDensity(Vector3 pos, DensityMap densityMap)
+    private float SampleDensity(Vector3 pos, ScalerField3 densityMap)
     {
         int x0 = Mathf.FloorToInt(pos.x);
         int y0 = Mathf.FloorToInt(pos.y);

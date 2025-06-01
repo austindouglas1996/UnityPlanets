@@ -11,7 +11,7 @@ public class ChunkData
     /// </summary>
     /// <param name="densityMap">3D array representing voxel densities for terrain generation.</param>
     /// <param name="data">Initial mesh data generated from the density map.</param>
-    public ChunkData(DensityMap densityMap, MeshData data, ChunkContext context)
+    public ChunkData(ScalerField3 densityMap, MeshData data, ChunkContext context)
     {
         this.DensityMap = densityMap;
         this.MeshData = data;
@@ -19,7 +19,7 @@ public class ChunkData
     }
 
     public ChunkContext Context;
-    public DensityMap DensityMap;
+    public ScalerField3 DensityMap;
     public MeshData MeshData;
 
     public bool IsRenderable => MeshData != null && !MeshData.IsEmpty;

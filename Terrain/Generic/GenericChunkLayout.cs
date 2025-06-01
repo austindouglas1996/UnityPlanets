@@ -139,13 +139,15 @@ public abstract class GenericChunkLayout : IChunkLayout
             Mathf.FloorToInt(world.z / chunkSize));
     }
 
+    /// <summary>
+    /// Used to 'sink' higher LOD's so it looks like there is no gap to the follower.
+    /// </summary>
     private static readonly float[] LodSinks = new float[]
     {
         0f,
-        1f,            // LOD1
+        0f,            // LOD1
         5f,           // LOD2
         10f,          // LOD3
         25f,         // LOD4
     };
-
 }

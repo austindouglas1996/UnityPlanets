@@ -4,42 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
-public readonly struct ChunkJobKey : IEquatable<ChunkJobKey>
-{
-    public readonly Vector3Int Coordinates;
-    public readonly int LODIndex;
-
-    public ChunkJobKey(Vector3Int coordinates, int lodIndex)
-    {
-        Coordinates = coordinates;
-        LODIndex = lodIndex;
-    }
-
-    public bool Equals(ChunkJobKey other)
-        => Coordinates.Equals(other.Coordinates) && LODIndex == other.LODIndex;
-
-    public override int GetHashCode()
-        => HashCode.Combine(Coordinates, LODIndex);
-
-    public override bool Equals(object obj)
-        => obj is ChunkJobKey other && Equals(other);
-}
-
-
-public class ChunkModificationJob
-{
-    public ChunkModificationJob(ChunkData existingData, TerrainBrush brush, bool isAdding)
-    {
-        ExistingData = existingData;
-        Brush = brush;
-        IsAdding = isAdding;
-    }
-
-    public ChunkData ExistingData { get; private set; }
-    public TerrainBrush Brush { get; private set; }
-    public bool IsAdding { get; private set; }
-}
-
 public class ChunkGenerationJob : IEqualityComparer<ChunkGenerationJob>
 {
     public ChunkGenerationJob(ChunkContext context, CancellationTokenSource cts, ChunkModificationJob modificationJob = null)

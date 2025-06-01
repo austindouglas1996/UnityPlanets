@@ -38,7 +38,7 @@ public class MeshData
     /// </summary>
     /// <param name="data">The mesh data to convert.</param>
     /// <returns>A generated Unity Mesh.</returns>
-    public Mesh GenerateMesh(DensityMap densityMap)
+    public Mesh GenerateMesh(ScalerField3 densityMap)
     {
         Mesh mesh = new Mesh();
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;

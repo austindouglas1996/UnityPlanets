@@ -29,7 +29,7 @@ public class ChunkRenderer : MonoBehaviour
 
         foreach (var chunk in this.chunkManager.Chunks.Values)
         {
-            if (chunk.RenderType == ChunkRenderType.GPU && chunk.IsActive)
+            if (chunk.State == ChunkRenderState.GPU && chunk.IsActive)
             {
                 Graphics.DrawMesh(chunk.Mesh, chunk.LocalToWorld, material, 0);
             }
@@ -65,10 +65,10 @@ public class ChunkRenderer : MonoBehaviour
 
         this.generationQueue.CancelChunkGeneration(renderData.Context.Coordinates, renderData.Context.LODIndex);
 
-        if (renderData.RenderType == ChunkRenderType.GameObject)
+        if (renderData.State == ChunkRenderState.GameObject && renderData.Controller != null)
         {
-            this.chunkServices.ControllerFactory.Release(renderData.Controller); 
-            renderData.Controller = null;
+            this.chunkServices.ControllerFactory.Release(renderData.Controller);
+            renderData.SetController(null);
         }
 
         this.chunkManager.Chunks.Remove(renderData.Context);
@@ -130,15 +130,15 @@ public class ChunkRenderer : MonoBehaviour
             if (chunkRenderData.LOD == 0)
             {
                 var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
-                chunkRenderData.Controller = controller;
-                chunkRenderData.RenderType = ChunkRenderType.GameObject;
+                chunkRenderData.SetController(controller);
+                chunkRenderData.State = ChunkRenderState.GameObject;
                 chunkManager.Chunks[chunkRenderData.Context] = chunkRenderData;
                 controller.ApplyChunkData(chunkRenderData);
             }
             else
             {
-                chunkRenderData.RenderType = ChunkRenderType.GPU;
-                chunkRenderData.Controller = null;
+                chunkRenderData.State = ChunkRenderState.GPU;
+                chunkRenderData.SetController(null);
             }
 
             chunkManager.Chunks[chunkRenderData.Context] = chunkRenderData;

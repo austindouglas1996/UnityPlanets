@@ -4,7 +4,7 @@ using Unity.VisualScripting;
 using UnityEngine;
 
 [Serializable]
-public enum ChunkRenderType
+public enum ChunkRenderState
 {
     GameObject,
     GPU
@@ -17,7 +17,7 @@ public class ChunkRenderData
         Context = context;
         Data = data;
         LocalToWorld = localToWorld;
-        RenderType = ChunkRenderType.GPU;
+        State = ChunkRenderState.GPU;
     }
 
     public ChunkRenderData(ChunkController controller, ChunkData data)
@@ -25,7 +25,7 @@ public class ChunkRenderData
         this.Controller = controller;
         this.Data = data;
         this.LocalToWorld = controller.transform.localToWorldMatrix;
-        this.RenderType = ChunkRenderType.GameObject;
+        this.State = ChunkRenderState.GameObject;
     }
 
     public bool IsActive
@@ -40,8 +40,6 @@ public class ChunkRenderData
     }
     private bool isActive = true;
 
-    public bool ShouldDestroy = false;
-
     public ChunkContext Context { get; set; }
     public ChunkData Data { get; set; }
     public ChunkOctTree Tree { get; set; }
@@ -53,7 +51,7 @@ public class ChunkRenderData
                 mesh = Data.GenerateMesh();
 
             // Free resources.
-            if (RenderType == ChunkRenderType.GPU)
+            if (State == ChunkRenderState.GPU)
                 this.Data.MeshData = null;
 
             return mesh;
@@ -61,8 +59,13 @@ public class ChunkRenderData
     }
     private Mesh mesh;
     public Matrix4x4 LocalToWorld {  get; set; }
-    public ChunkRenderType RenderType { get; set; }
-    public ChunkController? Controller { get; set; }
+    public ChunkRenderState State { get; set; }
+    public ChunkController? Controller { get; private set; }
+
+    public void SetController(ChunkController controller)
+    {
+        this.Controller = controller;
+    }
 
     public int LOD => Data?.Context.LODIndex ?? -1;
 }

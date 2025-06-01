@@ -9,7 +9,7 @@ public class ChunkContext : IEquatable<ChunkContext>
         LODIndex = lODIndex;
         Services = services;
     }
-
+    
     public Vector3Int Coordinates { get; }
     public int LODIndex { get; }
     public IChunkServices Services { get; }

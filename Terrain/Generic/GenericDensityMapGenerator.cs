@@ -8,7 +8,7 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
     {
     }
 
-    public override DensityMap Generate(ChunkContext context)
+    public override ScalerField3 Generate(ChunkContext context)
     {
         int lodIndex = context.LODIndex;
         Vector3Int chunkCoordinates = context.Coordinates;
@@ -17,7 +17,7 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
         int chunkSize = this.Options.ChunkSize << lodIndex;
         int limit = chunkSize + 1;
 
-        DensityMap densityMap = CreateEmptyChunk(chunkSize, lodIndex);
+        ScalerField3 densityMap = CreateEmptyChunk(chunkSize, lodIndex);
 
         if (!ShouldGenerateChunk(context))
         {
@@ -70,8 +70,8 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
         return densityMap;
     }
 
-    private DensityMap CreateEmptyChunk(int size, int lodIndex)
+    private ScalerField3 CreateEmptyChunk(int size, int lodIndex)
     {
-        return new DensityMap(size, size, size, lodIndex);
+        return new ScalerField3(size, size, size, lodIndex);
     }
 }
