@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -81,5 +82,25 @@ public class ChunkContext : IEquatable<ChunkContext>
     public override string ToString()
     {
         return $"Chunk LOD:{LODIndex} X:{Coordinates.x} Y:{Coordinates.y} Z:{Coordinates.z}";
+    }
+}
+
+/// <summary>
+/// A simple comparer.
+/// </summary>
+public class ChunkContextComparer : IEqualityComparer<ChunkGenerationJob>
+{
+    public bool Equals(ChunkGenerationJob x, ChunkGenerationJob y)
+    {
+        if (x == null || y == null)
+            return false;
+
+        return x.Context.Coordinates == y.Context.Coordinates &&
+               x.Context.LODIndex == y.Context.LODIndex;
+    }
+
+    public int GetHashCode(ChunkGenerationJob obj)
+    {
+        return HashCode.Combine(obj.Context.Coordinates, obj.Context.LODIndex);
     }
 }

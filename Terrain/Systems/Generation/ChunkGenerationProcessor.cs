@@ -14,7 +14,7 @@ public class ChunkGenerationProcessor
     /// A collection of jobs to be executed yet. Seperate from active jobs, this runs the actual
     /// task.
     /// </summary>
-    private PriorityQueue<ChunkGenerationJob> generationQueue = new PriorityQueue<ChunkGenerationJob>();
+    private PriorityQueue<ChunkGenerationJob> generationQueue = new PriorityQueue<ChunkGenerationJob>(new ChunkContextComparer());
     private readonly object queueLock = new();
 
     /// <summary>
@@ -116,9 +116,9 @@ public class ChunkGenerationProcessor
     {
         lock (queueLock)
         {
-            // This is nasty and should probably not be done like this, but it works?
-            // ChunkGenerationJob has an IEqualityComparer to only compare coordinates/LOD.
-            return this.generationQueue.Remove(new ChunkGenerationJob(new ChunkContext(coordinates, lodIndex, this.chunkServices), null, null));
+            return this.generationQueue.RemoveWhere(job =>
+                job.Context.Coordinates == coordinates &&
+                job.Context.LODIndex == lodIndex);
         }
     }
 

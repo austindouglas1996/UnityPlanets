@@ -3,7 +3,19 @@ using System;
 
 public class PriorityQueue<T>
 {
+    private IEqualityComparer<T> comparer;
     private readonly List<(T Item, int Priority)> heap = new();
+
+    public PriorityQueue()
+        : this(EqualityComparer<T>.Default)
+    {
+
+    }
+
+    public PriorityQueue(IEqualityComparer<T> comparer)
+    {
+
+    }
 
     public int Count => heap.Count;
 
@@ -82,7 +94,33 @@ public class PriorityQueue<T>
 
     public bool Remove(T item)
     {
-        int index = heap.FindIndex(entry => EqualityComparer<T>.Default.Equals(entry.Item, item));
+        if (this.heap.Count == 0) return false;
+
+        int index = heap.FindIndex(entry => comparer.Equals(entry.Item, item));
+        if (index == -1)
+            return false;
+
+        int lastIndex = heap.Count - 1;
+        if (index != lastIndex)
+        {
+            heap[index] = heap[lastIndex];
+            heap.RemoveAt(lastIndex);
+            HeapifyDown(index);
+            HeapifyUp(index);
+        }
+        else
+        {
+            heap.RemoveAt(index);
+        }
+
+        return true;
+    }
+
+    public bool RemoveWhere(Predicate<T> match)
+    {
+        if (this.heap.Count == 0) return false;
+
+        int index = heap.FindIndex(entry => match(entry.Item));
         if (index == -1)
             return false;
 
