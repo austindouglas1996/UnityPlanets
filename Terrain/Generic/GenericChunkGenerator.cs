@@ -54,7 +54,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="chunkPos">The chunk position in the world.</param>
     /// <param name="addingOrSubtracting">True if adding, false if subtracting.</param>
     /// <param name="token">Optional cancellation token.</param>
-    public virtual void ApplyTerrainBrush(ChunkData data, TerrainBrush brush, ChunkContext context, bool addingOrSubtracting, CancellationToken token = default)
+    public virtual void ApplyTerrainBrush(ChunkContext context, ChunkData data, TerrainBrush brush, bool addingOrSubtracting, CancellationToken token = default)
     {
         Generator.ModifyMapWithBrush(brush, ref data.DensityMap, context.Coordinates, addingOrSubtracting);
     }

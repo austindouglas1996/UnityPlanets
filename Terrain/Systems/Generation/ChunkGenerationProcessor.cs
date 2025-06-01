@@ -197,7 +197,7 @@ public class ChunkGenerationProcessor
     {
         ChunkModificationJob mod = job.ModificationJob;
 
-        chunkServices.Generator.ApplyTerrainBrush(mod.ExistingData, mod.Brush, job.Context, mod.IsAdding, job.Token);
+        chunkServices.Generator.ApplyTerrainBrush(job.Context, mod.ExistingData, mod.Brush, mod.IsAdding, job.Token);
         chunkServices.Generator.RegenerateMeshData(mod.ExistingData, job.Token);
 
         // We set the original data back.
