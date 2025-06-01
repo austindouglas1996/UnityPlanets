@@ -18,13 +18,6 @@ public class ChunkController : MonoBehaviour
     public ChunkContext ChunkContext;
     public ChunkRenderData RenderData;
 
-    private void Awake()
-    {
-        // Add a foliage generator too.
-        if (this.GetComponent<FoliageGenerator>() == null)
-            this.AddComponent<FoliageGenerator>();
-    }
-
     private void Start()
     {
         // Set the shader and material for this controller.
@@ -34,6 +27,9 @@ public class ChunkController : MonoBehaviour
         mat.SetFloat("_Smoothness", 0f);
 
         meshRenderer.sharedMaterial = mat;
+
+        if (this.GetComponent<FoliageGenerator>() == null)
+            this.AddComponent<FoliageGenerator>();
     }
 
     /// <summary>

@@ -16,13 +16,25 @@ public class PriorityQueue<T>
     public T Dequeue()
     {
         if (heap.Count == 0)
-            throw new InvalidOperationException("Queue is empty");
+            return default(T);
 
         T result = heap[0].Item;
         heap[0] = heap[^1];
         heap.RemoveAt(heap.Count - 1);
         HeapifyDown(0);
         return result;
+    }
+
+    public bool TryDequeue(out T item)
+    {
+        if (heap.Count > 0)
+        {
+            item = Dequeue();
+            return true;
+        }
+
+        item = default;
+        return false;
     }
 
     public T Peek()
@@ -88,18 +100,5 @@ public class PriorityQueue<T>
         }
 
         return true;
-    }
-
-
-    public bool TryDequeue(out T item)
-    {
-        if (heap.Count > 0)
-        {
-            item = Dequeue();
-            return true;
-        }
-
-        item = default;
-        return false;
     }
 }

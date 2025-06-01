@@ -31,7 +31,6 @@ public class ChunkManager : MonoBehaviour
     /// A cancellation token used to help with cancelling processes on game close.
     /// </summary>
     private CancellationTokenSource cancellationToken = new CancellationTokenSource();
-    private CancellationTokenSource layoutCts = new CancellationTokenSource();
 
     /// <summary>
     /// A collection of tree roots used to make and establish the chunks. These roots
@@ -196,9 +195,6 @@ float[] lodThresholds = new float[]
     {
         if (!IsInitialized)
             return;
-
-        layoutCts.Cancel();
-        layoutCts = new CancellationTokenSource();
 
         int lod = 4;
         int chunkSize = this.Services.Configuration.DensityOptions.ChunkSize << lod;

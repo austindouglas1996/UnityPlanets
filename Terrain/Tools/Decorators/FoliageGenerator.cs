@@ -124,6 +124,9 @@ public class FoliageGenerator : MonoBehaviour
                         Vector3 triangleNormal = Vector3.Cross(vertexB - vertexA, vertexC - vertexA).normalized;
                         Vector3 position = RandomPointInTriangle(vertexA, vertexB, vertexC) + triangleNormal * 0.01f;
 
+                        if (position.y < 225)
+                            continue;
+
                         // Compute local voxel-space position
                         float voxelX = (position.x - chunkOrigin.x) / 16;
                         float voxelY = (position.y - chunkOrigin.y) / 16;
@@ -135,7 +138,7 @@ public class FoliageGenerator : MonoBehaviour
 
                         // Respect foliage mask
                         //if (data.FoliageMask[localX, localY, localZ] <= 0f)
-                            //continue;
+                        //continue;
 
                         Color A = data.MeshData.Colors[i];
                         Color B = data.MeshData.Colors[i + 1];

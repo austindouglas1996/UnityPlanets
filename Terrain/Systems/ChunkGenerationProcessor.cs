@@ -24,6 +24,11 @@ public class ChunkGenerationProcessor
     private bool isProcessing = false;
 
     /// <summary>
+    /// I don't 
+    /// </summary>
+    private readonly SemaphoreSlim jobAvailableSignal = new SemaphoreSlim(0);
+
+    /// <summary>
     /// A collection of services to help with chunk generation.
     /// </summary>
     private IChunkServices chunkServices;
@@ -69,7 +74,9 @@ public class ChunkGenerationProcessor
         {
             lock (queueLock)
             {
+                // LOD0 closest to the player chunks should be prioritized.
                 generationQueue.Enqueue(newJob, context.LODIndex == 0 ? GetPriorityOfChunk(context.Coordinates) : 999);
+                jobAvailableSignal.Release();
             }
         }
         catch (Exception ex)
@@ -93,7 +100,9 @@ public class ChunkGenerationProcessor
 
         lock (queueLock)
         {
+            // Modification games be completed over everything.
             generationQueue.Enqueue(newJob, -1);
+            jobAvailableSignal.Release();
         }
 
         return newJob.Completion.Task;
@@ -131,27 +140,23 @@ public class ChunkGenerationProcessor
     {
         while (!token.IsCancellationRequested)
         {
+            await jobAvailableSignal.WaitAsync(token);
+
             ChunkGenerationJob? job = null;
 
             lock (queueLock)
             {
-                if (generationQueue.Count > 0)
-                {
-                    job = generationQueue.Dequeue();
-                    if (job.Token.IsCancellationRequested)
-                    {
-                        job.Completion.TrySetCanceled();
-                        continue;
-                    }
-                }
+                job = generationQueue.Dequeue(); 
+                if (job == null)
+                    continue;
             }
 
-            if (job == null)
+            if (job.Token.IsCancellationRequested)
             {
-                await Task.Delay(1, token);
+                job.Completion.TrySetCanceled();
                 continue;
             }
-
+            
             try
             {
                 ChunkData result = job.ModificationJob == null ?
