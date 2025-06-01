@@ -42,7 +42,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
         }
 
         MeshData data = Generator.GenerateMeshData(map, context.WorldPosition, context.LODIndex);
-        return new ChunkData(map, data, context);
+        return new ChunkData(context, map, data);
     }
 
     /// <summary>

@@ -67,7 +67,6 @@ public class ChunkGenerationProcessor
     /// <returns></returns>
     public Task<ChunkData> RequestChunkGeneration(ChunkContext context)
     {
-        var key = new ChunkJobKey(context.Coordinates, context.LODIndex);
         ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), null);
 
         try
