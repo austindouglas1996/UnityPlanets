@@ -1,9 +1,15 @@
 using System.Collections.Generic;
-using System.Linq;
+
 using UnityEngine;
 
+/// <summary>
+/// A container for storing raw mesh data before it's built into a Unity Mesh.
+/// </summary>
 public class MeshData
 {
+    /// <summary>
+    /// Create a new MeshData container with verts, tris, and UVs.
+    /// </summary>
     public MeshData(List<Vector3> verts, List<int> tris, List<Vector2> uvs)
     {
         Vertices = verts;
@@ -11,33 +17,33 @@ public class MeshData
         UVs = uvs;
     }
 
-    public MeshData Empty
-    {
-        get { return new MeshData(null, null, null); }
-    }
+    /// <summary>
+    /// Used to return an empty instance. May be redundant if not cached.
+    /// </summary>
+    public MeshData Empty => new MeshData(null, null, null);
 
+    // Final mesh components to be converted into a Unity mesh
     public List<Vector3> Vertices = new();
     public List<int> Triangles = new();
     public List<Vector3> Normals = new();
     public List<Vector2> UVs = new();
 
+    // Vertex colors (same length as verts)
     public Color32[] Colors;
 
     /// <summary>
-    /// Returns whether this <see cref="MeshData"/> is an empty collection.
+    /// Whether this MeshData is missing any geometry.
     /// </summary>
     public bool IsEmpty => Vertices.Count == 0 || Triangles.Count == 0;
 
     /// <summary>
-    /// Returns whether this <see cref="MeshData"/> is an empty collection.
+    /// Whether this MeshData has at least one triangle.
     /// </summary>
     public bool IsRenderable => Triangles.Count >= 3;
 
     /// <summary>
-    /// Converts processed MeshData into a Unity Mesh object.
+    /// Builds the final Unity mesh from this data set.
     /// </summary>
-    /// <param name="data">The mesh data to convert.</param>
-    /// <returns>A generated Unity Mesh.</returns>
     public Mesh GenerateMesh(ScalerField3 densityMap)
     {
         Mesh mesh = new Mesh();
@@ -48,7 +54,7 @@ public class MeshData
         mesh.uv = UVs.ToArray();
         mesh.colors32 = Colors;
 
-        // Hmm should we keep this?
+        // Might be unnecessary now days.
         mesh.RecalculateBounds();
 
         return mesh;

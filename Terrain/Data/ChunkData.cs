@@ -22,8 +22,6 @@ public class ChunkData
     public ScalerField3 DensityMap;
     public MeshData MeshData;
 
-    public bool IsRenderable => MeshData != null && !MeshData.IsEmpty;
-
     public Mesh GenerateMesh()
     {
         return this.MeshData.GenerateMesh(this.DensityMap);
