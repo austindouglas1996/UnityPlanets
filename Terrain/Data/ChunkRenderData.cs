@@ -45,6 +45,8 @@ public class ChunkRenderData
         get { return this.State == ChunkRenderState.GPU && this.isActive; }
     }
 
+    public Vector3Int Coordinates => Context.Coordinates;
+
     public ChunkContext Context { get; set; }
     public ChunkData Data { get; set; }
     public ChunkOctTree Tree { get; set; }

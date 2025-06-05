@@ -281,7 +281,7 @@ public class ChunkRenderer : MonoBehaviour
             return;
         }
 
-        this.generationQueue.CancelChunkGeneration(renderData.Context.Coordinates, renderData.Context.LODIndex);
+        this.generationQueue.CancelChunkGeneration(renderData.Coordinates, renderData.LOD);
 
         if (renderData.State == ChunkRenderState.GameObject && renderData.Controller != null)
         {
@@ -289,7 +289,7 @@ public class ChunkRenderer : MonoBehaviour
             renderData.SetController(null);
         }
 
-        this.meshDrawer.Remove(renderData.Context.Coordinates);
+        this.meshDrawer.Remove(renderData.Coordinates);
 
         this.chunks.Remove(renderData.Context);
     }
@@ -302,7 +302,7 @@ public class ChunkRenderer : MonoBehaviour
     {
         try
         {
-            var coord = chunkRenderData.Context.Coordinates;
+            var coord = chunkRenderData.Coordinates;
             if (chunkRenderData.LOD == 0)
             {
                 var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);

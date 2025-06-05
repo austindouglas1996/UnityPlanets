@@ -85,10 +85,10 @@ public class MeshBatchDrawer
         else
             meshIndex = this.Meshes.Keys.ToList().IndexOf(go); // NEED TO FIND A BETTER WAY OF THIS.
 
-        if (!this.Batches.TryGetValue(data.Context.Coordinates, out MeshBatch batch))
+        if (!this.Batches.TryGetValue(data.Coordinates, out MeshBatch batch))
         {
-            batch = new MeshBatch(data.Context.Coordinates, data.Tree.Bounds);
-            this.Batches[data.Context.Coordinates] = batch;
+            batch = new MeshBatch(data.Coordinates, data.Tree.Bounds);
+            this.Batches[data.Coordinates] = batch;
         }
 
         batch.Add(meshIndex, position, rotation, scale, customColor);
