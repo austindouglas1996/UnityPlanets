@@ -49,31 +49,38 @@ public class MeshLOD
     {
         List<MeshLOD> results = new List<MeshLOD>();
 
-        LODGroup group = go.GetComponent<LODGroup>();
-
-        // If there's no LODGroup, fallback to default MeshRenderer + MeshFilter.
-        if (group == null)
+        try
         {
-            MeshFilter filter = go.GetComponent<MeshFilter>();
-            MeshRenderer renderer = go.GetComponent<MeshRenderer>();
+            LODGroup group = go.GetComponent<LODGroup>();
 
-            results.Add(new MeshLOD(1, filter.sharedMesh, renderer.sharedMaterial));
-            return results;
-        }
-
-        // Extract LODs from LODGroup.
-        LOD[] lods = group.GetLODs();
-        for (int i = 0; i < lods.Length; i++)
-        {
-            if (lods[i].renderers.Length > 0)
+            // If there's no LODGroup, fallback to default MeshRenderer + MeshFilter.
+            if (group == null)
             {
-                MeshFilter meshFilter = lods[i].renderers[0].GetComponent<MeshFilter>();
+                MeshFilter filter = go.GetComponent<MeshFilter>();
+                MeshRenderer renderer = go.GetComponent<MeshRenderer>();
 
-                if (meshFilter == null)
-                    throw new System.ArgumentNullException("Failed to retrieve mesh during LODGroup extraction.");
-
-                results.Add(new MeshLOD(i, meshFilter.sharedMesh, lods[i].renderers[0].sharedMaterial));
+                results.Add(new MeshLOD(1, filter.sharedMesh, renderer.sharedMaterial));
+                return results;
             }
+
+            // Extract LODs from LODGroup.
+            LOD[] lods = group.GetLODs();
+            for (int i = 0; i < lods.Length; i++)
+            {
+                if (lods[i].renderers.Length > 0)
+                {
+                    MeshFilter meshFilter = lods[i].renderers[0].GetComponent<MeshFilter>();
+
+                    if (meshFilter == null)
+                        throw new System.ArgumentNullException("Failed to retrieve mesh during LODGroup extraction.");
+
+                    results.Add(new MeshLOD(i, meshFilter.sharedMesh, lods[i].renderers[0].sharedMaterial));
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogException(e);
         }
 
         return results;

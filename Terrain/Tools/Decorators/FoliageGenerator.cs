@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SocialPlatforms;
 
-public class FoliageGenerator : MonoBehaviour
+public class FoliageGenerator
 {
     public class TrianglePOS
     {
@@ -20,17 +20,15 @@ public class FoliageGenerator : MonoBehaviour
 
     private System.Random rand = new System.Random();
 
-    public void ApplyMap(ChunkRenderData data, CancellationToken token = default)
+    public void ApplyMap(ChunkRenderData data, Matrix4x4 matrix, CancellationToken token = default)
     {
         List<TrianglePOS> positions = new List<TrianglePOS>();
 
         foliageDrawer = MeshBatchDrawer.Instance;
 
-        Matrix4x4 matrix = this.transform.localToWorldMatrix;
-
         LayerMask layerMask = LayerMask.GetMask("Default");
 
-        positions = GetRandomPositionsInTriangles(data.Data, matrix);
+        positions = GetRandomPositionsInTriangles(data.Data, matrix, 1 * data.LOD);
 
         foreach (TrianglePOS pos in positions)
         {
@@ -59,28 +57,25 @@ public class FoliageGenerator : MonoBehaviour
                 {
                     Vector3 rockScale = Vector3.one * Random.Range(0.2f, 11f);
                     GameObject rock = GenericStore.Instance.GetOneRandom("Rocks");
-                    foliageDrawer.Add(data.Controller, rock, tria.Position, rotation, rockScale, tria.Color);
+                    foliageDrawer.Add(data, rock, tria.Position, rotation, rockScale, tria.Color);
                 }
 
-                if (chunkLod == 0)
-                {
-                    Vector3 scale = Vector3.one * Random.Range(0.7f, 1.4f);
-                    var grass = GenericStore.Instance.GetOneRandom("Grass");
-                    foliageDrawer.Add(data.Controller, grass, tria.Position, rotation, scale, tria.Color);
-                }
+                Vector3 scale = Vector3.one * Random.Range(0.7f, 1.4f);
+                var grass = GenericStore.Instance.GetOneRandom("Grass");
+                foliageDrawer.Add(data, grass, tria.Position, rotation, scale, tria.Color);
 
                 if (Random.value < rockChance) // Flower spawn, only if rock didn't spawn
                 {
                     Vector3 flowerScale = Vector3.one * Random.Range(1.3f, 2.5f);
                     GameObject flower = GenericStore.Instance.GetOneRandom("Flowers");
-                    foliageDrawer.Add(data.Controller, flower, tria.Position, rotation, flowerScale, tria.Color);
+                    foliageDrawer.Add(data, flower, tria.Position, rotation, flowerScale, tria.Color);
                 }
 
                 if (Random.value < treeChance)
                 {
                     Vector3 treeScale = Vector3.one * Random.Range(0.6f, 2f);
                     GameObject tree = GenericStore.Instance.GetOneRandom("Trees");
-                    foliageDrawer.Add(data.Controller, tree, tria.Position, Quaternion.Euler(0, 0, 0), treeScale, tria.Color);
+                    foliageDrawer.Add(data, tree, tria.Position, Quaternion.Euler(0, 0, 0), treeScale, tria.Color);
                 }
             }
         }

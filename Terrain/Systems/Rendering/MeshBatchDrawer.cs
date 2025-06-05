@@ -70,7 +70,7 @@ public class MeshBatchDrawer
     /// <param name="position"></param>
     /// <param name="rotation"></param>
     /// <param name="scale"></param>
-    public void Add(ChunkController controller, GameObject go, Vector3 position, Quaternion rotation, Vector3 scale, Color customColor)
+    public void Add(ChunkRenderData data, GameObject go, Vector3 position, Quaternion rotation, Vector3 scale, Color customColor)
     {
         float distanceToFollower = Vector3.Distance(position, Follower.transform.position);
         int lodIndex = GetLODIndex(distanceToFollower);
@@ -85,10 +85,10 @@ public class MeshBatchDrawer
         else
             meshIndex = this.Meshes.Keys.ToList().IndexOf(go); // NEED TO FIND A BETTER WAY OF THIS.
 
-        if (!this.Batches.TryGetValue(controller.ChunkContext.Coordinates, out MeshBatch batch))
+        if (!this.Batches.TryGetValue(data.Context.Coordinates, out MeshBatch batch))
         {
-            batch = new MeshBatch(controller.ChunkContext.Coordinates, controller.RenderData.Tree.Bounds);
-            this.Batches[controller.ChunkContext.Coordinates] = batch;
+            batch = new MeshBatch(data.Context.Coordinates, data.Tree.Bounds);
+            this.Batches[data.Context.Coordinates] = batch;
         }
 
         batch.Add(meshIndex, position, rotation, scale, customColor);
@@ -128,7 +128,7 @@ public class MeshBatchDrawer
 
         foreach (var drawItem in this.DrawList)
         {
-            if (drawItem.Positions.Count < 50)
+            if (drawItem.Positions.Count < 10)
                 continue;
 
             MaterialPropertyBlock props = new MaterialPropertyBlock();

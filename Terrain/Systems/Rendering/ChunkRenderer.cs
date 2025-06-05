@@ -61,6 +61,7 @@ public class ChunkRenderer : MonoBehaviour
     private IChunkServices chunkServices;
 
     private MeshBatchDrawer meshDrawer;
+    private FoliageGenerator foliageGenerator;
     private ChunkGenerationProcessor generationQueue;
     private CancellationTokenSource cancellationToken;
 
@@ -75,6 +76,8 @@ public class ChunkRenderer : MonoBehaviour
     private void Update()
     {
         if (!isInitialized) return;
+
+        this.meshDrawer.Update();
         this.UpdateLayout();
     }
 
@@ -185,6 +188,7 @@ public class ChunkRenderer : MonoBehaviour
 
         this.chunkServices = services;
         this.generationQueue = new ChunkGenerationProcessor(services, cancellationToken.Token);
+        this.foliageGenerator = new FoliageGenerator();
 
         isInitialized = true;
 
@@ -285,6 +289,8 @@ public class ChunkRenderer : MonoBehaviour
             renderData.SetController(null);
         }
 
+        this.meshDrawer.Remove(renderData.Context.Coordinates);
+
         this.chunks.Remove(renderData.Context);
     }
 
@@ -309,6 +315,11 @@ public class ChunkRenderer : MonoBehaviour
             {
                 chunkRenderData.State = ChunkRenderState.GPU;
                 chunkRenderData.SetController(null);
+            }
+
+            if (chunkRenderData.LOD < 2)
+            {
+                this.foliageGenerator.ApplyMap(chunkRenderData, chunkRenderData.Context.Transform, this.cancellationToken.Token);
             }
 
             chunks[chunkRenderData.Context] = chunkRenderData;
