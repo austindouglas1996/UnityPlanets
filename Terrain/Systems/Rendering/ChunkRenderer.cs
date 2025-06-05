@@ -307,14 +307,8 @@ public class ChunkRenderer : MonoBehaviour
             {
                 var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
                 chunkRenderData.SetController(controller);
-                chunkRenderData.State = ChunkRenderState.GameObject;
                 chunks[chunkRenderData.Context] = chunkRenderData;
                 controller.ApplyChunkData(chunkRenderData);
-            }
-            else
-            {
-                chunkRenderData.State = ChunkRenderState.GPU;
-                chunkRenderData.SetController(null);
             }
 
             if (chunkRenderData.LOD < 2)

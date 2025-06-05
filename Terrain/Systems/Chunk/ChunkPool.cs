@@ -1,36 +1,33 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using VHierarchy.Libs;
+using UnityEngine.Pool;
 
 /// <summary>
-/// A unique way to handle memory management with chunk objects. This will pool <see cref="ChunkController"/> objects to help
-/// with sudden lag spikes when creating chunks throughout the world.
+/// Pools <see cref="ChunkController"/> objects to reduce runtime lag spikes when generating lots of chunks.
+/// Helps smooth out gameplay by reusing inactive GameObjects.
 /// </summary>
 public class ChunkPool
 {
     /// <summary>
-    /// A list of available chunks.
+    /// Unity’s internal object pool.
     /// </summary>
-    private Stack<ChunkController> pool = new();
+    private ObjectPool<ChunkController> pool;
 
     /// <summary>
-    /// Default game object to be used for creation.
+    /// The prefab used to create new chunk instances.
     /// </summary>
     private GameObject chunkPrefab;
 
     /// <summary>
-    /// The game object that contains a <see cref="ChunkManager"/> object.
+    /// Where chunk instances will be parented in the hierarchy.
     /// </summary>
     private Transform parent;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ChunkPool"/> class.
+    /// Initializes a new <see cref="ChunkPool"/> using Unity’s built-in pool system.
     /// </summary>
-    /// <param name="chunkPrefab"></param>
-    /// <param name="preload"></param>
-    /// <param name="parent"></param>
-    /// <exception cref="System.ArgumentNullException"></exception>
+    /// <param name="chunkPrefab">The prefab to use when creating new chunks.</param>
+    /// <param name="preload">How many chunks to create at the start.</param>
+    /// <param name="parent">The transform to parent pooled chunks under.</param>
     public ChunkPool(GameObject chunkPrefab, int preload, Transform parent)
     {
         if (chunkPrefab == null)
@@ -41,58 +38,51 @@ public class ChunkPool
         this.chunkPrefab = chunkPrefab;
         this.parent = parent;
 
+        // Create the Unity object pool
+        this.pool = new ObjectPool<ChunkController>(
+            createFunc: CreateController,
+            actionOnGet: chunk => {
+                chunk.gameObject.SetActive(true);
+            },
+            actionOnRelease: chunk => {
+                chunk.ResetController();
+                chunk.name = "ReleasedToPool";
+                chunk.gameObject.SetActive(false);
+                chunk.transform.SetParent(parent);
+            },
+            actionOnDestroy: chunk => GameObject.Destroy(chunk.gameObject),
+            collectionCheck: false,
+            defaultCapacity: preload,
+            maxSize: 10000
+        );
+
+        // Preload instances
         for (int i = 0; i < preload; i++)
         {
-            pool.Push(CreateController());
+            var controller = pool.Get();
+            pool.Release(controller);
         }
     }
 
     /// <summary>
-    /// Retrieves an available chunk from the pool, or creates one.
+    /// Retrieve a chunk from the pool or create one if none are available.
     /// </summary>
-    /// <returns></returns>
-    public ChunkController GetController()
-    {
-        if (pool.Count > 0)
-        {
-            var chunk = pool.Pop();
-            chunk.gameObject.SetActive(true);
-            return chunk;
-        }
-
-        return CreateController(true); 
-    }
+    public ChunkController GetController() => pool.Get();
 
     /// <summary>
-    /// Releases a chunk so it may be added back to the pool of available objects.
+    /// Return a chunk to the pool.
     /// </summary>
-    /// <param name="controller"></param>
-    public void Release(ChunkController controller)
-    {
-        controller.ResetController();
-        controller.name = "ReleasedToPool";
-        controller.gameObject.SetActive(false);
-        controller.transform.SetParent(parent);
-
-        if (!pool.Contains(controller))
-        {
-            pool.Push(controller);
-        }
-    }
+    public void Release(ChunkController controller) => pool.Release(controller);
 
     /// <summary>
-    /// Create a new <see cref="ChunkController"/> object based on the prefab given.
+    /// Actually instantiates a new chunk from the prefab.
     /// </summary>
-    /// <param name="isActive"></param>
-    /// <returns></returns>
-    private ChunkController CreateController(bool isActive = false)
+    private ChunkController CreateController()
     {
         var newChunk = GameObject.Instantiate(chunkPrefab);
         newChunk.isStatic = true;
-        newChunk.name = $"PooledChunk";
-        newChunk.SetActive(isActive);
+        newChunk.name = "PooledChunk";
         newChunk.transform.SetParent(parent);
-
         return newChunk.GetComponent<ChunkController>();
     }
 }

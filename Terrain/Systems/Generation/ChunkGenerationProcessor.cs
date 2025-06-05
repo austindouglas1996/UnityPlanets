@@ -68,12 +68,14 @@ public class ChunkGenerationProcessor
 
         try
         {
+            int priority = context.LODIndex == 0 ? GetPriorityOfChunk(context.Coordinates) : 999;
+
             lock (queueLock)
             {
-                int priority = context.LODIndex == 0 ? GetPriorityOfChunk(context.Coordinates) : 999;
                 generationQueue.Enqueue(newJob, priority);
-                jobAvailableSignal.Release();
             }
+
+            jobAvailableSignal.Release();
         }
         catch (Exception ex)
         {
@@ -94,9 +96,9 @@ public class ChunkGenerationProcessor
         lock (queueLock)
         {
             generationQueue.Enqueue(newJob, -1); // Highest priority
-            jobAvailableSignal.Release();
         }
 
+        jobAvailableSignal.Release();
         return newJob.Completion.Task;
     }
 

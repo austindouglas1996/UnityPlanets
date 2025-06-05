@@ -1,78 +1,125 @@
 
 using System;
-using Unity.VisualScripting;
 using UnityEngine;
 
-[Serializable]
 public enum ChunkRenderState
 {
     GameObject,
     GPU
 }
 
+/// <summary>
+/// Represents all the rendering-related data for a single chunk.
+/// </summary>
 public class ChunkRenderData
 {
+    private bool isActive;
+    private Mesh mesh;
+
     public ChunkRenderData(ChunkContext context, ChunkData data, Matrix4x4 localToWorld)
     {
-        Context = context;
-        Data = data;
-        LocalToWorld = localToWorld;
-        State = ChunkRenderState.GPU;
+        this.Context = context;
+        this.Data = data;
+        this.LocalToWorld = localToWorld;
+        this.State = ChunkRenderState.GPU;
+        this.isActive = true;
     }
 
     public ChunkRenderData(ChunkController controller, ChunkData data)
     {
         this.Controller = controller;
         this.Data = data;
+        this.Context = data.Context; // Pull context from data to ensure consistency
         this.LocalToWorld = controller.transform.localToWorldMatrix;
         this.State = ChunkRenderState.GameObject;
+        this.isActive = true;
     }
 
+    /// <summary>
+    /// Whether this chunk is currently active in the scene.
+    /// </summary>
     public bool IsActive
     {
-        get { return isActive; }
+        get => isActive;
         set
         {
             isActive = value;
-            if (this.Controller != null)
-                this.Controller.gameObject.SetActive(value);
+            if (Controller != null)
+                Controller.gameObject.SetActive(value);
         }
     }
-    private bool isActive = true;
 
-    public bool CanRenderGPU
-    {
-        get { return this.State == ChunkRenderState.GPU && this.isActive; }
-    }
+    /// <summary>
+    /// Whether this chunk is GPU-renderable and active.
+    /// </summary>
+    public bool CanRenderGPU => State == ChunkRenderState.GPU && IsActive;
 
-    public Vector3Int Coordinates => Context.Coordinates;
+    /// <summary>
+    /// World matrix for positioning this chunk in the scene.
+    /// </summary>
+    public Matrix4x4 LocalToWorld { get; set; }
 
-    public ChunkContext Context { get; set; }
-    public ChunkData Data { get; set; }
+    /// <summary>
+    /// The chunk’s logical context (coordinates, LOD, etc).
+    /// </summary>
+    public ChunkContext Context { get; private set; }
+
+    /// <summary>
+    /// The chunk’s generated terrain and mesh data.
+    /// </summary>
+    public ChunkData Data { get; private set; }
+
+    /// <summary>
+    /// Parent tree reference (used for merging, subdividing).
+    /// </summary>
     public ChunkOctTree Tree { get; set; }
+
+    /// <summary>
+    /// The mesh used for rendering. Auto-generates from data if needed.
+    /// </summary>
     public Mesh Mesh
     {
         get
         {
-            if (mesh == null)
+            if (mesh == null && Data != null)
+            {
                 mesh = Data.GenerateMesh();
 
-            // Free resources.
-            if (State == ChunkRenderState.GPU)
-                this.Data.MeshData = null;
+                // Free memory early if only used by GPU.
+                if (State == ChunkRenderState.GPU)
+                    Data.MeshData = null;
+            }
 
             return mesh;
         }
     }
-    private Mesh mesh;
-    public Matrix4x4 LocalToWorld {  get; set; }
-    public ChunkRenderState State { get; set; }
+
+    /// <summary>
+    /// Current rendering method (GameObject vs. GPU).
+    /// </summary>
+    public ChunkRenderState State { get; private set; }
+
+    /// <summary>
+    /// Reference to the controller (if rendered using GameObject).
+    /// </summary>
     public ChunkController? Controller { get; private set; }
 
+    /// <summary>
+    /// Shortcut for chunk coordinates.
+    /// </summary>
+    public Vector3Int Coordinates => Context.Coordinates;
+
+    /// <summary>
+    /// Shortcut for chunk LOD index.
+    /// </summary>
+    public int LOD => Context.LODIndex;
+
+    /// <summary>
+    /// Assign a controller to this chunk.
+    /// </summary>
     public void SetController(ChunkController controller)
     {
         this.Controller = controller;
+        this.State = ChunkRenderState.GameObject;
     }
-
-    public int LOD => Data?.Context.LODIndex ?? -1;
 }
