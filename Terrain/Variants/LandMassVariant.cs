@@ -3,6 +3,11 @@ using UnityEngine;
 
 public class LandMassVariant : VariantBase<LandMassChunkConfiguration>
 {
+    protected override void Awake()
+    {
+        base.Awake();
+    }
+
     protected override IChunkColorizer CreateColorizer() => new LandMassChunkColorizer(ChunkConfiguration);
     protected override IChunkGenerator CreateGenerator() => new LandMassChunkGenerator(this);
     protected override IChunkLayout CreateLayout() => new LandMassChunkLayout(ChunkConfiguration);

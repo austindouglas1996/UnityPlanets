@@ -40,6 +40,11 @@ public class ChunkRenderData
     }
     private bool isActive = true;
 
+    public bool CanRenderGPU
+    {
+        get { return this.State == ChunkRenderState.GPU && this.isActive; }
+    }
+
     public ChunkContext Context { get; set; }
     public ChunkData Data { get; set; }
     public ChunkOctTree Tree { get; set; }

@@ -10,6 +10,7 @@ public abstract class VariantBase<TConfig> : MonoBehaviour, IChunkServices where
     public TConfig ChunkConfiguration;
 
     protected ChunkManager chunkManager;
+    protected ChunkRenderer chunkRenderer;
 
     protected IChunkColorizer colorizer;
     protected IChunkGenerator generator;
@@ -19,6 +20,7 @@ public abstract class VariantBase<TConfig> : MonoBehaviour, IChunkServices where
     protected virtual void Awake()
     {
         chunkManager = GetComponent<ChunkManager>();
+        chunkRenderer = GetComponent<ChunkRenderer>();
 
         colorizer = CreateColorizer();
         generator = CreateGenerator();
@@ -26,6 +28,7 @@ public abstract class VariantBase<TConfig> : MonoBehaviour, IChunkServices where
         factory = CreateFactory();
 
         chunkManager.Initialize(Follower, this);
+        chunkRenderer.Initialize(chunkManager, this);
     }
 
     // Abstracts to be implemented by derived classes
