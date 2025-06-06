@@ -14,6 +14,8 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// </summary>
     private IChunkColorizer _colorizer;
 
+    private System.Random random = new System.Random();
+
     /// <summary>
     /// Creates a new marching cube generator with the given density options.
     /// </summary>
@@ -219,7 +221,6 @@ public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
         }
     }
 
-    private System.Random random = new System.Random();
     public bool ShouldGenerateChunk(ChunkContext context)
     {
         int lodIndex = context.LODIndex;

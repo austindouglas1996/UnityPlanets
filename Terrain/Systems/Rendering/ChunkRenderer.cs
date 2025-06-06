@@ -81,6 +81,8 @@ public class ChunkRenderer : MonoBehaviour
         this.UpdateLayout();
     }
 
+    [SerializeField] private bool forceActiveUpdate = false;
+
     /// <summary>
     /// Update the chunk layout adding or removing any invalid chunks.
     /// </summary>
@@ -89,11 +91,22 @@ public class ChunkRenderer : MonoBehaviour
         if (Time.frameCount % 5 != 0)
             return;
 
-        float deltaAngle = Quaternion.Angle(lastFollowerRotation, chunkManager.Follower.transform.rotation);
-        if (deltaAngle >= 60f)
+        if (forceActiveUpdate)
         {
+            Plane[] frustum = GeometryUtility.CalculateFrustumPlanes(Camera.main);
+
+            forceActiveUpdate = false;
             foreach (var root in rootTrees)
-                root.UpdateActiveStatus(this.chunkServices.Layout.FollowerWorldPosition, Camera.main);
+                root.UpdateActiveStatus(this.chunkServices.Layout.FollowerWorldPosition, frustum);
+        }
+
+        float deltaAngle = Quaternion.Angle(lastFollowerRotation, chunkManager.Follower.transform.rotation);
+        if (deltaAngle >= 15f)
+        {
+            Plane[] frustum = GeometryUtility.CalculateFrustumPlanes(Camera.main);
+
+            foreach (var root in rootTrees)
+                root.UpdateActiveStatus(this.chunkServices.Layout.FollowerWorldPosition, frustum);
 
             this.lastFollowerRotation = chunkManager.Follower.transform.rotation;
         }
@@ -101,7 +114,6 @@ public class ChunkRenderer : MonoBehaviour
         foreach (var root in rootTrees)
         {
             root.Update(this.chunkServices.Layout.FollowerWorldPosition, lodThresholds.ToArray());
-            root.UpdateActiveStatus(this.chunkServices.Layout.FollowerWorldPosition, Camera.main);
         }
     }
 
@@ -313,7 +325,7 @@ public class ChunkRenderer : MonoBehaviour
 
             if (chunkRenderData.LOD < 2)
             {
-                this.foliageGenerator.ApplyMap(chunkRenderData, chunkRenderData.Context.Transform, this.cancellationToken.Token);
+                //this.foliageGenerator.ApplyMap(chunkRenderData, chunkRenderData.Context.Transform, this.cancellationToken.Token);
             }
 
             chunks[chunkRenderData.Context] = chunkRenderData;

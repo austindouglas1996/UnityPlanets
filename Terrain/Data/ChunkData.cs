@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -24,6 +25,6 @@ public class ChunkData
 
     public Mesh GenerateMesh()
     {
-        return this.MeshData.GenerateMesh(this.DensityMap);
+        return MeshData.GenerateMesh(this.DensityMap);
     }
 }

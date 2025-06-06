@@ -121,40 +121,25 @@ public class ChunkOctTree
         this.Status = ChunkStatus.Finished;
     }
 
-    public void UpdateActiveStatus(Vector3 followerWorldPosition, Camera camera)
+    public void UpdateActiveStatus(Vector3 followerWorldPosition, Plane[] frustum)
     {
-        Bounds expandedBounds = new Bounds(this.Bounds.center, this.Bounds.size * 8f);
-        bool isPlayerNearby = this.Bounds.Contains(followerWorldPosition);
-
-        if (!isPlayerNearby)
+        // Always check children
+        if (Children != null)
         {
-            Vector3 toChunk = (this.Bounds.center - camera.transform.position).normalized;
-            float angle = Vector3.Angle(camera.transform.forward, toChunk);
-
-            if (angle > 160f)
+            foreach (var child in Children)
             {
-                if (this.RenderData != null)
-                    this.RenderData.IsActive = false;
-
-                return;
-            }
-            else
-            {
-                if (this.RenderData != null)
-                    this.RenderData.IsActive = true;
+                child?.UpdateActiveStatus(followerWorldPosition, frustum);
             }
         }
+
+        // Nothing to do if there's no renderable data here
+        if (this.RenderData == null)
+            return;
+
+        if (this.Bounds.Contains(followerWorldPosition) || GeometryUtility.TestPlanesAABB(frustum, this.Bounds))
+            this.RenderData.IsActive = true;
         else
-        {
-            if (this.RenderData != null)
-                this.RenderData.IsActive = true;
-        }
-
-        if (Children == null) return;
-        foreach (var child in this.Children)
-        {
-            child.UpdateActiveStatus(followerWorldPosition, camera);
-        }
+            this.RenderData.IsActive = false;
     }
 
     /// <summary>

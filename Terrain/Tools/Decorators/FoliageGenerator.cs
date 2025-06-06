@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SocialPlatforms;
+using UnityEngine.UIElements;
 
 public class FoliageGenerator
 {
@@ -28,7 +29,7 @@ public class FoliageGenerator
 
         LayerMask layerMask = LayerMask.GetMask("Default");
 
-        positions = GetRandomPositionsInTriangles(data.Data, matrix, 1 * data.LOD);
+        positions = GetRandomPositionsInTriangles(data.Data, matrix, 1);
 
         foreach (TrianglePOS pos in positions)
         {

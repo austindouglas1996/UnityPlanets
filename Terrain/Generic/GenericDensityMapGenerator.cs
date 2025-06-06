@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
@@ -15,7 +16,6 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
 
         int stepSize = 1 << lodIndex;
         int chunkSize = context.Services.Layout.GetChunkSize(lodIndex);
-        int limit = chunkSize + 1;
 
         ScalerField3 densityMap = CreateEmptyChunk(chunkSize, lodIndex);
 
@@ -27,44 +27,38 @@ public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
         int baseX = chunkCoordinates.x * chunkSize;
         int baseY = chunkCoordinates.y * chunkSize;
         int baseZ = chunkCoordinates.z * chunkSize;
+        int limit = chunkSize + 1;
 
-        try
+        float[] heightCache = new float[limit * limit];
+
+        // First pass: calculate height at each (x,z)
+        for (int x = 0; x < limit; x += stepSize)
         {
-            float[,] heightCache = new float[limit, limit];
+            int worldX = baseX + x;
+            for (int z = 0; z < limit; z += stepSize)
+            {
+                int worldZ = baseZ + z;
+                heightCache[x * limit + z] = GetHeightForWorldPosition(worldX, worldZ);
+            }
+        }
 
-            // First pass: calculate height at each (x,z)
+        // Second pass: fill the 3D density map
+        for (int y = 0; y < limit; y += stepSize)
+        {
+            int worldY = baseY + y;
             for (int x = 0; x < limit; x += stepSize)
             {
                 int worldX = baseX + x;
                 for (int z = 0; z < limit; z += stepSize)
                 {
                     int worldZ = baseZ + z;
-                    heightCache[x, z] = GetHeightForWorldPosition(worldX, worldZ);
+
+                    float height = heightCache[x * limit + z];
+                    float val = -(worldY - height); // same shape logic
+
+                    densityMap.SetWorld(x, y, z, val);
                 }
             }
-
-            // Second pass: fill the 3D density map
-            for (int x = 0; x < limit; x += stepSize)
-            {
-                int worldX = baseX + x;
-                for (int y = 0; y < limit; y += stepSize)
-                {
-                    int worldY = baseY + y;
-                    for (int z = 0; z < limit; z += stepSize)
-                    {
-                        int worldZ = baseZ + z;
-
-                        float height = heightCache[x, z];
-                        float val = -(worldY - height); // same shape logic
-
-                        densityMap.SetWorld(x, y, z, val);
-                    }
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogError(e);
         }
 
         return densityMap;
