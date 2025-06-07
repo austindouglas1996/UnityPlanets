@@ -325,7 +325,8 @@ public class ChunkRenderer : MonoBehaviour
 
             if (chunkRenderData.LOD < 2)
             {
-                //this.foliageGenerator.ApplyMap(chunkRenderData, chunkRenderData.Context.Transform, this.cancellationToken.Token);
+                this.foliageGenerator.ApplyMap(chunkRenderData, chunkRenderData.Context.Transform, this.cancellationToken.Token);
+
             }
 
             chunks[chunkRenderData.Context] = chunkRenderData;

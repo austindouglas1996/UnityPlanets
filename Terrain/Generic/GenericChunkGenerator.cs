@@ -19,7 +19,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
         get { return configuration; }
     }
 
-    protected abstract BaseMarchingCubeGenerator Generator { get; }
+    public abstract BaseMarchingCubeGenerator Generator { get; }
 
     /// <summary>
     /// Generates a new chunk from coordinates using the provided configuration.

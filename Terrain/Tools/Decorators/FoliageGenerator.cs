@@ -1,9 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.SocialPlatforms;
-using UnityEngine.UIElements;
 
 public class FoliageGenerator
 {
@@ -42,6 +39,17 @@ public class FoliageGenerator
         ProcessGrassPositions(data, positions, data.LOD);
     }
 
+    private Vector3 SampleTerrainHeight(Vector3 pos, LayerMask layerMask)
+    {
+        if (Physics.Raycast(pos + Vector3.up * 5f, Vector3.down, out RaycastHit hit, 10f, layerMask))
+        {
+            return new Vector3(pos.x, hit.point.y, pos.z);
+        }
+
+        return pos;
+    }
+
+
     private void ProcessGrassPositions(ChunkRenderData data, List<TrianglePOS> pos, int chunkLod)
     {
         try
@@ -49,6 +57,7 @@ public class FoliageGenerator
             foreach (TrianglePOS tria in pos)
             {
                 float rockChance = 0.001f;
+                float flowerChance = 0.02f;
                 float treeChance = 0.002f;
 
                 float averageHeight = tria.Position.y;
@@ -65,7 +74,7 @@ public class FoliageGenerator
                 var grass = GenericStore.Instance.GetOneRandom("Grass");
                 foliageDrawer.Add(data, grass, tria.Position, rotation, scale, tria.Color);
 
-                if (Random.value < rockChance) // Flower spawn, only if rock didn't spawn
+                if (Random.value < flowerChance) // Flower spawn, only if rock didn't spawn
                 {
                     Vector3 flowerScale = Vector3.one * Random.Range(1.3f, 2.5f);
                     GameObject flower = GenericStore.Instance.GetOneRandom("Flowers");

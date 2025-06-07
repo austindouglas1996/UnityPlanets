@@ -68,7 +68,7 @@ public class PlanetChunkGenerator : GenericChunkGenerator
         this.colorizer = colorizer;
     }
 
-    protected override BaseMarchingCubeGenerator Generator
+    public override BaseMarchingCubeGenerator Generator
     {
         get
         {

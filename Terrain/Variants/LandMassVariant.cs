@@ -44,7 +44,7 @@ public class LandMassChunkGenerator : GenericChunkGenerator
         this.colorizer = services.Colorizer;
     }
 
-    protected override BaseMarchingCubeGenerator Generator
+    public override BaseMarchingCubeGenerator Generator
     {
         get
         {
