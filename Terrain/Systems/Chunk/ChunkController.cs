@@ -23,7 +23,7 @@ public class ChunkController : MonoBehaviour
         // Set the shader and material for this controller.
         var meshRenderer = GetComponent<MeshRenderer>();
 
-        Material mat = new Material(Shader.Find("Custom/URP_CustomLit"));
+        Material mat = new Material(Shader.Find("Shader Graphs/VertexColor"));
         mat.SetFloat("_Smoothness", 0f);
 
         meshRenderer.sharedMaterial = mat;

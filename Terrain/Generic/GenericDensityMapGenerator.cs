@@ -5,7 +5,7 @@ using UnityEngine;
 
 public abstract class GenericDensityMapGenerator : BaseMarchingCubeGenerator
 {
-    protected GenericDensityMapGenerator(IChunkColorizer color, DensityMapOptions options) : base(color, options)
+    protected GenericDensityMapGenerator(IChunkConfiguration configuration, DensityMapOptions options) : base(configuration, options)
     {
     }
 }

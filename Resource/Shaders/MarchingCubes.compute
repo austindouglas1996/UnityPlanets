@@ -13,6 +13,8 @@ struct Triangle
 {
     float3 a, b, c;
     float4 colorA, colorB, colorC;
+    float3 normal;
+    float2 uvA, uvB, uvC;
 };
 
 struct BiomeData
@@ -32,31 +34,57 @@ int _BiomeCount;
 int _SizeX;
 int _SizeY;
 int _SizeZ;
+float _BaseX;
+float _BaseY;
+float _BaseZ;
 float _IsoLevel;
 int _StepSize;
 
 float4 GetColorForHeight(float height)
 {
-    BiomeData lower = BiomeColors[0];
-    BiomeData upper = BiomeColors[1];
+    BiomeData current = BiomeColors[_BiomeCount - 1];
+    BiomeData next = current;
+    bool hasUpper = false;
 
-    [unroll]
     for (int i = 0; i < _BiomeCount - 1; i++)
     {
         if (height >= BiomeColors[i].minSurface && height < BiomeColors[i + 1].minSurface)
         {
-            lower = BiomeColors[i];
-            upper = BiomeColors[i + 1];
+            current = BiomeColors[i];
+
+            if (i + 1 < _BiomeCount)
+            {
+                next = BiomeColors[i + 1];
+                hasUpper = true;
+            }
             break;
         }
     }
 
-    float blendFactor = saturate((height - lower.minSurface) / max(upper.minSurface - lower.minSurface, 0.0001));
-    float biomeBlend = saturate((height - lower.maxSurface) / max(upper.minSurface - lower.maxSurface, 0.0001));
-    float4 lowerColor = lerp(lower.gradientStart, lower.gradientEnd, blendFactor);
-    float4 upperColor = lerp(upper.gradientStart, upper.gradientEnd, blendFactor);
-    return lerp(lowerColor, upperColor, biomeBlend);
+    // Normalize height within current biome gradient
+    float tCurrent = saturate((height - current.minSurface) / max(current.maxSurface - current.minSurface, 0.0001));
+    float4 baseColor = lerp(current.gradientStart, current.gradientEnd, tCurrent);
+
+    if (hasUpper)
+    {
+        // Normalize height within next biome gradient
+        float tNext = saturate((height - next.minSurface) / max(next.maxSurface - next.minSurface, 0.0001));
+        float4 nextColor = lerp(next.gradientStart, next.gradientEnd, tNext);
+
+        // Blend between biomes across boundary
+        float blendAmount = saturate((height - current.maxSurface) / max(next.minSurface - current.maxSurface, 0.0001));
+        return lerp(baseColor, nextColor, blendAmount);
+    }
+
+    return baseColor;
 }
+
+float2 GetUV(float3 worldPos)
+{
+    // Planar projection: good for terrain-style meshes
+    return worldPos.xz * 0.05; // Scale as needed
+}
+
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void March(uint3 id : SV_DispatchThreadID)
@@ -109,14 +137,25 @@ void March(uint3 id : SV_DispatchThreadID)
 
         float3 v2 = lerp(cornerPos[edge2.x], cornerPos[edge2.y],
                          (corner[edge2.x] - _IsoLevel) / (corner[edge2.x] - corner[edge2.y] + 0.0001));
+        
+        float3 worldA = v0 + float3(_BaseX, _BaseY, _BaseZ);
+        float3 worldB = v1 + float3(_BaseX, _BaseY, _BaseZ);
+        float3 worldC = v2 + float3(_BaseX, _BaseY, _BaseZ);
 
         Triangle tri;
         tri.a = v0;
         tri.b = v1;
         tri.c = v2;
-        tri.colorA = GetColorForHeight(v0.y);
-        tri.colorB = GetColorForHeight(v1.y);
-        tri.colorC = GetColorForHeight(v2.y);
+        
+        tri.colorA = GetColorForHeight(worldA.y);
+        tri.colorB = GetColorForHeight(worldB.y);
+        tri.colorC = GetColorForHeight(worldC.y);
+        
+        tri.normal = normalize(cross(v1 - v0, v2 - v0));
+        
+        tri.uvA = GetUV(worldA);
+        tri.uvB = GetUV(worldB);
+        tri.uvC = GetUV(worldC);
 
         TriangleBuffer.Append(tri);
     }

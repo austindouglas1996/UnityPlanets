@@ -37,11 +37,11 @@ public class LandMassChunkControllerFactory : GenericChunkControllerFactory
 
 public class LandMassChunkGenerator : GenericChunkGenerator
 {
-    private IChunkColorizer colorizer;
+    private IChunkConfiguration configuration;
     public LandMassChunkGenerator(IChunkServices services)
         : base(services.Configuration)
     {
-        this.colorizer = services.Colorizer;
+        this.configuration = services.Configuration;
     }
 
     public override BaseMarchingCubeGenerator Generator
@@ -49,7 +49,7 @@ public class LandMassChunkGenerator : GenericChunkGenerator
         get
         {
             if (this.generator == null)
-                this.generator = new HeightDensityMapGenerator(colorizer, Configuration.DensityOptions);
+                this.generator = new HeightDensityMapGenerator(configuration, Configuration.DensityOptions);
             return this.generator;
         }
     }

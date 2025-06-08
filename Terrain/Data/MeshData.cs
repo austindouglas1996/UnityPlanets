@@ -10,17 +10,18 @@ public class MeshData
     /// <summary>
     /// Create a new MeshData container with verts, tris, and UVs.
     /// </summary>
-    public MeshData(List<Vector3> verts, List<int> tris, List<Vector2> uvs)
+    public MeshData(List<Vector3> verts, List<int> tris, List<Vector3> normals, List<Vector2> uvs)
     {
         Vertices = verts;
         Triangles = tris;
+        Normals = normals;
         UVs = uvs;
     }
 
     /// <summary>
     /// Used to return an empty instance. May be redundant if not cached.
     /// </summary>
-    public MeshData Empty => new MeshData(null, null, null);
+    public MeshData Empty => new MeshData(null, null, null, null);
 
     // Final mesh components to be converted into a Unity mesh
     public List<Vector3> Vertices = new();
