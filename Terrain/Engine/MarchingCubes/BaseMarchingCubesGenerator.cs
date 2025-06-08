@@ -34,7 +34,7 @@ struct BiomeData
 /// Base class for implementing marching cube terrain generation.
 /// Handles mesh generation, density map modification, and interpolation.
 /// </summary>
-public abstract class BaseMarchingCubeGenerator : IDensityMapGenerator
+public class BaseMarchingCubeGenerator : IDensityMapGenerator
 {
     private IChunkConfiguration configuration;
     private System.Random random = new System.Random();

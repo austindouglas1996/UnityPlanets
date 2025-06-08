@@ -41,11 +41,11 @@ public class LandMassChunkGenerator : GenericChunkGenerator
         get
         {
             if (this.generator == null)
-                this.generator = new HeightDensityMapGenerator(configuration, Configuration.DensityOptions);
+                this.generator = new BaseMarchingCubeGenerator(configuration, Configuration.DensityOptions);
             return this.generator;
         }
     }
-    private HeightDensityMapGenerator generator;
+    private BaseMarchingCubeGenerator generator;
 }
 
 public class LandMassChunkLayout : GenericChunkLayout
