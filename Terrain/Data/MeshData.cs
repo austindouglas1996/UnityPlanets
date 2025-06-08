@@ -45,7 +45,7 @@ public class MeshData
     /// <summary>
     /// Builds the final Unity mesh from this data set.
     /// </summary>
-    public Mesh GenerateMesh(ScalerField3 densityMap)
+    public Mesh GenerateMesh()
     {
         Mesh mesh = new Mesh();
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;

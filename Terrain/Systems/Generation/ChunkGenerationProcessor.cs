@@ -156,7 +156,7 @@ public class ChunkGenerationProcessor
             {
                 ChunkData result = job.ModificationJob == null
                     ? WorkerNewChunk(job)
-                    : WorkerModifyChunk(job);
+                    : null; // Modify chunk.
 
                 if (result == null)
                     throw new OperationCanceledException();
@@ -184,19 +184,6 @@ public class ChunkGenerationProcessor
         //chunkServices.Colorizer.UpdateChunkColors(result, job.Context.Transform);
 
         return result;
-    }
-
-    /// <summary>
-    /// Applies terrain brush to an existing chunk and updates its mesh.
-    /// </summary>
-    private ChunkData WorkerModifyChunk(ChunkGenerationJob job)
-    {
-        var mod = job.ModificationJob;
-
-        chunkServices.Generator.ApplyTerrainBrush(job.Context, mod.ExistingData, mod.Brush, mod.IsAdding, job.Token);
-        chunkServices.Generator.RegenerateMeshData(mod.ExistingData, job.Token);
-
-        return mod.ExistingData;
     }
 
     /// <summary>

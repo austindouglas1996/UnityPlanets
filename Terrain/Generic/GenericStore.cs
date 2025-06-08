@@ -5,8 +5,6 @@ using UnityEngine;
 
 public class GenericStore : MonoBehaviour
 {
-    private static GenericStore _Instance;
-
     [SerializeField]
     private List<GenericStoreEntry> entries = new List<GenericStoreEntry>();
 
@@ -17,6 +15,7 @@ public class GenericStore : MonoBehaviour
     }
 
     public static GenericStore Instance { get { return _Instance; } }
+    private static GenericStore _Instance;
 
     public List<GameObject> Get(string name)
     {

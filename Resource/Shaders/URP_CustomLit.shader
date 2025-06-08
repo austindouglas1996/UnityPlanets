@@ -56,6 +56,7 @@
             };
 
             float4 _BaseColor;
+            float _UseVertexColor;
 
             Varyings vert(Attributes IN)
             {
@@ -79,7 +80,7 @@
                 inputData.vertexLighting = float3(0, 0, 0);
                 inputData.bakedGI = SampleSH(inputData.normalWS); // Important for shadows!
 
-                float3 finalColor = IN.color.rgb;
+                float3 finalColor = lerp(_BaseColor, IN.color.rgb, _UseVertexColor);
 
                 // Setup surface data
                 SurfaceData surfaceData = (SurfaceData)0;
