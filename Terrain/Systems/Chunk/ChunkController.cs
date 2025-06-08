@@ -121,8 +121,12 @@ public class ChunkController : MonoBehaviour
 
             var Coordinates = this.ChunkContext.Coordinates;
             this.name = this.ChunkContext.ToString();
-            this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
-            this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
+
+            if (renderData.Mesh != null)
+            {
+                this.GetComponent<MeshFilter>().mesh = renderData.Mesh;
+                this.GetComponent<MeshCollider>().sharedMesh = renderData.LOD == 0 ? renderData.Mesh : null;
+            }
         }
         catch (System.Exception e)
         {

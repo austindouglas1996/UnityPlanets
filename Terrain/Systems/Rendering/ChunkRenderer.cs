@@ -253,6 +253,7 @@ public class ChunkRenderer : MonoBehaviour
             {
                 if (t.Status != TaskStatus.RanToCompletion
                 || t.Result == null
+                || t.Result.MeshData == null
                 || t.Result.MeshData.IsEmpty
                 || !t.Result.MeshData.IsRenderable)
                 {

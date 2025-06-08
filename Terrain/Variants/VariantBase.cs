@@ -43,4 +43,5 @@ public abstract class VariantBase<TConfig> : MonoBehaviour, IChunkServices where
     IChunkGenerator IChunkServices.Generator => generator;
     IChunkControllerFactory IChunkServices.ControllerFactory => factory;
     IChunkColorizer IChunkServices.Colorizer => colorizer;
+    ChunkManager IChunkServices.ChunkManager => chunkManager;
 }

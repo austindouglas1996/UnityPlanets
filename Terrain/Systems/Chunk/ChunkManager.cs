@@ -19,6 +19,9 @@ public class ChunkManager : MonoBehaviour
     /// </summary>
     [HideInInspector] public Transform Follower;
 
+    [SerializeField] public ComputeShader MarchingCubes;
+    [SerializeField] public ComputeShader GenerateDensity;
+
     /// <summary>
     /// Services used to help with chunk generation and management.
     /// </summary>

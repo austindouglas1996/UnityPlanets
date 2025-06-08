@@ -1,0 +1,123 @@
+// === MarchingCubes.compute ===
+// This compute shader will generate triangles using Marching Cubes.
+
+#pragma kernel March
+
+#include "Includes/TriangleTable.hlsl"
+
+#define THREADS_X 4
+#define THREADS_Y 4
+#define THREADS_Z 4
+
+struct Triangle
+{
+    float3 a, b, c;
+    float4 colorA, colorB, colorC;
+};
+
+struct BiomeData
+{
+    float minSurface;
+    float maxSurface;
+    float4 gradientStart;
+    float4 gradientEnd;
+};
+
+StructuredBuffer<float> DensityMap;
+AppendStructuredBuffer<Triangle> TriangleBuffer;
+
+StructuredBuffer<BiomeData> BiomeColors;
+int _BiomeCount;
+
+int _SizeX;
+int _SizeY;
+int _SizeZ;
+float _IsoLevel;
+int _StepSize;
+
+float4 GetColorForHeight(float height)
+{
+    BiomeData lower = BiomeColors[0];
+    BiomeData upper = BiomeColors[1];
+
+    [unroll]
+    for (int i = 0; i < _BiomeCount - 1; i++)
+    {
+        if (height >= BiomeColors[i].minSurface && height < BiomeColors[i + 1].minSurface)
+        {
+            lower = BiomeColors[i];
+            upper = BiomeColors[i + 1];
+            break;
+        }
+    }
+
+    float blendFactor = saturate((height - lower.minSurface) / max(upper.minSurface - lower.minSurface, 0.0001));
+    float biomeBlend = saturate((height - lower.maxSurface) / max(upper.minSurface - lower.maxSurface, 0.0001));
+    float4 lowerColor = lerp(lower.gradientStart, lower.gradientEnd, blendFactor);
+    float4 upperColor = lerp(upper.gradientStart, upper.gradientEnd, blendFactor);
+    return lerp(lowerColor, upperColor, biomeBlend);
+}
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void March(uint3 id : SV_DispatchThreadID)
+{
+    uint x = id.x;
+    uint y = id.y;
+    uint z = id.z;
+
+    if (x >= _SizeX - 1 || y >= _SizeY - 1 || z >= _SizeZ - 1)
+        return;
+
+    int cubeIndex = 0;
+    float corner[8];
+    float3 cornerPos[8];
+
+    for (int i = 0; i < 8; i++)
+    {
+        int3 offset = CornerOffsets[i];
+        int3 pos = int3(x + offset.x, y + offset.y, z + offset.z);
+
+        if (any(pos < 0) || pos.x >= _SizeX || pos.y >= _SizeY || pos.z >= _SizeZ)
+            return;
+
+        int index = pos.x + pos.y * _SizeX + pos.z * _SizeX * _SizeY;
+        corner[i] = DensityMap[index];
+        cornerPos[i] = float3(pos) * _StepSize;
+
+        if (corner[i] > _IsoLevel)
+            cubeIndex |= (1 << i);
+    }
+
+    if (cubeIndex == 0 || cubeIndex == 255)
+        return;
+
+    for (int i = 0; TriangleTable[cubeIndex][i] != -1; i += 3)
+    {
+        int a = TriangleTable[cubeIndex][i + 0];
+        int b = TriangleTable[cubeIndex][i + 1];
+        int c = TriangleTable[cubeIndex][i + 2];
+
+        int2 edge0 = EdgeConnections[a];
+        int2 edge1 = EdgeConnections[b];
+        int2 edge2 = EdgeConnections[c];
+
+        float3 v0 = lerp(cornerPos[edge0.x], cornerPos[edge0.y],
+                         (corner[edge0.x] - _IsoLevel) / (corner[edge0.x] - corner[edge0.y] + 0.0001));
+
+        float3 v1 = lerp(cornerPos[edge1.x], cornerPos[edge1.y],
+                         (corner[edge1.x] - _IsoLevel) / (corner[edge1.x] - corner[edge1.y] + 0.0001));
+
+        float3 v2 = lerp(cornerPos[edge2.x], cornerPos[edge2.y],
+                         (corner[edge2.x] - _IsoLevel) / (corner[edge2.x] - corner[edge2.y] + 0.0001));
+
+        Triangle tri;
+        tri.a = v0;
+        tri.b = v1;
+        tri.c = v2;
+        tri.colorA = GetColorForHeight(v0.y);
+        tri.colorB = GetColorForHeight(v1.y);
+        tri.colorC = GetColorForHeight(v2.y);
+
+        TriangleBuffer.Append(tri);
+    }
+}

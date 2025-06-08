@@ -1,0 +1,125 @@
+﻿#pragma kernel Generate
+
+#include "Includes/PerlinNoise.hlsl"
+#include "Includes/TriangleTable.hlsl"
+
+#define THREADS_X 8
+#define THREADS_Y 8
+#define THREADS_Z 8
+
+RWStructuredBuffer<uint> VisibilityFlags;
+RWStructuredBuffer<float> DensityMap;
+
+int _SizeX;
+int _SizeY;
+int _SizeZ;
+
+int _StepSize;
+float _Seed;
+float _BaseX;
+float _BaseY;
+float _BaseZ;
+int _ChunkIndex;
+
+float _ISOLevel;
+float _ContinentFrequency;
+float _ContinentAmplitude;
+float _DetailFrequency;
+float _DetailAmplitude;
+float _FlatnessFrequency;
+float _FlatnessStrength;
+float _MountainFrequency;
+float _MountainAmplitude;
+float _MountainSharpness;
+float _TotalHeightScale;
+
+float GetDensityValue(float worldX, float worldY, float worldZ)
+{
+    float2 posXZ = float2(worldX, worldZ);
+
+    float2 continentPos = posXZ * _ContinentFrequency;
+    float continent = fbm2D(continentPos, 6);
+    continent = smoothstep(0.0, 1.0, (continent + 1.0) * 0.5);
+
+    float2 detailPos = (posXZ + 1234.0) * _DetailFrequency;
+    float detail = fbm2D(detailPos, 6);
+
+    float2 flatnessPos = (posXZ + 5555.0) * _FlatnessFrequency;
+    float flatness = fbm2D(flatnessPos, 6);
+    flatness = saturate((flatness + 1.0) * 0.5);
+    flatness = pow(saturate(1.0 - flatness), _FlatnessStrength);
+
+    float2 mountainMaskPos = (posXZ + 9999.0) * 0.001;
+    float mountainMask = fbm2D(mountainMaskPos, 6);
+    mountainMask = saturate((mountainMask + 1.0) * 0.5);
+    float mountainWeight = smoothstep(0.85, 1.0, mountainMask);
+
+    float2 mountainNoisePos = (posXZ + 999.0) * _MountainFrequency;
+    float mountainNoise = fbm2D(mountainNoisePos, 6);
+    mountainNoise = pow(max(mountainNoise, 0.0), _MountainSharpness) * mountainWeight;
+
+    float rawHeight =
+        continent * _ContinentAmplitude +
+        detail * _DetailAmplitude * flatness +
+        mountainNoise * _MountainAmplitude;
+
+    float heightScale = max(_ContinentAmplitude + _MountainAmplitude, 0.0001);
+    float normalized = rawHeight / heightScale;
+    float finalHeight = normalized * _TotalHeightScale;
+
+    float value = -(worldY - finalHeight);
+    return (isnan(value) || isinf(value)) ? 0.0 : value;
+}
+
+bool ChunkHasSurface()
+{
+    int chunkSize = _SizeX;
+    int step = _StepSize;
+
+    for (int x = 0; x < chunkSize; x += step)
+    {
+        for (int y = 0; y < chunkSize; y += step)
+        {
+            for (int z = 0; z < chunkSize; z += step)
+            {
+                bool hasAbove = false;
+                bool hasBelow = false;
+
+                for (int i = 0; i < 8; i++)
+                {
+                    float3 offset = CornerOffsets[i];
+                    float sx = _BaseX + (x + offset.x * step);
+                    float sy = _BaseY + (y + offset.y * step);
+                    float sz = _BaseZ + (z + offset.z * step);
+
+                    float v = GetDensityValue(sx, sy, sz);
+                    if (v >= _ISOLevel)
+                        hasAbove = true;
+                    else
+                        hasBelow = true;
+
+                    if (hasAbove && hasBelow)
+                        return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void Generate(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _SizeX || id.y >= _SizeY || id.z >= _SizeZ)
+        return;
+
+    int index = id.x + id.y * _SizeX + id.z * _SizeX * _SizeY;
+
+    float worldX = (_BaseX + id.x * _StepSize) + _Seed;
+    float worldY = (_BaseY + id.y * _StepSize);
+    float worldZ = (_BaseZ + id.z * _StepSize) + _Seed;
+
+    DensityMap[index] = GetDensityValue(worldX, worldY, worldZ);
+}
