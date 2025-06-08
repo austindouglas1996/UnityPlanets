@@ -143,7 +143,7 @@ public abstract class GenericChunkLayout : IChunkLayout
         int chunkSize = GetChunkSize(lodIndex);
         return new Vector3(
             coordinates.x * chunkSize,
-            (coordinates.y * chunkSize) - LodSinks[lodIndex],
+            (coordinates.y * chunkSize),
             coordinates.z * chunkSize);
     }
 

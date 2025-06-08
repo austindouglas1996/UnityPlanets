@@ -23,9 +23,9 @@ public class SphereDensityMapGenerator : HeightDensityMapGenerator
         return (bumpyRadius - dist) * 0.05f;
     }
 
-    public override MeshData GenerateMeshData(ScalerField3 densityMap, Vector3 chunkOffset, int lodIndex = 6)
+    public override MeshData GenerateMeshData(ChunkContext context)
     {
-        MeshData initialData = base.GenerateMeshData(densityMap, chunkOffset, lodIndex);
+        MeshData initialData = base.GenerateMeshData(context);
         Vector2[] uvs = new Vector2[initialData.Vertices.Count];
 
         for (int i = 0; i < initialData.Vertices.Count; i++)

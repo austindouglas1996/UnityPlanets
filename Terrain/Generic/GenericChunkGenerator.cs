@@ -30,19 +30,8 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <returns>The generated chunk data.</returns>
     public virtual ChunkData GenerateNewChunk(ChunkContext context, CancellationToken token = default)
     {
-        var map = Generator.Generate(context);
-
-        foreach (var modifier in configuration.Modifiers)
-        {
-            //if (modifier is IModifyDensity densityMod)
-                //densityMod.ModifyDensity(ref map.DensityMap, coordinates, config.MapOptions);
-
-            //if (modifier is IModifyFoliageMask foliageMod)
-                //foliageMod.ModifyFoliageMask(ref map.FoliageMask, coordinates);
-        }
-
-        MeshData data = Generator.GenerateMeshData(map, context.WorldPosition, context.LODIndex);
-        return new ChunkData(context, map, data);
+        MeshData data = Generator.GenerateMeshData(context);
+        return new ChunkData(context, null, data);
     }
 
     /// <summary>
@@ -67,6 +56,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="token">Optional cancellation token.</param>
     public virtual void RegenerateMeshData(ChunkData data, CancellationToken token = default)
     {
-        data.MeshData = Generator.GenerateMeshData(data.DensityMap, Vector3.zero, data.Context.LODIndex);
+        throw new System.ArgumentException("This was for modifying or something? We never rebuilt it, see this data in commit #164");
+        data.MeshData = Generator.GenerateMeshData(data.Context);
     }
 }

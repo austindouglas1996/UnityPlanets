@@ -44,8 +44,10 @@ public class ChunkGenerationProcessor
 
         for (int i = 0; i < 8; i++)
         {
-            workerTasks.Add(Task.Run(() => WorkerLoop(cancellationToken)));
+            //workerTasks.Add(Task.Run(() => WorkerLoop(cancellationToken)));
         }
+
+        WorkerLoop(cancellationToken);
     }
 
     /// <summary>
@@ -73,6 +75,11 @@ public class ChunkGenerationProcessor
             lock (queueLock)
             {
                 generationQueue.Enqueue(newJob, priority);
+            }
+
+            if (generationQueue.Count == 1)
+            {
+                this.WorkerLoop(cancellationToken);
             }
 
             jobAvailableSignal.Release();
@@ -126,12 +133,10 @@ public class ChunkGenerationProcessor
     /// <summary>
     /// Core worker loop—waits for jobs and executes them.
     /// </summary>
-    private async Task WorkerLoop(CancellationToken token)
+    private void WorkerLoop(CancellationToken token)
     {
-        while (!token.IsCancellationRequested)
+        while (!token.IsCancellationRequested && generationQueue.Count != 0)
         {
-            await jobAvailableSignal.WaitAsync(token);
-
             ChunkGenerationJob? job = null;
 
             lock (queueLock)
@@ -153,6 +158,9 @@ public class ChunkGenerationProcessor
                     ? WorkerNewChunk(job)
                     : WorkerModifyChunk(job);
 
+                if (result == null)
+                    throw new OperationCanceledException();
+
                 job.Completion.TrySetResult(result);
             }
             catch (OperationCanceledException)
@@ -173,7 +181,7 @@ public class ChunkGenerationProcessor
     private ChunkData WorkerNewChunk(ChunkGenerationJob job)
     {
         ChunkData result = chunkServices.Generator.GenerateNewChunk(job.Context, job.Token);
-        chunkServices.Colorizer.UpdateChunkColors(result, job.Context.Transform);
+        //chunkServices.Colorizer.UpdateChunkColors(result, job.Context.Transform);
 
         return result;
     }

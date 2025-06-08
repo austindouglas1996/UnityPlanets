@@ -39,17 +39,6 @@ public class FoliageGenerator
         ProcessGrassPositions(data, positions, data.LOD);
     }
 
-    private Vector3 SampleTerrainHeight(Vector3 pos, LayerMask layerMask)
-    {
-        if (Physics.Raycast(pos + Vector3.up * 5f, Vector3.down, out RaycastHit hit, 10f, layerMask))
-        {
-            return new Vector3(pos.x, hit.point.y, pos.z);
-        }
-
-        return pos;
-    }
-
-
     private void ProcessGrassPositions(ChunkRenderData data, List<TrianglePOS> pos, int chunkLod)
     {
         try
@@ -104,9 +93,9 @@ public class FoliageGenerator
             if (multiply <= 0)
                 multiply = 1;
 
-            int sizeX = data.DensityMap.SizeX;
-            int sizeY = data.DensityMap.SizeY;
-            int sizeZ = data.DensityMap.SizeZ;
+            int sizeX = (16 << data.Context.LODIndex) + 1;
+            int sizeY = (16 << data.Context.LODIndex) + 1;
+            int sizeZ = (16 << data.Context.LODIndex) + 1;
 
             Vector3 chunkOrigin = matrix.MultiplyPoint3x4(Vector3.zero);
 

@@ -31,14 +31,18 @@ public abstract class GenericChunkColorizer : IChunkColorizer
             }
         }
 
-        float blendFactor = Mathf.InverseLerp(lowerBiome.MaxSurface, upperBiome.MinSurface, vertice.y);
+        // Normalized blend factor between the two biomes
+        float blendFactor = Mathf.InverseLerp(lowerBiome.MinSurface, upperBiome.MinSurface, vertice.y);
 
-        Color32 lowerColor = lowerBiome.SurfaceColorRange.Evaluate(0f);
-        Color32 upperColor = upperBiome.SurfaceColorRange.Evaluate(1f);
+        // Evaluate each biome’s gradient at height-relative blend position
+        Color lowerColor = lowerBiome.SurfaceColorRange.Evaluate(blendFactor);
+        Color upperColor = upperBiome.SurfaceColorRange.Evaluate(blendFactor);
 
-        // Blend between biome colors based on the height blend factor
-        return Color32.Lerp(lowerColor, upperColor, blendFactor);
+        // Now blend the evaluated colors based on height difference (optional if you want cross-biome smoothing)
+        float biomeBlend = Mathf.InverseLerp(lowerBiome.MaxSurface, upperBiome.MinSurface, vertice.y);
+        return Color32.Lerp(lowerColor, upperColor, biomeBlend);
     }
+
 
     private void SortBiomes()
     {

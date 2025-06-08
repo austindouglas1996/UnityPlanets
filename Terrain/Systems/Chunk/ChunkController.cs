@@ -23,7 +23,7 @@ public class ChunkController : MonoBehaviour
         // Set the shader and material for this controller.
         var meshRenderer = GetComponent<MeshRenderer>();
 
-        Material mat = new Material(Shader.Find("Shader Graphs/VertexColor"));
+        Material mat = new Material(Shader.Find("Custom/URP_CustomLit"));
         mat.SetFloat("_Smoothness", 0f);
 
         meshRenderer.sharedMaterial = mat;
@@ -50,8 +50,11 @@ public class ChunkController : MonoBehaviour
     {
         try
         {
-            // Foliage
-            MeshBatchDrawer.Instance.Remove(this.ChunkContext.Coordinates);
+            if (this.ChunkContext != null)
+            {            
+                // Foliage
+                MeshBatchDrawer.Instance.Remove(this.ChunkContext.Coordinates);
+            }
 
             // Properties.
             this.ChunkContext = default;

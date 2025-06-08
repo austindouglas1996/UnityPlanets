@@ -252,6 +252,7 @@ public class ChunkRenderer : MonoBehaviour
             try
             {
                 if (t.Status != TaskStatus.RanToCompletion
+                || t.Result == null
                 || t.Result.MeshData.IsEmpty
                 || !t.Result.MeshData.IsRenderable)
                 {
@@ -325,7 +326,7 @@ public class ChunkRenderer : MonoBehaviour
 
             if (chunkRenderData.LOD < 2)
             {
-                this.foliageGenerator.ApplyMap(chunkRenderData, chunkRenderData.Context.Transform, this.cancellationToken.Token);
+                //this.foliageGenerator.ApplyMap(chunkRenderData, chunkRenderData.Context.Transform, this.cancellationToken.Token);
 
             }
 
