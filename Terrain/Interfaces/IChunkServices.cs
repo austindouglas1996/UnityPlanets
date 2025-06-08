@@ -7,6 +7,5 @@ public interface IChunkServices
     public IChunkLayout Layout { get; }
     public IChunkGenerator Generator { get; }
     public IChunkControllerFactory ControllerFactory { get; }
-    public IChunkColorizer Colorizer { get; }
     public ChunkManager ChunkManager { get; }
 }
