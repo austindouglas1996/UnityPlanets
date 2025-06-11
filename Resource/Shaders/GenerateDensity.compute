@@ -3,23 +3,25 @@
 #include "Includes/PerlinNoise.hlsl"
 #include "Includes/TriangleTable.hlsl"
 
-#define THREADS_X 8
-#define THREADS_Y 8
-#define THREADS_Z 8
+struct ChunkInput
+{
+    int coordX;
+    int coordY;
+    int coordZ;
+    float baseX;
+    float baseY;
+    float baseZ;
+    int stepSize;
+};
 
-RWStructuredBuffer<uint> VisibilityFlags;
+StructuredBuffer<ChunkInput> ChunkInputs;
 RWStructuredBuffer<float> DensityMap;
 
 int _SizeX;
 int _SizeY;
 int _SizeZ;
 
-int _StepSize;
 float _Seed;
-float _BaseX;
-float _BaseY;
-float _BaseZ;
-int _ChunkIndex;
 
 float _ISOLevel;
 float _ContinentFrequency;
@@ -71,55 +73,27 @@ float GetDensityValue(float worldX, float worldY, float worldZ)
     return (isnan(value) || isinf(value)) ? 0.0 : value;
 }
 
-bool ChunkHasSurface()
-{
-    int chunkSize = _SizeX;
-    int step = _StepSize;
 
-    for (int x = 0; x < chunkSize; x += step)
-    {
-        for (int y = 0; y < chunkSize; y += step)
-        {
-            for (int z = 0; z < chunkSize; z += step)
-            {
-                bool hasAbove = false;
-                bool hasBelow = false;
-
-                for (int i = 0; i < 8; i++)
-                {
-                    float3 offset = CornerOffsets[i];
-                    float sx = _BaseX + (x + offset.x * step);
-                    float sy = _BaseY + (y + offset.y * step);
-                    float sz = _BaseZ + (z + offset.z * step);
-
-                    float v = GetDensityValue(sx, sy, sz);
-                    if (v >= _ISOLevel)
-                        hasAbove = true;
-                    else
-                        hasBelow = true;
-
-                    if (hasAbove && hasBelow)
-                        return true;
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
-
-[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+[numthreads(1, 1, 1)]
 void Generate(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= _SizeX || id.y >= _SizeY || id.z >= _SizeZ)
-        return;
+    uint chunkIndex = id.x;
+    ChunkInput chunk = ChunkInputs[chunkIndex];
 
-    int index = id.x + id.y * _SizeX + id.z * _SizeX * _SizeY;
+    int size = _SizeX;
+    int voxelCount = size * size * size;
 
-    float worldX = (_BaseX + id.x * _StepSize) + _Seed;
-    float worldY = (_BaseY + id.y * _StepSize);
-    float worldZ = (_BaseZ + id.z * _StepSize) + _Seed;
+    for (int x = 0; x < size; x++)
+        for (int y = 0; y < size; y++)
+            for (int z = 0; z < size; z++)
+            {
+                int localIndex = x + y * size + z * size * size;
+                int globalIndex = chunkIndex * voxelCount + localIndex;
 
-    DensityMap[index] = GetDensityValue(worldX, worldY, worldZ);
+                float worldX = chunk.baseX + x * chunk.stepSize + _Seed;
+                float worldY = chunk.baseY + y * chunk.stepSize;
+                float worldZ = chunk.baseZ + z * chunk.stepSize + _Seed;
+
+                DensityMap[globalIndex] = GetDensityValue(worldX, worldY, worldZ);
+            }
 }

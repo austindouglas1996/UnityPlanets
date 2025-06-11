@@ -158,6 +158,8 @@ public class ChunkRenderer : MonoBehaviour
             if (chunk.CanRenderGPU)
                 Graphics.DrawMesh(chunk.Mesh, chunk.LocalToWorld, material, 0);
         }
+
+        this.generationQueue.Update();
     }
 
     /// <summary>

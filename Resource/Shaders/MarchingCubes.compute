@@ -11,6 +11,7 @@
 
 struct Triangle
 {
+    int coordX, coordY, coordZ;
     float3 a, b, c;
     float4 colorA, colorB, colorC;
     float3 normal;
@@ -25,6 +26,19 @@ struct BiomeData
     float4 gradientEnd;
 };
 
+struct ChunkInput
+{
+    int coordX;
+    int coordY;
+    int coordZ;
+    float baseX;
+    float baseY;
+    float baseZ;
+    int stepSize;
+};
+
+StructuredBuffer<ChunkInput> ChunkInputs;
+
 StructuredBuffer<float> DensityMap;
 AppendStructuredBuffer<Triangle> TriangleBuffer;
 
@@ -34,11 +48,7 @@ int _BiomeCount;
 int _SizeX;
 int _SizeY;
 int _SizeZ;
-float _BaseX;
-float _BaseY;
-float _BaseZ;
 float _IsoLevel;
-int _StepSize;
 
 float4 GetColorForHeight(float height)
 {
@@ -85,32 +95,42 @@ float2 GetUV(float3 worldPos)
     return worldPos.xz * 0.05; // Scale as needed
 }
 
-
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
-void March(uint3 id : SV_DispatchThreadID)
+void March(uint3 localID : SV_GroupThreadID, uint3 groupId : SV_GroupID)
 {
-    uint x = id.x;
-    uint y = id.y;
-    uint z = id.z;
+    uint chunkIndex = groupId.x;
+    ChunkInput chunk = ChunkInputs[chunkIndex];
 
+    uint x = localID.x;
+    uint y = localID.y;
+    uint z = localID.z;
+
+    // Skip if on edge (we can't build a cube here)
     if (x >= _SizeX - 1 || y >= _SizeY - 1 || z >= _SizeZ - 1)
         return;
 
-    int cubeIndex = 0;
     float corner[8];
     float3 cornerPos[8];
+    int cubeIndex = 0;
 
+    int chunkVoxelCount = _SizeX * _SizeY * _SizeZ;
+    int chunkOffset = chunkIndex * chunkVoxelCount;
+
+    // Sample all 8 corners of the cube
     for (int i = 0; i < 8; i++)
     {
         int3 offset = CornerOffsets[i];
         int3 pos = int3(x + offset.x, y + offset.y, z + offset.z);
 
-        if (any(pos < 0) || pos.x >= _SizeX || pos.y >= _SizeY || pos.z >= _SizeZ)
+        // Bounds check (only needed for dynamic chunk sizing)
+        if (pos.x >= _SizeX || pos.y >= _SizeY || pos.z >= _SizeZ)
             return;
 
-        int index = pos.x + pos.y * _SizeX + pos.z * _SizeX * _SizeY;
+        int localIndex = pos.x + pos.y * _SizeX + pos.z * _SizeX * _SizeY;
+        int index = chunkOffset + localIndex;
+
         corner[i] = DensityMap[index];
-        cornerPos[i] = float3(pos) * _StepSize;
+        cornerPos[i] = float3(pos) * chunk.stepSize;
 
         if (corner[i] > _IsoLevel)
             cubeIndex |= (1 << i);
@@ -119,6 +139,7 @@ void March(uint3 id : SV_DispatchThreadID)
     if (cubeIndex == 0 || cubeIndex == 255)
         return;
 
+    // Emit triangles
     for (int i = 0; TriangleTable[cubeIndex][i] != -1; i += 3)
     {
         int a = TriangleTable[cubeIndex][i + 0];
@@ -131,28 +152,32 @@ void March(uint3 id : SV_DispatchThreadID)
 
         float3 v0 = lerp(cornerPos[edge0.x], cornerPos[edge0.y],
                          (corner[edge0.x] - _IsoLevel) / (corner[edge0.x] - corner[edge0.y] + 0.0001));
-
+        
         float3 v1 = lerp(cornerPos[edge1.x], cornerPos[edge1.y],
                          (corner[edge1.x] - _IsoLevel) / (corner[edge1.x] - corner[edge1.y] + 0.0001));
 
         float3 v2 = lerp(cornerPos[edge2.x], cornerPos[edge2.y],
                          (corner[edge2.x] - _IsoLevel) / (corner[edge2.x] - corner[edge2.y] + 0.0001));
-        
-        float3 worldA = v0 + float3(_BaseX, _BaseY, _BaseZ);
-        float3 worldB = v1 + float3(_BaseX, _BaseY, _BaseZ);
-        float3 worldC = v2 + float3(_BaseX, _BaseY, _BaseZ);
+
+        float3 worldA = v0 + float3(chunk.baseX, chunk.baseY, chunk.baseZ);
+        float3 worldB = v1 + float3(chunk.baseX, chunk.baseY, chunk.baseZ);
+        float3 worldC = v2 + float3(chunk.baseX, chunk.baseY, chunk.baseZ);
 
         Triangle tri;
+        tri.coordX = chunk.coordX;
+        tri.coordY = chunk.coordY;
+        tri.coordZ = chunk.coordZ;
+
         tri.a = v0;
         tri.b = v1;
         tri.c = v2;
-        
+
         tri.colorA = GetColorForHeight(worldA.y);
         tri.colorB = GetColorForHeight(worldB.y);
         tri.colorC = GetColorForHeight(worldC.y);
-        
+
         tri.normal = normalize(cross(v1 - v0, v2 - v0));
-        
+
         tri.uvA = GetUV(worldA);
         tri.uvB = GetUV(worldB);
         tri.uvC = GetUV(worldC);

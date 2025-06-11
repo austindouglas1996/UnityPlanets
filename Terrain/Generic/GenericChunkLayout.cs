@@ -141,10 +141,7 @@ public abstract class GenericChunkLayout : IChunkLayout
     public Vector3 ToWorld(Vector3Int coordinates, int lodIndex)
     {
         int chunkSize = GetChunkSize(lodIndex);
-        return new Vector3(
-            coordinates.x * chunkSize,
-            (coordinates.y * chunkSize),
-            coordinates.z * chunkSize);
+        return new Vector3(coordinates.x * chunkSize, coordinates.y * chunkSize, coordinates.z * chunkSize);
     }
 
     /// <summary>

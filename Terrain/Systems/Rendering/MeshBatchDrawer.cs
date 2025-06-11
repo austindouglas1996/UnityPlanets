@@ -138,8 +138,6 @@ public class MeshBatchDrawer
 
             count += drawItem.Positions.Count;
         }
-
-        Debug.Log($"Drawn {count}");
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -28,9 +29,8 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="config">The chunk configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>The generated chunk data.</returns>
-    public virtual ChunkData GenerateNewChunk(ChunkContext context, CancellationToken token = default)
+    public virtual Dictionary<Vector3Int, MeshData> DispatchGeneration(List<ChunkContext> chunkContexts, CancellationToken token)
     {
-        MeshData data = Generator.GenerateMeshData(context);
-        return new ChunkData(context, data);
+        return this.Generator.DispatchGeneration(chunkContexts);
     }
 }

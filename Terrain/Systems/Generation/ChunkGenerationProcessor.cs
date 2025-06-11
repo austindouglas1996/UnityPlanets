@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using System;
 using UnityEngine;
+using System.Linq;
 
 /// <summary>
 /// Handles the asynchronous generation and modification of terrain chunks.
@@ -15,19 +16,7 @@ public class ChunkGenerationProcessor
     /// A priority queue holding pending generation jobs.
     /// LOD0 jobs are prioritized higher for near-player chunks.
     /// </summary>
-    private PriorityQueue<ChunkGenerationJob> generationQueue = new PriorityQueue<ChunkGenerationJob>(new ChunkContextComparer());
-    private readonly object queueLock = new();
-
-    /// <summary>
-    /// All background workers processing the job queue.
-    /// </summary>
-    private List<Task?> workerTasks = new();
-    private bool isProcessing = false;
-
-    /// <summary>
-    /// Signal to wake up a worker when a new job arrives.
-    /// </summary>
-    private readonly SemaphoreSlim jobAvailableSignal = new SemaphoreSlim(0);
+    private ChunkGenerationBatcher batcher = new ChunkGenerationBatcher();
 
     /// <summary>
     /// Central services used during chunk generation (generator, colorizer, layout, etc.).
@@ -41,13 +30,6 @@ public class ChunkGenerationProcessor
     {
         this.chunkServices = services;
         this.cancellationToken = token;
-
-        for (int i = 0; i < 8; i++)
-        {
-            //workerTasks.Add(Task.Run(() => WorkerLoop(cancellationToken)));
-        }
-
-        WorkerLoop(cancellationToken);
     }
 
     /// <summary>
@@ -70,19 +52,7 @@ public class ChunkGenerationProcessor
 
         try
         {
-            int priority = context.LODIndex == 0 ? GetPriorityOfChunk(context.Coordinates) : 999;
-
-            lock (queueLock)
-            {
-                generationQueue.Enqueue(newJob, priority);
-            }
-
-            if (generationQueue.Count == 1)
-            {
-                this.WorkerLoop(cancellationToken);
-            }
-
-            jobAvailableSignal.Release();
+            this.batcher.Add(newJob);
         }
         catch (Exception ex)
         {
@@ -100,12 +70,8 @@ public class ChunkGenerationProcessor
     {
         ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), modificationJob);
 
-        lock (queueLock)
-        {
-            generationQueue.Enqueue(newJob, -1); // Highest priority
-        }
+        batcher.Add(newJob);
 
-        jobAvailableSignal.Release();
         return newJob.Completion.Task;
     }
 
@@ -114,86 +80,55 @@ public class ChunkGenerationProcessor
     /// </summary>
     public bool CancelChunkGeneration(Vector3Int coordinates, int lodIndex)
     {
-        lock (queueLock)
+        return batcher.Remove(new ChunkContext(coordinates, lodIndex, this.chunkServices));
+    }
+
+    /// <summary>
+    /// Update the processor and start generating chunks if there is active jobs.
+    /// </summary>
+    public void Update()
+    {
+        if (!this.batcher.HasPending) return;
+
+        Debug.Log($"Jobs:{this.batcher.Count}");
+
+        Dictionary<ChunkContext, ChunkGenerationJob> batch = this.batcher.TryBatch(128);
+
+        Dictionary<Vector3Int, ChunkContext> coordToContext = new Dictionary<Vector3Int, ChunkContext>();
+        foreach (var ctx in batch.Keys)
+            coordToContext[ctx.Coordinates] = ctx;
+
+        try
         {
-            return generationQueue.RemoveWhere(job =>
-                job.Context.Coordinates == coordinates &&
-                job.Context.LODIndex == lodIndex);
+            Dictionary<Vector3Int, MeshData> results = chunkServices.Generator.DispatchGeneration(batch.Keys.ToList(), this.cancellationToken);
+            HashSet<ChunkContext> completed = new HashSet<ChunkContext>();
+
+            foreach (var kvp in results)
+            {
+                if (coordToContext.TryGetValue(kvp.Key, out var context) && batch.TryGetValue(context, out var job))
+                {
+                    job.Completion.TrySetResult(new ChunkData(context, kvp.Value));
+                    completed.Add(context);
+                }
+            }
+
+            // Cancel any jobs that were not resolved
+            foreach (var kvp in batch)
+            {
+                if (!completed.Contains(kvp.Key))
+                    kvp.Value.Completion.TrySetCanceled();
+            }
         }
-    }
-
-    /// <summary>
-    /// Status helper for debugging/logging.
-    /// </summary>
-    public override string ToString()
-    {
-        return $"Gen. Queue:{generationQueue.Count}\nWorkers:{workerTasks.Count}\n";
-    }
-
-    /// <summary>
-    /// Core worker loop—waits for jobs and executes them.
-    /// </summary>
-    private void WorkerLoop(CancellationToken token)
-    {
-        while (!token.IsCancellationRequested && generationQueue.Count != 0)
+        catch (OperationCanceledException)
         {
-            ChunkGenerationJob? job = null;
-
-            lock (queueLock)
-            {
-                job = generationQueue.Dequeue();
-                if (job == null)
-                    continue;
-            }
-
-            if (job.Token.IsCancellationRequested)
-            {
+            foreach (var job in batch.Values)
                 job.Completion.TrySetCanceled();
-                continue;
-            }
-
-            try
-            {
-                ChunkData result = job.ModificationJob == null
-                    ? WorkerNewChunk(job)
-                    : null; // Modify chunk.
-
-                if (result == null)
-                    throw new OperationCanceledException();
-
-                job.Completion.TrySetResult(result);
-            }
-            catch (OperationCanceledException)
-            {
-                job.Completion.TrySetCanceled();
-            }
-            catch (Exception ex)
-            {
+        }
+        catch (Exception ex)
+        {
+            foreach (var job in batch.Values)
                 job.Completion.TrySetException(ex);
-                Debug.LogError(ex);
-            }
+            Debug.LogError(ex);
         }
-    }
-
-    /// <summary>
-    /// Generates a brand new chunk using generator and colorizer.
-    /// </summary>
-    private ChunkData WorkerNewChunk(ChunkGenerationJob job)
-    {
-        ChunkData result = chunkServices.Generator.GenerateNewChunk(job.Context, job.Token);
-        //chunkServices.Colorizer.UpdateChunkColors(result, job.Context.Transform);
-
-        return result;
-    }
-
-    /// <summary>
-    /// Returns chunk priority based on distance to follower.
-    /// Lower values = closer = higher priority.
-    /// </summary>
-    private int GetPriorityOfChunk(Vector3Int coordinates)
-    {
-        int dx = Mathf.Abs(coordinates.x - chunkServices.Layout.FollowerCoordinates.x);
-        int dz = Mathf.Abs(coordinates.z - chunkServices.Layout.FollowerCoordinates.y);
-        return Math.Max(dx, dz);
     }
 }

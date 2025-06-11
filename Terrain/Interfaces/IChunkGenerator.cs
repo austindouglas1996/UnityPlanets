@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -16,5 +17,5 @@ public interface IChunkGenerator
     /// <param name="config">Chunk settings/configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>Newly generated chunk data.</returns>
-    ChunkData GenerateNewChunk(ChunkContext context, CancellationToken token = default);
+    Dictionary<Vector3Int, MeshData> DispatchGeneration(List<ChunkContext> chunkContexts, CancellationToken token);
 }

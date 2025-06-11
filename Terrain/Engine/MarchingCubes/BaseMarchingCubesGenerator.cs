@@ -5,8 +5,21 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 
 [StructLayout(LayoutKind.Sequential)]
+public struct ChunkInput
+{
+    public int coordX, coordY, coordZ;
+    public float baseX, baseY, baseZ;
+    public int stepSize;
+}
+
+
+[StructLayout(LayoutKind.Sequential)]
 public struct Triangle
 {
+    public int coordX;
+    public int coordY;
+    public int coordZ;
+
     public Vector3 a;
     public Vector3 b;
     public Vector3 c;
@@ -30,14 +43,9 @@ struct BiomeData
     public Vector4 GradientEnd;
 }
 
-/// <summary>
-/// Base class for implementing marching cube terrain generation.
-/// Handles mesh generation, density map modification, and interpolation.
-/// </summary>
 public class BaseMarchingCubeGenerator : IDensityMapGenerator
 {
     private IChunkConfiguration configuration;
-    private System.Random random = new System.Random();
 
     /// <summary>
     /// Creates a new marching cube generator with the given density options.
@@ -80,39 +88,48 @@ public class BaseMarchingCubeGenerator : IDensityMapGenerator
         BiomeBuffer.SetData(biomeData);
     }
 
-    public virtual MeshData GenerateMeshData(ChunkContext context)
+    public virtual Dictionary<Vector3Int, MeshData> DispatchGeneration(List<ChunkContext> chunkContexts)
     {
-        Vector3 chunkWorldPosition = context.WorldPosition;
-        int lodIndex = context.LODIndex;
-
-        int stepSize = 1 << lodIndex;
+        int batchSize = chunkContexts.Count;
         int size = Options.ChunkSize + 1;
-        int voxelCount = size * size * size;
+        int voxelCountPerChunk = size * size * size;
+        int totalVoxels = voxelCountPerChunk * batchSize;
 
-        // === Dispatch GenerateDensity ===
-        ComputeShader genShader = context.Services.ChunkManager.GenerateDensity;
-        int genKernel = genShader.FindKernel("Generate");
+        var genShader = chunkContexts[0].Services.ChunkManager.GenerateDensity;
+        var mcShader = chunkContexts[0].Services.ChunkManager.MarchingCubes;
 
-        Vector3Int chunkCoord = new Vector3Int(
-            Mathf.FloorToInt(chunkWorldPosition.x / (Options.ChunkSize * stepSize)),
-            Mathf.FloorToInt(chunkWorldPosition.y / (Options.ChunkSize * stepSize)),
-            Mathf.FloorToInt(chunkWorldPosition.z / (Options.ChunkSize * stepSize))
-        );
+        // === Build ChunkInput array ===
+        var chunkInputs = new List<ChunkInput>(batchSize);
+        for (int i = 0; i < batchSize; i++)
+        {
+            var ctx = chunkContexts[i];
+            chunkInputs.Add(new ChunkInput
+            {
+                coordX = ctx.Coordinates.x,
+                coordY = ctx.Coordinates.y,
+                coordZ = ctx.Coordinates.z,
+                baseX = ctx.WorldPosition.x,
+                baseY = ctx.WorldPosition.y,
+                baseZ = ctx.WorldPosition.z,
+                stepSize = 1 << ctx.LODIndex
+            });
+        }
 
-        int baseX = chunkCoord.x * Options.ChunkSize * stepSize;
-        int baseY = chunkCoord.y * Options.ChunkSize * stepSize;
-        int baseZ = chunkCoord.z * Options.ChunkSize * stepSize;
-        int chunkIndex = HashChunkCoordinates(context.Coordinates);
+        ComputeBuffer chunkInputBuffer = new ComputeBuffer(batchSize, Marshal.SizeOf<ChunkInput>());
+        chunkInputBuffer.SetData(chunkInputs);
 
+        // === Density + Triangle buffers ===
+        ComputeBuffer densityBuffer = new ComputeBuffer(totalVoxels, sizeof(float));
+        ComputeBuffer triangleBuffer = new ComputeBuffer(totalVoxels * 5, Marshal.SizeOf<Triangle>(), ComputeBufferType.Append);
+        ComputeBuffer countBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
+        triangleBuffer.SetCounterValue(0);
+
+        genShader.SetBuffer(0, "ChunkInputs", chunkInputBuffer);
+        genShader.SetBuffer(0, "DensityMap", densityBuffer);
         genShader.SetInt("_SizeX", size);
         genShader.SetInt("_SizeY", size);
         genShader.SetInt("_SizeZ", size);
-        genShader.SetInt("_StepSize", stepSize);
         genShader.SetFloat("_Seed", Options.Seed);
-        genShader.SetFloat("_BaseX", baseX);
-        genShader.SetFloat("_BaseY", baseY);
-        genShader.SetFloat("_BaseZ", baseZ);
-        genShader.SetFloat("_ChunkIndex", chunkIndex);
         genShader.SetFloat("_ISOLevel", Options.ISOLevel);
         genShader.SetFloat("_ContinentFrequency", Options.ContinentFrequency);
         genShader.SetFloat("_ContinentAmplitude", Options.ContinentAmplitude);
@@ -124,102 +141,93 @@ public class BaseMarchingCubeGenerator : IDensityMapGenerator
         genShader.SetFloat("_MountainAmplitude", Options.MountainAmplitude);
         genShader.SetFloat("_MountainSharpness", Options.MountainSharpness);
         genShader.SetFloat("_TotalHeightScale", Options.TotalHeightScale);
+        genShader.Dispatch(0, batchSize, 1, 1);
 
-        // === Buffers ===
-        ComputeBuffer densityBuffer = new ComputeBuffer(voxelCount, sizeof(float));
-        ComputeBuffer triangleBuffer = new ComputeBuffer(voxelCount * 5, Marshal.SizeOf<Triangle>(), ComputeBufferType.Append);
-        ComputeBuffer countBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
-        triangleBuffer.SetCounterValue(1);
-
-        genShader.SetBuffer(genKernel, "DensityMap", densityBuffer);
-
-
-        genShader.Dispatch(genKernel, Mathf.CeilToInt(size / 8f), Mathf.CeilToInt(size / 8f), Mathf.CeilToInt(size / 8f));
-
-        // === Dispatch Marching Cubes ===
-        ComputeShader mcShader = context.Services.ChunkManager.MarchingCubes;
-        int mcKernel = mcShader.FindKernel("March");
-
-        mcShader.SetBuffer(mcKernel, "DensityMap", densityBuffer);
-        mcShader.SetBuffer(mcKernel, "TriangleBuffer", triangleBuffer);
-
-
-        mcShader.SetBuffer(mcKernel, "BiomeColors", BiomeBuffer);
+        mcShader.SetBuffer(0, "DensityMap", densityBuffer);
+        mcShader.SetBuffer(0, "TriangleBuffer", triangleBuffer);
+        mcShader.SetBuffer(0, "ChunkInputs", chunkInputBuffer); 
+        mcShader.SetBuffer(0, "BiomeColors", BiomeBuffer);
         mcShader.SetInt("_BiomeCount", BiomeCount);
-
         mcShader.SetInt("_SizeX", size);
         mcShader.SetInt("_SizeY", size);
         mcShader.SetInt("_SizeZ", size);
-        mcShader.SetFloat("_BaseX", baseX);
-        mcShader.SetFloat("_BaseY", baseY);
-        mcShader.SetFloat("_BaseZ", baseZ);
-        mcShader.SetInt("_StepSize", stepSize);
         mcShader.SetFloat("_IsoLevel", Options.ISOLevel);
+        mcShader.Dispatch(0, batchSize, 1, 1);
 
-        mcShader.Dispatch(mcKernel, Mathf.CeilToInt(size / 4f), Mathf.CeilToInt(size / 4f), Mathf.CeilToInt(size / 4f));
-
-        // === Read triangle count and data ===
+        // Read back from GPU.
         ComputeBuffer.CopyCount(triangleBuffer, countBuffer, 0);
         int[] triCountArr = new int[1];
         countBuffer.GetData(triCountArr);
         int triCount = triCountArr[0];
 
-        Triangle[] rawTris = new Triangle[triCount];
-        triangleBuffer.GetData(rawTris);
+        Triangle[] tris = new Triangle[triCount];
+        triangleBuffer.GetData(tris);
 
-        // === Convert triangles to mesh ===
-        List<Vector3> vertices = new List<Vector3>(triCount * 3);
-        List<int> indices = new List<int>(triCount * 3);
-        List<Color32> colors = new List<Color32>(triCount * 3);
-        List<Vector3> normals = new List<Vector3>();
-        List<Vector2> uvs = new List<Vector2>();
-
-        for (int i = 0; i < triCount; i++)
-        {
-            Triangle t = rawTris[i];
-            int baseIndex = vertices.Count;
-
-            vertices.Add(t.a);
-            vertices.Add(t.b);
-            vertices.Add(t.c);
-
-            indices.Add(baseIndex);
-            indices.Add(baseIndex + 1);
-            indices.Add(baseIndex + 2);
-
-            colors.Add(t.colorA);
-            colors.Add(t.colorB);
-            colors.Add(t.colorC);
-
-            normals.Add(t.normal);
-            normals.Add(t.normal);
-            normals.Add(t.normal);
-
-            //uvs.Add(t.UVA);
-            //uvs.Add(t.UVB);
-            //uvs.Add(t.UVC);
-        }
+        var meshes = ConvertToMeshes(tris, batchSize);
 
         // Cleanup
         densityBuffer.Dispose();
         triangleBuffer.Dispose();
         countBuffer.Dispose();
+        chunkInputBuffer.Dispose();
 
-        // Package mesh
-        MeshData data = new MeshData(vertices, indices, normals, uvs);
-        data.Colors = colors.ToArray();
-        return data;
+        return meshes;
     }
 
-    private int HashChunkCoordinates(Vector3Int coord)
+    private Dictionary<Vector3Int, MeshData> ConvertToMeshes(Triangle[] tris, int chunkCount)
     {
-        unchecked // allow overflow
+        // Group triangles by their chunk index
+        Dictionary<Vector3Int, List<Triangle>> chunkGroups = new();
+
+        foreach (var triangle in tris)
         {
-            int hash = 17;
-            hash = hash * 31 + coord.x;
-            hash = hash * 31 + coord.y;
-            hash = hash * 31 + coord.z;
-            return hash;
+            Vector3Int coord = new Vector3Int(triangle.coordX, triangle.coordY, triangle.coordZ);
+            if (!chunkGroups.ContainsKey(coord))
+                chunkGroups[coord] = new List<Triangle>();
+
+            chunkGroups[coord].Add(triangle);
         }
+
+        Dictionary<Vector3Int, MeshData> allMeshes = new(chunkGroups.Count);
+
+        foreach (var kvp in chunkGroups)
+        {
+            List<Triangle> chunkTris = kvp.Value;
+            List<Vector3> vertices = new List<Vector3>(chunkTris.Count * 3);
+            List<int> indices = new List<int>(chunkTris.Count * 3);
+            List<Color32> colors = new List<Color32>(chunkTris.Count * 3);
+            List<Vector3> normals = new List<Vector3>(chunkTris.Count * 3);
+            List<Vector2> uvs = new List<Vector2>(chunkTris.Count * 3); // optional
+
+            foreach (var t in chunkTris)
+            {
+                int baseIndex = vertices.Count;
+
+                vertices.Add(t.a);
+                vertices.Add(t.b);
+                vertices.Add(t.c);
+
+                indices.Add(baseIndex);
+                indices.Add(baseIndex + 1);
+                indices.Add(baseIndex + 2);
+
+                colors.Add(t.colorA);
+                colors.Add(t.colorB);
+                colors.Add(t.colorC);
+
+                normals.Add(t.normal);
+                normals.Add(t.normal);
+                normals.Add(t.normal);
+
+                // uvs.Add(t.UVA);
+            }
+
+            MeshData meshData = new MeshData(vertices, indices, normals, uvs);
+            meshData.Colors = colors.ToArray();
+
+            allMeshes.Add(kvp.Key, meshData);
+        }
+
+        return allMeshes;
     }
 }
