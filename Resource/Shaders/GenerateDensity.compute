@@ -5,12 +5,8 @@
 
 struct ChunkInput
 {
-    int coordX;
-    int coordY;
-    int coordZ;
-    float baseX;
-    float baseY;
-    float baseZ;
+    float3 CoordPos;
+    float3 WorldPos;
     int stepSize;
 };
 
@@ -73,27 +69,28 @@ float GetDensityValue(float worldX, float worldY, float worldZ)
     return (isnan(value) || isinf(value)) ? 0.0 : value;
 }
 
-
 [numthreads(1, 1, 1)]
 void Generate(uint3 id : SV_DispatchThreadID)
 {
-    uint chunkIndex = id.x;
+    // total threads = dispatchX × dispatchY × dispatchZ
+
+    int chunkSize = _SizeX; // = 17
+    int voxelCount = chunkSize * chunkSize * chunkSize;
+
+    int chunkIndex = id.x / chunkSize;
+    int x = id.x % chunkSize;
+    int y = id.y;
+    int z = id.z;
+
+    if (x >= _SizeX || y >= _SizeY || z >= _SizeZ)
+        return;
+
+    int index = chunkIndex * voxelCount + (x + y * _SizeX + z * _SizeX * _SizeY);
     ChunkInput chunk = ChunkInputs[chunkIndex];
 
-    int size = _SizeX;
-    int voxelCount = size * size * size;
+    float3 worldPos = chunk.WorldPos + float3(x, y, z) * chunk.stepSize;
+    worldPos.x += _Seed;
+    worldPos.z += _Seed;
 
-    for (int x = 0; x < size; x++)
-        for (int y = 0; y < size; y++)
-            for (int z = 0; z < size; z++)
-            {
-                int localIndex = x + y * size + z * size * size;
-                int globalIndex = chunkIndex * voxelCount + localIndex;
-
-                float worldX = chunk.baseX + x * chunk.stepSize + _Seed;
-                float worldY = chunk.baseY + y * chunk.stepSize;
-                float worldZ = chunk.baseZ + z * chunk.stepSize + _Seed;
-
-                DensityMap[globalIndex] = GetDensityValue(worldX, worldY, worldZ);
-            }
+    DensityMap[index] = GetDensityValue(worldPos.x, worldPos.y, worldPos.z);
 }

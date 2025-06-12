@@ -7,18 +7,15 @@ using UnityEngine;
 [StructLayout(LayoutKind.Sequential)]
 public struct ChunkInput
 {
-    public int coordX, coordY, coordZ;
-    public float baseX, baseY, baseZ;
+    public Vector3 CoordPos;
+    public Vector3 WorldPos;
     public int stepSize;
 }
-
 
 [StructLayout(LayoutKind.Sequential)]
 public struct Triangle
 {
-    public int coordX;
-    public int coordY;
-    public int coordZ;
+    public Vector3 CoordPos;
 
     public Vector3 a;
     public Vector3 b;
@@ -98,19 +95,14 @@ public class BaseMarchingCubeGenerator : IDensityMapGenerator
         var genShader = chunkContexts[0].Services.ChunkManager.GenerateDensity;
         var mcShader = chunkContexts[0].Services.ChunkManager.MarchingCubes;
 
-        // === Build ChunkInput array ===
         var chunkInputs = new List<ChunkInput>(batchSize);
         for (int i = 0; i < batchSize; i++)
         {
             var ctx = chunkContexts[i];
             chunkInputs.Add(new ChunkInput
             {
-                coordX = ctx.Coordinates.x,
-                coordY = ctx.Coordinates.y,
-                coordZ = ctx.Coordinates.z,
-                baseX = ctx.WorldPosition.x,
-                baseY = ctx.WorldPosition.y,
-                baseZ = ctx.WorldPosition.z,
+                CoordPos = ctx.Coordinates,
+                WorldPos = ctx.WorldPosition,
                 stepSize = 1 << ctx.LODIndex
             });
         }
@@ -118,7 +110,6 @@ public class BaseMarchingCubeGenerator : IDensityMapGenerator
         ComputeBuffer chunkInputBuffer = new ComputeBuffer(batchSize, Marshal.SizeOf<ChunkInput>());
         chunkInputBuffer.SetData(chunkInputs);
 
-        // === Density + Triangle buffers ===
         ComputeBuffer densityBuffer = new ComputeBuffer(totalVoxels, sizeof(float));
         ComputeBuffer triangleBuffer = new ComputeBuffer(totalVoxels * 5, Marshal.SizeOf<Triangle>(), ComputeBufferType.Append);
         ComputeBuffer countBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
@@ -141,18 +132,18 @@ public class BaseMarchingCubeGenerator : IDensityMapGenerator
         genShader.SetFloat("_MountainAmplitude", Options.MountainAmplitude);
         genShader.SetFloat("_MountainSharpness", Options.MountainSharpness);
         genShader.SetFloat("_TotalHeightScale", Options.TotalHeightScale);
-        genShader.Dispatch(0, batchSize, 1, 1);
+        genShader.Dispatch(0, batchSize * size, size, size);
 
         mcShader.SetBuffer(0, "DensityMap", densityBuffer);
         mcShader.SetBuffer(0, "TriangleBuffer", triangleBuffer);
-        mcShader.SetBuffer(0, "ChunkInputs", chunkInputBuffer); 
+        mcShader.SetBuffer(0, "ChunkInputs", chunkInputBuffer);
         mcShader.SetBuffer(0, "BiomeColors", BiomeBuffer);
         mcShader.SetInt("_BiomeCount", BiomeCount);
         mcShader.SetInt("_SizeX", size);
         mcShader.SetInt("_SizeY", size);
         mcShader.SetInt("_SizeZ", size);
         mcShader.SetFloat("_IsoLevel", Options.ISOLevel);
-        mcShader.Dispatch(0, batchSize, 1, 1);
+        mcShader.Dispatch(0, batchSize * 16, 16, 16);
 
         // Read back from GPU.
         ComputeBuffer.CopyCount(triangleBuffer, countBuffer, 0);
@@ -173,7 +164,6 @@ public class BaseMarchingCubeGenerator : IDensityMapGenerator
 
         return meshes;
     }
-
     private Dictionary<Vector3Int, MeshData> ConvertToMeshes(Triangle[] tris, int chunkCount)
     {
         // Group triangles by their chunk index
@@ -181,7 +171,7 @@ public class BaseMarchingCubeGenerator : IDensityMapGenerator
 
         foreach (var triangle in tris)
         {
-            Vector3Int coord = new Vector3Int(triangle.coordX, triangle.coordY, triangle.coordZ);
+            Vector3Int coord = new Vector3Int((int)triangle.CoordPos.x, (int)triangle.CoordPos.y, (int)triangle.CoordPos.z);
             if (!chunkGroups.ContainsKey(coord))
                 chunkGroups[coord] = new List<Triangle>();
 

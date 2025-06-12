@@ -5,13 +5,9 @@
 
 #include "Includes/TriangleTable.hlsl"
 
-#define THREADS_X 4
-#define THREADS_Y 4
-#define THREADS_Z 4
-
 struct Triangle
 {
-    int coordX, coordY, coordZ;
+    float3 CoordPos;
     float3 a, b, c;
     float4 colorA, colorB, colorC;
     float3 normal;
@@ -28,17 +24,12 @@ struct BiomeData
 
 struct ChunkInput
 {
-    int coordX;
-    int coordY;
-    int coordZ;
-    float baseX;
-    float baseY;
-    float baseZ;
+    float3 CoordPos;
+    float3 WorldPos;
     int stepSize;
 };
 
 StructuredBuffer<ChunkInput> ChunkInputs;
-
 StructuredBuffer<float> DensityMap;
 AppendStructuredBuffer<Triangle> TriangleBuffer;
 
@@ -95,35 +86,34 @@ float2 GetUV(float3 worldPos)
     return worldPos.xz * 0.05; // Scale as needed
 }
 
-[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
-void March(uint3 localID : SV_GroupThreadID, uint3 groupId : SV_GroupID)
+[numthreads(1,1,1)]
+void March(uint3 id : SV_DispatchThreadID)
 {
-    uint chunkIndex = groupId.x;
-    ChunkInput chunk = ChunkInputs[chunkIndex];
+    int chunkSize = _SizeX - 1; // = 16
+    int cubeCount = chunkSize * chunkSize * chunkSize;
 
-    uint x = localID.x;
-    uint y = localID.y;
-    uint z = localID.z;
+    int chunkIndex = id.x / chunkSize;
+    int x = id.x % chunkSize;
+    int y = id.y;
+    int z = id.z;
 
-    // Skip if on edge (we can't build a cube here)
     if (x >= _SizeX - 1 || y >= _SizeY - 1 || z >= _SizeZ - 1)
         return;
 
+    ChunkInput chunk = ChunkInputs[chunkIndex];
+
+    int cubeIndex = 0;
     float corner[8];
     float3 cornerPos[8];
-    int cubeIndex = 0;
 
-    int chunkVoxelCount = _SizeX * _SizeY * _SizeZ;
-    int chunkOffset = chunkIndex * chunkVoxelCount;
+    int chunkOffset = chunkIndex * (_SizeX * _SizeY * _SizeZ);
 
-    // Sample all 8 corners of the cube
     for (int i = 0; i < 8; i++)
     {
         int3 offset = CornerOffsets[i];
-        int3 pos = int3(x + offset.x, y + offset.y, z + offset.z);
+        int3 pos = int3(x, y, z) + offset;
 
-        // Bounds check (only needed for dynamic chunk sizing)
-        if (pos.x >= _SizeX || pos.y >= _SizeY || pos.z >= _SizeZ)
+        if (any(pos < 0) || pos.x >= _SizeX || pos.y >= _SizeY || pos.z >= _SizeZ)
             return;
 
         int localIndex = pos.x + pos.y * _SizeX + pos.z * _SizeX * _SizeY;
@@ -139,7 +129,6 @@ void March(uint3 localID : SV_GroupThreadID, uint3 groupId : SV_GroupID)
     if (cubeIndex == 0 || cubeIndex == 255)
         return;
 
-    // Emit triangles
     for (int i = 0; TriangleTable[cubeIndex][i] != -1; i += 3)
     {
         int a = TriangleTable[cubeIndex][i + 0];
@@ -152,21 +141,17 @@ void March(uint3 localID : SV_GroupThreadID, uint3 groupId : SV_GroupID)
 
         float3 v0 = lerp(cornerPos[edge0.x], cornerPos[edge0.y],
                          (corner[edge0.x] - _IsoLevel) / (corner[edge0.x] - corner[edge0.y] + 0.0001));
-        
         float3 v1 = lerp(cornerPos[edge1.x], cornerPos[edge1.y],
                          (corner[edge1.x] - _IsoLevel) / (corner[edge1.x] - corner[edge1.y] + 0.0001));
-
         float3 v2 = lerp(cornerPos[edge2.x], cornerPos[edge2.y],
                          (corner[edge2.x] - _IsoLevel) / (corner[edge2.x] - corner[edge2.y] + 0.0001));
 
-        float3 worldA = v0 + float3(chunk.baseX, chunk.baseY, chunk.baseZ);
-        float3 worldB = v1 + float3(chunk.baseX, chunk.baseY, chunk.baseZ);
-        float3 worldC = v2 + float3(chunk.baseX, chunk.baseY, chunk.baseZ);
+        float3 worldA = v0 + chunk.WorldPos;
+        float3 worldB = v1 + chunk.WorldPos;
+        float3 worldC = v2 + chunk.WorldPos;
 
         Triangle tri;
-        tri.coordX = chunk.coordX;
-        tri.coordY = chunk.coordY;
-        tri.coordZ = chunk.coordZ;
+        tri.CoordPos = chunk.CoordPos;
 
         tri.a = v0;
         tri.b = v1;
