@@ -97,7 +97,7 @@ void March(uint3 id : SV_DispatchThreadID)
         tri.uvA = GetUV(worldA);
         tri.uvB = GetUV(worldB);
         tri.uvC = GetUV(worldC);
-
+        
         TriangleBuffer.Append(tri);
     }
 }
