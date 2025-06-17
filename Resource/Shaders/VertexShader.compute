@@ -1,0 +1,42 @@
+#include "Includes/Triangle.hlsl"
+
+StructuredBuffer<Triangle> TriangleBuffer;
+
+struct Attributes
+{
+    uint vertexID : SV_VertexID;
+};
+
+struct Varyings
+{
+    float4 positionCS : SV_POSITION;
+    float3 positionWS : TEXCOORD0;
+    float3 normalWS : TEXCOORD1;
+    float4 color : COLOR;
+};
+
+Varyings vert(Attributes IN)
+{
+    Varyings OUT;
+
+    uint triIndex = IN.vertexID / 3;
+    uint subIndex = IN.vertexID % 3;
+
+    Triangle tri = TriangleBuffer[triIndex];
+
+    float3 pos = subIndex == 0 ? tri.a :
+                 subIndex == 1 ? tri.b :
+                                 tri.c;
+
+    float3 normal = tri.normal;
+
+    float4 color = subIndex == 0 ? tri.colorA :
+                   subIndex == 1 ? tri.colorB :
+                                   tri.colorC;
+
+    OUT.positionWS = pos + tri.CoordPos * _SizePerChunk; // Optional offset if needed
+    OUT.positionCS = TransformWorldToHClip(OUT.positionWS);
+    OUT.normalWS = normalize(normal);
+    OUT.color = color;
+    return OUT;
+}

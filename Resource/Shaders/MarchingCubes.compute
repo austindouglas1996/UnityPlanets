@@ -4,123 +4,54 @@
 #pragma kernel March
 
 #include "Includes/TriangleTable.hlsl"
-
-struct Triangle
-{
-    float3 CoordPos;
-    float3 a, b, c;
-    float4 colorA, colorB, colorC;
-    float3 normal;
-    float2 uvA, uvB, uvC;
-};
-
-struct BiomeData
-{
-    float minSurface;
-    float maxSurface;
-    float4 gradientStart;
-    float4 gradientEnd;
-};
-
-struct ChunkInput
-{
-    float3 CoordPos;
-    float3 WorldPos;
-    int stepSize;
-};
+#include "Includes/Triangle.hlsl"
+#include "Includes/ChunkInput.hlsl"
+#include "Includes/Biomes.hlsl"
 
 StructuredBuffer<ChunkInput> ChunkInputs;
 StructuredBuffer<float> DensityMap;
 AppendStructuredBuffer<Triangle> TriangleBuffer;
-
-StructuredBuffer<BiomeData> BiomeColors;
-int _BiomeCount;
 
 int _SizeX;
 int _SizeY;
 int _SizeZ;
 float _IsoLevel;
 
-float4 GetColorForHeight(float height)
-{
-    BiomeData current = BiomeColors[_BiomeCount - 1];
-    BiomeData next = current;
-    bool hasUpper = false;
-
-    for (int i = 0; i < _BiomeCount - 1; i++)
-    {
-        if (height >= BiomeColors[i].minSurface && height < BiomeColors[i + 1].minSurface)
-        {
-            current = BiomeColors[i];
-
-            if (i + 1 < _BiomeCount)
-            {
-                next = BiomeColors[i + 1];
-                hasUpper = true;
-            }
-            break;
-        }
-    }
-
-    // Normalize height within current biome gradient
-    float tCurrent = saturate((height - current.minSurface) / max(current.maxSurface - current.minSurface, 0.0001));
-    float4 baseColor = lerp(current.gradientStart, current.gradientEnd, tCurrent);
-
-    if (hasUpper)
-    {
-        // Normalize height within next biome gradient
-        float tNext = saturate((height - next.minSurface) / max(next.maxSurface - next.minSurface, 0.0001));
-        float4 nextColor = lerp(next.gradientStart, next.gradientEnd, tNext);
-
-        // Blend between biomes across boundary
-        float blendAmount = saturate((height - current.maxSurface) / max(next.minSurface - current.maxSurface, 0.0001));
-        return lerp(baseColor, nextColor, blendAmount);
-    }
-
-    return baseColor;
-}
-
 float2 GetUV(float3 worldPos)
 {
     // Planar projection: good for terrain-style meshes
-    return worldPos.xz * 0.05; // Scale as needed
+    return worldPos.xz * 0.05; 
 }
 
-[numthreads(1,1,1)]
+[numthreads(1, 1, 1)]
 void March(uint3 id : SV_DispatchThreadID)
 {
-    int chunkSize = _SizeX - 1; // = 16
-    int cubeCount = chunkSize * chunkSize * chunkSize;
+    int chunkSize = _SizeX - 1;
+    int chunkVoxelSize = _SizeX * _SizeY * _SizeZ;
 
-    int chunkIndex = id.x / chunkSize;
-    int x = id.x % chunkSize;
-    int y = id.y;
-    int z = id.z;
+    ChunkAccessInfo access = GetChunkAccess(id, _SizeX - 1, _SizeY - 1, _SizeZ - 1, ChunkInputs);
 
-    if (x >= _SizeX - 1 || y >= _SizeY - 1 || z >= _SizeZ - 1)
+    if (access.mapIndex < 0)
         return;
-
-    ChunkInput chunk = ChunkInputs[chunkIndex];
 
     int cubeIndex = 0;
     float corner[8];
     float3 cornerPos[8];
 
-    int chunkOffset = chunkIndex * (_SizeX * _SizeY * _SizeZ);
-
     for (int i = 0; i < 8; i++)
     {
         int3 offset = CornerOffsets[i];
-        int3 pos = int3(x, y, z) + offset;
+        int3 pos = access.voxelCoord + offset;
 
+        // Check bounds
         if (any(pos < 0) || pos.x >= _SizeX || pos.y >= _SizeY || pos.z >= _SizeZ)
             return;
 
         int localIndex = pos.x + pos.y * _SizeX + pos.z * _SizeX * _SizeY;
-        int index = chunkOffset + localIndex;
+        int fullIndex = access.chunkIndex * chunkVoxelSize + localIndex;
 
-        corner[i] = DensityMap[index];
-        cornerPos[i] = float3(pos) * chunk.stepSize;
+        corner[i] = DensityMap[fullIndex];
+        cornerPos[i] = float3(pos) * access.chunk.stepSize;
 
         if (corner[i] > _IsoLevel)
             cubeIndex |= (1 << i);
@@ -146,12 +77,12 @@ void March(uint3 id : SV_DispatchThreadID)
         float3 v2 = lerp(cornerPos[edge2.x], cornerPos[edge2.y],
                          (corner[edge2.x] - _IsoLevel) / (corner[edge2.x] - corner[edge2.y] + 0.0001));
 
-        float3 worldA = v0 + chunk.WorldPos;
-        float3 worldB = v1 + chunk.WorldPos;
-        float3 worldC = v2 + chunk.WorldPos;
+        float3 worldA = v0 + access.chunk.WorldPos;
+        float3 worldB = v1 + access.chunk.WorldPos;
+        float3 worldC = v2 + access.chunk.WorldPos;
 
         Triangle tri;
-        tri.CoordPos = chunk.CoordPos;
+        tri.CoordPos = access.chunk.CoordPos;
 
         tri.a = v0;
         tri.b = v1;

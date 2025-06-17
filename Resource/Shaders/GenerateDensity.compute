@@ -2,13 +2,7 @@
 
 #include "Includes/PerlinNoise.hlsl"
 #include "Includes/TriangleTable.hlsl"
-
-struct ChunkInput
-{
-    float3 CoordPos;
-    float3 WorldPos;
-    int stepSize;
-};
+#include "Includes/ChunkInput.hlsl"
 
 StructuredBuffer<ChunkInput> ChunkInputs;
 RWStructuredBuffer<float> DensityMap;
@@ -72,25 +66,13 @@ float GetDensityValue(float worldX, float worldY, float worldZ)
 [numthreads(1, 1, 1)]
 void Generate(uint3 id : SV_DispatchThreadID)
 {
-    // total threads = dispatchX × dispatchY × dispatchZ
-
-    int chunkSize = _SizeX; // = 17
-    int voxelCount = chunkSize * chunkSize * chunkSize;
-
-    int chunkIndex = id.x / chunkSize;
-    int x = id.x % chunkSize;
-    int y = id.y;
-    int z = id.z;
-
-    if (x >= _SizeX || y >= _SizeY || z >= _SizeZ)
+    ChunkAccessInfo info = GetChunkAccess(id, _SizeX, _SizeY, _SizeZ, ChunkInputs);
+    if (info.mapIndex < 0)
         return;
 
-    int index = chunkIndex * voxelCount + (x + y * _SizeX + z * _SizeX * _SizeY);
-    ChunkInput chunk = ChunkInputs[chunkIndex];
-
-    float3 worldPos = chunk.WorldPos + float3(x, y, z) * chunk.stepSize;
+    float3 worldPos = info.WorldPos;
     worldPos.x += _Seed;
     worldPos.z += _Seed;
 
-    DensityMap[index] = GetDensityValue(worldPos.x, worldPos.y, worldPos.z);
+    DensityMap[info.mapIndex] = GetDensityValue(worldPos.x, worldPos.y, worldPos.z);
 }
