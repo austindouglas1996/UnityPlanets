@@ -17,5 +17,9 @@ public interface IChunkGenerator
     /// <param name="config">Chunk settings/configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>Newly generated chunk data.</returns>
-    Dictionary<Vector3Int, MeshData> DispatchGeneration(List<ChunkContext> chunkContexts, CancellationToken token);
+    void DispatchGeneration(List<ChunkContext> chunkContexts, CancellationToken token);
+
+    void Dispose();
+    void Draw();
+    void DrawGizmo();
 }

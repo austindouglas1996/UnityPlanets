@@ -83,11 +83,29 @@ public class ChunkGenerationProcessor
         return batcher.Remove(new ChunkContext(coordinates, lodIndex, this.chunkServices));
     }
 
+    public void Dipose()
+    {
+        this.chunkServices.Generator.Dispose();
+    }
+
+    public void OnRenderObject()
+    {
+        chunkServices.Generator.Draw();
+    }
+
+    public void OnDrawGizmos()
+    {
+        chunkServices.Generator.DrawGizmo();
+    }
+
+
     /// <summary>
     /// Update the processor and start generating chunks if there is active jobs.
     /// </summary>
     public void Update()
     {
+        chunkServices.Generator.Draw();
+
         if (!this.batcher.HasPending) return;
 
         Debug.Log($"Jobs:{this.batcher.Count}");
@@ -100,24 +118,7 @@ public class ChunkGenerationProcessor
 
         try
         {
-            Dictionary<Vector3Int, MeshData> results = chunkServices.Generator.DispatchGeneration(batch.Keys.ToList(), this.cancellationToken);
-            HashSet<ChunkContext> completed = new HashSet<ChunkContext>();
-
-            foreach (var kvp in results)
-            {
-                if (coordToContext.TryGetValue(kvp.Key, out var context) && batch.TryGetValue(context, out var job))
-                {
-                    job.Completion.TrySetResult(new ChunkData(context, kvp.Value));
-                    completed.Add(context);
-                }
-            }
-
-            // Cancel any jobs that were not resolved
-            foreach (var kvp in batch)
-            {
-                if (!completed.Contains(kvp.Key))
-                    kvp.Value.Completion.TrySetCanceled();
-            }
+            chunkServices.Generator.DispatchGeneration(batch.Keys.ToList(), this.cancellationToken);
         }
         catch (OperationCanceledException)
         {

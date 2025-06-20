@@ -83,7 +83,8 @@ void March(uint3 id : SV_DispatchThreadID)
 
         Triangle tri;
         tri.CoordPos = access.chunk.CoordPos;
-
+        tri.WorldPos = access.chunk.WorldPos;
+        
         tri.a = v0;
         tri.b = v1;
         tri.c = v2;

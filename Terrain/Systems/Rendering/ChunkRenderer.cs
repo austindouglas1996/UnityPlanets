@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.VisualScripting;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem.XR;
 using WaveHarmonic.Crest;
@@ -167,6 +168,8 @@ public class ChunkRenderer : MonoBehaviour
     /// </summary>
     private void OnDrawGizmos()
     {
+        this.generationQueue.OnDrawGizmos();
+
         if (!showRootGizmos) return;
         foreach (var root in rootTrees)
         {
@@ -179,8 +182,15 @@ public class ChunkRenderer : MonoBehaviour
     /// </summary>
     private void OnDisable()
     {
+        this.generationQueue.Dipose();
         cancellationToken.Cancel();
     }
+
+    void OnRenderObject()
+    {
+        this.generationQueue.OnRenderObject();
+    }
+
 
     /// <summary>
     /// Initialize the <see cref="ChunkRenderer"/> to create initial chunks and start rendering.

@@ -29,8 +29,23 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="config">The chunk configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>The generated chunk data.</returns>
-    public virtual Dictionary<Vector3Int, MeshData> DispatchGeneration(List<ChunkContext> chunkContexts, CancellationToken token)
+    public virtual void DispatchGeneration(List<ChunkContext> chunkContexts, CancellationToken token)
     {
-        return this.Generator.DispatchGeneration(chunkContexts);
+        this.Generator.DispatchGeneration(chunkContexts);
+    }
+
+    public void Dispose()
+    {
+        this.Generator.Dispose();
+    }
+
+    public void Draw()
+    {
+        this.Generator.Draw();
+    }
+
+    public void DrawGizmo()
+    {
+        this.Generator.DrawGizmo();
     }
 }
