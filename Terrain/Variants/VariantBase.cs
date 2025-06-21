@@ -14,7 +14,6 @@ public abstract class VariantBase<TConfig> : MonoBehaviour, IChunkServices where
 
     protected IChunkGenerator generator;
     protected IChunkLayout layout;
-    protected IChunkControllerFactory factory;
 
     protected virtual void Awake()
     {
@@ -23,7 +22,6 @@ public abstract class VariantBase<TConfig> : MonoBehaviour, IChunkServices where
 
         generator = CreateGenerator();
         layout = CreateLayout();
-        factory = CreateFactory();
 
         chunkManager.Initialize(Follower, this);
         chunkRenderer.Initialize(chunkManager, this);
@@ -32,12 +30,10 @@ public abstract class VariantBase<TConfig> : MonoBehaviour, IChunkServices where
     // Abstracts to be implemented by derived classes
     protected abstract IChunkGenerator CreateGenerator();
     protected abstract IChunkLayout CreateLayout();
-    protected abstract IChunkControllerFactory CreateFactory();
 
     // IChunkServices implementation
     IChunkConfiguration IChunkServices.Configuration => ChunkConfiguration;
     IChunkLayout IChunkServices.Layout => layout;
     IChunkGenerator IChunkServices.Generator => generator;
-    IChunkControllerFactory IChunkServices.ControllerFactory => factory;
     ChunkManager IChunkServices.ChunkManager => chunkManager;
 }

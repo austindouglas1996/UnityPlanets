@@ -9,14 +9,14 @@ public class ChunkGenerationJob : IEqualityComparer<ChunkGenerationJob>
     public ChunkGenerationJob(ChunkContext context, CancellationTokenSource cts, ChunkModificationJob modificationJob = null)
     {
         Context = context;
-        Completion = new TaskCompletionSource<ChunkData>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Completion = new TaskCompletionSource<ChunkContext>(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationSource = cts;
         ModificationJob = modificationJob;
     }
 
     public ChunkContext Context { get; private set; }
 
-    public TaskCompletionSource<ChunkData> Completion;
+    public TaskCompletionSource<ChunkContext> Completion;
 
     public ChunkModificationJob? ModificationJob { get; private set; }
 

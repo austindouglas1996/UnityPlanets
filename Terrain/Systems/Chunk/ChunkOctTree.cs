@@ -74,19 +74,11 @@ public class ChunkOctTree
     public ChunkOctTree[] Children = null;
 
     /// <summary>
-    /// The render data generated for this chunk, assigned after async generation finishes.
-    /// </summary>
-    public ChunkRenderData RenderData { get; private set; }
-
-    /// <summary>
     /// Set this node to active.
     /// </summary>
     /// <param name="val"></param>
     public void SetActive(bool val)
     {
-        if (this.RenderData != null)
-            this.RenderData.IsActive = val;
-
         if (this.Children != null)
         {
             foreach (var child in Children)
@@ -100,24 +92,11 @@ public class ChunkOctTree
     }
 
     /// <summary>
-    /// Dispose of this object.
-    /// </summary>
-    public void Dispose()
-    {
-        if (this.RenderData != null)
-        {
-            this.renderer.RemoveChunk(this.RenderData);
-            this.RenderData = null;
-        }
-    }
-
-    /// <summary>
     /// Called by the renderer once chunk generation is done to assign the render data and update status.
     /// </summary>
     /// <param name="renderData"></param>
-    public void SetRenderData(Vector3Int coordinates, ChunkRenderData renderData)
+    public void SetRenderData(Vector3Int coordinates)
     {
-        this.RenderData = renderData;
         this.Status = ChunkStatus.Finished;
     }
 
@@ -131,15 +110,6 @@ public class ChunkOctTree
                 child?.UpdateActiveStatus(followerWorldPosition, frustum);
             }
         }
-
-        // Nothing to do if there's no renderable data here
-        if (this.RenderData == null)
-            return;
-
-        if (this.Bounds.Contains(followerWorldPosition) || GeometryUtility.TestPlanesAABB(frustum, this.Bounds))
-            this.RenderData.IsActive = true;
-        else
-            this.RenderData.IsActive = false;
     }
 
     /// <summary>
@@ -201,12 +171,10 @@ public class ChunkOctTree
             && this.Status == ChunkStatus.Subdivided
             && this.Children != null
             && this.Children.All(r => r.Status == ChunkStatus.Finished)
-            && this.RenderData != null
             ||
             this.isVisible
             && this.Status == ChunkStatus.DeepBranch)
         {
-            this.Dispose();
             this.isVisible = false;
         }
     }
@@ -304,12 +272,6 @@ public class ChunkOctTree
         {
             if (child == null || child.Status != ChunkStatus.Finished)
                 return; 
-        }
-
-        // All children are done and safe to destroy.
-        foreach (var child in Children)
-        {
-            child.Dispose();
         }
 
         this.Children = null;

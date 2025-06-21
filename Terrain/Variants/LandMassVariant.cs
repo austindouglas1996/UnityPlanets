@@ -10,21 +10,11 @@ public class LandMassVariant : VariantBase<LandMassChunkConfiguration>
 
     protected override IChunkGenerator CreateGenerator() => new LandMassChunkGenerator(this);
     protected override IChunkLayout CreateLayout() => new LandMassChunkLayout(ChunkConfiguration);
-    protected override IChunkControllerFactory CreateFactory() => new LandMassChunkControllerFactory(200, this, chunkManager.transform);
 }
 
 [Serializable]
 public class LandMassChunkConfiguration : GenericChunkConfiguration
 {
-}
-
-public class LandMassChunkControllerFactory : GenericChunkControllerFactory
-{
-    public LandMassChunkControllerFactory(int preloadChunks, IChunkServices services, Transform parent)
-        : base(preloadChunks, services, parent)
-    {
-
-    }
 }
 
 public class LandMassChunkGenerator : GenericChunkGenerator

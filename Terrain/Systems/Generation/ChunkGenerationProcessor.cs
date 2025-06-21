@@ -46,7 +46,7 @@ public class ChunkGenerationProcessor
     /// Request a new chunk to be generated asynchronously.
     /// Prioritizes LOD0 chunks by proximity to the player.
     /// </summary>
-    public Task<ChunkData> RequestChunkGeneration(ChunkContext context)
+    public Task RequestChunkGeneration(ChunkContext context)
     {
         ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), null);
 
@@ -66,7 +66,7 @@ public class ChunkGenerationProcessor
     /// Request a modification of an existing chunk (e.g., terrain brush).
     /// These jobs are prioritized over everything.
     /// </summary>
-    public Task<ChunkData> RequestChunkModification(ChunkContext context, ChunkModificationJob modificationJob = null)
+    public Task RequestChunkModification(ChunkContext context, ChunkModificationJob modificationJob = null)
     {
         ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), modificationJob);
 

@@ -61,15 +61,12 @@ public class ChunkRenderer : MonoBehaviour
     private ChunkManager chunkManager;
     private IChunkServices chunkServices;
 
-    private MeshBatchDrawer meshDrawer;
-    private FoliageGenerator foliageGenerator;
     private ChunkGenerationProcessor generationQueue;
     private CancellationTokenSource cancellationToken;
 
     private Quaternion lastFollowerRotation;
 
     private List<ChunkOctTree> rootTrees = new List<ChunkOctTree>();
-    private Dictionary<ChunkContext, ChunkRenderData> chunks = new Dictionary<ChunkContext, ChunkRenderData>();
 
     /// <summary>
     /// Update the chunk layout and render any available chunks.
@@ -77,8 +74,6 @@ public class ChunkRenderer : MonoBehaviour
     private void Update()
     {
         if (!isInitialized) return;
-
-        this.meshDrawer.Update();
         this.UpdateLayout();
     }
 
@@ -125,56 +120,7 @@ public class ChunkRenderer : MonoBehaviour
     private void LateUpdate()
     {
         if (!isInitialized) return;
-
-        /*
-         * 
-         * 
-         * 
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * THIS IS AN AWFUL WAY TO DO THIS
-         * 
-         * 
-         * 
-         */
-        foreach (var chunk in this.chunks.Values)
-        {
-            if (chunk.CanRenderGPU)
-                Graphics.DrawMesh(chunk.Mesh, chunk.LocalToWorld, material, 0);
-        }
-
         this.generationQueue.Update();
-    }
-
-    /// <summary>
-    /// Debug options for displaying chunk bounds.
-    /// </summary>
-    private void OnDrawGizmos()
-    {
-        this.generationQueue.OnDrawGizmos();
-
-        if (!showRootGizmos) return;
-        foreach (var root in rootTrees)
-        {
-            Gizmos.DrawWireCube(root.Bounds.center, root.Bounds.size);
-        }
     }
 
     /// <summary>
@@ -208,11 +154,8 @@ public class ChunkRenderer : MonoBehaviour
         this.cancellationToken = new CancellationTokenSource();
         this.chunkManager = this.GetComponent<ChunkManager>();
 
-        this.meshDrawer = new MeshBatchDrawer(Camera.main);
-
         this.chunkServices = services;
         this.generationQueue = new ChunkGenerationProcessor(services, cancellationToken.Token);
-        this.foliageGenerator = new FoliageGenerator();
 
         isInitialized = true;
 
@@ -261,94 +204,9 @@ public class ChunkRenderer : MonoBehaviour
         var task = this.generationQueue.RequestChunkGeneration(context);
         task.ContinueWith(t =>
         {
-            try
-            {
-                if (t.Status != TaskStatus.RanToCompletion
-                || t.Result == null
-                || t.Result.MeshData == null
-                || t.Result.MeshData.IsEmpty
-                || !t.Result.MeshData.IsRenderable)
-                {
-                    // We still return a value here so the 
-                    // tree does not keep waiting for a child that is never
-                    // going to come ):
-                    quadNode.SetRenderData(context.Coordinates, null);
-                    return;
-                }
-
-                // Generate mesh and apply color.
-                ChunkRenderData renderData = new ChunkRenderData(context, t.Result, context.Transform);
-                renderData.Tree = quadNode;
-
-                this.SubmitNewChunk(renderData);
-
-                if (quadNode != null)
-                {
-                    quadNode.SetRenderData(context.Coordinates, renderData);
-                }
-            }
-            catch (System.OperationCanceledException) { }
-            catch (System.Exception ex)
-            {
-                Debug.LogException(ex);
-            }
+            quadNode.SetRenderData(context.Coordinates);
 
         }, TaskScheduler.FromCurrentSynchronizationContext());
-    }
-
-    /// <summary>
-    /// Remove a chunk from all jobs and collections.
-    /// </summary>
-    /// <param name="renderData"></param>
-    public void RemoveChunk(ChunkRenderData renderData)
-    {
-        if (renderData == null)
-        {
-            return;
-        }
-
-        this.generationQueue.CancelChunkGeneration(renderData.Coordinates, renderData.LOD);
-
-        if (renderData.State == ChunkRenderState.GameObject && renderData.Controller != null)
-        {
-            this.chunkServices.ControllerFactory.Release(renderData.Controller);
-            renderData.SetController(null);
-        }
-
-        this.meshDrawer.Remove(renderData.Coordinates);
-
-        this.chunks.Remove(renderData.Context);
-    }
-
-    /// <summary>
-    /// Submit a chunk to be rendered into the world.
-    /// </summary>
-    /// <param name="chunkRenderData"></param>
-    private void SubmitNewChunk(ChunkRenderData chunkRenderData)
-    {
-        try
-        {
-            var coord = chunkRenderData.Coordinates;
-            if (chunkRenderData.LOD == 0)
-            {
-                var controller = chunkServices.ControllerFactory.CreateChunkController(chunkRenderData.Context, this.cancellationToken.Token);
-                chunkRenderData.SetController(controller);
-                chunks[chunkRenderData.Context] = chunkRenderData;
-                controller.ApplyChunkData(chunkRenderData);
-            }
-
-            if (chunkRenderData.LOD < 2)
-            {
-                //this.foliageGenerator.ApplyMap(chunkRenderData, chunkRenderData.Context.Transform, this.cancellationToken.Token);
-
-            }
-
-            chunks[chunkRenderData.Context] = chunkRenderData;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogException(e);
-        }
     }
 
     /// <summary>
