@@ -59,6 +59,8 @@ public class ChunkManager : MonoBehaviour
     /// <exception cref="System.ArgumentNullException">If any required dependency is missing.</exception>
     public void Initialize(Transform follower, IChunkServices services)
     {
+        System.GC.Collect();
+
         this.Follower = follower;
         this.Services = services;
         this.Renderer = this.GetComponent<ChunkRenderer>();

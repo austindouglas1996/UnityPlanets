@@ -2,6 +2,7 @@
 // This compute shader will generate triangles using Marching Cubes.
 
 #pragma kernel March
+#pragma kernel FinalizeArgs
 
 #include "Includes/TriangleTable.hlsl"
 #include "Includes/Triangle.hlsl"
@@ -11,6 +12,7 @@
 StructuredBuffer<ChunkInput> ChunkInputs;
 StructuredBuffer<float> DensityMap;
 AppendStructuredBuffer<Triangle> TriangleBuffer;
+RWStructuredBuffer<uint> ArgsBuffer;
 
 int _SizeX;
 int _SizeY;
@@ -20,7 +22,7 @@ float _IsoLevel;
 float2 GetUV(float3 worldPos)
 {
     // Planar projection: good for terrain-style meshes
-    return worldPos.xz * 0.05; 
+    return worldPos.xz * 0.05;
 }
 
 [numthreads(1, 1, 1)]
@@ -82,23 +84,26 @@ void March(uint3 id : SV_DispatchThreadID)
         float3 worldC = v2 + access.chunk.WorldPos;
 
         Triangle tri;
-        tri.CoordPos = access.chunk.CoordPos;
-        tri.WorldPos = access.chunk.WorldPos;
         
-        tri.a = v0;
-        tri.b = v1;
-        tri.c = v2;
-
+        tri.a = worldA;
+        tri.b = worldB;
+        tri.c = worldC;
+        
         tri.colorA = GetColorForHeight(worldA.y);
         tri.colorB = GetColorForHeight(worldB.y);
         tri.colorC = GetColorForHeight(worldC.y);
-
-        tri.normal = normalize(cross(v1 - v0, v2 - v0));
-
-        tri.uvA = GetUV(worldA);
-        tri.uvB = GetUV(worldB);
-        tri.uvC = GetUV(worldC);
         
         TriangleBuffer.Append(tri);
     }
+}
+
+[numthreads(1, 1, 1)]
+void FinalizeArgs(uint3 id : SV_DispatchThreadID)
+{
+    // ArgsBuffer[0] is the number of triangles from CopyCount
+    // Convert to vertex count by multiplying by 3
+    ArgsBuffer[0] *= 3;
+
+    // Set instance count to 1
+    ArgsBuffer[1] = 1;
 }

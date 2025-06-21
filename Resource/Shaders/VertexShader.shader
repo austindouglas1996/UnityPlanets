@@ -21,6 +21,7 @@ Shader "Custom/URP_CustomLitGPU"
             Tags { "LightMode" = "UniversalForward" }
 
             ZWrite On
+            Cull Back
             Blend One Zero
 
             HLSLPROGRAM
@@ -71,15 +72,11 @@ Shader "Custom/URP_CustomLitGPU"
                 float3 pos = subIndex == 0 ? tri.a :
                              subIndex == 1 ? tri.b :
                                              tri.c;
-
-                float4 color = subIndex == 0 ? tri.colorA :
-                               subIndex == 1 ? tri.colorB :
-                                               tri.colorC;
-                                               
-                float3 worldPos = pos + tri.WorldPos;
+                    
+                float3 worldPos = pos;
 
                 OUT.positionWS = worldPos;
-                OUT.normalWS = tri.normal;
+                OUT.normalWS = normalize(cross(tri.b - tri.a, tri.c - tri.a));
                 OUT.color = subIndex == 0 ? tri.colorA :
                             subIndex == 1 ? tri.colorB :
                             tri.colorC;
@@ -106,7 +103,7 @@ Shader "Custom/URP_CustomLitGPU"
                 surfaceData.albedo = finalColor;
                 surfaceData.alpha = 1.0;
                 surfaceData.metallic = 0.0;
-                surfaceData.smoothness = 0.5;
+                surfaceData.smoothness = 0.0;
                 surfaceData.occlusion = 1.0;
                 surfaceData.emission = 0.0;
                 surfaceData.normalTS = float3(0, 0, 1);
