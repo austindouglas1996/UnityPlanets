@@ -39,15 +39,6 @@ public class ChunkRenderer : MonoBehaviour
     [SerializeField]
     private LODThresholds lodThresholds = new();
 
-    [Header("Rendering")]
-    [Tooltip("Base material used on chunk instances")]
-    [SerializeField]
-    private Material material;
-
-    [Tooltip("Show chunk region layouts.")]
-    [SerializeField]
-    private bool showRootGizmos = false;
-
     [Tooltip("Initial range for LOD4 chunk loading.")]
     [SerializeField]
     private ChunkRenderRange initialRootRange = new ChunkRenderRange(-8, 8, 0, 2, -8, 8);
@@ -87,20 +78,12 @@ public class ChunkRenderer : MonoBehaviour
         if (Time.frameCount % 5 != 0)
             return;
 
-        if (forceActiveUpdate)
-        {
-            Plane[] frustum = GeometryUtility.CalculateFrustumPlanes(Camera.main);
-
-            forceActiveUpdate = false;
-            foreach (var root in rootTrees)
-                root.UpdateActiveStatus(this.chunkServices.Layout.FollowerWorldPosition, frustum);
-        }
-
+        Plane[] frustum = GeometryUtility.CalculateFrustumPlanes(Camera.main);
         float deltaAngle = Quaternion.Angle(lastFollowerRotation, chunkManager.Follower.transform.rotation);
-        if (deltaAngle >= 15f)
-        {
-            Plane[] frustum = GeometryUtility.CalculateFrustumPlanes(Camera.main);
 
+        if (forceActiveUpdate || deltaAngle >= 15f)
+        {
+            forceActiveUpdate = false;
             foreach (var root in rootTrees)
                 root.UpdateActiveStatus(this.chunkServices.Layout.FollowerWorldPosition, frustum);
 
@@ -138,7 +121,6 @@ public class ChunkRenderer : MonoBehaviour
         processor.Draw();
     }
 
-
     /// <summary>
     /// Initialize the <see cref="ChunkRenderer"/> to create initial chunks and start rendering.
     /// </summary>
@@ -148,9 +130,6 @@ public class ChunkRenderer : MonoBehaviour
     {
         System.GC.Collect();
         Resources.UnloadUnusedAssets();
-
-        material = new Material(Shader.Find("Shader Graphs/VertexColor"));
-        material.SetFloat("_Smoothness", 0f);
 
         this.cancellationToken = new CancellationTokenSource();
         this.chunkManager = this.GetComponent<ChunkManager>();

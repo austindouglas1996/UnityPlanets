@@ -30,7 +30,6 @@ public class ChunkOctTree
     private IChunkServices services;
     private ChunkGenerationProcessor processor;
 
-    private bool isRoot = false;
     private bool isVisible = true;
     private bool mergeRequested = false;
 
@@ -52,9 +51,6 @@ public class ChunkOctTree
 
         this.LODIndex = parent == null ? 4 : Mathf.Max(0, parent.LODIndex - 1);
         this.coordinates = BoundsToCoordinate(bounds, LODIndex);
-
-        if (parent == null)
-            isRoot = true;
     }
 
     /// <summary>

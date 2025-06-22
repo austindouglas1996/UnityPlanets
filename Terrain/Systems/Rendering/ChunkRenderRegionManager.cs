@@ -55,6 +55,8 @@ public class ChunkRenderRegionManager
     {
         List<ChunkRenderRegion> toDelete = new List<ChunkRenderRegion>();
 
+        int max3 = 12;
+
         foreach (var region in regions)
         {
             if (region.Removed > 100)
@@ -66,16 +68,23 @@ public class ChunkRenderRegionManager
             if (region.IsDirty)
             {
                 region.Generate(chunkGenerator, token);
+                max3--;
+            }
+
+            if (max3 == 0)
+            {
+                break;
             }
         }
 
         foreach (var region in toDelete)
         {
+            regions.Remove(region);
+
             foreach (var item in region.Chunks.Values)
                 this.Add(item);
 
             region.Dispose();
-            regions.Remove(region);
         }
     }
 
