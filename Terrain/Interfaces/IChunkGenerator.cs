@@ -17,8 +17,5 @@ public interface IChunkGenerator
     /// <param name="config">Chunk settings/configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>Newly generated chunk data.</returns>
-    void DispatchGeneration(List<ChunkContext> chunkContexts, CancellationToken token);
-
-    void Dispose();
-    void Draw();
+    GPUSet DispatchGeneration(List<ChunkContext> chunkContexts, CancellationToken token);
 }

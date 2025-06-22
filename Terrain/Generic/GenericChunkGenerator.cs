@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// Handles generating chunk meshes and density maps for marching cubes.
@@ -29,18 +30,8 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="config">The chunk configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>The generated chunk data.</returns>
-    public virtual void DispatchGeneration(List<ChunkContext> chunkContexts, CancellationToken token)
+    public virtual GPUSet DispatchGeneration(List<ChunkContext> chunkContexts, CancellationToken token)
     {
-        this.Generator.DispatchGeneration(chunkContexts);
-    }
-
-    public void Dispose()
-    {
-        this.Generator.Dispose();
-    }
-
-    public void Draw()
-    {
-        this.Generator.Draw();
+        return this.Generator.DispatchGeneration(chunkContexts);
     }
 }

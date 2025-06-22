@@ -62,11 +62,6 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
 
     private void InitBuffer()
     {
-        Material mat = new Material(Shader.Find("Custom/URP_CustomLitGPU"));
-        mat.SetFloat("_Smoothness", 0f);
-        mat.SetFloat("_UseVertexColor", 1f);
-        this.vertexMat = mat;
-
         var biomes = configuration.Biomes.OrderBy(b => b.MinSurface).ToList();
         BiomeCount = biomes.Count;
 
@@ -86,7 +81,7 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
         BiomeBuffer.SetData(biomeData);
     }
 
-    public virtual void DispatchGeneration(List<ChunkContext> chunkContexts)
+    public virtual GPUSet DispatchGeneration(List<ChunkContext> chunkContexts)
     {
         int batchSize = chunkContexts.Count;
         int size = Options.ChunkSize + 1;
@@ -152,81 +147,10 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
         mcShader.SetBuffer(1, "ArgsBuffer", argsBuffer);
         mcShader.Dispatch(1, 1, 1, 1);
 
-        this.gpuSets.Add(new GPUSet(triangleBuffer, argsBuffer, chunkContexts));
-
-
         densityBuffer.Dispose();
         countBuffer.Dispose();
         chunkInputBuffer.Dispose();
-    }
 
-    private class GPUSet
-    {
-        public ComputeBuffer Triangle;
-        public ComputeBuffer Args;
-        public Bounds Bounds;
-
-        public GPUSet(ComputeBuffer Triangle, ComputeBuffer Args, List<ChunkContext> contexts)
-        {
-            this.Triangle = Triangle;
-            this.Args = Args;
-            this.Bounds = this.ComputeBounds(contexts);
-        }
-
-        Bounds ComputeBounds(List<ChunkContext> chunkContexts)
-        {
-            if (chunkContexts.Count == 0)
-                return new Bounds(Vector3.zero, Vector3.zero);
-
-            Vector3 min = chunkContexts[0].WorldPosition;
-            Vector3 max = chunkContexts[0].WorldPosition;
-
-            foreach (var ctx in chunkContexts)
-            {
-                Vector3 pos = ctx.WorldPosition;
-                min = Vector3.Min(min, pos);
-                max = Vector3.Max(max, pos);
-            }
-
-            Vector3 center = (min + max) * 0.5f;
-            Vector3 size = (max - min) + Vector3.one * 16;
-
-            return new Bounds(center, size);
-        }
-
-        public void Dispose()
-        {
-            Args.Dispose();
-            Triangle.Dispose();
-        }
-
-    }
-
-    private List<GPUSet> gpuSets = new();
-    private Material vertexMat;
-
-    public void Draw()
-    {
-        Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(Camera.main);
-
-        foreach (var gpuSet in gpuSets)
-        {
-            //if (!GeometryUtility.TestPlanesAABB(frustumPlanes, gpuSet.Bounds))
-               // continue;
-
-            vertexMat.SetBuffer("_TriangleBuffer", gpuSet.Triangle);
-            vertexMat.SetPass(0);
-            Graphics.DrawProceduralIndirectNow(
-                MeshTopology.Triangles,
-                gpuSet.Args,
-                0);
-        }
-    }
-
-    public void Dispose()
-    {
-        foreach (var set in gpuSets)
-            set.Dispose();
-        gpuSets.Clear();
+        return new GPUSet(triangleBuffer, argsBuffer, chunkContexts);
     }
 }

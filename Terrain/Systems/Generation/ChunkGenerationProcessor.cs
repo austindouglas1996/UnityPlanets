@@ -1,9 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
 using System;
 using UnityEngine;
 using System.Linq;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// Handles the asynchronous generation and modification of terrain chunks.
@@ -19,6 +20,12 @@ public class ChunkGenerationProcessor
     private ChunkGenerationBatcher batcher = new ChunkGenerationBatcher();
 
     /// <summary>
+    /// A system to help with controlling render regions with the GPU. We are unable
+    /// to modify buffers.
+    /// </summary>
+    private ChunkRenderRegionManager regionManager;
+
+    /// <summary>
     /// Central services used during chunk generation (generator, colorizer, layout, etc.).
     /// </summary>
     private IChunkServices chunkServices;
@@ -30,6 +37,12 @@ public class ChunkGenerationProcessor
     {
         this.chunkServices = services;
         this.cancellationToken = token;
+
+        Material mat = new Material(Shader.Find("Custom/URP_CustomLitGPU"));
+        mat.SetFloat("_Smoothness", 0f);
+        mat.SetFloat("_UseVertexColor", 1f);
+
+        this.regionManager = new ChunkRenderRegionManager(chunkServices.Generator, mat);
     }
 
     /// <summary>
@@ -52,7 +65,7 @@ public class ChunkGenerationProcessor
 
         try
         {
-            this.batcher.Add(newJob);
+            this.batcher.Add(newJob); 
         }
         catch (Exception ex)
         {
@@ -75,6 +88,12 @@ public class ChunkGenerationProcessor
         return newJob.Completion.Task;
     }
 
+    public void RemoveChunk(ChunkContext context)
+    {
+        this.batcher.Remove(context);
+        this.regionManager.Remove(context);
+    }
+
     /// <summary>
     /// Cancel a queued chunk generation job for the given coordinates/LOD.
     /// </summary>
@@ -85,12 +104,12 @@ public class ChunkGenerationProcessor
 
     public void Dipose()
     {
-        this.chunkServices.Generator.Dispose();
+        this.regionManager.Dispose();
     }
 
-    public void OnRenderObject()
+    public void Draw()
     {
-        chunkServices.Generator.Draw();
+        this.regionManager.Draw();
     }
 
     /// <summary>
@@ -98,21 +117,27 @@ public class ChunkGenerationProcessor
     /// </summary>
     public void Update()
     {
-        chunkServices.Generator.Draw();
+        regionManager.Update(cancellationToken);
 
-        if (!this.batcher.HasPending) return;
+        if (!this.batcher.HasPending)
+        {
+            return;
+        }
 
-        Debug.Log($"Jobs:{this.batcher.Count}");
+        Debug.Log($"Jobs:{this.batcher.Count}"); 
 
-        Dictionary<ChunkContext, ChunkGenerationJob> batch = this.batcher.TryBatch(256);
-
+        Dictionary<ChunkContext, ChunkGenerationJob> batch = this.batcher.TryBatch(128);
         Dictionary<Vector3Int, ChunkContext> coordToContext = new Dictionary<Vector3Int, ChunkContext>();
         foreach (var ctx in batch.Keys)
             coordToContext[ctx.Coordinates] = ctx;
 
         try
         {
-            chunkServices.Generator.DispatchGeneration(batch.Keys.ToList(), this.cancellationToken);
+            foreach (var job in batch.Values)
+            {
+                regionManager.Add(job.Context);
+                job.Completion.TrySetResult(job.Context);
+            }
         }
         catch (OperationCanceledException)
         {

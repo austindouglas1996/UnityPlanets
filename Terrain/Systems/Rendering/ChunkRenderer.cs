@@ -60,8 +60,8 @@ public class ChunkRenderer : MonoBehaviour
 
     private ChunkManager chunkManager;
     private IChunkServices chunkServices;
+    private ChunkGenerationProcessor processor;
 
-    private ChunkGenerationProcessor generationQueue;
     private CancellationTokenSource cancellationToken;
 
     private Quaternion lastFollowerRotation;
@@ -120,7 +120,8 @@ public class ChunkRenderer : MonoBehaviour
     private void LateUpdate()
     {
         if (!isInitialized) return;
-        this.generationQueue.Update();
+
+        processor.Update();
     }
 
     /// <summary>
@@ -128,13 +129,13 @@ public class ChunkRenderer : MonoBehaviour
     /// </summary>
     private void OnDisable()
     {
-        this.generationQueue.Dipose();
         cancellationToken.Cancel();
+        this.processor.Dipose();
     }
 
     void OnRenderObject()
     {
-        this.generationQueue.OnRenderObject();
+        processor.Draw();
     }
 
 
@@ -155,7 +156,7 @@ public class ChunkRenderer : MonoBehaviour
         this.chunkManager = this.GetComponent<ChunkManager>();
 
         this.chunkServices = services;
-        this.generationQueue = new ChunkGenerationProcessor(services, cancellationToken.Token);
+        this.processor = new ChunkGenerationProcessor(this.chunkServices, this.cancellationToken.Token);
 
         isInitialized = true;
 
@@ -196,20 +197,6 @@ public class ChunkRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Request a chunk be generated based on a <see cref="ChunkController"/> data.
-    /// </summary>
-    /// <param name="controller"></param>
-    public void RequestGeneration(ChunkContext context, ChunkOctTree quadNode = null)
-    {
-        var task = this.generationQueue.RequestChunkGeneration(context);
-        task.ContinueWith(t =>
-        {
-            quadNode.SetRenderData(context.Coordinates);
-
-        }, TaskScheduler.FromCurrentSynchronizationContext());
-    }
-
-    /// <summary>
     /// Create a new root tree and add to the collection.
     /// </summary>
     /// <param name="coord"></param>
@@ -224,7 +211,7 @@ public class ChunkRenderer : MonoBehaviour
 
         Bounds bounds = new Bounds(chunkWorldPos + Vector3.one * (chunkSize / 2), Vector3.one * chunkSize);
 
-        var root = new ChunkOctTree(chunkServices, this, bounds);
+        var root = new ChunkOctTree(chunkServices, processor, bounds);
         rootTrees.Add(root);
     }
 }
