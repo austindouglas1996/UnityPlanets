@@ -28,8 +28,9 @@ public class ChunkOctTree
     private Vector3Int coordinates;
 
     private IChunkServices services;
-    private ChunkRenderer renderer;
+    private ChunkGenerationProcessor processor;
 
+    private bool isRoot = false;
     private bool isVisible = true;
     private bool mergeRequested = false;
 
@@ -40,10 +41,10 @@ public class ChunkOctTree
     /// <param name="renderer"></param>
     /// <param name="bounds"></param>
     /// <param name="parent"></param>
-    public ChunkOctTree(IChunkServices services, ChunkRenderer renderer, Bounds bounds, ChunkOctTree? parent = null)
+    public ChunkOctTree(IChunkServices services, ChunkGenerationProcessor processor, Bounds bounds, ChunkOctTree? parent = null)
     {
         this.services = services;
-        this.renderer = renderer;
+        this.processor = processor;
         this.Bounds = bounds;
         this.Parent = parent;
 
@@ -51,6 +52,9 @@ public class ChunkOctTree
 
         this.LODIndex = parent == null ? 4 : Mathf.Max(0, parent.LODIndex - 1);
         this.coordinates = BoundsToCoordinate(bounds, LODIndex);
+
+        if (parent == null)
+            isRoot = true;
     }
 
     /// <summary>
@@ -89,15 +93,6 @@ public class ChunkOctTree
         }
 
         isVisible = val;
-    }
-
-    /// <summary>
-    /// Called by the renderer once chunk generation is done to assign the render data and update status.
-    /// </summary>
-    /// <param name="renderData"></param>
-    public void SetRenderData(Vector3Int coordinates)
-    {
-        this.Status = ChunkStatus.Finished;
     }
 
     public void UpdateActiveStatus(Vector3 followerWorldPosition, Plane[] frustum)
@@ -176,6 +171,7 @@ public class ChunkOctTree
             && this.Status == ChunkStatus.DeepBranch)
         {
             this.isVisible = false;
+            this.RemoveChunk();
         }
     }
 
@@ -198,7 +194,14 @@ public class ChunkOctTree
         else
         {
             this.Status = ChunkStatus.Loading;
-            this.renderer.RequestGeneration(new ChunkContext(coordinates, LODIndex, services), this);
+
+            var context = new ChunkContext(coordinates, LODIndex, services);
+            var task = this.processor.RequestChunkGeneration(context);
+            task.ContinueWith(t =>
+            {
+                this.Status = ChunkStatus.Finished;
+
+            }, TaskScheduler.FromCurrentSynchronizationContext());
         }
     }
 
@@ -271,7 +274,9 @@ public class ChunkOctTree
         foreach (var child in Children)
         {
             if (child == null || child.Status != ChunkStatus.Finished)
-                return; 
+                return;
+
+            child.RemoveChunk();
         }
 
         this.Children = null;
@@ -284,6 +289,14 @@ public class ChunkOctTree
         {
             this.Parent.Status = ChunkStatus.Subdivided;
         }
+    }
+
+    /// <summary>
+    /// Delete the chunk data established with this.
+    /// </summary>
+    private void RemoveChunk()
+    {
+        this.processor.RemoveChunk(new ChunkContext(coordinates, this.LODIndex, this.services));
     }
 
     /// <summary>
@@ -304,7 +317,7 @@ public class ChunkOctTree
         Vector3 boundsCenter = worldMin + Vector3.one * (chunkSize / 2f);
         Bounds bounds = new Bounds(boundsCenter, Vector3.one * chunkSize);
 
-        return new ChunkOctTree(services, renderer, bounds, this);
+        return new ChunkOctTree(services, this.processor, bounds, this);
     }
 
     /// <summary>
