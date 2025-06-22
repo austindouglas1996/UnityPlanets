@@ -30,12 +30,6 @@ public abstract class GenericChunkLayout : IChunkLayout
     }
 
     /// <summary>
-    /// Returns the <see cref="BoundsInt"/> of the last collection of active chunks around the follower.
-    /// using this saves space on the CPU and storage for faster rendering speeds.
-    /// </summary>
-    public BoundsInt PreviousActiveChunks { get; private set; }
-
-    /// <summary>
     /// Gets or sets the follower in the world.
     /// </summary>
     public Transform Follower { get; set; }
@@ -118,6 +112,7 @@ public abstract class GenericChunkLayout : IChunkLayout
         int lod = distance / 24;
 
         // Clamp to a max LOD of 5, anything over 5 does not render.
+        // (This is because of how I make the chunks. I should change this?)
         return Mathf.Min(lod, 5);
     }
 

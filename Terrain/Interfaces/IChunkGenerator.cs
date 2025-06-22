@@ -21,5 +21,4 @@ public interface IChunkGenerator
 
     void Dispose();
     void Draw();
-    void DrawGizmo();
 }

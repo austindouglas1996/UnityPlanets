@@ -36,7 +36,7 @@ struct BiomeData
     public Vector4 GradientEnd;
 }
 
-public class BaseMarchingCubeGenerator : IDensityMapGenerator
+public class MarchingCubesGPUDispatcher : IDensityMapGenerator
 {
     private IChunkConfiguration configuration;
 
@@ -44,7 +44,7 @@ public class BaseMarchingCubeGenerator : IDensityMapGenerator
     /// Creates a new marching cube generator with the given density options.
     /// </summary>
     /// <param name="options">The configuration used for density generation and surface thresholds.</param>
-    public BaseMarchingCubeGenerator(IChunkConfiguration configuration, DensityMapOptions options)
+    public MarchingCubesGPUDispatcher(IChunkConfiguration configuration, DensityMapOptions options)
     {
         this.configuration = configuration;
         this.Options = options;
@@ -145,7 +145,7 @@ public class BaseMarchingCubeGenerator : IDensityMapGenerator
         mcShader.SetInt("_SizeY", size);
         mcShader.SetInt("_SizeZ", size);
         mcShader.SetFloat("_IsoLevel", Options.ISOLevel);
-        mcShader.Dispatch(0, batchSize * 16, 16, 16);
+        mcShader.Dispatch(0, batchSize * Options.ChunkSize, Options.ChunkSize, Options.ChunkSize);
 
         ComputeBuffer.CopyCount(triangleBuffer, argsBuffer, 0);
 
@@ -158,15 +158,6 @@ public class BaseMarchingCubeGenerator : IDensityMapGenerator
         densityBuffer.Dispose();
         countBuffer.Dispose();
         chunkInputBuffer.Dispose();
-    }
-
-    public void DrawGizmo()
-    {
-        foreach (var set in gpuSets)
-        {
-            //Gizmos.color = Color.yellow;
-            //Gizmos.DrawWireCube(set.Bounds.center, set.Bounds.size);
-        }
     }
 
     private class GPUSet
@@ -220,8 +211,8 @@ public class BaseMarchingCubeGenerator : IDensityMapGenerator
 
         foreach (var gpuSet in gpuSets)
         {
-            if (!GeometryUtility.TestPlanesAABB(frustumPlanes, gpuSet.Bounds))
-                continue;
+            //if (!GeometryUtility.TestPlanesAABB(frustumPlanes, gpuSet.Bounds))
+               // continue;
 
             vertexMat.SetBuffer("_TriangleBuffer", gpuSet.Triangle);
             vertexMat.SetPass(0);

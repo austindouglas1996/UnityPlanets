@@ -8,10 +8,4 @@ public class Biome
     public float MinSurface;
     public float MaxSurface;
     public Gradient SurfaceColorRange;
-
-    public Color EvaluateColor(float height)
-    {
-        float t = Mathf.InverseLerp(MinSurface, MaxSurface, height);
-        return SurfaceColorRange.Evaluate(t);
-    }
 }

@@ -26,16 +26,16 @@ public class LandMassChunkGenerator : GenericChunkGenerator
         this.configuration = services.Configuration;
     }
 
-    public override BaseMarchingCubeGenerator Generator
+    public override MarchingCubesGPUDispatcher Generator
     {
         get
         {
             if (this.generator == null)
-                this.generator = new BaseMarchingCubeGenerator(configuration, Configuration.DensityOptions);
+                this.generator = new MarchingCubesGPUDispatcher(configuration, Configuration.DensityOptions);
             return this.generator;
         }
     }
-    private BaseMarchingCubeGenerator generator;
+    private MarchingCubesGPUDispatcher generator;
 }
 
 public class LandMassChunkLayout : GenericChunkLayout

@@ -7,7 +7,7 @@ public class DensityMapOptions
     [Header("Global Settings")]
 
     [Tooltip("Base sized used for all chunk rendering. LOD of chunks will further expand this value.")]
-    public int ChunkSize => 16;
+    public int ChunkSize = 16;
 
     [Tooltip("Seed used for all noise generation. Keeps terrain consistent across sessions.")]
     public int Seed = 0;

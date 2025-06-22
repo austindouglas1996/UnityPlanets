@@ -20,7 +20,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
         get { return configuration; }
     }
 
-    public abstract BaseMarchingCubeGenerator Generator { get; }
+    public abstract MarchingCubesGPUDispatcher Generator { get; }
 
     /// <summary>
     /// Generates a new chunk from coordinates using the provided configuration.
@@ -42,10 +42,5 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     public void Draw()
     {
         this.Generator.Draw();
-    }
-
-    public void DrawGizmo()
-    {
-        this.Generator.DrawGizmo();
     }
 }

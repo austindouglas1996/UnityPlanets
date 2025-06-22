@@ -11,11 +11,6 @@ using System.Runtime.CompilerServices;
 public interface IChunkLayout
 {
     /// <summary>
-    /// A list of previously active chunks.
-    /// </summary>
-    BoundsInt PreviousActiveChunks { get; }
-
-    /// <summary>
     /// Gets or sets the follower.
     /// </summary>
     Transform Follower { get; set; }

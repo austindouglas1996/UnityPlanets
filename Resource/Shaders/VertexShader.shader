@@ -36,7 +36,7 @@ Shader "Custom/URP_CustomLitGPU"
             #pragma multi_compile _ _SHADOWS_SOFT
             #pragma multi_compile_fog
 
-            #include "Includes/Triangle.hlsl"
+            #include "Triangle.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"

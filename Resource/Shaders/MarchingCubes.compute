@@ -5,9 +5,9 @@
 #pragma kernel FinalizeArgs
 
 #include "Includes/TriangleTable.hlsl"
-#include "Includes/Triangle.hlsl"
-#include "Includes/ChunkInput.hlsl"
-#include "Includes/Biomes.hlsl"
+#include "Triangle.hlsl"
+#include "ChunkInput.hlsl"
+#include "Biomes.hlsl"
 
 StructuredBuffer<ChunkInput> ChunkInputs;
 StructuredBuffer<float> DensityMap;

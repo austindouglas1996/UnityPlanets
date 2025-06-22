@@ -2,7 +2,7 @@
 
 #include "Includes/PerlinNoise.hlsl"
 #include "Includes/TriangleTable.hlsl"
-#include "Includes/ChunkInput.hlsl"
+#include "ChunkInput.hlsl"
 
 StructuredBuffer<ChunkInput> ChunkInputs;
 RWStructuredBuffer<float> DensityMap;
@@ -71,8 +71,5 @@ void Generate(uint3 id : SV_DispatchThreadID)
         return;
 
     float3 worldPos = info.WorldPos;
-    worldPos.x += _Seed;
-    worldPos.z += _Seed;
-
     DensityMap[info.mapIndex] = GetDensityValue(worldPos.x, worldPos.y, worldPos.z);
 }

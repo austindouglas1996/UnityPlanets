@@ -93,12 +93,6 @@ public class ChunkGenerationProcessor
         chunkServices.Generator.Draw();
     }
 
-    public void OnDrawGizmos()
-    {
-        chunkServices.Generator.DrawGizmo();
-    }
-
-
     /// <summary>
     /// Update the processor and start generating chunks if there is active jobs.
     /// </summary>
@@ -110,7 +104,7 @@ public class ChunkGenerationProcessor
 
         Debug.Log($"Jobs:{this.batcher.Count}");
 
-        Dictionary<ChunkContext, ChunkGenerationJob> batch = this.batcher.TryBatch(128);
+        Dictionary<ChunkContext, ChunkGenerationJob> batch = this.batcher.TryBatch(256);
 
         Dictionary<Vector3Int, ChunkContext> coordToContext = new Dictionary<Vector3Int, ChunkContext>();
         foreach (var ctx in batch.Keys)
