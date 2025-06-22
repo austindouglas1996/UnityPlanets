@@ -25,7 +25,7 @@ float2 GetUV(float3 worldPos)
     return worldPos.xz * 0.05;
 }
 
-[numthreads(1, 1, 1)]
+[numthreads(8,8,8)]
 void March(uint3 id : SV_DispatchThreadID)
 {
     int chunkSize = _SizeX - 1;

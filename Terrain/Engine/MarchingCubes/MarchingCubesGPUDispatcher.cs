@@ -129,7 +129,7 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
         genShader.SetFloat("_MountainAmplitude", Options.MountainAmplitude);
         genShader.SetFloat("_MountainSharpness", Options.MountainSharpness);
         genShader.SetFloat("_TotalHeightScale", Options.TotalHeightScale);
-        genShader.Dispatch(0, batchSize * size, size, size);
+        genShader.Dispatch(0, Mathf.CeilToInt(batchSize * size / 8f), Mathf.CeilToInt(size / 8f), Mathf.CeilToInt(size / 8f));
 
         mcShader.SetBuffer(0, "DensityMap", densityBuffer);
         mcShader.SetBuffer(0, "TriangleBuffer", triangleBuffer);
@@ -140,7 +140,7 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
         mcShader.SetInt("_SizeY", size);
         mcShader.SetInt("_SizeZ", size);
         mcShader.SetFloat("_IsoLevel", Options.ISOLevel);
-        mcShader.Dispatch(0, batchSize * Options.ChunkSize, Options.ChunkSize, Options.ChunkSize);
+        mcShader.Dispatch(0, batchSize * 2,2,2);
 
         ComputeBuffer.CopyCount(triangleBuffer, argsBuffer, 0);
 
