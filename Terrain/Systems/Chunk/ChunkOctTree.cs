@@ -125,7 +125,10 @@ public class ChunkOctTree
             this.TryFinalizeMerge();
         }
 
-        float distance = Vector3.Distance(followerWorldPosition, this.Bounds.center);
+        Vector2 followerXZ = new Vector2(followerWorldPosition.x, followerWorldPosition.z);
+        Vector2 centerXZ = new Vector2(this.Bounds.center.x, this.Bounds.center.z);
+        float distance = Vector2.Distance(followerXZ, centerXZ);
+
         float threshold = lodThresholds[LODIndex];
 
         if (this.Status == ChunkStatus.Subdivided)

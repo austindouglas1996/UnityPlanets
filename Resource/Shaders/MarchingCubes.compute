@@ -25,6 +25,23 @@ float2 GetUV(float3 worldPos)
     return worldPos.xz * 0.05;
 }
 
+float4 GetLODColor(int stepSize)
+{
+    if (stepSize == 1)
+        return float4(1, 1, 1, 1); // LOD0 - White
+    if (stepSize == 2)
+        return float4(1, 0, 0, 1); // LOD1 - Red
+    if (stepSize == 4)
+        return float4(1, 1, 0, 1); // LOD2 - Yellow
+    if (stepSize == 8)
+        return float4(0, 1, 0, 1); // LOD3 - Green
+    if (stepSize == 16)
+        return float4(0, 0, 1, 1); // LOD4 - Blue
+    if (stepSize == 32)
+        return float4(1, 0, 1, 1); // LOD5 - Magenta
+    return float4(0, 0, 0, 1); // Unknown
+}
+
 [numthreads(8,8,8)]
 void March(uint3 id : SV_DispatchThreadID)
 {
@@ -89,9 +106,11 @@ void March(uint3 id : SV_DispatchThreadID)
         tri.b = worldB;
         tri.c = worldC;
         
-        tri.colorA = GetColorForHeight(worldA.y);
-        tri.colorB = GetColorForHeight(worldB.y);
-        tri.colorC = GetColorForHeight(worldC.y);
+        float4 color = GetLODColor(access.chunk.stepSize);
+        
+        tri.colorA = color;
+        tri.colorB = color;
+        tri.colorC = color;
         
         TriangleBuffer.Append(tri);
     }

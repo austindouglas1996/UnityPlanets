@@ -73,6 +73,6 @@ public class ChunkRenderRegion
     private void MarkDirty()
     {
         IsDirty = true;
-        delayFrames = 5; // Delay regeneration by 5 frames
+        delayFrames = 10; // Delay regeneration by 5 frames
     }
 }

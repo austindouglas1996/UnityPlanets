@@ -9,6 +9,9 @@ public class DensityMapOptions
     [Tooltip("Base sized used for all chunk rendering. LOD of chunks will further expand this value.")]
     public int ChunkSize = 16;
 
+    [Tooltip("The amount of chunks between each LOD level. (48 chunks to go from LOD0 to LOD1)")]
+    public int ChunkLODWidth = 48;
+
     [Tooltip("Seed used for all noise generation. Keeps terrain consistent across sessions.")]
     public int Seed = 0;
 

@@ -21,15 +21,29 @@ public class LODThresholds
     public float LOD1 = 100f;
 
     [Tooltip("LOD2 — visible terrain shape, some structure")]
-    public float LOD2 = 450f;
+    public float LOD2 = 850f;
 
     [Tooltip("LOD3 — far terrain shape only")]
-    public float LOD3 = 700f;
+    public float LOD3 = 1400f;
 
     [Tooltip("LOD4 — horizon terrain (proxy/shader only)")]
-    public float LOD4 = 1000f;
+    public float LOD4 = 3000f;
 
-    public float[] ToArray() => new[] { LOD0, LOD1, LOD2, LOD3, LOD4 };
+    public float[] ToArray()
+    {
+        float[] result = new float[5];
+
+        // Step size per LOD (1 << LODIndex) * base chunk size
+        int baseChunkSize = 16;
+
+        result[0] = LOD0 * (baseChunkSize << 0); // 16
+        result[1] = result[0] + (LOD1 * (baseChunkSize << 1)); // 32
+        result[2] = result[1] + (LOD2 * (baseChunkSize << 2)); // 64
+        result[3] = result[2] + (LOD3 * (baseChunkSize << 3)); // 128
+        result[4] = result[3] + (LOD4 * (baseChunkSize << 4)); // 256
+
+        return result;
+    }
 }
 
 [RequireComponent (typeof(ChunkManager))]

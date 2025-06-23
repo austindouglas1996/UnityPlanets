@@ -108,8 +108,8 @@ public abstract class GenericChunkLayout : IChunkLayout
 
         int distance = Mathf.Max(dx, dz);
 
-        // Each tier is 12 chunks wide.
-        int lod = distance / 24;
+        // Each tier is X chunks wide.
+        int lod = distance / Configuration.DensityOptions.ChunkLODWidth;
 
         // Clamp to a max LOD of 5, anything over 5 does not render.
         // (This is because of how I make the chunks. I should change this?)

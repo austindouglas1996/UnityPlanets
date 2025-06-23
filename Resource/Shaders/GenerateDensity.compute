@@ -1,4 +1,5 @@
 ﻿#pragma kernel Generate
+#pragma kernel PrecheckAir
 
 #include "Includes/PerlinNoise.hlsl"
 #include "Includes/TriangleTable.hlsl"
@@ -6,6 +7,7 @@
 
 StructuredBuffer<ChunkInput> ChunkInputs;
 RWStructuredBuffer<float> DensityMap;
+RWStructuredBuffer<uint> ChunkMask;
 
 int _SizeX;
 int _SizeY;
@@ -72,4 +74,37 @@ void Generate(uint3 id : SV_DispatchThreadID)
 
     float3 worldPos = info.WorldPos;
     DensityMap[info.mapIndex] = GetDensityValue(worldPos.x, worldPos.y, worldPos.z);
+}
+
+[numthreads(1, 1, 1)]
+void PrecheckAir(uint3 id : SV_DispatchThreadID)
+{
+    uint chunkID = id.x;
+    ChunkInput chunk = ChunkInputs[chunkID];
+
+    // Sample 8 points within chunk volume
+    int hits = 0;
+    int sampleCount = 8;
+
+    for (int i = 0; i < sampleCount; i++)
+    {
+        float3 offset = float3(
+            frac(sin(i * 12.9898) * 43758.5453),
+            frac(sin(i * 78.233) * 43758.5453),
+            frac(sin(i * 23.357) * 43758.5453)
+        );
+
+        offset *= chunk.stepSize * (_SizeX - 1); // spread across chunk
+
+        float3 world = chunk.WorldPos + offset;
+        float density = GetDensityValue(world.x, world.y, world.z);
+
+        if (density > _ISOLevel)
+        {
+            ChunkMask[chunkID] = 1;
+            return;
+        }
+    }
+
+    ChunkMask[chunkID] = 0; // air-only
 }
