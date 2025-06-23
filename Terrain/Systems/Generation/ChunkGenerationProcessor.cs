@@ -126,7 +126,7 @@ public class ChunkGenerationProcessor
 
         Debug.Log($"Jobs:{this.batcher.Count}"); 
 
-        Dictionary<ChunkContext, ChunkGenerationJob> batch = this.batcher.TryBatch(128);
+        Dictionary<ChunkContext, ChunkGenerationJob> batch = this.batcher.TryBatch(256);
         Dictionary<Vector3Int, ChunkContext> coordToContext = new Dictionary<Vector3Int, ChunkContext>();
         foreach (var ctx in batch.Keys)
             coordToContext[ctx.Coordinates] = ctx;

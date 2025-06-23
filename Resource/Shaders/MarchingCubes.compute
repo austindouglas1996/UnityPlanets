@@ -9,7 +9,7 @@
 #include "ChunkInput.hlsl"
 #include "Biomes.hlsl"
 
-StructuredBuffer<ChunkInput> ChunkInputs;
+RWStructuredBuffer<ChunkInput> ChunkInputs;
 StructuredBuffer<float> DensityMap;
 AppendStructuredBuffer<Triangle> TriangleBuffer;
 RWStructuredBuffer<uint> ArgsBuffer;
@@ -50,7 +50,7 @@ void March(uint3 id : SV_DispatchThreadID)
 
     ChunkAccessInfo access = GetChunkAccess(id, _SizeX - 1, _SizeY - 1, _SizeZ - 1, ChunkInputs);
 
-    if (access.mapIndex < 0)
+    if (access.mapIndex < 0 || access.chunk.isAir == 1)
         return;
 
     int cubeIndex = 0;

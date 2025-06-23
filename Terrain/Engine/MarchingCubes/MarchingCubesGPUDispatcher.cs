@@ -14,6 +14,7 @@ public struct ChunkInput
     public Vector3 CoordPos;
     public Vector3 WorldPos;
     public int stepSize;
+    public int isAir;
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -113,6 +114,7 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
         triangleBuffer.SetCounterValue(0);
 
         genShader.SetBuffer(0, "ChunkInputs", chunkInputBuffer);
+        genShader.SetBuffer(1, "ChunkInputs", chunkInputBuffer);
         genShader.SetBuffer(0, "DensityMap", densityBuffer);
         genShader.SetInt("_SizeX", size);
         genShader.SetInt("_SizeY", size);
@@ -129,6 +131,7 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
         genShader.SetFloat("_MountainAmplitude", Options.MountainAmplitude);
         genShader.SetFloat("_MountainSharpness", Options.MountainSharpness);
         genShader.SetFloat("_TotalHeightScale", Options.TotalHeightScale);
+        genShader.Dispatch(1, Mathf.CeilToInt(batchSize * size / 8f), Mathf.CeilToInt(size / 8f), Mathf.CeilToInt(size / 8f));
         genShader.Dispatch(0, Mathf.CeilToInt(batchSize * size / 8f), Mathf.CeilToInt(size / 8f), Mathf.CeilToInt(size / 8f));
 
         mcShader.SetBuffer(0, "DensityMap", densityBuffer);

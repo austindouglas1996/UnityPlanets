@@ -5,9 +5,8 @@
 #include "Includes/TriangleTable.hlsl"
 #include "ChunkInput.hlsl"
 
-StructuredBuffer<ChunkInput> ChunkInputs;
+RWStructuredBuffer<ChunkInput> ChunkInputs;
 RWStructuredBuffer<float> DensityMap;
-RWStructuredBuffer<uint> ChunkMask;
 
 int _SizeX;
 int _SizeY;
@@ -69,7 +68,7 @@ float GetDensityValue(float worldX, float worldY, float worldZ)
 void Generate(uint3 id : SV_DispatchThreadID)
 {
     ChunkAccessInfo info = GetChunkAccess(id, _SizeX, _SizeY, _SizeZ, ChunkInputs);
-    if (info.mapIndex < 0)
+    if (info.mapIndex < 0 || info.chunk.isAir == 1)
         return;
 
     float3 worldPos = info.WorldPos;
@@ -81,30 +80,24 @@ void PrecheckAir(uint3 id : SV_DispatchThreadID)
 {
     uint chunkID = id.x;
     ChunkInput chunk = ChunkInputs[chunkID];
-
+    
     // Sample 8 points within chunk volume
     int hits = 0;
     int sampleCount = 8;
 
     for (int i = 0; i < sampleCount; i++)
     {
-        float3 offset = float3(
-            frac(sin(i * 12.9898) * 43758.5453),
-            frac(sin(i * 78.233) * 43758.5453),
-            frac(sin(i * 23.357) * 43758.5453)
-        );
-
-        offset *= chunk.stepSize * (_SizeX - 1); // spread across chunk
-
-        float3 world = chunk.WorldPos + offset;
+        float3 world = chunk.WorldPos;
         float density = GetDensityValue(world.x, world.y, world.z);
 
         if (density > _ISOLevel)
         {
-            ChunkMask[chunkID] = 1;
+            chunk.isAir = 0;
+            ChunkInputs[chunkID] = chunk;
             return;
         }
     }
 
-    ChunkMask[chunkID] = 0; // air-only
+    chunk.isAir = 1;
+    ChunkInputs[chunkID] = chunk;
 }

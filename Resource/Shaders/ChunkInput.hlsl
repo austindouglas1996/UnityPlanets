@@ -19,7 +19,7 @@ struct ChunkAccessInfo
 };
 #endif
 
-ChunkAccessInfo GetChunkAccess(uint3 id, int sizeX, int sizeY, int sizeZ, StructuredBuffer<ChunkInput> chunkInputs)
+ChunkAccessInfo GetChunkAccess(uint3 id, int sizeX, int sizeY, int sizeZ, RWStructuredBuffer<ChunkInput> chunkInputs)
 {
     ChunkAccessInfo result;
 
