@@ -34,4 +34,14 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     {
         return this.Generator.DispatchGeneration(chunkContexts);
     }
+
+    public void Dispose()
+    {
+        this.Generator.Dispose();
+    }
+
+    public uint[] DispatchSurface(List<ChunkContext> contexts)
+    {
+        return this.Generator.GetSurfaceMask(contexts);
+    }
 }

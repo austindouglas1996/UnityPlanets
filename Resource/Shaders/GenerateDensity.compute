@@ -1,64 +1,83 @@
 ﻿#pragma kernel Generate
-#pragma kernel PrecheckAir
+#pragma kernel GenerateSurfaceMap
 
 #include "Includes/PerlinNoise.hlsl"
 #include "Includes/TriangleTable.hlsl"
 #include "ChunkInput.hlsl"
+#include "ChunkDensityOptions.hlsl"
+
+StructuredBuffer<DensityMapOptions> DensityOptions;
+
+float3 RegionCoordinate;
+int _ChunkInputCount;
+RWStructuredBuffer<uint> SurfaceMask;
 
 RWStructuredBuffer<ChunkInput> ChunkInputs;
 RWStructuredBuffer<float> DensityMap;
 
-int _SizeX;
-int _SizeY;
-int _SizeZ;
-
-float _Seed;
-
-float _ISOLevel;
-float _ContinentFrequency;
-float _ContinentAmplitude;
-float _DetailFrequency;
-float _DetailAmplitude;
-float _FlatnessFrequency;
-float _FlatnessStrength;
-float _MountainFrequency;
-float _MountainAmplitude;
-float _MountainSharpness;
-float _TotalHeightScale;
-
-float GetDensityValue(float worldX, float worldY, float worldZ)
+float GetFastDensityValue(DensityMapOptions options, float worldX, float worldY, float worldZ)
 {
     float2 posXZ = float2(worldX, worldZ);
 
-    float2 continentPos = posXZ * _ContinentFrequency;
-    float continent = fbm2D(continentPos, 6);
+    // Use low-octave continent for basic terrain shape
+    float base = fbm2D(posXZ * options.ContinentFrequency, 2);
+    base = smoothstep(0.0, 1.0, (base + 1.0) * 0.5);
+
+    float height = base * options.ContinentAmplitude;
+
+    return -(worldY - height);
+}
+
+float GetDensityValue(DensityMapOptions options, float worldX, float worldY, float worldZ, int lod)
+{
+    float2 posXZ = float2(worldX, worldZ);
+    
+    int octaves;
+    switch (lod)
+    {
+        case 0:
+            octaves = 6;
+            break;
+        case 1:
+            octaves = 4;
+            break;
+        case 2:
+            octaves = 2;
+            break;
+        default:
+            octaves = 1;
+            break;
+    }
+
+    float2 continentPos = posXZ * options.ContinentFrequency;
+    float continent = fbm2D(continentPos, 2);
     continent = smoothstep(0.0, 1.0, (continent + 1.0) * 0.5);
 
-    float2 detailPos = (posXZ + 1234.0) * _DetailFrequency;
-    float detail = fbm2D(detailPos, 6);
+    float2 detailPos = (posXZ + 1234.0) * options.DetailFrequency;
+    float detail = fbm2D(detailPos, lod == 1 ? 6 : octaves);
 
-    float2 flatnessPos = (posXZ + 5555.0) * _FlatnessFrequency;
-    float flatness = fbm2D(flatnessPos, 6);
+    float2 flatnessPos = (posXZ + 5555.0) * options.FlatnessFrequency;
+    float flatness = fbm2D(flatnessPos, 3);
     flatness = saturate((flatness + 1.0) * 0.5);
-    flatness = pow(saturate(1.0 - flatness), _FlatnessStrength);
+    flatness = pow(saturate(1.0 - flatness), options.FlatnessStrength);
 
     float2 mountainMaskPos = (posXZ + 9999.0) * 0.001;
-    float mountainMask = fbm2D(mountainMaskPos, 6);
+    float mountainMask = fbm2D(mountainMaskPos, 2);
     mountainMask = saturate((mountainMask + 1.0) * 0.5);
     float mountainWeight = smoothstep(0.85, 1.0, mountainMask);
 
-    float2 mountainNoisePos = (posXZ + 999.0) * _MountainFrequency;
-    float mountainNoise = fbm2D(mountainNoisePos, 6);
-    mountainNoise = pow(max(mountainNoise, 0.0), _MountainSharpness) * mountainWeight;
+    float2 mountainNoisePos = (posXZ + 999.0) * options.MountainFrequency;
+    float mountainNoise = fbm2D(mountainNoisePos, 2);
+    mountainNoise = pow(max(mountainNoise, 0.0), options.MountainSharpness) * mountainWeight;
 
     float rawHeight =
-        continent * _ContinentAmplitude +
-        detail * _DetailAmplitude * flatness +
-        mountainNoise * _MountainAmplitude;
+        continent * options.ContinentAmplitude +
+        detail * options.DetailAmplitude * flatness +
+        mountainNoise * options.MountainAmplitude;
 
-    float heightScale = max(_ContinentAmplitude + _MountainAmplitude, 0.0001);
+    float heightScale = max(options.ContinentAmplitude + options.MountainAmplitude, 0.0001);
     float normalized = rawHeight / heightScale;
-    float finalHeight = normalized * _TotalHeightScale;
+    float finalHeight = normalized * options.TotalHeightScale;
 
     float value = -(worldY - finalHeight);
     return (isnan(value) || isinf(value)) ? 0.0 : value;
@@ -67,37 +86,53 @@ float GetDensityValue(float worldX, float worldY, float worldZ)
 [numthreads(8,8,8)]
 void Generate(uint3 id : SV_DispatchThreadID)
 {
-    ChunkAccessInfo info = GetChunkAccess(id, _SizeX, _SizeY, _SizeZ, ChunkInputs);
-    if (info.mapIndex < 0 || info.chunk.isAir == 1)
+    DensityMapOptions mOptions = DensityOptions[0];
+    int chunkLogicalSize = mOptions.ChunkSize + 1;
+    
+    ChunkAccessInfo info = GetChunkAccess(id, chunkLogicalSize, chunkLogicalSize, chunkLogicalSize, ChunkInputs);
+    if (info.mapIndex < 0)
         return;
 
     float3 worldPos = info.WorldPos;
-    DensityMap[info.mapIndex] = GetDensityValue(worldPos.x, worldPos.y, worldPos.z);
+    DensityMap[info.mapIndex] = GetDensityValue(mOptions, worldPos.x, worldPos.y, worldPos.z, log2(info.chunk.stepSize));
 }
 
-[numthreads(1, 1, 1)]
-void PrecheckAir(uint3 id : SV_DispatchThreadID)
+[numthreads(64, 1, 1)]
+void GenerateSurfaceMap(uint3 id : SV_DispatchThreadID)
 {
-    uint chunkID = id.x;
-    ChunkInput chunk = ChunkInputs[chunkID];
-    
-    // Sample 8 points within chunk volume
-    int hits = 0;
-    int sampleCount = 8;
+    uint index = id.x;
+    if (index >= _ChunkInputCount)
+        return;
 
-    for (int i = 0; i < sampleCount; i++)
-    {
-        float3 world = chunk.WorldPos;
-        float density = GetDensityValue(world.x, world.y, world.z);
+    ChunkInput chunk = ChunkInputs[index];
+    DensityMapOptions mOptions = DensityOptions[0];
 
-        if (density > _ISOLevel)
-        {
-            chunk.isAir = 0;
-            ChunkInputs[chunkID] = chunk;
-            return;
-        }
-    }
+    float iso = mOptions.ISOLevel;
+    int chunkSize = mOptions.ChunkSize + 2;
+    int step = chunk.stepSize;
 
-    chunk.isAir = 1;
-    ChunkInputs[chunkID] = chunk;
+    bool hasAbove = false;
+    bool hasBelow = false;
+
+    // Always loop over 16³ voxels, but sample in world space using step
+    for (int x = 0; x < chunkSize; x++)
+        for (int y = 0; y < chunkSize; y++)
+            for (int z = 0; z < chunkSize; z++)
+            {
+                float3 samplePos = chunk.WorldPos + float3(x * step, y * step, z * step);
+                float v = GetDensityValue(mOptions, samplePos.x, samplePos.y, samplePos.z, 4);
+
+                if (v >= iso)
+                    hasAbove = true;
+                if (v < iso)
+                    hasBelow = true;
+
+                if (hasAbove && hasBelow)
+                {
+                    SurfaceMask[index] = 1;
+                    return;
+                }
+            }
+
+    SurfaceMask[index] = 0;
 }

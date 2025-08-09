@@ -17,7 +17,8 @@ public class ChunkGenerationProcessor
     /// A priority queue holding pending generation jobs.
     /// LOD0 jobs are prioritized higher for near-player chunks.
     /// </summary>
-    private ChunkGenerationBatcher batcher = new ChunkGenerationBatcher();
+    private ChunkGenerationBatcher surfaceBatch = new ChunkGenerationBatcher();
+    private ChunkGenerationBatcher generationBatch = new ChunkGenerationBatcher();
 
     /// <summary>
     /// A system to help with controlling render regions with the GPU. We are unable
@@ -56,6 +57,27 @@ public class ChunkGenerationProcessor
     private CancellationToken cancellationToken;
 
     /// <summary>
+    /// Request a new chunk to be checked for surface data before generation.
+    /// </summary>
+    /// <param name="context"></param>
+    /// <returns></returns>
+    public Task RequestSurfaceCheck(ChunkContext context)
+    {
+        ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), null);
+
+        try
+        {
+            this.surfaceBatch.Add(newJob);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError(ex);
+        }
+
+        return newJob.Completion.Task;
+    }
+
+    /// <summary>
     /// Request a new chunk to be generated asynchronously.
     /// Prioritizes LOD0 chunks by proximity to the player.
     /// </summary>
@@ -65,7 +87,7 @@ public class ChunkGenerationProcessor
 
         try
         {
-            this.batcher.Add(newJob); 
+            this.generationBatch.Add(newJob);
         }
         catch (Exception ex)
         {
@@ -83,14 +105,15 @@ public class ChunkGenerationProcessor
     {
         ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), modificationJob);
 
-        batcher.Add(newJob);
+        this.generationBatch.Add(newJob);
 
         return newJob.Completion.Task;
     }
 
     public void RemoveChunk(ChunkContext context)
     {
-        this.batcher.Remove(context);
+        this.surfaceBatch.Remove(context);
+        this.generationBatch.Remove(context);
         this.regionManager.Remove(context);
     }
 
@@ -99,7 +122,12 @@ public class ChunkGenerationProcessor
     /// </summary>
     public bool CancelChunkGeneration(Vector3Int coordinates, int lodIndex)
     {
-        return batcher.Remove(new ChunkContext(coordinates, lodIndex, this.chunkServices));
+        var ctx = new ChunkContext(coordinates, lodIndex, this.chunkServices);
+
+        this.surfaceBatch.Remove(ctx);
+        this.generationBatch.Remove(ctx);
+
+        return true;
     }
 
     public void Dipose()
@@ -115,21 +143,60 @@ public class ChunkGenerationProcessor
     /// <summary>
     /// Update the processor and start generating chunks if there is active jobs.
     /// </summary>
+    private int surfaceUpdateFrameCounter = 0;
+
     public void Update()
     {
         regionManager.Update(cancellationToken);
 
-        if (!this.batcher.HasPending)
-        {
+        this.UpdateSurface();
+        this.UpdateGeneration();
+    }
+
+
+    private int cancelled = 0;
+    private int total = 0;
+
+    private void UpdateSurface()
+    {
+        if (!this.surfaceBatch.HasPending)
             return;
+
+        Dictionary<ChunkContext, ChunkGenerationJob> batch = this.surfaceBatch.TryBatch(1028);
+
+        var surfaceChunks = this.chunkServices.Generator.DispatchSurface(batch.Keys.ToList());
+
+        int index = 0;
+
+        foreach (var ctx in batch.Keys.ToList()) // Avoid modifying while iterating
+        {
+            if (batch.TryGetValue(ctx, out var job))
+            {
+                if (surfaceChunks[index] == 0)
+                {
+                    job.Completion.TrySetCanceled();
+                    cancelled++;
+                }
+                else
+                {
+                    job.Completion.TrySetResult(ctx);
+                }
+
+                total++;
+            }
+
+            index++;
         }
 
-        Debug.Log($"Jobs:{this.batcher.Count}"); 
+        Debug.Log($"Cancelled: {cancelled} / out of {total}");
+    }
 
-        Dictionary<ChunkContext, ChunkGenerationJob> batch = this.batcher.TryBatch(256);
-        Dictionary<Vector3Int, ChunkContext> coordToContext = new Dictionary<Vector3Int, ChunkContext>();
-        foreach (var ctx in batch.Keys)
-            coordToContext[ctx.Coordinates] = ctx;
+    private void UpdateGeneration()
+    {
+        if (!this.generationBatch.HasPending || this.generationBatch.Count < 100)
+            return;
+
+        Dictionary<ChunkContext, ChunkGenerationJob> batch = this.generationBatch.TryBatch(128);
 
         try
         {

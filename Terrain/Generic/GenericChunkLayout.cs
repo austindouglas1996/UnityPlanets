@@ -95,28 +95,6 @@ public abstract class GenericChunkLayout : IChunkLayout
     }
 
     /// <summary>
-    /// Get the LOD for a given chunk based on the distance from a given follower.
-    /// </summary>
-    /// <param name="followerCoordinates"></param>
-    /// <param name="chunkCoordinate"></param>
-    /// <returns></returns>
-    public int GetRenderDetail(Vector3Int chunkCoordinate)
-    {
-        Vector3Int coord = this.FollowerCoordinates;
-        int dx = Mathf.Abs(chunkCoordinate.x - coord.x);
-        int dz = Mathf.Abs(chunkCoordinate.z - coord.z);
-
-        int distance = Mathf.Max(dx, dz);
-
-        // Each tier is X chunks wide.
-        int lod = distance / Configuration.DensityOptions.ChunkLODWidth;
-
-        // Clamp to a max LOD of 5, anything over 5 does not render.
-        // (This is because of how I make the chunks. I should change this?)
-        return Mathf.Min(lod, 5);
-    }
-
-    /// <summary>
     /// Return a set of coordinates to world position.
     /// </summary>
     /// <param name="coordinates"></param>

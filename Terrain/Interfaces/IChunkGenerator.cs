@@ -9,6 +9,8 @@ using UnityEngine;
 /// </summary>
 public interface IChunkGenerator
 {
+    uint[] DispatchSurface(List<ChunkContext> contexts);
+
     /// <summary>
     /// Generates a new chunk at the given coordinates using the config provided.
     /// This is called when a chunk is loaded for the first time.
@@ -18,4 +20,6 @@ public interface IChunkGenerator
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>Newly generated chunk data.</returns>
     GPUSet DispatchGeneration(List<ChunkContext> chunkContexts, CancellationToken token);
+
+    void Dispose();
 }

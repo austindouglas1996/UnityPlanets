@@ -7,17 +7,14 @@
 #include "Includes/TriangleTable.hlsl"
 #include "Triangle.hlsl"
 #include "ChunkInput.hlsl"
+#include "ChunkDensityOptions.hlsl"
 #include "Biomes.hlsl"
 
 RWStructuredBuffer<ChunkInput> ChunkInputs;
 StructuredBuffer<float> DensityMap;
+StructuredBuffer<DensityMapOptions> DensityOptions;
 AppendStructuredBuffer<Triangle> TriangleBuffer;
 RWStructuredBuffer<uint> ArgsBuffer;
-
-int _SizeX;
-int _SizeY;
-int _SizeZ;
-float _IsoLevel;
 
 float2 GetUV(float3 worldPos)
 {
@@ -42,15 +39,18 @@ float4 GetLODColor(int stepSize)
     return float4(0, 0, 0, 1); // Unknown
 }
 
-[numthreads(8,8,8)]
+[numthreads(8, 8, 8)]
 void March(uint3 id : SV_DispatchThreadID)
 {
-    int chunkSize = _SizeX - 1;
-    int chunkVoxelSize = _SizeX * _SizeY * _SizeZ;
+    DensityMapOptions mo = DensityOptions[0];
+    
+    int chunkSize = mo.ChunkSize;
+    int chunkLogicalSize = mo.ChunkSize + 1;
+    
+    int chunkVoxelSize = chunkLogicalSize * chunkLogicalSize * chunkLogicalSize;
+    ChunkAccessInfo access = GetChunkAccess(id, chunkSize, chunkSize, chunkSize, ChunkInputs);
 
-    ChunkAccessInfo access = GetChunkAccess(id, _SizeX - 1, _SizeY - 1, _SizeZ - 1, ChunkInputs);
-
-    if (access.mapIndex < 0 || access.chunk.isAir == 1)
+    if (access.mapIndex < 0)
         return;
 
     int cubeIndex = 0;
@@ -63,16 +63,16 @@ void March(uint3 id : SV_DispatchThreadID)
         int3 pos = access.voxelCoord + offset;
 
         // Check bounds
-        if (any(pos < 0) || pos.x >= _SizeX || pos.y >= _SizeY || pos.z >= _SizeZ)
+        if (any(pos < 0) || pos.x >= chunkLogicalSize || pos.y >= chunkLogicalSize || pos.z >= chunkLogicalSize)
             return;
 
-        int localIndex = pos.x + pos.y * _SizeX + pos.z * _SizeX * _SizeY;
+        int localIndex = pos.x + pos.y * chunkLogicalSize + pos.z * chunkLogicalSize * chunkLogicalSize;
         int fullIndex = access.chunkIndex * chunkVoxelSize + localIndex;
 
         corner[i] = DensityMap[fullIndex];
         cornerPos[i] = float3(pos) * access.chunk.stepSize;
 
-        if (corner[i] > _IsoLevel)
+        if (corner[i] > mo.ISOLevel)
             cubeIndex |= (1 << i);
     }
 
@@ -90,11 +90,11 @@ void March(uint3 id : SV_DispatchThreadID)
         int2 edge2 = EdgeConnections[c];
 
         float3 v0 = lerp(cornerPos[edge0.x], cornerPos[edge0.y],
-                         (corner[edge0.x] - _IsoLevel) / (corner[edge0.x] - corner[edge0.y] + 0.0001));
+                         (corner[edge0.x] - mo.ISOLevel) / (corner[edge0.x] - corner[edge0.y] + 0.0001));
         float3 v1 = lerp(cornerPos[edge1.x], cornerPos[edge1.y],
-                         (corner[edge1.x] - _IsoLevel) / (corner[edge1.x] - corner[edge1.y] + 0.0001));
+                         (corner[edge1.x] - mo.ISOLevel) / (corner[edge1.x] - corner[edge1.y] + 0.0001));
         float3 v2 = lerp(cornerPos[edge2.x], cornerPos[edge2.y],
-                         (corner[edge2.x] - _IsoLevel) / (corner[edge2.x] - corner[edge2.y] + 0.0001));
+                         (corner[edge2.x] - mo.ISOLevel) / (corner[edge2.x] - corner[edge2.y] + 0.0001));
 
         float3 worldA = v0 + access.chunk.WorldPos;
         float3 worldB = v1 + access.chunk.WorldPos;
@@ -106,11 +106,9 @@ void March(uint3 id : SV_DispatchThreadID)
         tri.b = worldB;
         tri.c = worldC;
         
-        float4 color = GetLODColor(access.chunk.stepSize);
-        
-        tri.colorA = color;
-        tri.colorB = color;
-        tri.colorC = color;
+        tri.colorA = GetColorForHeight(worldA.y);
+        tri.colorB = GetColorForHeight(worldB.y);
+        tri.colorC = GetColorForHeight(worldC.y);
         
         TriangleBuffer.Append(tri);
     }

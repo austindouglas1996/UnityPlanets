@@ -5,7 +5,7 @@ using UnityEngine;
 
 public abstract class GenericDensityMapGenerator : MarchingCubesGPUDispatcher
 {
-    protected GenericDensityMapGenerator(IChunkConfiguration configuration, DensityMapOptions options) : base(configuration, options)
+    protected GenericDensityMapGenerator(IChunkServices services, IChunkConfiguration configuration, DensityMapOptions options) : base(services, configuration, options)
     {
     }
 }

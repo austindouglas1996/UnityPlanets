@@ -49,6 +49,8 @@ public class ChunkRenderRegionManager
         {
             region.Dispose();
         }
+
+        chunkGenerator.Dispose();
     }
 
     public void Update(CancellationToken token)

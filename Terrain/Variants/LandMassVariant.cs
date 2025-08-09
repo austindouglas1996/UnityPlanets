@@ -20,9 +20,12 @@ public class LandMassChunkConfiguration : GenericChunkConfiguration
 public class LandMassChunkGenerator : GenericChunkGenerator
 {
     private IChunkConfiguration configuration;
+    private IChunkServices services;
+
     public LandMassChunkGenerator(IChunkServices services)
         : base(services.Configuration)
     {
+        this.services = services;
         this.configuration = services.Configuration;
     }
 
@@ -31,7 +34,7 @@ public class LandMassChunkGenerator : GenericChunkGenerator
         get
         {
             if (this.generator == null)
-                this.generator = new MarchingCubesGPUDispatcher(configuration, Configuration.DensityOptions);
+                this.generator = new MarchingCubesGPUDispatcher(services, configuration, Configuration.DensityOptions);
             return this.generator;
         }
     }

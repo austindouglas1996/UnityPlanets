@@ -6,7 +6,6 @@ struct ChunkInput
     float3 CoordPos;
     float3 WorldPos;
     int stepSize;
-    int isAir;
 };
 
 struct ChunkAccessInfo

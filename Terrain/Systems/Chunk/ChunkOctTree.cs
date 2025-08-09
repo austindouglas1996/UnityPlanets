@@ -27,6 +27,9 @@ public class ChunkOctTree
     public int LODIndex;
     private Vector3Int coordinates;
 
+    private uint[] SurfaceMask;
+    private int surfaceIndex = 0;
+
     private IChunkServices services;
     private ChunkGenerationProcessor processor;
 
@@ -152,9 +155,14 @@ public class ChunkOctTree
 
         if (this.Status == ChunkStatus.Finished && distance < threshold)
         {
+            if (this.isEmpty)
+                return;
+
             this.SubDivide(followerWorldPosition);
         }
     }
+
+    private bool isEmpty = false;
 
     /// <summary>
     /// Update the visibility of this node.
@@ -184,24 +192,36 @@ public class ChunkOctTree
     {
         if (this.Status != ChunkStatus.Uninitialized) return;
 
-        bool canSubdivide = this.LODIndex != 0 && distance < lodThresholds[this.LODIndex];
-        if (canSubdivide)
-        {
-            this.Status = ChunkStatus.Finished;
-            this.SubDivide(followerWorldPosition);
-        }
-        else
-        {
-            this.Status = ChunkStatus.Loading;
+        this.Status = ChunkStatus.Loading;
 
-            var context = new ChunkContext(coordinates, LODIndex, services);
-            var task = this.processor.RequestChunkGeneration(context);
-            task.ContinueWith(t =>
+        var context = new ChunkContext(coordinates, LODIndex, services);
+        var task = this.processor.RequestSurfaceCheck(context);
+        task.ContinueWith(t =>
+        {
+            // This chunk has failed the surface check.
+            if (t.IsCanceled)
+            {
+                this.isEmpty = true;
+                this.Status = ChunkStatus.Finished;
+                return;
+            }
+
+            bool canSubdivide = this.LODIndex != 0 && distance < lodThresholds[this.LODIndex];
+            if (canSubdivide)
             {
                 this.Status = ChunkStatus.Finished;
+                this.SubDivide(followerWorldPosition);
+            }
+            else
+            {
+                var task = this.processor.RequestChunkGeneration(context);
+                task.ContinueWith(t =>
+                {
+                    this.Status = ChunkStatus.Finished;
+                });
+            }
 
-            }, TaskScheduler.FromCurrentSynchronizationContext());
-        }
+        }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
     /// <summary>

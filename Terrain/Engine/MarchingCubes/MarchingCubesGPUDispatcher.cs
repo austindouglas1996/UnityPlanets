@@ -14,7 +14,6 @@ public struct ChunkInput
     public Vector3 CoordPos;
     public Vector3 WorldPos;
     public int stepSize;
-    public int isAir;
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -29,6 +28,7 @@ public struct Triangle
     public Color colorC;
 }
 
+[StructLayout(LayoutKind.Sequential)]
 struct BiomeData
 {
     public float MinSurface;
@@ -41,12 +41,18 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
 {
     private IChunkConfiguration configuration;
 
+    private ComputeShader GenerateShader;
+    private ComputeShader MarchingShader;
+
     /// <summary>
     /// Creates a new marching cube generator with the given density options.
     /// </summary>
     /// <param name="options">The configuration used for density generation and surface thresholds.</param>
-    public MarchingCubesGPUDispatcher(IChunkConfiguration configuration, DensityMapOptions options)
+    public MarchingCubesGPUDispatcher(IChunkServices services, IChunkConfiguration configuration, DensityMapOptions options)
     {
+        this.GenerateShader = services.ChunkManager.GenerateDensity;
+        this.MarchingShader = services.ChunkManager.MarchingCubes;
+
         this.configuration = configuration;
         this.Options = options;
 
@@ -58,8 +64,23 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
     /// </summary>
     public DensityMapOptions Options { get; set; }
 
+    private ComputeBuffer DensityBuffer;
+    private ComputeBuffer ChunkInputBuffer;
+    private ComputeBuffer Chunk1InputBuffer;
     private ComputeBuffer BiomeBuffer;
+    private ComputeBuffer DensityOptionsBuffer;
+    private ComputeBuffer SurfaceMaskBuffer;
     private int BiomeCount = 0;
+
+    public void Dispose()
+    {
+        DensityBuffer.Dispose();
+        BiomeBuffer.Dispose();
+        DensityOptionsBuffer.Dispose();
+        ChunkInputBuffer.Dispose();
+        Chunk1InputBuffer.Dispose();
+        SurfaceMaskBuffer.Dispose();
+    }
 
     private void InitBuffer()
     {
@@ -80,6 +101,48 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
 
         BiomeBuffer = new ComputeBuffer(biomeData.Length, Marshal.SizeOf<BiomeData>());
         BiomeBuffer.SetData(biomeData);
+
+        DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<DensityMapOptions>());
+        DensityOptionsBuffer.SetData(new[] { Options });
+
+        int size = Options.ChunkSize + 1;
+        int voxelCountPerChunk = size * size * size;
+        int maxTotalVoxels = voxelCountPerChunk * 128;
+
+        DensityBuffer = new ComputeBuffer(maxTotalVoxels, sizeof(float));
+        ChunkInputBuffer = new ComputeBuffer(128, Marshal.SizeOf<ChunkInput>());
+        ChunkInputBuffer = new ComputeBuffer(1028, Marshal.SizeOf<ChunkInput>());
+
+        SurfaceMaskBuffer = new ComputeBuffer(1028, sizeof(uint));
+    }
+
+    public uint[] GetSurfaceMask(List<ChunkContext> chunkContexts)
+    {
+        int batchSize = chunkContexts.Count;
+        var chunkInputs = new List<ChunkInput>(batchSize);
+        for (int i = 0; i < batchSize; i++)
+        {
+            var ctx = chunkContexts[i];
+            chunkInputs.Add(new ChunkInput
+            {
+                CoordPos = ctx.Coordinates,
+                WorldPos = ctx.WorldPosition,
+                stepSize = 1 << ctx.LODIndex
+            });
+        }
+
+        ChunkInputBuffer.SetData(chunkInputs, 0, 0, batchSize);
+
+        GenerateShader.SetInt("_ChunkInputCount", batchSize);
+        GenerateShader.SetBuffer(1, "ChunkInputs", ChunkInputBuffer);
+        GenerateShader.SetBuffer(1, "DensityOptions", DensityOptionsBuffer);
+        GenerateShader.SetBuffer(1, "SurfaceMask", SurfaceMaskBuffer);
+        GenerateShader.Dispatch(1, Mathf.CeilToInt(batchSize / 64f), 1, 1);
+
+        uint[] surfaceWords = new uint[batchSize];
+        SurfaceMaskBuffer.GetData(surfaceWords);
+
+        return surfaceWords;
     }
 
     public virtual GPUSet DispatchGeneration(List<ChunkContext> chunkContexts)
@@ -88,9 +151,6 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
         int size = Options.ChunkSize + 1;
         int voxelCountPerChunk = size * size * size;
         int totalVoxels = voxelCountPerChunk * batchSize;
-
-        var genShader = chunkContexts[0].Services.ChunkManager.GenerateDensity;
-        var mcShader = chunkContexts[0].Services.ChunkManager.MarchingCubes;
 
         var chunkInputs = new List<ChunkInput>(batchSize);
         for (int i = 0; i < batchSize; i++)
@@ -104,55 +164,29 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
             });
         }
 
-        ComputeBuffer chunkInputBuffer = new ComputeBuffer(batchSize, Marshal.SizeOf<ChunkInput>());
-        chunkInputBuffer.SetData(chunkInputs);
+        ChunkInputBuffer.SetData(chunkInputs,0,0,batchSize);
 
-        ComputeBuffer densityBuffer = new ComputeBuffer(totalVoxels, sizeof(float));
         ComputeBuffer triangleBuffer = new ComputeBuffer(totalVoxels, Marshal.SizeOf<Triangle>(), ComputeBufferType.Append);
         ComputeBuffer argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
-        ComputeBuffer countBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
         triangleBuffer.SetCounterValue(0);
 
-        genShader.SetBuffer(0, "ChunkInputs", chunkInputBuffer);
-        genShader.SetBuffer(1, "ChunkInputs", chunkInputBuffer);
-        genShader.SetBuffer(0, "DensityMap", densityBuffer);
-        genShader.SetInt("_SizeX", size);
-        genShader.SetInt("_SizeY", size);
-        genShader.SetInt("_SizeZ", size);
-        genShader.SetFloat("_Seed", Options.Seed);
-        genShader.SetFloat("_ISOLevel", Options.ISOLevel);
-        genShader.SetFloat("_ContinentFrequency", Options.ContinentFrequency);
-        genShader.SetFloat("_ContinentAmplitude", Options.ContinentAmplitude);
-        genShader.SetFloat("_DetailFrequency", Options.DetailFrequency);
-        genShader.SetFloat("_DetailAmplitude", Options.DetailAmplitude);
-        genShader.SetFloat("_FlatnessFrequency", Options.FlatnessFrequency);
-        genShader.SetFloat("_FlatnessStrength", Options.FlatnessStrength);
-        genShader.SetFloat("_MountainFrequency", Options.MountainFrequency);
-        genShader.SetFloat("_MountainAmplitude", Options.MountainAmplitude);
-        genShader.SetFloat("_MountainSharpness", Options.MountainSharpness);
-        genShader.SetFloat("_TotalHeightScale", Options.TotalHeightScale);
-        genShader.Dispatch(1, Mathf.CeilToInt(batchSize * size / 8f), Mathf.CeilToInt(size / 8f), Mathf.CeilToInt(size / 8f));
-        genShader.Dispatch(0, Mathf.CeilToInt(batchSize * size / 8f), Mathf.CeilToInt(size / 8f), Mathf.CeilToInt(size / 8f));
+        GenerateShader.SetBuffer(0, "ChunkInputs", ChunkInputBuffer);
+        GenerateShader.SetBuffer(0, "DensityMap", DensityBuffer);
+        GenerateShader.SetBuffer(0, "DensityOptions", DensityOptionsBuffer);
+        GenerateShader.Dispatch(0, Mathf.CeilToInt(batchSize * size / 8f), Mathf.CeilToInt(size / 8f), Mathf.CeilToInt(size / 8f));
 
-        mcShader.SetBuffer(0, "DensityMap", densityBuffer);
-        mcShader.SetBuffer(0, "TriangleBuffer", triangleBuffer);
-        mcShader.SetBuffer(0, "ChunkInputs", chunkInputBuffer);
-        mcShader.SetBuffer(0, "BiomeColors", BiomeBuffer);
-        mcShader.SetInt("_BiomeCount", BiomeCount);
-        mcShader.SetInt("_SizeX", size);
-        mcShader.SetInt("_SizeY", size);
-        mcShader.SetInt("_SizeZ", size);
-        mcShader.SetFloat("_IsoLevel", Options.ISOLevel);
-        mcShader.Dispatch(0, batchSize * 2,2,2);
+        MarchingShader.SetBuffer(0, "DensityMap", DensityBuffer);
+        MarchingShader.SetBuffer(0, "TriangleBuffer", triangleBuffer);
+        MarchingShader.SetBuffer(0, "ChunkInputs", ChunkInputBuffer);
+        MarchingShader.SetBuffer(0, "DensityOptions", DensityOptionsBuffer);
+        MarchingShader.SetBuffer(0, "BiomeColors", BiomeBuffer);
+        MarchingShader.SetInt("_BiomeCount", BiomeCount);
+        MarchingShader.Dispatch(0, batchSize * 2,2,2);
 
         ComputeBuffer.CopyCount(triangleBuffer, argsBuffer, 0);
 
-        mcShader.SetBuffer(1, "ArgsBuffer", argsBuffer);
-        mcShader.Dispatch(1, 1, 1, 1);
-
-        densityBuffer.Dispose();
-        countBuffer.Dispose();
-        chunkInputBuffer.Dispose();
+        MarchingShader.SetBuffer(1, "ArgsBuffer", argsBuffer);
+        MarchingShader.Dispatch(1, 1, 1, 1);
 
         return new GPUSet(triangleBuffer, argsBuffer, chunkContexts);
     }

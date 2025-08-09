@@ -50,12 +50,4 @@ public interface IChunkLayout
     /// <param name="world"></param>
     /// <returns></returns>
     Vector3Int ToCoordinates(Vector3 world, int lodIndex);
-
-    /// <summary>
-    /// Determines the level of detail (LOD) that should be used for a given chunk
-    /// based on its distance to the followed object.
-    /// </summary>
-    /// <param name="chunkCoordinate">The chunk coordinate being evaluated.</param>
-    /// <returns>An integer representing the LOD level (lower = higher detail).</returns>
-    int GetRenderDetail(Vector3Int chunkCoordinate);
 }
