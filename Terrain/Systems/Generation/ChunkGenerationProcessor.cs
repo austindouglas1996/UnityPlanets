@@ -63,7 +63,7 @@ public class ChunkGenerationProcessor
     /// <returns></returns>
     public Task RequestSurfaceCheck(ChunkContext context)
     {
-        ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), null);
+        ChunkGenerationJob newJob = new(context, new CancellationTokenSource());
 
         try
         {
@@ -83,7 +83,7 @@ public class ChunkGenerationProcessor
     /// </summary>
     public Task RequestChunkGeneration(ChunkContext context)
     {
-        ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), null);
+        ChunkGenerationJob newJob = new(context, new CancellationTokenSource());
 
         try
         {
@@ -93,19 +93,6 @@ public class ChunkGenerationProcessor
         {
             Debug.LogError(ex);
         }
-
-        return newJob.Completion.Task;
-    }
-
-    /// <summary>
-    /// Request a modification of an existing chunk (e.g., terrain brush).
-    /// These jobs are prioritized over everything.
-    /// </summary>
-    public Task RequestChunkModification(ChunkContext context, ChunkModificationJob modificationJob = null)
-    {
-        ChunkGenerationJob newJob = new(context, new CancellationTokenSource(), modificationJob);
-
-        this.generationBatch.Add(newJob);
 
         return newJob.Completion.Task;
     }

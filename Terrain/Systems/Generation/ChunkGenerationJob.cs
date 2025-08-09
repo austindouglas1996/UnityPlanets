@@ -6,19 +6,16 @@ using UnityEngine;
 
 public class ChunkGenerationJob : IEqualityComparer<ChunkGenerationJob>
 {
-    public ChunkGenerationJob(ChunkContext context, CancellationTokenSource cts, ChunkModificationJob modificationJob = null)
+    public ChunkGenerationJob(ChunkContext context, CancellationTokenSource cts)
     {
         Context = context;
         Completion = new TaskCompletionSource<ChunkContext>(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationSource = cts;
-        ModificationJob = modificationJob;
     }
 
     public ChunkContext Context { get; private set; }
 
     public TaskCompletionSource<ChunkContext> Completion;
-
-    public ChunkModificationJob? ModificationJob { get; private set; }
 
     public CancellationTokenSource CancellationSource { get; private set; }
     public CancellationToken Token => CancellationSource.Token;
