@@ -25,8 +25,7 @@ public enum ChunkStatus
 /// </summary>
 public class ChunkOctTree
 {
-    public int LODIndex;
-    private Vector3Int coordinates;
+    public ChunkKey Key;
 
     private IChunkServices services;
     private ChunkGenerationProcessor processor;
@@ -52,8 +51,9 @@ public class ChunkOctTree
 
         this.Status = ChunkStatus.Uninitialized;
 
-        this.LODIndex = parent == null ? 4 : Mathf.Max(0, parent.LODIndex - 1);
-        this.coordinates = BoundsToCoordinate(bounds, LODIndex);
+        var LODIndex = parent == null ? 4 : Mathf.Max(0, parent.Key.LODIndex - 1);
+        var coordinates = BoundsToCoordinate(bounds, LODIndex);
+        this.Key = new ChunkKey(coordinates, LODIndex);
     }
 
     /// <summary>
@@ -75,24 +75,6 @@ public class ChunkOctTree
     /// Child nodes (NE, NW, SE, SW) created if this node is subdivided.
     /// </summary>
     public ChunkOctTree[] Children = null;
-
-    /// <summary>
-    /// Set this node to active.
-    /// </summary>
-    /// <param name="val"></param>
-    public void SetActive(bool val)
-    {
-        if (this.Children != null)
-        {
-            foreach (var child in Children)
-            {
-                if (child != null)
-                    child.SetActive(val);
-            }
-        }
-
-        isVisible = val;
-    }
 
     public void UpdateActiveStatus(Vector3 followerWorldPosition, Plane[] frustum)
     {
@@ -132,7 +114,7 @@ public class ChunkOctTree
         Vector2 centerXZ = new Vector2(this.Bounds.center.x, this.Bounds.center.z);
         float distance = Vector2.Distance(followerXZ, centerXZ);
 
-        float threshold = lodThresholds[LODIndex];
+        float threshold = lodThresholds[Key.LODIndex];
 
         if (this.Status == ChunkStatus.Subdivided)
         {
@@ -192,8 +174,7 @@ public class ChunkOctTree
 
         this.Status = ChunkStatus.Loading;
 
-        var context = new ChunkContext(coordinates, LODIndex, services);
-        this.processor.RequestSurfaceCheck(context, (bool result) =>
+        this.processor.RequestSurfaceCheck(Key, (bool result) =>
         {
             if (!result)
             {
@@ -202,7 +183,7 @@ public class ChunkOctTree
                 return;
             }
 
-            bool canSubdivide = this.LODIndex != 0 && distance < lodThresholds[this.LODIndex];
+            bool canSubdivide = this.Key.LODIndex != 0 && distance < lodThresholds[this.Key.LODIndex];
             if (canSubdivide)
             {
                 this.Status = ChunkStatus.Finished;
@@ -210,7 +191,7 @@ public class ChunkOctTree
             }
             else
             {
-                this.processor.RequestChunkGeneration(context, (bool genResult) =>
+                this.processor.RequestChunkGeneration(Key, (bool genResult) =>
                 {
                     this.Status = ChunkStatus.Finished;
                 });
@@ -226,7 +207,7 @@ public class ChunkOctTree
     {
         try
         {
-            if (this.LODIndex == 0 || this.Status != ChunkStatus.Finished)
+            if (this.Key.LODIndex == 0 || this.Status != ChunkStatus.Finished)
             {
                 return;
             }
@@ -236,7 +217,7 @@ public class ChunkOctTree
 
             Vector3 size = Bounds.size / 2f;
             Vector3 center = Bounds.center;
-            Vector3Int baseCoord = this.coordinates;
+            Vector3Int baseCoord = this.Key.Coordinates;
 
             int cx = baseCoord.x * 2;
             int cy = baseCoord.y * 2;
@@ -296,7 +277,6 @@ public class ChunkOctTree
 
         this.mergeRequested = false;
         this.Status = ChunkStatus.Uninitialized;
-        this.SetActive(true);
 
         if (this.Parent != null)
         {
@@ -309,7 +289,7 @@ public class ChunkOctTree
     /// </summary>
     private void RemoveChunk()
     {
-        this.processor.RemoveChunk(new ChunkContext(coordinates, this.LODIndex, this.services));
+        this.processor.RemoveChunk(this.Key);
     }
 
     /// <summary>
@@ -319,7 +299,7 @@ public class ChunkOctTree
     /// <returns></returns>
     private ChunkOctTree CreateChild(Vector3Int chunkCoord)
     {
-        int chunkSize = services.Layout.GetChunkSize(this.LODIndex - 1);
+        int chunkSize = services.Layout.GetChunkSize(this.Key.LODIndex - 1);
 
         Vector3 worldMin = new Vector3(
             chunkCoord.x * chunkSize,

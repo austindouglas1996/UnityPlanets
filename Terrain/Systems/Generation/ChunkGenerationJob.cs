@@ -1,13 +1,14 @@
 using System;
+using UnityEngine.InputSystem;
 
 public class ChunkGenerationJob
 {
-    public ChunkGenerationJob(ChunkContext context, Action<bool> action)
+    public ChunkGenerationJob(ChunkKey key, Action<bool> action)
     {
-        this.Context = context;
+        this.Key = key;
         this.OnDone = action;
     }
 
-    public ChunkContext Context;
+    public ChunkKey Key;
     public Action<bool> OnDone;
 }

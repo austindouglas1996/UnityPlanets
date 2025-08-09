@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class ChunkGenerationBatcher
 {
@@ -19,9 +20,9 @@ public class ChunkGenerationBatcher
         }
     }
 
-    public bool Remove(ChunkContext context)
+    public bool Remove(ChunkKey key)
     {
-        var exists = queue.FirstOrDefault(r => r.Context == context);
+        var exists = queue.FirstOrDefault(r => r.Key.Equals(key));
         if (exists != null)
         {
             queue.Remove(exists);

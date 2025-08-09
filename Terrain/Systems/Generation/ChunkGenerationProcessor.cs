@@ -50,9 +50,9 @@ public class ChunkGenerationProcessor
     /// </summary>
     /// <param name="context"></param>
     /// <returns></returns>
-    public void RequestSurfaceCheck(ChunkContext context, Action<bool> onDone)
+    public void RequestSurfaceCheck(ChunkKey key, Action<bool> onDone)
     {
-        var job = new ChunkGenerationJob(context, onDone);
+        var job = new ChunkGenerationJob(key, onDone);
         this.surfaceBatch.Add(job);
     }
 
@@ -60,30 +60,17 @@ public class ChunkGenerationProcessor
     /// Request a new chunk to be generated asynchronously.
     /// Prioritizes LOD0 chunks by proximity to the player.
     /// </summary>
-    public void RequestChunkGeneration(ChunkContext context, Action<bool> onDone)
+    public void RequestChunkGeneration(ChunkKey key, Action<bool> onDone)
     {
-        var job = new ChunkGenerationJob(context, onDone);
+        var job = new ChunkGenerationJob(key, onDone);
         this.generationBatch.Add(job);
     }
 
-    public void RemoveChunk(ChunkContext context)
+    public void RemoveChunk(ChunkKey key)
     {
-        this.surfaceBatch.Remove(context);
-        this.generationBatch.Remove(context);
-        this.regionManager.Remove(context);
-    }
-
-    /// <summary>
-    /// Cancel a queued chunk generation job for the given coordinates/LOD.
-    /// </summary>
-    public bool CancelChunkGeneration(Vector3Int coordinates, int lodIndex)
-    {
-        var ctx = new ChunkContext(coordinates, lodIndex, this.chunkServices);
-
-        this.surfaceBatch.Remove(ctx);
-        this.generationBatch.Remove(ctx);
-
-        return true;
+        this.surfaceBatch.Remove(key);
+        this.generationBatch.Remove(key);
+        this.regionManager.Remove(key);
     }
 
     public void Dipose()
@@ -119,9 +106,9 @@ public class ChunkGenerationProcessor
             return;
 
         var batch = this.surfaceBatch.TryBatch(1028);
-        var batch1 = new List<ChunkContext>();
+        var batch1 = new List<ChunkKey>();
 
-        batch.ForEach(r => batch1.Add(r.Context));
+        batch.ForEach(r => batch1.Add(r.Key));
 
         var surfaceChunks = this.chunkServices.Generator.DispatchSurface(batch1);
 
@@ -157,7 +144,7 @@ public class ChunkGenerationProcessor
         {
             foreach (var job in batch)
             {
-                regionManager.Add(job.Context);
+                regionManager.Add(job.Key);
                 job.OnDone(true);
             }
         }

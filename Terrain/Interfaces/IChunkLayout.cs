@@ -42,12 +42,12 @@ public interface IChunkLayout
     /// </summary>
     /// <param name="coordinates"></param>
     /// <returns></returns>
-    Vector3 ToWorld(Vector3Int coordinates, int lodIndex);
+    Vector3 ToWorld(ChunkKey key);
 
     /// <summary>
     /// Convert a vector into coordinates based on chunkSize.
     /// </summary>
     /// <param name="world"></param>
     /// <returns></returns>
-    Vector3Int ToCoordinates(Vector3 world, int lodIndex);
+    Vector3Int ToCoordinates(Vector3 worldPosition, int lodIndex);
 }

@@ -17,7 +17,7 @@ public class ChunkRenderRegionManager
         this.regions.Add(new ChunkRenderRegion());
     }
 
-    public void Add(ChunkContext context)
+    public void Add(ChunkKey key)
     {
         var currentRegion = regions.Last();
         if (currentRegion.MaxCapaciity)
@@ -26,16 +26,16 @@ public class ChunkRenderRegionManager
             regions.Add(currentRegion);
         }
 
-        currentRegion.Add(context);
+        currentRegion.Add(key);
     }
 
-    public bool Remove(ChunkContext context)
+    public bool Remove(ChunkKey key)
     {
         foreach (var region in regions)
         {
-            if (region.Contains(context))
+            if (region.Contains(key))
             {
-                region.Remove(context);
+                region.Remove(key);
                 return true;
             }
         }
@@ -83,7 +83,7 @@ public class ChunkRenderRegionManager
         {
             regions.Remove(region);
 
-            foreach (var item in region.Chunks.Values)
+            foreach (var item in region.Chunks)
                 this.Add(item);
 
             region.Dispose();

@@ -9,7 +9,7 @@ using UnityEngine;
 /// </summary>
 public interface IChunkGenerator
 {
-    uint[] DispatchSurface(List<ChunkContext> contexts);
+    uint[] DispatchSurface(List<ChunkKey> contexts);
 
     /// <summary>
     /// Generates a new chunk at the given coordinates using the config provided.
@@ -19,7 +19,7 @@ public interface IChunkGenerator
     /// <param name="config">Chunk settings/configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>Newly generated chunk data.</returns>
-    GPUSet DispatchGeneration(List<ChunkContext> chunkContexts);
+    GPUSet DispatchGeneration(List<ChunkKey> chunkContexts);
 
     void Dispose();
 }

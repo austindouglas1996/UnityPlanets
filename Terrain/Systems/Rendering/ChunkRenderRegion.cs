@@ -2,10 +2,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class ChunkRenderRegion
 {
-    public Dictionary<(Vector3Int pos, int lod), ChunkContext> Chunks = new(128);
+    public List<ChunkKey> Chunks = new List<ChunkKey>(128);
     private GPUSet set;
 
     public bool IsDirty { get; private set; } = false; 
@@ -14,25 +15,23 @@ public class ChunkRenderRegion
     public bool MaxCapaciity => Chunks.Count == 128;
     public int Removed = 0;
 
-    public void Add(ChunkContext context)
+    public void Add(ChunkKey key)
     {
-        var key = (context.Coordinates, context.LODIndex);
-        Chunks[key] = context;
+        Chunks.Add(key);
         MarkDirty();
     }
 
-    public void Remove(ChunkContext context)
+    public void Remove(ChunkKey key)
     {
-        var key = (context.Coordinates, context.LODIndex);
         Chunks.Remove(key);
         MarkDirty();
 
         Removed++;
     }
 
-    public bool Contains(ChunkContext context)
+    public bool Contains(ChunkKey key)
     {
-        return Chunks.ContainsKey((context.Coordinates, context.LODIndex));
+        return Chunks.Contains(key);
     }
 
     public void Dispose()
@@ -54,7 +53,7 @@ public class ChunkRenderRegion
         }
 
         set?.Dispose();
-        set = chunkGenerator.DispatchGeneration(this.Chunks.Values.ToList());
+        set = chunkGenerator.DispatchGeneration(this.Chunks);
 
         this.IsDirty = false;
         delayFrames = -1;

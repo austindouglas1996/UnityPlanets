@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 
 /// <summary>
@@ -30,7 +31,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="config">The chunk configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>The generated chunk data.</returns>
-    public virtual GPUSet DispatchGeneration(List<ChunkContext> chunkContexts)
+    public virtual GPUSet DispatchGeneration(List<ChunkKey> chunkContexts)
     {
         return this.Generator.DispatchGeneration(chunkContexts);
     }
@@ -40,7 +41,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
         this.Generator.Dispose();
     }
 
-    public uint[] DispatchSurface(List<ChunkContext> contexts)
+    public uint[] DispatchSurface(List<ChunkKey> contexts)
     {
         return this.Generator.GetSurfaceMask(contexts);
     }

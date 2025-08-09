@@ -99,10 +99,10 @@ public abstract class GenericChunkLayout : IChunkLayout
     /// </summary>
     /// <param name="coordinates"></param>
     /// <returns></returns>
-    public Vector3 ToWorld(Vector3Int coordinates, int lodIndex)
+    public Vector3 ToWorld(ChunkKey key)
     {
-        int chunkSize = GetChunkSize(lodIndex);
-        return new Vector3(coordinates.x * chunkSize, coordinates.y * chunkSize, coordinates.z * chunkSize);
+        int chunkSize = GetChunkSize(key.LODIndex);
+        return new Vector3(key.Coordinates.x * chunkSize, key.Coordinates.y * chunkSize, key.Coordinates.z * chunkSize);
     }
 
     /// <summary>
@@ -110,12 +110,12 @@ public abstract class GenericChunkLayout : IChunkLayout
     /// </summary>
     /// <param name="world"></param>
     /// <returns></returns>
-    public Vector3Int ToCoordinates(Vector3 world, int lodIndex)
+    public Vector3Int ToCoordinates(Vector3 worldPositon, int lodIndex)
     {
         int chunkSize = GetChunkSize(lodIndex);
         return new Vector3Int(
-            Mathf.FloorToInt(world.x / chunkSize),
-            Mathf.FloorToInt(world.y / chunkSize),
-            Mathf.FloorToInt(world.z / chunkSize));
+            Mathf.FloorToInt(worldPositon.x / chunkSize),
+            Mathf.FloorToInt(worldPositon.y / chunkSize),
+            Mathf.FloorToInt(worldPositon.z / chunkSize));
     }
 }

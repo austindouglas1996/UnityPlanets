@@ -39,6 +39,7 @@ struct BiomeData
 
 public class MarchingCubesGPUDispatcher : IDensityMapGenerator
 {
+    private IChunkServices services;
     private IChunkConfiguration configuration;
 
     private ComputeShader GenerateShader;
@@ -50,6 +51,8 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
     /// <param name="options">The configuration used for density generation and surface thresholds.</param>
     public MarchingCubesGPUDispatcher(IChunkServices services, IChunkConfiguration configuration, DensityMapOptions options)
     {
+        this.services = services;
+
         this.GenerateShader = services.ChunkManager.GenerateDensity;
         this.MarchingShader = services.ChunkManager.MarchingCubes;
 
@@ -116,7 +119,7 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
         SurfaceMaskBuffer = new ComputeBuffer(1028, sizeof(uint));
     }
 
-    public uint[] GetSurfaceMask(List<ChunkContext> chunkContexts)
+    public uint[] GetSurfaceMask(List<ChunkKey> chunkContexts)
     {
         int batchSize = chunkContexts.Count;
         var chunkInputs = new List<ChunkInput>(batchSize);
@@ -126,7 +129,7 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
             chunkInputs.Add(new ChunkInput
             {
                 CoordPos = ctx.Coordinates,
-                WorldPos = ctx.WorldPosition,
+                WorldPos = services.Layout.ToWorld(ctx),
                 stepSize = 1 << ctx.LODIndex
             });
         }
@@ -145,7 +148,7 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
         return surfaceWords;
     }
 
-    public virtual GPUSet DispatchGeneration(List<ChunkContext> chunkContexts)
+    public virtual GPUSet DispatchGeneration(List<ChunkKey> chunkContexts)
     {
         int batchSize = chunkContexts.Count;
         int size = Options.ChunkSize + 1;
@@ -159,7 +162,7 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
             chunkInputs.Add(new ChunkInput
             {
                 CoordPos = ctx.Coordinates,
-                WorldPos = ctx.WorldPosition,
+                WorldPos = services.Layout.ToWorld(ctx),
                 stepSize = 1 << ctx.LODIndex
             });
         }
@@ -188,6 +191,6 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
         MarchingShader.SetBuffer(1, "ArgsBuffer", argsBuffer);
         MarchingShader.Dispatch(1, 1, 1, 1);
 
-        return new GPUSet(triangleBuffer, argsBuffer, chunkContexts);
+        return new GPUSet(triangleBuffer, argsBuffer, chunkContexts, services);
     }
 }
