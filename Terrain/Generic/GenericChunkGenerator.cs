@@ -30,7 +30,7 @@ public abstract class GenericChunkGenerator : IChunkGenerator
     /// <param name="config">The chunk configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>The generated chunk data.</returns>
-    public virtual GPUSet DispatchGeneration(List<ChunkContext> chunkContexts, CancellationToken token)
+    public virtual GPUSet DispatchGeneration(List<ChunkContext> chunkContexts)
     {
         return this.Generator.DispatchGeneration(chunkContexts);
     }

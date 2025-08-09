@@ -149,7 +149,7 @@ public class ChunkRenderer : MonoBehaviour
         this.chunkManager = this.GetComponent<ChunkManager>();
 
         this.chunkServices = services;
-        this.processor = new ChunkGenerationProcessor(this.chunkServices, this.cancellationToken.Token);
+        this.processor = new ChunkGenerationProcessor(this.chunkServices);
 
         isInitialized = true;
 

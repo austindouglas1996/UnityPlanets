@@ -88,19 +88,19 @@ public class ChunkContext : IEquatable<ChunkContext>
 /// <summary>
 /// A simple comparer.
 /// </summary>
-public class ChunkContextComparer : IEqualityComparer<ChunkGenerationJob>
+public class ChunkContextComparer : IEqualityComparer<ChunkContext>
 {
-    public bool Equals(ChunkGenerationJob x, ChunkGenerationJob y)
+    public bool Equals(ChunkContext x, ChunkContext y)
     {
         if (x == null || y == null)
             return false;
 
-        return x.Context.Coordinates == y.Context.Coordinates &&
-               x.Context.LODIndex == y.Context.LODIndex;
+        return x.Coordinates == y.Coordinates &&
+               x.LODIndex == y.LODIndex;
     }
 
-    public int GetHashCode(ChunkGenerationJob obj)
+    public int GetHashCode(ChunkContext obj)
     {
-        return HashCode.Combine(obj.Context.Coordinates, obj.Context.LODIndex);
+        return HashCode.Combine(obj.Coordinates, obj.LODIndex);
     }
 }

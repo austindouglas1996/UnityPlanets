@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
+using Unity.VisualScripting;
 using UnityEngine;
 
 /// <summary>
@@ -27,14 +28,13 @@ public class ChunkOctTree
     public int LODIndex;
     private Vector3Int coordinates;
 
-    private uint[] SurfaceMask;
-    private int surfaceIndex = 0;
-
     private IChunkServices services;
     private ChunkGenerationProcessor processor;
 
     private bool isVisible = true;
     private bool mergeRequested = false;
+
+    private bool isEmpty = false;
 
     /// <summary>
     /// Initialize a new instance of the <see cref="ChunkOctTree"/> class. 
@@ -162,8 +162,6 @@ public class ChunkOctTree
         }
     }
 
-    private bool isEmpty = false;
-
     /// <summary>
     /// Update the visibility of this node.
     /// </summary>
@@ -195,11 +193,9 @@ public class ChunkOctTree
         this.Status = ChunkStatus.Loading;
 
         var context = new ChunkContext(coordinates, LODIndex, services);
-        var task = this.processor.RequestSurfaceCheck(context);
-        task.ContinueWith(t =>
+        this.processor.RequestSurfaceCheck(context, (bool result) =>
         {
-            // This chunk has failed the surface check.
-            if (t.IsCanceled)
+            if (!result)
             {
                 this.isEmpty = true;
                 this.Status = ChunkStatus.Finished;
@@ -214,14 +210,12 @@ public class ChunkOctTree
             }
             else
             {
-                var task = this.processor.RequestChunkGeneration(context);
-                task.ContinueWith(t =>
+                this.processor.RequestChunkGeneration(context, (bool genResult) =>
                 {
                     this.Status = ChunkStatus.Finished;
                 });
             }
-
-        }, TaskScheduler.FromCurrentSynchronizationContext());
+        });
     }
 
     /// <summary>

@@ -34,10 +34,9 @@ public class ChunkGenerationProcessor
     /// <summary>
     /// Construct a new generation processor, spin up a few worker threads.
     /// </summary>
-    public ChunkGenerationProcessor(IChunkServices services, CancellationToken token)
+    public ChunkGenerationProcessor(IChunkServices services)
     {
         this.chunkServices = services;
-        this.cancellationToken = token;
 
         Material mat = new Material(Shader.Find("Custom/URP_CustomLitGPU"));
         mat.SetFloat("_Smoothness", 0f);
@@ -47,54 +46,24 @@ public class ChunkGenerationProcessor
     }
 
     /// <summary>
-    /// Token to cancel all processing (e.g., game closing).
-    /// </summary>
-    public CancellationToken CancellationToken
-    {
-        get => cancellationToken;
-        set => cancellationToken = value;
-    }
-    private CancellationToken cancellationToken;
-
-    /// <summary>
     /// Request a new chunk to be checked for surface data before generation.
     /// </summary>
     /// <param name="context"></param>
     /// <returns></returns>
-    public Task RequestSurfaceCheck(ChunkContext context)
+    public void RequestSurfaceCheck(ChunkContext context, Action<bool> onDone)
     {
-        ChunkGenerationJob newJob = new(context, new CancellationTokenSource());
-
-        try
-        {
-            this.surfaceBatch.Add(newJob);
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError(ex);
-        }
-
-        return newJob.Completion.Task;
+        var job = new ChunkGenerationJob(context, onDone);
+        this.surfaceBatch.Add(job);
     }
 
     /// <summary>
     /// Request a new chunk to be generated asynchronously.
     /// Prioritizes LOD0 chunks by proximity to the player.
     /// </summary>
-    public Task RequestChunkGeneration(ChunkContext context)
+    public void RequestChunkGeneration(ChunkContext context, Action<bool> onDone)
     {
-        ChunkGenerationJob newJob = new(context, new CancellationTokenSource());
-
-        try
-        {
-            this.generationBatch.Add(newJob);
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError(ex);
-        }
-
-        return newJob.Completion.Task;
+        var job = new ChunkGenerationJob(context, onDone);
+        this.generationBatch.Add(job);
     }
 
     public void RemoveChunk(ChunkContext context)
@@ -134,7 +103,7 @@ public class ChunkGenerationProcessor
 
     public void Update()
     {
-        regionManager.Update(cancellationToken);
+        regionManager.Update();
 
         this.UpdateSurface();
         this.UpdateGeneration();
@@ -149,29 +118,28 @@ public class ChunkGenerationProcessor
         if (!this.surfaceBatch.HasPending)
             return;
 
-        Dictionary<ChunkContext, ChunkGenerationJob> batch = this.surfaceBatch.TryBatch(1028);
+        var batch = this.surfaceBatch.TryBatch(1028);
+        var batch1 = new List<ChunkContext>();
 
-        var surfaceChunks = this.chunkServices.Generator.DispatchSurface(batch.Keys.ToList());
+        batch.ForEach(r => batch1.Add(r.Context));
+
+        var surfaceChunks = this.chunkServices.Generator.DispatchSurface(batch1);
 
         int index = 0;
 
-        foreach (var ctx in batch.Keys.ToList()) // Avoid modifying while iterating
+        foreach (var ctx in batch) // Avoid modifying while iterating
         {
-            if (batch.TryGetValue(ctx, out var job))
+            if (surfaceChunks[index] == 0)
             {
-                if (surfaceChunks[index] == 0)
-                {
-                    job.Completion.TrySetCanceled();
-                    cancelled++;
-                }
-                else
-                {
-                    job.Completion.TrySetResult(ctx);
-                }
-
-                total++;
+                ctx.OnDone(false);
+                cancelled++;
+            }
+            else
+            {
+                ctx.OnDone(true);
             }
 
+            total++;
             index++;
         }
 
@@ -183,25 +151,20 @@ public class ChunkGenerationProcessor
         if (!this.generationBatch.HasPending || this.generationBatch.Count < 100)
             return;
 
-        Dictionary<ChunkContext, ChunkGenerationJob> batch = this.generationBatch.TryBatch(128);
+        var batch = this.generationBatch.TryBatch(128);
 
         try
         {
-            foreach (var job in batch.Values)
+            foreach (var job in batch)
             {
                 regionManager.Add(job.Context);
-                job.Completion.TrySetResult(job.Context);
+                job.OnDone(true);
             }
-        }
-        catch (OperationCanceledException)
-        {
-            foreach (var job in batch.Values)
-                job.Completion.TrySetCanceled();
         }
         catch (Exception ex)
         {
-            foreach (var job in batch.Values)
-                job.Completion.TrySetException(ex);
+            foreach (var job in batch)
+                job.OnDone(false);
             Debug.LogError(ex);
         }
     }

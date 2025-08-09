@@ -53,7 +53,7 @@ public class ChunkRenderRegionManager
         chunkGenerator.Dispose();
     }
 
-    public void Update(CancellationToken token)
+    public void Update()
     {
         List<ChunkRenderRegion> toDelete = new List<ChunkRenderRegion>();
 
@@ -69,7 +69,7 @@ public class ChunkRenderRegionManager
 
             if (region.IsDirty)
             {
-                region.Generate(chunkGenerator, token);
+                region.Generate(chunkGenerator);
                 max3--;
             }
 

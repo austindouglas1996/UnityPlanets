@@ -43,7 +43,7 @@ public class ChunkRenderRegion
         this.set.Dispose();
     }
 
-    public void Generate(IChunkGenerator chunkGenerator, CancellationToken token)
+    public void Generate(IChunkGenerator chunkGenerator)
     {
         if (!IsDirty) return;
 
@@ -54,7 +54,7 @@ public class ChunkRenderRegion
         }
 
         set?.Dispose();
-        set = chunkGenerator.DispatchGeneration(this.Chunks.Values.ToList(), token);
+        set = chunkGenerator.DispatchGeneration(this.Chunks.Values.ToList());
 
         this.IsDirty = false;
         delayFrames = -1;

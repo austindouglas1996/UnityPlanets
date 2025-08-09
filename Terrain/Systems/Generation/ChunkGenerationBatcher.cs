@@ -24,9 +24,6 @@ public class ChunkGenerationBatcher
         var exists = queue.FirstOrDefault(r => r.Context == context);
         if (exists != null)
         {
-            // Cancel it too in case its in TryBatch.
-            exists.Cancel();
-
             queue.Remove(exists);
             return true;
         }
@@ -34,7 +31,7 @@ public class ChunkGenerationBatcher
         return false;
     }
 
-    public Dictionary<ChunkContext, ChunkGenerationJob> TryBatch(int batchSize)
+    public List<ChunkGenerationJob> TryBatch(int batchSize)
     {
         if (queue.Count == 0)
             return null;
@@ -43,13 +40,7 @@ public class ChunkGenerationBatcher
         List<ChunkGenerationJob> batch = queue.GetRange(0, count);
         queue.RemoveRange(0, count);
 
-        Dictionary<ChunkContext, ChunkGenerationJob> result = new Dictionary<ChunkContext, ChunkGenerationJob>(count);
-        foreach (var job in batch)
-        {
-            result[job.Context] = job;
-        }
-
-        return result;
+        return batch;
     }
 
 }
