@@ -71,7 +71,7 @@ public class ChunkRenderer : MonoBehaviour
 
     private Quaternion lastFollowerRotation;
 
-    private List<ChunkOctTree> rootTrees = new List<ChunkOctTree>();
+    private List<ChunkOctTreeNode> rootTrees = new List<ChunkOctTreeNode>();
 
     /// <summary>
     /// Update the chunk layout and render any available chunks.
@@ -95,18 +95,9 @@ public class ChunkRenderer : MonoBehaviour
         Plane[] frustum = GeometryUtility.CalculateFrustumPlanes(Camera.main);
         float deltaAngle = Quaternion.Angle(lastFollowerRotation, chunkManager.Follower.transform.rotation);
 
-        if (forceActiveUpdate || deltaAngle >= 15f)
-        {
-            forceActiveUpdate = false;
-            foreach (var root in rootTrees)
-                root.UpdateActiveStatus(this.chunkServices.Layout.FollowerWorldPosition, frustum);
-
-            this.lastFollowerRotation = chunkManager.Follower.transform.rotation;
-        }
-
         foreach (var root in rootTrees)
         {
-            root.Update(this.chunkServices.Layout.FollowerWorldPosition, lodThresholds.ToArray());
+            root.Tick();
         }
     }
 
@@ -182,11 +173,14 @@ public class ChunkRenderer : MonoBehaviour
             throw new System.ArgumentException("Chunk initial loading range is not set.");
         }
 
+        // Create manager.
+        ChunkOctTreeMan tree = new ChunkOctTreeMan(this.chunkServices, this.processor, lodThresholds.ToArray());
+
         // Create root nodes.
         for (int dx = initialRootRange.X.Min; dx < initialRootRange.X.Max; dx++)
             for (int dy = initialRootRange.Y.Min; dy < initialRootRange.Y.Max; dy++)
                 for (int dz = initialRootRange.Z.Min; dz < initialRootRange.Z.Max; dz++)
-                    CreateRoot(new Vector3Int(dx, dy, dz), chunkSize, startPos);
+                    CreateRoot(tree, new Vector3Int(dx, dy, dz), chunkSize, startPos);
     }
 
     /// <summary>
@@ -195,7 +189,7 @@ public class ChunkRenderer : MonoBehaviour
     /// <param name="coord"></param>
     /// <param name="lod"></param>
     /// <param name="offset"></param>
-    private void CreateRoot(Vector3Int coord, int chunkSize, Vector3 offset)
+    private void CreateRoot(ChunkOctTreeMan tree, Vector3Int coord, int chunkSize, Vector3 offset)
     {
         Vector3 chunkWorldPos = offset + new Vector3(
             coord.x * chunkSize,
@@ -204,7 +198,7 @@ public class ChunkRenderer : MonoBehaviour
 
         Bounds bounds = new Bounds(chunkWorldPos + Vector3.one * (chunkSize / 2), Vector3.one * chunkSize);
 
-        var root = new ChunkOctTree(chunkServices, processor, bounds);
+        var root = new ChunkOctTreeNode(tree, bounds);
         rootTrees.Add(root);
     }
 }
