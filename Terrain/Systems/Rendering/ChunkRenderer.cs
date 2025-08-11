@@ -15,38 +15,23 @@ using WaveHarmonic.Crest;
 public class LODThresholds
 {
     [Tooltip("LOD0 — up close: player feet, terrain sculpting, grass")]
-    public float LOD0 = 5f;
+    public int LOD0 = 2;
 
     [Tooltip("LOD1 — near field: trees, paths")]
-    public float LOD1 = 100f;
+    public int LOD1 = 4;
 
     [Tooltip("LOD2 — visible terrain shape, some structure")]
-    public float LOD2 = 850f;
+    public int LOD2 = 6;
 
     [Tooltip("LOD3 — far terrain shape only")]
-    public float LOD3 = 1400f;
+    public int LOD3 = 8;
 
     [Tooltip("LOD4 — horizon terrain")]
-    public float LOD4 = 3000f;
+    public int LOD4 = 16;
 
     [Tooltip("LOD5 — horizon terrain (proxy/shader only)")]
-    public float LOD5 = 5000f;
-
-    public float[] ToArray()
-    {
-        float[] result = new float[5];
-
-        // Step size per LOD (1 << LODIndex) * base chunk size
-        int baseChunkSize = 16;
-
-        result[0] = LOD0 * (baseChunkSize << 0); // 16
-        result[1] = result[0] + (LOD1 * (baseChunkSize << 1)); // 32
-        result[2] = result[1] + (LOD2 * (baseChunkSize << 2)); // 64
-        result[3] = result[2] + (LOD3 * (baseChunkSize << 3)); // 128
-        result[4] = result[3] + (LOD4 * (baseChunkSize << 4)); // 256
-
-        return result;
-    }
+    public int LOD5 = 32;
+    public int[] ToArray() => new[] { LOD0, LOD1, LOD2, LOD3, LOD4, LOD5 };
 }
 
 [RequireComponent (typeof(ChunkManager))]

@@ -1,6 +1,5 @@
 ﻿using System;
-using System.Buffers.Text;
-using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public enum OccupancyState { Unknown, Loading, Empty, NonEmpty }
@@ -11,7 +10,7 @@ public class ChunkOctTreeMan
 {
     private readonly IChunkServices services;
     private readonly ChunkGenerationProcessor processor;
-    private readonly float[] lodThresholds;
+    private readonly int[] lodThresholds;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChunkOctTreeMan"/> class.
@@ -19,7 +18,7 @@ public class ChunkOctTreeMan
     /// <param name="services"></param>
     /// <param name="processor"></param>
     /// <param name="lodThresholds"></param>
-    public ChunkOctTreeMan(IChunkServices services, ChunkGenerationProcessor processor, float[] lodThresholds)
+    public ChunkOctTreeMan(IChunkServices services, ChunkGenerationProcessor processor, int[] lodThresholds)
     {
         this.services = services;
         this.processor = processor;
@@ -27,30 +26,20 @@ public class ChunkOctTreeMan
     }
 
     /// <summary>
-    /// Evaluate the LOD of a given node to see if changes should be made.
+    /// Evaluate the LOD for a given tree node to determine the best LOD.
     /// </summary>
     /// <param name="node"></param>
     /// <returns></returns>
     public LodDecision EvaluateLod(ChunkOctTreeNode node)
     {
-        Vector3 followerpos = this.services.Layout.FollowerWorldPosition;
+        int[] ringsInChunks0 = this.lodThresholds.ToArray();
 
-        // XZ distance only
-        var d = Vector2.Distance(
-            new Vector2(followerpos.x, followerpos.z),
-            new Vector2(node.Bounds.center.x, node.Bounds.center.z));
+        int dChunks0 = ChebDistanceChunks0(services.Layout.FollowerWorldPosition, node.Bounds, 16);
+        int desired = DesiredLodFromRings(dChunks0, ringsInChunks0);
 
-        float t = lodThresholds[node.Key.LODIndex];
-
-        // Close enough? Go down (if there’s a lower LOD to go to)
-        if (node.Key.LODIndex > 0 && d < t)
-            return LodDecision.Subdivide;
-
-        // Too far and we already have children? Collapse up
-        if (node.Children != null && d > t)
-            return LodDecision.Merge;
-
-        // Otherwise keep as-is
+        int L = node.Key.LODIndex;
+        if (L > desired) return LodDecision.Subdivide;
+        if (L < desired && node.HasChildren) return LodDecision.Merge;
         return LodDecision.KeepLeaf;
     }
 
@@ -123,6 +112,51 @@ public class ChunkOctTreeMan
             Mathf.FloorToInt(pos.z / chunkSize)
         );
     }
+
+    /// <summary>
+    /// I found this in some StackOverflow thing, I dont really understand too much how it works
+    /// https://en.wikipedia.org/wiki/Chebyshev_distance
+    /// </summary>
+    /// <param name="playerWorld"></param>
+    /// <param name="b"></param>
+    /// <param name="baseChunkSize"></param>
+    /// <returns></returns>
+    private static int ChebDistanceChunks0(Vector3 playerWorld, Bounds b, int baseChunkSize = 16)
+    {
+        // XZ only
+        int dx = DistToInterval(playerWorld.x, b.min.x, b.max.x);
+        int dz = DistToInterval(playerWorld.z, b.min.z, b.max.z);
+
+        return Mathf.CeilToInt(Mathf.Max(dx, dz) / (float)baseChunkSize);
+    }
+
+    /// <summary>
+    /// Determine the best LOD ring to use based on the distance.
+    /// </summary>
+    /// <param name="dChunks0"></param>
+    /// <param name="rings"></param>
+    /// <returns></returns>
+    private static int DesiredLodFromRings(int dChunks0, int[] rings)
+    {
+        // rings[L] = max distance (in LOD0 chunks) where LOD == L
+        for (int L = 0; L < rings.Length; L++)
+            if (dChunks0 <= rings[L]) return L;
+        return rings.Length - 1;
+    }
+
+    /// <summary>
+    /// Returns the distance between two variables.
+    /// </summary>
+    /// <param name="p"></param>
+    /// <param name="a"></param>
+    /// <param name="b"></param>
+    /// <returns></returns>
+    private static int DistToInterval(float p, float a, float b)
+    {
+        if (p < a) return Mathf.CeilToInt(a - p);
+        if (p > b) return Mathf.CeilToInt(p - b);
+        return 0;
+    }
 }
 
 /// <summary>
@@ -146,8 +180,6 @@ public class ChunkOctTreeNode
     /// </summary>
     private OccupancyState CurrentOccupancyState = OccupancyState.Unknown;
 
-    private int ChildrenChecked = 0;
-
     /// <summary>
     /// Initialize a new instance of the <see cref="ChunkOctTree"/> class. 
     /// </summary>
@@ -164,6 +196,8 @@ public class ChunkOctTreeNode
         var LODIndex = parent == null ? 4 : Mathf.Max(0, parent.Key.LODIndex - 1);
         var coordinates = tree.BoundsToCoordinate(bounds, LODIndex);
         this.Key = new ChunkKey(coordinates, LODIndex);
+
+        this.RequestSurfaceCheck();
     }
 
     /// <summary>
@@ -184,17 +218,47 @@ public class ChunkOctTreeNode
     /// <summary>
     /// Child nodes (NE, NW, SE, SW) created if this node is subdivided.
     /// </summary>
-    public List<ChunkOctTreeNode> Children = new List<ChunkOctTreeNode>(8);
+    public ChunkOctTreeNode[] Children = null;
 
     /// <summary>
     /// Returns whether this node has any children.
     /// </summary>
-    public bool HasChildren => this.Children.Count != 0;
+    public bool HasChildren => this.Children != null;
 
     /// <summary>
     /// Returns whether this node has no children.
     /// </summary>
-    public bool IsLeaf => !HasChildren;
+    public bool IsLeaf => this.Children == null;
+
+    /// <summary>
+    /// An update method for the node, but this method will not be called every Update() called in Unity.
+    /// </summary>
+    /// <param name="followerPosition"></param>
+    public void Tick()
+    {
+        if (HasChildren)
+            foreach (var child in Children) child?.Tick();
+
+        // Wait for the current phase to complete.
+        if (CurrentContentPhase == ContentPhase.Loading)
+            return;
+
+        if (this.CurrentOccupancyState == OccupancyState.Empty)
+            return;
+
+        var decision = this.Tree.EvaluateLod(this);
+
+        if (decision == LodDecision.Subdivide)
+            this.Subdivide();
+
+        if (decision == LodDecision.Merge)
+            this.Merge();
+
+        if (IsLeaf && this.CurrentContentPhase == ContentPhase.Unloaded)
+        {
+            this.RequestGeneration();
+        }
+    }
 
     /// <summary>
     /// Draw some debug gizmos to better understand placement.
@@ -221,47 +285,11 @@ public class ChunkOctTreeNode
     }
 
     /// <summary>
-    /// An update method for the node, but this method will not be called every Update() called in Unity.
-    /// </summary>
-    /// <param name="followerPosition"></param>
-    public void Tick()
-    {
-        if (HasChildren)
-            foreach (var child in Children) child?.Tick();
-
-        // Wait for the current phase to complete.
-        if (CurrentContentPhase == ContentPhase.Loading)
-            return;
-
-        if (this.CurrentOccupancyState == OccupancyState.Empty)
-            return;
-
-        if (this.CurrentOccupancyState == OccupancyState.Unknown)
-        {
-            this.RequestSurfaceCheck();
-            return;
-        }
-
-        var decision = this.Tree.EvaluateLod(this);
-
-        if (decision == LodDecision.Subdivide)
-            this.Subdivide();
-
-        if (decision == LodDecision.Merge)
-            this.Merge();
-
-        if (IsLeaf && this.CurrentContentPhase == ContentPhase.Unloaded)
-        {
-            this.RequestGeneration();
-        }
-    }
-
-    /// <summary>
     /// Subdivide the node into further parts.
     /// </summary>
     private void Subdivide()
     {
-        if (this.Key.LODIndex == 0 ||  HasChildren) return;
+        if (this.Key.LODIndex == 0 || this.Children != null) return;
 
         Vector3 size = Bounds.size / 2f;
         Vector3 center = Bounds.center;
@@ -271,14 +299,19 @@ public class ChunkOctTreeNode
         int cy = baseCoord.y * 2;
         int cz = baseCoord.z * 2;
 
-        this.RequestChildSurfaceCheck(new Vector3Int(cx + 0, cy + 0, cz + 0)); // Bottom SW
-        this.RequestChildSurfaceCheck(new Vector3Int(cx + 1, cy + 0, cz + 0)); // Bottom SE
-        this.RequestChildSurfaceCheck(new Vector3Int(cx + 0, cy + 0, cz + 1)); // Bottom NW
-        this.RequestChildSurfaceCheck(new Vector3Int(cx + 1, cy + 0, cz + 1)); // Bottom NE
-        this.RequestChildSurfaceCheck(new Vector3Int(cx + 0, cy + 1, cz + 0)); // Top SW
-        this.RequestChildSurfaceCheck(new Vector3Int(cx + 1, cy + 1, cz + 0)); // Top SE
-        this.RequestChildSurfaceCheck(new Vector3Int(cx + 0, cy + 1, cz + 1)); // Top NW
-        this.RequestChildSurfaceCheck(new Vector3Int(cx + 1, cy + 1, cz + 1)); // Top NE
+        Children = new ChunkOctTreeNode[8];
+        Children[0] = Tree.CreateChild(this, new Vector3Int(cx + 0, cy + 0, cz + 0)); // Bottom SW
+        Children[1] = Tree.CreateChild(this, new Vector3Int(cx + 1, cy + 0, cz + 0)); // Bottom SE
+        Children[2] = Tree.CreateChild(this, new Vector3Int(cx + 0, cy + 0, cz + 1)); // Bottom NW
+        Children[3] = Tree.CreateChild(this, new Vector3Int(cx + 1, cy + 0, cz + 1)); // Bottom NE
+        Children[4] = Tree.CreateChild(this, new Vector3Int(cx + 0, cy + 1, cz + 0)); // Top SW
+        Children[5] = Tree.CreateChild(this, new Vector3Int(cx + 1, cy + 1, cz + 0)); // Top SE
+        Children[6] = Tree.CreateChild(this, new Vector3Int(cx + 0, cy + 1, cz + 1)); // Top NW
+        Children[7] = Tree.CreateChild(this, new Vector3Int(cx + 1, cy + 1, cz + 1)); // Top NE
+
+        // Remove this mesh.
+        this.Tree.RemoveChild(this);
+        this.CurrentContentPhase = ContentPhase.Unloaded;
     }
 
     /// <summary>
@@ -286,7 +319,7 @@ public class ChunkOctTreeNode
     /// </summary>
     private void Merge()
     {
-        if (this.IsLeaf)
+        if (this.Children != null)
         {
             foreach (var child in Children)
             {
@@ -297,7 +330,7 @@ public class ChunkOctTreeNode
                 this.Tree.RemoveChild(child);
             }
 
-            this.Children.Clear();
+            this.Children = null;
         }
 
         // We will need to regenerate.
@@ -318,29 +351,6 @@ public class ChunkOctTreeNode
                 this.CurrentOccupancyState = OccupancyState.NonEmpty;
             else
                 this.CurrentOccupancyState = OccupancyState.Empty;
-        });
-    }
-
-    /// <summary>
-    /// Request children 
-    /// </summary>
-    /// <param name="coordinate"></param>
-    private void RequestChildSurfaceCheck(Vector3Int coordinate)
-    {
-        ChunkKey ck = new ChunkKey(coordinate, this.Key.LODIndex - 1);
-
-        this.Tree.RequestSurfaceCheck(ck, (bool result) =>
-        {
-            if (result)
-            {
-                ChunkOctTreeNode newNode = Tree.CreateChild(this, coordinate);
-                newNode.CurrentOccupancyState = OccupancyState.NonEmpty;
-
-                this.Children.Add(newNode);
-
-                this.Tree.RemoveChild(this);
-                this.CurrentContentPhase = ContentPhase.Unloaded;
-            }
         });
     }
 

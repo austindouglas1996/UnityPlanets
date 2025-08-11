@@ -71,6 +71,8 @@ public class ChunkGenerationProcessor
         this.surfaceBatch.Remove(key);
         this.generationBatch.Remove(key);
         this.regionManager.Remove(key);
+
+        this.total--;
     }
 
     public void Dipose()
