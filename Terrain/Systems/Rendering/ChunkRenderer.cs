@@ -26,8 +26,11 @@ public class LODThresholds
     [Tooltip("LOD3 — far terrain shape only")]
     public float LOD3 = 1400f;
 
-    [Tooltip("LOD4 — horizon terrain (proxy/shader only)")]
+    [Tooltip("LOD4 — horizon terrain")]
     public float LOD4 = 3000f;
+
+    [Tooltip("LOD5 — horizon terrain (proxy/shader only)")]
+    public float LOD5 = 5000f;
 
     public float[] ToArray()
     {
@@ -49,7 +52,7 @@ public class LODThresholds
 [RequireComponent (typeof(ChunkManager))]
 public class ChunkRenderer : MonoBehaviour
 {
-    [Header("LOD Settings")]
+    [Header("LOD Settings (Additive)")]
     [SerializeField]
     private LODThresholds lodThresholds = new();
 
@@ -123,7 +126,16 @@ public class ChunkRenderer : MonoBehaviour
 
     void OnRenderObject()
     {
-        processor.Draw();
+        if (chunkManager.ShowTerrain)
+            processor.Draw();
+    }
+
+    private void OnDrawGizmos()
+    {
+        foreach (var root in rootTrees)
+        {
+            root.DrawDebugGizmo();
+        }
     }
 
     /// <summary>

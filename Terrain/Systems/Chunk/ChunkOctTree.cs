@@ -1,4 +1,6 @@
-using System;
+﻿using System;
+using System.Buffers.Text;
+using System.Collections.Generic;
 using UnityEngine;
 
 public enum OccupancyState { Unknown, Loading, Empty, NonEmpty }
@@ -40,7 +42,7 @@ public class ChunkOctTreeMan
 
         float t = lodThresholds[node.Key.LODIndex];
 
-        // Close enough? Go down (if there�s a lower LOD to go to)
+        // Close enough? Go down (if there’s a lower LOD to go to)
         if (node.Key.LODIndex > 0 && d < t)
             return LodDecision.Subdivide;
 
@@ -144,6 +146,8 @@ public class ChunkOctTreeNode
     /// </summary>
     private OccupancyState CurrentOccupancyState = OccupancyState.Unknown;
 
+    private int ChildrenChecked = 0;
+
     /// <summary>
     /// Initialize a new instance of the <see cref="ChunkOctTree"/> class. 
     /// </summary>
@@ -180,17 +184,41 @@ public class ChunkOctTreeNode
     /// <summary>
     /// Child nodes (NE, NW, SE, SW) created if this node is subdivided.
     /// </summary>
-    public ChunkOctTreeNode[] Children = null;
+    public List<ChunkOctTreeNode> Children = new List<ChunkOctTreeNode>(8);
 
     /// <summary>
     /// Returns whether this node has any children.
     /// </summary>
-    public bool HasChildren => this.Children != null;
+    public bool HasChildren => this.Children.Count != 0;
 
     /// <summary>
     /// Returns whether this node has no children.
     /// </summary>
-    public bool IsLeaf => this.Children == null;
+    public bool IsLeaf => !HasChildren;
+
+    /// <summary>
+    /// Draw some debug gizmos to better understand placement.
+    /// </summary>
+    public void DrawDebugGizmo()
+    {
+        if (this.IsLeaf)
+        {
+            if (this.CurrentOccupancyState != OccupancyState.Empty)
+            {
+                Color c = LodColor(this.Key.LODIndex, 4, 0.85f);
+
+                Gizmos.color = c;
+                Gizmos.DrawWireCube(Bounds.center, Bounds.size);
+            }
+        }
+        else
+        {
+            foreach (var child in this.Children)
+            {
+                child.DrawDebugGizmo();
+            }
+        }
+    }
 
     /// <summary>
     /// An update method for the node, but this method will not be called every Update() called in Unity.
@@ -233,7 +261,7 @@ public class ChunkOctTreeNode
     /// </summary>
     private void Subdivide()
     {
-        if (this.Key.LODIndex == 0 || this.Children != null) return;
+        if (this.Key.LODIndex == 0 ||  HasChildren) return;
 
         Vector3 size = Bounds.size / 2f;
         Vector3 center = Bounds.center;
@@ -243,19 +271,14 @@ public class ChunkOctTreeNode
         int cy = baseCoord.y * 2;
         int cz = baseCoord.z * 2;
 
-        Children = new ChunkOctTreeNode[8];
-        Children[0] = Tree.CreateChild(this, new Vector3Int(cx + 0, cy + 0, cz + 0)); // Bottom SW
-        Children[1] = Tree.CreateChild(this, new Vector3Int(cx + 1, cy + 0, cz + 0)); // Bottom SE
-        Children[2] = Tree.CreateChild(this, new Vector3Int(cx + 0, cy + 0, cz + 1)); // Bottom NW
-        Children[3] = Tree.CreateChild(this, new Vector3Int(cx + 1, cy + 0, cz + 1)); // Bottom NE
-        Children[4] = Tree.CreateChild(this, new Vector3Int(cx + 0, cy + 1, cz + 0)); // Top SW
-        Children[5] = Tree.CreateChild(this, new Vector3Int(cx + 1, cy + 1, cz + 0)); // Top SE
-        Children[6] = Tree.CreateChild(this, new Vector3Int(cx + 0, cy + 1, cz + 1)); // Top NW
-        Children[7] = Tree.CreateChild(this, new Vector3Int(cx + 1, cy + 1, cz + 1)); // Top NE
-
-        // Remove this mesh.
-        this.Tree.RemoveChild(this);
-        this.CurrentContentPhase = ContentPhase.Unloaded;
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 0, cy + 0, cz + 0)); // Bottom SW
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 1, cy + 0, cz + 0)); // Bottom SE
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 0, cy + 0, cz + 1)); // Bottom NW
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 1, cy + 0, cz + 1)); // Bottom NE
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 0, cy + 1, cz + 0)); // Top SW
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 1, cy + 1, cz + 0)); // Top SE
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 0, cy + 1, cz + 1)); // Top NW
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 1, cy + 1, cz + 1)); // Top NE
     }
 
     /// <summary>
@@ -263,7 +286,7 @@ public class ChunkOctTreeNode
     /// </summary>
     private void Merge()
     {
-        if (this.Children != null)
+        if (this.IsLeaf)
         {
             foreach (var child in Children)
             {
@@ -274,7 +297,7 @@ public class ChunkOctTreeNode
                 this.Tree.RemoveChild(child);
             }
 
-            this.Children = null;
+            this.Children.Clear();
         }
 
         // We will need to regenerate.
@@ -299,6 +322,29 @@ public class ChunkOctTreeNode
     }
 
     /// <summary>
+    /// Request children 
+    /// </summary>
+    /// <param name="coordinate"></param>
+    private void RequestChildSurfaceCheck(Vector3Int coordinate)
+    {
+        ChunkKey ck = new ChunkKey(coordinate, this.Key.LODIndex - 1);
+
+        this.Tree.RequestSurfaceCheck(ck, (bool result) =>
+        {
+            if (result)
+            {
+                ChunkOctTreeNode newNode = Tree.CreateChild(this, coordinate);
+                newNode.CurrentOccupancyState = OccupancyState.NonEmpty;
+
+                this.Children.Add(newNode);
+
+                this.Tree.RemoveChild(this);
+                this.CurrentContentPhase = ContentPhase.Unloaded;
+            }
+        });
+    }
+
+    /// <summary>
     /// Request the chunk to generate.
     /// </summary>
     private void RequestGeneration()
@@ -319,5 +365,24 @@ public class ChunkOctTreeNode
                 Tree.RemoveChild(this);
             }
         });
+    }
+
+    /// <summary>
+    /// A simple function to get a color based on LOD.
+    /// </summary>
+    /// <param name="lod"></param>
+    /// <param name="maxLod"></param>
+    /// <param name="alpha"></param>
+    /// <returns></returns>
+    private static Color LodColor(int lod, int maxLod = 4, float alpha = 0.9f)
+    {
+        // t = 0 at farthest (maxLod), 1 at nearest (0)
+        float t = Mathf.InverseLerp(maxLod, 0, lod);
+
+        // Hue: green→red (0.33 green, 0.0 = red)
+        float hue = Mathf.Lerp(0.33f, 0.0f, t);
+        Color c = Color.HSVToRGB(hue, 0.95f, 1.0f);
+        c.a = alpha;
+        return c;
     }
 }

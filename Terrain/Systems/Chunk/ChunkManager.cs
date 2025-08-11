@@ -22,6 +22,8 @@ public class ChunkManager : MonoBehaviour
     [SerializeField] public ComputeShader MarchingCubes;
     [SerializeField] public ComputeShader GenerateDensity;
 
+    [SerializeField] public bool ShowTerrain = true;
+
     /// <summary>
     /// Services used to help with chunk generation and management.
     /// </summary>
