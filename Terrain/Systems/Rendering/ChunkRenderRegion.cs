@@ -52,8 +52,11 @@ public class ChunkRenderRegion
             return;
         }
 
-        set?.Dispose();
-        set = chunkGenerator.DispatchGeneration(this.Chunks);
+        if (this.Chunks.Count > 0)
+        {
+            set?.Dispose();
+            set = chunkGenerator.DispatchGeneration(this.Chunks);
+        }
 
         this.IsDirty = false;
         delayFrames = -1;
@@ -61,7 +64,7 @@ public class ChunkRenderRegion
 
     public void Draw(Material vertexMat)
     {
-        if (set == null)
+        if (set == null || set.Args == null)
             return;
 
         vertexMat.SetBuffer("_TriangleBuffer", set.Triangle);

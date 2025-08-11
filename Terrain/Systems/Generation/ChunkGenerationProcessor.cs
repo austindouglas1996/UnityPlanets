@@ -137,7 +137,7 @@ public class ChunkGenerationProcessor
 
     private void UpdateGeneration()
     {
-        if (!this.generationBatch.HasPending || this.generationBatch.Count < 100)
+        if (!this.generationBatch.HasPending)
             return;
 
         var batch = this.generationBatch.TryBatch(128);

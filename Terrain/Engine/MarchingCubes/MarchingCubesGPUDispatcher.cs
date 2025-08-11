@@ -150,6 +150,9 @@ public class MarchingCubesGPUDispatcher : IDensityMapGenerator
 
     public virtual GPUSet DispatchGeneration(List<ChunkKey> chunkContexts)
     {
+        if (chunkContexts.Count == 0)
+            throw new System.ArgumentException("Tried to dispatch...0 contexts?");
+
         int batchSize = chunkContexts.Count;
         int size = Options.ChunkSize + 1;
         int voxelCountPerChunk = size * size * size;

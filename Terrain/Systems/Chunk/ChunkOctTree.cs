@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
 public enum OccupancyState { Unknown, Loading, Empty, NonEmpty }
 public enum ContentPhase { Unloaded, Loading, Ready }
 public enum LodDecision { KeepLeaf, Subdivide, Merge }
+public enum Transition { None, Subdivide, Merge }
 
 public class ChunkOctTreeMan
 {
@@ -181,6 +183,16 @@ public class ChunkOctTreeNode
     private OccupancyState CurrentOccupancyState = OccupancyState.Unknown;
 
     /// <summary>
+    /// The current transition to help subdivide/merge.
+    /// </summary>
+    private Transition CurrentTransition = Transition.None;
+
+    /// <summary>
+    /// The remaining ticks of a transition before executing an action.
+    /// </summary>
+    private int TransitionTicks = 0;
+
+    /// <summary>
     /// Initialize a new instance of the <see cref="ChunkOctTree"/> class. 
     /// </summary>
     /// <param name="services"></param>
@@ -218,17 +230,17 @@ public class ChunkOctTreeNode
     /// <summary>
     /// Child nodes (NE, NW, SE, SW) created if this node is subdivided.
     /// </summary>
-    public ChunkOctTreeNode[] Children = null;
+    public List<ChunkOctTreeNode> Children = new List<ChunkOctTreeNode>(8);
 
     /// <summary>
     /// Returns whether this node has any children.
     /// </summary>
-    public bool HasChildren => this.Children != null;
+    public bool HasChildren => this.Children.Count > 0;
 
     /// <summary>
     /// Returns whether this node has no children.
     /// </summary>
-    public bool IsLeaf => this.Children == null;
+    public bool IsLeaf => !HasChildren;
 
     /// <summary>
     /// An update method for the node, but this method will not be called every Update() called in Unity.
@@ -238,6 +250,21 @@ public class ChunkOctTreeNode
     {
         if (HasChildren)
             foreach (var child in Children) child?.Tick();
+
+        // Handle transitions.
+        if (this.CurrentTransition != Transition.None)
+        {
+            if (--TransitionTicks <= 0)
+            {
+                if (this.CurrentTransition == Transition.Subdivide) this.FinalizeSubdivide();
+                if (this.CurrentTransition == Transition.Merge) this.FinalizeMerge();
+
+                this.CurrentTransition = Transition.None;
+                this.TransitionTicks = 0;
+            }
+
+            return;
+        }
 
         // Wait for the current phase to complete.
         if (CurrentContentPhase == ContentPhase.Loading)
@@ -289,7 +316,8 @@ public class ChunkOctTreeNode
     /// </summary>
     private void Subdivide()
     {
-        if (this.Key.LODIndex == 0 || this.Children != null) return;
+        if (this.Key.LODIndex == 0 || this.HasChildren) return;
+        this.CurrentContentPhase = ContentPhase.Loading;
 
         Vector3 size = Bounds.size / 2f;
         Vector3 center = Bounds.center;
@@ -299,19 +327,17 @@ public class ChunkOctTreeNode
         int cy = baseCoord.y * 2;
         int cz = baseCoord.z * 2;
 
-        Children = new ChunkOctTreeNode[8];
-        Children[0] = Tree.CreateChild(this, new Vector3Int(cx + 0, cy + 0, cz + 0)); // Bottom SW
-        Children[1] = Tree.CreateChild(this, new Vector3Int(cx + 1, cy + 0, cz + 0)); // Bottom SE
-        Children[2] = Tree.CreateChild(this, new Vector3Int(cx + 0, cy + 0, cz + 1)); // Bottom NW
-        Children[3] = Tree.CreateChild(this, new Vector3Int(cx + 1, cy + 0, cz + 1)); // Bottom NE
-        Children[4] = Tree.CreateChild(this, new Vector3Int(cx + 0, cy + 1, cz + 0)); // Top SW
-        Children[5] = Tree.CreateChild(this, new Vector3Int(cx + 1, cy + 1, cz + 0)); // Top SE
-        Children[6] = Tree.CreateChild(this, new Vector3Int(cx + 0, cy + 1, cz + 1)); // Top NW
-        Children[7] = Tree.CreateChild(this, new Vector3Int(cx + 1, cy + 1, cz + 1)); // Top NE
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 0, cy + 0, cz + 0)); // Bottom SW
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 1, cy + 0, cz + 0)); // Bottom SE
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 0, cy + 0, cz + 1)); // Bottom NW
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 1, cy + 0, cz + 1)); // Bottom NE
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 0, cy + 1, cz + 0)); // Top SW
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 1, cy + 1, cz + 0)); // Top SE
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 0, cy + 1, cz + 1)); // Top NW
+        this.RequestChildSurfaceCheck(new Vector3Int(cx + 1, cy + 1, cz + 1)); // Top NE
 
-        // Remove this mesh.
-        this.Tree.RemoveChild(this);
-        this.CurrentContentPhase = ContentPhase.Unloaded;
+        this.CurrentTransition = Transition.Subdivide;
+        this.TransitionTicks = 30;
     }
 
     /// <summary>
@@ -319,22 +345,15 @@ public class ChunkOctTreeNode
     /// </summary>
     private void Merge()
     {
-        if (this.Children != null)
-        {
-            foreach (var child in Children)
-            {
-                if (child == null)
-                    continue;
-
-                child.Merge();
-                this.Tree.RemoveChild(child);
-            }
-
-            this.Children = null;
-        }
-
         // We will need to regenerate.
         this.CurrentContentPhase = ContentPhase.Unloaded;
+
+        // We already had children, so this most likely had surface.
+        if (this.CurrentOccupancyState == OccupancyState.NonEmpty)
+            this.RequestGeneration();
+
+        this.CurrentTransition = Transition.Merge;
+        this.TransitionTicks = 30;
     }
 
     /// <summary>
@@ -348,9 +367,31 @@ public class ChunkOctTreeNode
         this.Tree.RequestSurfaceCheck(this.Key, (bool result) =>
         {
             if (result)
+            {
                 this.CurrentOccupancyState = OccupancyState.NonEmpty;
+            }
             else
                 this.CurrentOccupancyState = OccupancyState.Empty;
+        });
+    }
+
+    /// <summary>
+    /// Request children 
+    /// </summary>
+    /// <param name="coordinate"></param>
+    private void RequestChildSurfaceCheck(Vector3Int coordinate)
+    {
+        ChunkKey ck = new ChunkKey(coordinate, this.Key.LODIndex - 1);
+
+        this.Tree.RequestSurfaceCheck(ck, (bool result) =>
+        {
+            if (result)
+            {
+                ChunkOctTreeNode newNode = Tree.CreateChild(this, coordinate);
+                newNode.CurrentOccupancyState = OccupancyState.NonEmpty;
+
+                this.Children.Add(newNode);
+            }
         });
     }
 
@@ -375,6 +416,35 @@ public class ChunkOctTreeNode
                 Tree.RemoveChild(this);
             }
         });
+    }
+
+    /// <summary>
+    /// Finalize the subdivide by removing this parent object. This is important because if not the parent will be removed before the children have
+    /// had a chance to be rendered.
+    /// </summary>
+    private void FinalizeSubdivide()
+    {
+        this.Tree.RemoveChild(this);
+    }
+
+    /// <summary>
+    /// Finalize the merge by removing the children now that the parent has had a chance to render itself at least once.
+    /// </summary>
+    private void FinalizeMerge()
+    {
+        if (this.HasChildren)
+        {
+            foreach (var child in Children)
+            {
+                if (child == null)
+                    continue;
+
+                child.Merge();
+                this.Tree.RemoveChild(child);
+            }
+
+            this.Children.Clear();
+        }
     }
 
     /// <summary>

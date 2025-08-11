@@ -9,6 +9,9 @@ public class GPUSet
 
     public GPUSet(ComputeBuffer Triangle, ComputeBuffer Args, List<ChunkKey> keys, IChunkServices services)
     {
+        if (Args == null)
+            throw new System.ArgumentNullException("args");
+
         this.Triangle = Triangle;
         this.Args = Args;
         this.Bounds = this.ComputeBounds(keys, services);
