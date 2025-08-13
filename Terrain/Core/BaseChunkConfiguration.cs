@@ -6,7 +6,6 @@ using UnityEngine;
 public class BaseChunkConfiguration : IChunkConfiguration
 {
     [SerializeField] private DensityMapOptions densityMapOptions;
-    [SerializeField] private Material vertexColorMaterial;
     public DensityMapOptions DensityOptions => densityMapOptions;
 
     /// <summary>
