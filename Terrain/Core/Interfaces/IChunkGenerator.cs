@@ -15,7 +15,7 @@ public interface IChunkGenerator : IDisposable
     /// </summary>
     /// <param name="keys">Chunk keys to check.</param>
     /// <returns>Array of chunk indexes that contain surface.</returns>
-    uint[] DispatchSurface(List<ChunkKey> keys);
+    uint[] DispatchSurface(IReadOnlyList<ChunkGenerationJob> jobs);
 
     /// <summary>
     /// Creates a chunk mesh on the GPU for the given chunk keys.
@@ -23,5 +23,5 @@ public interface IChunkGenerator : IDisposable
     /// </summary>
     /// <param name="keys">List of chunk keys to generate.</param>
     /// <returns>GPU data set for the generated chunks.</returns>
-    GPUSet DispatchGeneration(List<ChunkKey> keys);
+    GPUSet DispatchGeneration(IReadOnlyList<ChunkKey> keys);
 }

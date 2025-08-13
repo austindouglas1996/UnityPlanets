@@ -1,10 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.Rendering;
 
 /// <summary>
 /// Handles generating chunk meshes and density maps for marching cubes.
@@ -31,7 +25,7 @@ public abstract class BaseChunkGenerator : IChunkGenerator
     /// <param name="config">The chunk configuration.</param>
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>The generated chunk data.</returns>
-    public virtual GPUSet DispatchGeneration(List<ChunkKey> chunkContexts)
+    public virtual GPUSet DispatchGeneration(IReadOnlyList<ChunkKey> chunkContexts)
     {
         return this.Generator.DispatchGeneration(chunkContexts);
     }
@@ -41,8 +35,8 @@ public abstract class BaseChunkGenerator : IChunkGenerator
         this.Generator.Dispose();
     }
 
-    public uint[] DispatchSurface(List<ChunkKey> contexts)
+    public uint[] DispatchSurface(IReadOnlyList<ChunkGenerationJob> jobs)
     {
-        return this.Generator.GetSurfaceMask(contexts);
+        return this.Generator.GetSurfaceMask(jobs);
     }
 }

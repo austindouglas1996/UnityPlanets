@@ -1,34 +1,35 @@
 ﻿using System.Collections.Generic;
 using System;
+
 using UnityEngine;
 
 /// <summary>
-/// Handles the asynchronous generation and modification of terrain chunks.
-/// Uses a priority queue to ensure high-importance chunks (near the player) are processed first.
-/// Spawns multiple worker threads that continuously process jobs in the background.
+/// Coordinates the asynchronous-like generation and modification of terrain chunks.
+/// Jobs are queued and processed in small batches during <see cref="Update"/> to avoid frame hitches.
+/// This helps ensure high-priority chunks can be generated first if desired,
+/// though the current implementation uses simple FIFO order.
 /// </summary>
-public class ChunkGenerationProcessor
+public class ChunkGenerationProcessor : IDisposable
 {
-    /// <summary>
-    /// A priority queue holding pending generation jobs.
-    /// LOD0 jobs are prioritized higher for near-player chunks.
-    /// </summary>
-    private ChunkGenerationBatcher surfaceBatch = new ChunkGenerationBatcher();
-    private ChunkGenerationBatcher generationBatch = new ChunkGenerationBatcher();
+    private readonly List<ChunkGenerationJob> tmpSurfaceJobs = new(1024);
+    private readonly List<ChunkGenerationJob> tmpGenerationJobs = new(1024);
+
+    private readonly ChunkGenerationBatcher surfaceBatcher = new();
+    private readonly ChunkGenerationBatcher generationBatcher = new();
 
     /// <summary>
-    /// A system to help with controlling render regions with the GPU. We are unable
-    /// to modify buffers.
+    /// Manages GPU-side render regions for generated chunks.
     /// </summary>
-    private ChunkRenderRegionManager regionManager;
+    private readonly ChunkRenderRegionManager regionManager;
 
     /// <summary>
-    /// Central services used during chunk generation (generator, colorizer, layout, etc.).
+    /// Core services used for chunk generation (density generator, colorizer, layout, etc.).
     /// </summary>
-    private IChunkServices chunkServices;
+    private readonly IChunkServices chunkServices;
 
     /// <summary>
-    /// Construct a new generation processor, spin up a few worker threads.
+    /// Creates a new generation processor.
+    /// Initializes the GPU render region manager and sets up default material parameters.
     /// </summary>
     public ChunkGenerationProcessor(IChunkServices services)
     {
@@ -42,115 +43,84 @@ public class ChunkGenerationProcessor
     }
 
     /// <summary>
-    /// Request a new chunk to be checked for surface data before generation.
+    /// Queues a chunk to be checked for surface data before full generation.
+    /// The provided callback will be invoked once the check completes.
     /// </summary>
-    /// <param name="context"></param>
-    /// <returns></returns>
-    public void RequestSurfaceCheck(ChunkKey key, Action<bool> onDone)
-    {
-        var job = new ChunkGenerationJob(key, onDone);
-        this.surfaceBatch.Add(job);
-    }
+    public void RequestSurfaceCheck(ChunkKey key, Action<bool> onDone) =>
+        surfaceBatcher.Add(new ChunkGenerationJob(key, onDone));
 
     /// <summary>
-    /// Request a new chunk to be generated asynchronously.
-    /// Prioritizes LOD0 chunks by proximity to the player.
+    /// Queues a chunk for full generation.
+    /// The provided callback will be invoked once generation is complete.
     /// </summary>
-    public void RequestChunkGeneration(ChunkKey key, Action<bool> onDone)
-    {
-        var job = new ChunkGenerationJob(key, onDone);
-        this.generationBatch.Add(job);
-    }
+    public void RequestChunkGeneration(ChunkKey key, Action<bool> onDone) =>
+        generationBatcher.Add(new ChunkGenerationJob(key, onDone));
 
+    /// <summary>
+    /// Removes all queued and active references to a given chunk.
+    /// Call this when unloading or discarding a chunk to avoid processing it unnecessarily.
+    /// </summary>
     public void RemoveChunk(ChunkKey key)
     {
-        this.surfaceBatch.Remove(key);
-        this.generationBatch.Remove(key);
-        this.regionManager.Remove(key);
-
-        this.total--;
-    }
-
-    public void Dipose()
-    {
-        this.regionManager.Dispose();
-    }
-
-    public void Draw()
-    {
-        this.regionManager.Draw();
+        surfaceBatcher.Remove(key);
+        generationBatcher.Remove(key);
+        regionManager.Remove(key);
     }
 
     /// <summary>
-    /// Update the processor and start generating chunks if there is active jobs.
+    /// Issues draw calls for any currently active render regions.
+    /// Should be called from the main rendering loop.
     /// </summary>
-    private int surfaceUpdateFrameCounter = 0;
+    public void Draw() => regionManager.Draw();
 
+    /// <summary>
+    /// Processes queued surface and generation jobs in small batches,
+    /// and updates the GPU render regions.
+    /// Call this once per frame.
+    /// </summary>
     public void Update()
     {
         regionManager.Update();
 
-        this.UpdateSurface();
-        this.UpdateGeneration();
+        UpdateSurface();
+        UpdateGeneration();
     }
 
+    /// <summary>
+    /// Releases any GPU resources held by the render region manager.
+    /// </summary>
+    public void Dispose() => regionManager.Dispose();
 
-    private int cancelled = 0;
-    private int total = 0;
-
+    /// <summary>
+    /// Processes a batch of surface-check jobs.
+    /// </summary>
     private void UpdateSurface()
     {
-        if (!this.surfaceBatch.HasPending)
-            return;
+        if (!surfaceBatcher.HasPending) return;
 
-        var batch = this.surfaceBatch.TryBatch(1028);
-        var batch1 = new List<ChunkKey>();
+        int n = surfaceBatcher.TryBatch(1024, tmpSurfaceJobs);
+        if (n == 0) return;
 
-        batch.ForEach(r => batch1.Add(r.Key));
+        var surfaceResults = chunkServices.Generator.DispatchSurface(tmpSurfaceJobs);
 
-        var surfaceChunks = this.chunkServices.Generator.DispatchSurface(batch1);
-
-        int index = 0;
-
-        foreach (var ctx in batch) 
-        {
-            if (surfaceChunks[index] == 0)
-            {
-                ctx.OnDone(false);
-                cancelled++;
-            }
-            else
-            {
-                ctx.OnDone(true);
-            }
-
-            total++;
-            index++;
-        }
-
-        Debug.Log($"Cancelled: {cancelled} / out of {total}");
+        for (int i = 0; i < n; i++)
+            tmpSurfaceJobs[i].OnDone(surfaceResults[i] == 1);
     }
 
+    /// <summary>
+    /// Processes a batch of chunk generation jobs.
+    /// </summary>
     private void UpdateGeneration()
     {
-        if (!this.generationBatch.HasPending)
-            return;
+        if (!generationBatcher.HasPending) return;
 
-        var batch = this.generationBatch.TryBatch(128);
+        int n = generationBatcher.TryBatch(64, tmpGenerationJobs);
+        if (n == 0) return;
 
-        try
+        foreach (var job in tmpGenerationJobs)
         {
-            foreach (var job in batch)
-            {
-                regionManager.Add(job.Key);
-                job.OnDone(true);
-            }
-        }
-        catch (Exception ex)
-        {
-            foreach (var job in batch)
-                job.OnDone(false);
-            Debug.LogError(ex);
+            job.OnDone(true);
+            regionManager.Add(job.Key);
         }
     }
 }

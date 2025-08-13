@@ -84,7 +84,7 @@ public class MarchingCubesGPUDispatcher
         SurfaceMaskBuffer = new ComputeBuffer(1028, sizeof(uint));
     }
 
-    public uint[] GetSurfaceMask(List<ChunkKey> chunkContexts)
+    public uint[] GetSurfaceMask(IReadOnlyList<ChunkGenerationJob> chunkContexts)
     {
         int batchSize = chunkContexts.Count;
         var chunkInputs = new List<ChunkInput>(batchSize);
@@ -93,9 +93,9 @@ public class MarchingCubesGPUDispatcher
             var ctx = chunkContexts[i];
             chunkInputs.Add(new ChunkInput
             {
-                CoordPos = ctx.Coordinates,
-                WorldPos = services.Layout.ToWorld(ctx),
-                stepSize = 1 << ctx.LODIndex
+                CoordPos = ctx.Key.Coordinates,
+                WorldPos = services.Layout.ToWorld(ctx.Key),
+                stepSize = 1 << ctx.Key.LODIndex
             });
         }
 
@@ -113,7 +113,7 @@ public class MarchingCubesGPUDispatcher
         return surfaceWords;
     }
 
-    public virtual GPUSet DispatchGeneration(List<ChunkKey> chunkContexts)
+    public virtual GPUSet DispatchGeneration(IReadOnlyList<ChunkKey> chunkContexts)
     {
         if (chunkContexts.Count == 0)
             throw new System.ArgumentException("Tried to dispatch...0 contexts?");
@@ -159,6 +159,6 @@ public class MarchingCubesGPUDispatcher
         MarchingShader.SetBuffer(1, "ArgsBuffer", argsBuffer);
         MarchingShader.Dispatch(1, 1, 1, 1);
 
-        return new GPUSet(triangleBuffer, argsBuffer, chunkContexts, services);
+        return new GPUSet(triangleBuffer, argsBuffer, chunkContexts.ToList(), services);
     }
 }
