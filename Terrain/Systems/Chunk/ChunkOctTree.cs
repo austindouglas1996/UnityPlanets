@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine;
 
 public enum OccupancyState { Unknown, Loading, Empty, NonEmpty }
-public enum ContentPhase { Unloaded, Loading, Ready }
+public enum ContentPhase { Unloaded, Loading, Ready, Subdivided }
 public enum LodDecision { KeepLeaf, Subdivide, Merge }
 public enum Transition { None, Subdivide, Merge }
 
@@ -34,13 +34,17 @@ public class ChunkOctTreeMan
     /// <returns></returns>
     public LodDecision EvaluateLod(ChunkOctTreeNode node)
     {
+        // Don't touch while transitioning. 
+        if (node.CurrentTransition != Transition.None)
+            return LodDecision.KeepLeaf;
+
         int[] ringsInChunks0 = this.lodThresholds.ToArray();
 
         int dChunks0 = ChebDistanceChunks0(services.Layout.FollowerWorldPosition, node.Bounds, 16);
         int desired = DesiredLodFromRings(dChunks0, ringsInChunks0);
 
         int L = node.Key.LODIndex;
-        if (L > desired) return LodDecision.Subdivide;
+        if (L > desired && node.IsLeaf && node.CurrentContentPhase != ContentPhase.Subdivided) return LodDecision.Subdivide;
         if (L < desired && node.HasChildren) return LodDecision.Merge;
         return LodDecision.KeepLeaf;
     }
@@ -161,6 +165,7 @@ public class ChunkOctTreeMan
     }
 }
 
+
 /// <summary>
 /// Represents a node in the terrain quadtree structure. Each node covers a chunk of terrain at a specific LOD.
 /// Nodes can subdivide into 4 children for higher detail as the player gets closer.
@@ -175,7 +180,7 @@ public class ChunkOctTreeNode
     /// <summary>
     /// The current phase of the content. This will help to know if we should skip.
     /// </summary>
-    private ContentPhase CurrentContentPhase = ContentPhase.Unloaded;
+    public ContentPhase CurrentContentPhase = ContentPhase.Unloaded;
 
     /// <summary>
     /// The current state of the node if it contains surface data
@@ -185,7 +190,7 @@ public class ChunkOctTreeNode
     /// <summary>
     /// The current transition to help subdivide/merge.
     /// </summary>
-    private Transition CurrentTransition = Transition.None;
+    public Transition CurrentTransition = Transition.None;
 
     /// <summary>
     /// The remaining ticks of a transition before executing an action.
@@ -345,13 +350,11 @@ public class ChunkOctTreeNode
     /// </summary>
     private void Merge()
     {
-        // We will need to regenerate.
-        this.CurrentContentPhase = ContentPhase.Unloaded;
-
         // We already had children, so this most likely had surface.
         if (this.CurrentOccupancyState == OccupancyState.NonEmpty)
             this.RequestGeneration();
 
+        this.CurrentContentPhase = ContentPhase.Loading;
         this.CurrentTransition = Transition.Merge;
         this.TransitionTicks = 30;
     }
@@ -424,6 +427,7 @@ public class ChunkOctTreeNode
     /// </summary>
     private void FinalizeSubdivide()
     {
+        this.CurrentContentPhase = ContentPhase.Subdivided;
         this.Tree.RemoveChild(this);
     }
 
@@ -445,6 +449,8 @@ public class ChunkOctTreeNode
 
             this.Children.Clear();
         }
+
+        this.CurrentContentPhase = ContentPhase.Ready;
     }
 
     /// <summary>

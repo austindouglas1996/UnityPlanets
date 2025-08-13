@@ -116,7 +116,7 @@ public class ChunkGenerationProcessor
 
         int index = 0;
 
-        foreach (var ctx in batch) // Avoid modifying while iterating
+        foreach (var ctx in batch) 
         {
             if (surfaceChunks[index] == 0)
             {
