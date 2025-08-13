@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
-using UnityEditor.Build;
 using UnityEngine;
-using UnityEngine.Rendering;
-using static UnityEngine.Rendering.GPUSort;
-using static UnityEngine.Rendering.PostProcessing.PostProcessResources;
-public class MarchingCubesGPUDispatcher : IDensityMapGenerator
+public class MarchingCubesGPUDispatcher
 {
     private IChunkServices services;
     private IChunkConfiguration configuration;
