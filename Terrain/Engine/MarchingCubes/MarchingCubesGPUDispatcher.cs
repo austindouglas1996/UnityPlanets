@@ -7,36 +7,6 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using static UnityEngine.Rendering.GPUSort;
 using static UnityEngine.Rendering.PostProcessing.PostProcessResources;
-
-[StructLayout(LayoutKind.Sequential)]
-public struct ChunkInput
-{
-    public Vector3 CoordPos;
-    public Vector3 WorldPos;
-    public int stepSize;
-}
-
-[StructLayout(LayoutKind.Sequential)]
-public struct Triangle
-{
-    public Vector3 a;
-    public Vector3 b;
-    public Vector3 c;
-
-    public Color colorA;
-    public Color colorB;
-    public Color colorC;
-}
-
-[StructLayout(LayoutKind.Sequential)]
-struct BiomeData
-{
-    public float MinSurface;
-    public float MaxSurface;
-    public Vector4 GradientStart;
-    public Vector4 GradientEnd;
-}
-
 public class MarchingCubesGPUDispatcher : IDensityMapGenerator
 {
     private IChunkServices services;
