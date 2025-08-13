@@ -18,9 +18,4 @@ public interface IChunkConfiguration
     /// Biomes to use when generating chunks.
     /// </summary>
     List<Biome> Biomes { get; }
-
-    /// <summary>
-    /// Chunk modifiers to use when generating chunks.
-    /// </summary>
-    List<ITerrainModifier> Modifiers { get; }
 }

@@ -14,12 +14,4 @@ public class BaseChunkConfiguration : IChunkConfiguration
     /// </summary>
     public List<Biome> Biomes => biomes;
     [SerializeField] private List<Biome> biomes = new();
-
-    /// <summary>
-    /// Runtime only variable.
-    /// </summary>
-    public List<ITerrainModifier> Modifiers => modifiers; 
-    [SerializeField] private List<ITerrainModifier> modifiers = new()
-    {
-    };
 }
