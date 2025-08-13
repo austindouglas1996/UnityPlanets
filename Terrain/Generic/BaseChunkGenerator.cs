@@ -9,10 +9,10 @@ using UnityEngine.Rendering;
 /// <summary>
 /// Handles generating chunk meshes and density maps for marching cubes.
 /// </summary>
-public abstract class GenericChunkGenerator : IChunkGenerator
+public abstract class BaseChunkGenerator : IChunkGenerator
 {
     private IChunkConfiguration configuration;
-    public GenericChunkGenerator(IChunkConfiguration configuration)
+    public BaseChunkGenerator(IChunkConfiguration configuration)
     {
         this.configuration = configuration;
     }

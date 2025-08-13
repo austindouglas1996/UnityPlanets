@@ -13,11 +13,11 @@ public class LandMassVariant : VariantBase<LandMassChunkConfiguration>
 }
 
 [Serializable]
-public class LandMassChunkConfiguration : GenericChunkConfiguration
+public class LandMassChunkConfiguration : BaseChunkConfiguration
 {
 }
 
-public class LandMassChunkGenerator : GenericChunkGenerator
+public class LandMassChunkGenerator : BaseChunkGenerator
 {
     private IChunkConfiguration configuration;
     private IChunkServices services;
@@ -41,7 +41,7 @@ public class LandMassChunkGenerator : GenericChunkGenerator
     private MarchingCubesGPUDispatcher generator;
 }
 
-public class LandMassChunkLayout : GenericChunkLayout
+public class LandMassChunkLayout : BaseChunkLayout
 {
     public LandMassChunkLayout(LandMassChunkConfiguration configuration)
         : base(configuration)

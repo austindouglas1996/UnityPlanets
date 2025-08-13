@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,7 +8,7 @@ using UnityEngine;
 /// Handles chunk generation, mesh building, and terrain modifications.
 /// Used by the chunk manager to build and update chunks based on data and brush input.
 /// </summary>
-public interface IChunkGenerator
+public interface IChunkGenerator : IDisposable
 {
     uint[] DispatchSurface(List<ChunkKey> contexts);
 
@@ -20,6 +21,4 @@ public interface IChunkGenerator
     /// <param name="token">Optional cancellation token.</param>
     /// <returns>Newly generated chunk data.</returns>
     GPUSet DispatchGeneration(List<ChunkKey> chunkContexts);
-
-    void Dispose();
 }

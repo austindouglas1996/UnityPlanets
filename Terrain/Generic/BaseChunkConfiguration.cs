@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [Serializable]
-public class GenericChunkConfiguration : IChunkConfiguration
+public class BaseChunkConfiguration : IChunkConfiguration
 {
     [SerializeField] private DensityMapOptions densityMapOptions;
     [SerializeField] private Material vertexColorMaterial;

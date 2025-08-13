@@ -13,7 +13,7 @@ using UnityEngine;
 /// A generic instance of <see cref="IChunkLayout"/> that fits most scenarios when creating a chunk layout
 /// to help with reducing code reuse.
 /// </summary>
-public abstract class GenericChunkLayout : IChunkLayout
+public abstract class BaseChunkLayout : IChunkLayout
 {
     /// <summary>
     /// Configuration used for chunk generation.
@@ -21,10 +21,10 @@ public abstract class GenericChunkLayout : IChunkLayout
     private IChunkConfiguration Configuration;
 
     /// <summary>
-    /// Initializes a new instance of <see cref="GenericChunkLayout"/>
+    /// Initializes a new instance of <see cref="BaseChunkLayout"/>
     /// </summary>
     /// <param name="configuration"></param>
-    public GenericChunkLayout(IChunkConfiguration configuration)
+    public BaseChunkLayout(IChunkConfiguration configuration)
     {
         this.Configuration = configuration;
     }
