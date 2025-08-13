@@ -10,15 +10,18 @@ using UnityEngine;
 /// </summary>
 public interface IChunkGenerator : IDisposable
 {
-    uint[] DispatchSurface(List<ChunkKey> contexts);
+    /// <summary>
+    /// Runs a GPU shader to quickly check which chunks actually have a surface.
+    /// </summary>
+    /// <param name="keys">Chunk keys to check.</param>
+    /// <returns>Array of chunk indexes that contain surface.</returns>
+    uint[] DispatchSurface(List<ChunkKey> keys);
 
     /// <summary>
-    /// Generates a new chunk at the given coordinates using the config provided.
-    /// This is called when a chunk is loaded for the first time.
+    /// Creates a chunk mesh on the GPU for the given chunk keys.
+    /// Called the first time those chunks are loaded.
     /// </summary>
-    /// <param name="coordinates">Chunk grid position.</param>
-    /// <param name="config">Chunk settings/configuration.</param>
-    /// <param name="token">Optional cancellation token.</param>
-    /// <returns>Newly generated chunk data.</returns>
-    GPUSet DispatchGeneration(List<ChunkKey> chunkContexts);
+    /// <param name="keys">List of chunk keys to generate.</param>
+    /// <returns>GPU data set for the generated chunks.</returns>
+    GPUSet DispatchGeneration(List<ChunkKey> keys);
 }

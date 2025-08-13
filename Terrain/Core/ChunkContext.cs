@@ -24,7 +24,7 @@ public class ChunkContext
         Services = services;
 
         WorldPosition = Services.Layout.ToWorld(Key);
-        Transform = Matrix4x4.TRS(this.WorldPosition, Quaternion.identity, Vector3.one);
+        //Transform = Matrix4x4.TRS(this.WorldPosition, Quaternion.identity, Vector3.one);
     }
 
     /// <summary>
@@ -45,7 +45,7 @@ public class ChunkContext
     /// <summary>
     /// Creates a transformation matrix.
     /// </summary>
-    public Matrix4x4 Transform { get; }
+    //public Matrix4x4 Transform { get; }
 
     /// <summary>
     /// Debug string — shows LOD and coordinates for logging.
