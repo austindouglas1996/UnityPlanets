@@ -15,6 +15,10 @@ public class ChunkRenderRegion
     public bool MaxCapaciity => Chunks.Count == 128;
     public int Removed = 0;
 
+    public bool isLod0 = false;
+
+    private GameObject MeshOut;
+
     public void Add(ChunkKey key)
     {
         Chunks.Add(key);
@@ -56,6 +60,19 @@ public class ChunkRenderRegion
         {
             set?.Dispose();
             set = chunkGenerator.DispatchGeneration(this.Chunks);
+
+            if (isLod0)
+            {
+                GPUSet.ReadLod0TrianglesAsync(set, (Triangle[] output) =>
+                {
+                    var mesh = TriangleMeshUtil.BuildMesh(output);
+                    MeshOut = TriangleMeshUtil.CreateGOMeshWithCollider(mesh);
+                    MeshOut.name = "MYCOLLISION";
+                    MeshOut.transform.position = Vector3.zero;
+                    MeshOut.transform.rotation = Quaternion.identity;
+                    MeshOut.transform.localScale = Vector3.one;
+                });
+            }
         }
 
         this.IsDirty = false;

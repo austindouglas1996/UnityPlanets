@@ -5,6 +5,7 @@ using UnityEngine;
 
 public class ChunkRenderRegionManager
 {
+    private ChunkRenderRegion lod0;
     private List<ChunkRenderRegion> regions;
     private IChunkGenerator chunkGenerator;
     private Material material;
@@ -15,10 +16,19 @@ public class ChunkRenderRegionManager
         this.material = material;
         this.regions = new List<ChunkRenderRegion>();
         this.regions.Add(new ChunkRenderRegion());
+
+        lod0 = new ChunkRenderRegion();
+        lod0.isLod0 = true;
     }
 
     public void Add(ChunkKey key)
     {
+        if (key.LODIndex == 0)
+        {
+            lod0.Add(key);
+            return;
+        }
+
         var currentRegion = regions.Last();
         if (currentRegion.MaxCapaciity)
         {
@@ -31,6 +41,12 @@ public class ChunkRenderRegionManager
 
     public bool Remove(ChunkKey key)
     {
+        if (key.LODIndex == 0)
+        {
+            lod0.Remove(key);
+            return true;
+        }
+
         foreach (var region in regions)
         {
             if (region.Contains(key))
@@ -45,6 +61,8 @@ public class ChunkRenderRegionManager
 
     public void Dispose()
     {
+        lod0?.Dispose();
+
         foreach (var region in regions)
         {
             region.Dispose();
@@ -55,6 +73,12 @@ public class ChunkRenderRegionManager
 
     public void Update()
     {
+        if (lod0.IsDirty)
+        {
+            lod0.Generate(chunkGenerator);
+        }
+
+
         List<ChunkRenderRegion> toDelete = new List<ChunkRenderRegion>();
 
         int max3 = 12;
@@ -92,6 +116,8 @@ public class ChunkRenderRegionManager
 
     public void Draw()
     {
+        lod0.Draw(material);
+
         foreach (var region in regions)
         {
             region.Draw(material);

@@ -75,7 +75,7 @@ float GetDensityValue(DensityMapOptions options, float worldX, float worldY, flo
         detail * options.DetailAmplitude * flatness +
         mountainNoise * options.MountainAmplitude;
 
-    float heightScale = max(options.ContinentAmplitude + options.MountainAmplitude, 0.0001);
+    float heightScale = max(options.ContinentAmplitude, 0.0001);
     float normalized = rawHeight / heightScale;
     float finalHeight = normalized * options.TotalHeightScale;
 
