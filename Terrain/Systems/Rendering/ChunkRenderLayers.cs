@@ -17,6 +17,11 @@ public class ChunkRenderLayers : IDisposable
     private ChunkRenderBucketCollection main;
 
     /// <summary>
+    /// The material shader used for generation.
+    /// </summary>
+    private Material ChunkMaterial;
+
+    /// <summary>
     /// Build two lanes with their own capacities/thresholds.
     /// </summary>
     /// <param name="chunkGenerator">Shared generator used by both lanes.</param>
@@ -28,6 +33,10 @@ public class ChunkRenderLayers : IDisposable
     {
         lod0 = new ChunkRenderBucketCollection(chunkGenerator, lod0Cap, lod0Thres);
         main = new ChunkRenderBucketCollection(chunkGenerator, mainCap, mainThres);
+
+        ChunkMaterial = new Material(Shader.Find("Custom/URP_CustomLitGPU"));
+        ChunkMaterial.SetFloat("_Smoothness", 0f);
+        ChunkMaterial.SetFloat("_UseVertexColor", 1f);
     }
 
     /// <summary>
@@ -67,10 +76,10 @@ public class ChunkRenderLayers : IDisposable
     /// Draw both lanes. Caller should have already done <c>mat.SetPass(0)</c> once this frame.
     /// Buckets will bind their buffers and issue <c>DrawProceduralIndirect</c>.
     /// </summary>
-    public void Draw(Material mat)
+    public void Draw()
     {
-        lod0.Draw(mat);
-        main.Draw(mat);
+        lod0.Draw(this.ChunkMaterial);
+        main.Draw(this.ChunkMaterial);
     }
 
     /// <summary>

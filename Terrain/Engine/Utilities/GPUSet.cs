@@ -42,8 +42,9 @@ public class GPUSet
 
     public void Dispose()
     {
-        Args.Dispose();
-        Triangle.Dispose();
+        if (Args != null) Args.Dispose();
+        if (Triangle != null) Triangle.Dispose();
+
         Args = null;
         Triangle = null;
     }

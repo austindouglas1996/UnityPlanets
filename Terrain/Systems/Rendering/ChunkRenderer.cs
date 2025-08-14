@@ -101,7 +101,7 @@ public class ChunkRenderer : MonoBehaviour
         this.chunkManager = this.GetComponent<ChunkManager>();
 
         this.chunkServices = services;
-        this.processor = new ChunkGenerationProcessor(this.chunkServices);
+        this.processor = new ChunkGenerationProcessor(this.chunkServices, new ChunkRenderLayers(this.chunkServices.Generator, 128,64,32,16));
 
         isInitialized = true;
 

@@ -20,7 +20,7 @@ public class ChunkGenerationProcessor : IDisposable
     /// <summary>
     /// Manages GPU-side render regions for generated chunks.
     /// </summary>
-    private readonly ChunkRenderRegionManager regionManager;
+    private readonly ChunkRenderLayers layerRenderer;
 
     /// <summary>
     /// Core services used for chunk generation (density generator, colorizer, layout, etc.).
@@ -31,15 +31,10 @@ public class ChunkGenerationProcessor : IDisposable
     /// Creates a new generation processor.
     /// Initializes the GPU render region manager and sets up default material parameters.
     /// </summary>
-    public ChunkGenerationProcessor(IChunkServices services)
+    public ChunkGenerationProcessor(IChunkServices services, ChunkRenderLayers layerRenderer)
     {
         this.chunkServices = services;
-
-        Material mat = new Material(Shader.Find("Custom/URP_CustomLitGPU"));
-        mat.SetFloat("_Smoothness", 0f);
-        mat.SetFloat("_UseVertexColor", 1f);
-
-        this.regionManager = new ChunkRenderRegionManager(chunkServices.Generator, mat);
+        this.layerRenderer = layerRenderer;
     }
 
     /// <summary>
@@ -64,14 +59,14 @@ public class ChunkGenerationProcessor : IDisposable
     {
         surfaceBatcher.Remove(key);
         generationBatcher.Remove(key);
-        regionManager.Remove(key);
+        layerRenderer.Remove(key);
     }
 
     /// <summary>
     /// Issues draw calls for any currently active render regions.
     /// Should be called from the main rendering loop.
     /// </summary>
-    public void Draw() => regionManager.Draw();
+    public void Draw() => layerRenderer.Draw();
 
     /// <summary>
     /// Processes queued surface and generation jobs in small batches,
@@ -80,7 +75,7 @@ public class ChunkGenerationProcessor : IDisposable
     /// </summary>
     public void Update()
     {
-        regionManager.Update();
+        this.layerRenderer.Update();
 
         UpdateSurface();
         UpdateGeneration();
@@ -89,7 +84,7 @@ public class ChunkGenerationProcessor : IDisposable
     /// <summary>
     /// Releases any GPU resources held by the render region manager.
     /// </summary>
-    public void Dispose() => regionManager.Dispose();
+    public void Dispose() => layerRenderer.Dispose();
 
     /// <summary>
     /// Processes a batch of surface-check jobs.
@@ -120,7 +115,7 @@ public class ChunkGenerationProcessor : IDisposable
         foreach (var job in tmpGenerationJobs)
         {
             job.OnDone(true);
-            regionManager.Add(job.Key);
+            layerRenderer.Add(job.Key);
         }
     }
 }

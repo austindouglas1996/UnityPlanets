@@ -26,7 +26,7 @@ public class ChunkRenderBucket : IDisposable
     private GPUSet RenderData;
 
     /// <summary>
-    /// 
+    /// Initializes a new instance of <see cref="ChunkRenderBucket"/>.
     /// </summary>
     /// <param name="capacity"></param>
     /// <param name="rebuildThreshhold"></param>
@@ -59,7 +59,7 @@ public class ChunkRenderBucket : IDisposable
         index[key] = items.Count;
         items.Add(key);
 
-        this.MarkAsDirty();
+        this.MarkAsDirty(false);
 
         return true;
     }
@@ -86,7 +86,7 @@ public class ChunkRenderBucket : IDisposable
         removedCount++;
         if (removedCount >= rebuildThreshold)
         {
-            this.MarkAsDirty();
+            this.MarkAsDirty(false);
         }
 
         return true;
@@ -122,8 +122,12 @@ public class ChunkRenderBucket : IDisposable
     /// <param name="vertexMat"></param>
     public void Draw(Material vertexMat)
     {
+        var rd = RenderData;
+        if (rd == null || rd.Triangle == null || rd.Args == null) return;
+
         vertexMat.SetBuffer("_TriangleBuffer", RenderData.Triangle);
-        //vertexMat.SetPass(0);
+        vertexMat.SetPass(0);
+
         Graphics.DrawProceduralIndirectNow(MeshTopology.Triangles, RenderData.Args, 0);
     }
 
@@ -147,6 +151,7 @@ public class ChunkRenderBucket : IDisposable
     public void Dispose()
     {
         this.RenderData.Dispose();
+        this.RenderData = null;
     }
 
     /// <summary>
@@ -155,7 +160,11 @@ public class ChunkRenderBucket : IDisposable
     private void Generate()
     {
         RenderData?.Dispose();
-        RenderData = chunkGenerator.DispatchGeneration(this.items);
+
+        if (this.items.Count != 0)
+            RenderData = chunkGenerator.DispatchGeneration(this.items);
+
         this.IsDirty = false;
+        removedCount = 0;
     }
 }
