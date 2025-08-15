@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-public static class TriangleMeshUtil
+public static class TriangleMeshBuilder
 {
     public static Mesh BuildMesh(IReadOnlyList<Triangle> tris)
     {
