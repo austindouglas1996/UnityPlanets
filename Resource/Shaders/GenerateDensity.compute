@@ -61,19 +61,9 @@ float GetDensityValue(DensityMapOptions options, float worldX, float worldY, flo
     flatness = saturate((flatness + 1.0) * 0.5);
     flatness = pow(saturate(1.0 - flatness), options.FlatnessStrength);
 
-    float2 mountainMaskPos = (posXZ + 9999.0) * 0.001;
-    float mountainMask = fbm2D(mountainMaskPos, 2);
-    mountainMask = saturate((mountainMask + 1.0) * 0.5);
-    float mountainWeight = smoothstep(0.85, 1.0, mountainMask);
-
-    float2 mountainNoisePos = (posXZ + 999.0) * options.MountainFrequency;
-    float mountainNoise = fbm2D(mountainNoisePos, 2);
-    mountainNoise = pow(max(mountainNoise, 0.0), options.MountainSharpness) * mountainWeight;
-
     float rawHeight =
         continent * options.ContinentAmplitude +
-        detail * options.DetailAmplitude * flatness +
-        mountainNoise * options.MountainAmplitude;
+        detail * options.DetailAmplitude * flatness;
 
     float heightScale = max(options.ContinentAmplitude, 0.0001);
     float normalized = rawHeight / heightScale;

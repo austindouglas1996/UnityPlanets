@@ -11,7 +11,6 @@ using UnityEngine;
 public class MarchingCubesTerrainGenerator : ITerrainGenerator
 {
     // Hard caps I tune for my buckets. 1024 = surface mask scan, 128 = per-batch gen.
-    // These do NOT auto-resize the ComputeBuffers below; if you raise caps, you should bump buffers too.
     private const int SurfaceCap = 1024;
     private const int GenerateCap = 128;
 
