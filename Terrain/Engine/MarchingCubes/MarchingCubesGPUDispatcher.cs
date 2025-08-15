@@ -52,7 +52,26 @@ public class MarchingCubesGPUDispatcher
 
     private void InitBuffer()
     {
-        var biomes = configuration.Biomes.OrderBy(b => b.MinSurface).ToList();
+        BiomeBuffer = new ComputeBuffer(5, Marshal.SizeOf<BiomeData>());
+        UpdateBiomes();
+
+        DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<DensityMapOptions>(), ComputeBufferType.Structured);
+        DensityOptionsBuffer.SetData(new[] { services.Configuration.DensityOptions });
+
+        int size = Options.ChunkSize + 1;
+        int voxelCountPerChunk = size * size * size;
+        int maxTotalVoxels = voxelCountPerChunk * 128;
+
+        DensityBuffer = new ComputeBuffer(maxTotalVoxels, sizeof(float));
+        ChunkInputBuffer = new ComputeBuffer(128, Marshal.SizeOf<ChunkInput>());
+        ChunkInputBuffer = new ComputeBuffer(1028, Marshal.SizeOf<ChunkInput>());
+
+        SurfaceMaskBuffer = new ComputeBuffer(1028, sizeof(uint));
+    }
+
+    private void UpdateBiomes()
+    {
+        var biomes = services.Configuration.Biomes.OrderBy(b => b.MinSurface).ToList();
         BiomeCount = biomes.Count;
 
         var biomeData = new BiomeData[biomes.Count];
@@ -67,21 +86,7 @@ public class MarchingCubesGPUDispatcher
             };
         }
 
-        BiomeBuffer = new ComputeBuffer(biomeData.Length, Marshal.SizeOf<BiomeData>());
         BiomeBuffer.SetData(biomeData);
-
-        DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<DensityMapOptions>());
-        DensityOptionsBuffer.SetData(new[] { Options });
-
-        int size = Options.ChunkSize + 1;
-        int voxelCountPerChunk = size * size * size;
-        int maxTotalVoxels = voxelCountPerChunk * 128;
-
-        DensityBuffer = new ComputeBuffer(maxTotalVoxels, sizeof(float));
-        ChunkInputBuffer = new ComputeBuffer(128, Marshal.SizeOf<ChunkInput>());
-        ChunkInputBuffer = new ComputeBuffer(1028, Marshal.SizeOf<ChunkInput>());
-
-        SurfaceMaskBuffer = new ComputeBuffer(1028, sizeof(uint));
     }
 
     public uint[] GetSurfaceMask(IReadOnlyList<ChunkGenerationJob> chunkContexts)
@@ -99,6 +104,8 @@ public class MarchingCubesGPUDispatcher
             });
         }
 
+        DensityOptionsBuffer.SetData(new[] { services.Configuration.DensityOptions });
+
         ChunkInputBuffer.SetData(chunkInputs, 0, 0, batchSize);
 
         GenerateShader.SetInt("_ChunkInputCount", batchSize);
@@ -113,7 +120,7 @@ public class MarchingCubesGPUDispatcher
         return surfaceWords;
     }
 
-    public virtual GPUSet DispatchGeneration(IReadOnlyList<ChunkKey> chunkContexts)
+    public virtual ChunkRenderBatch DispatchGeneration(IReadOnlyList<ChunkKey> chunkContexts)
     {
         if (chunkContexts.Count == 0)
             throw new System.ArgumentException("Tried to dispatch...0 contexts?");
@@ -134,6 +141,9 @@ public class MarchingCubesGPUDispatcher
                 stepSize = 1 << ctx.LODIndex
             });
         }
+
+        DensityOptionsBuffer.SetData(new[] { services.Configuration.DensityOptions });
+        UpdateBiomes();
 
         ChunkInputBuffer.SetData(chunkInputs,0,0,batchSize);
 
@@ -159,6 +169,6 @@ public class MarchingCubesGPUDispatcher
         MarchingShader.SetBuffer(1, "ArgsBuffer", argsBuffer);
         MarchingShader.Dispatch(1, 1, 1, 1);
 
-        return new GPUSet(triangleBuffer, argsBuffer, chunkContexts.ToList(), services);
+        return new ChunkRenderBatch(triangleBuffer, argsBuffer, chunkContexts.ToList(), services);
     }
 }

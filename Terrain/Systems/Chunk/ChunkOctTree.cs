@@ -12,7 +12,7 @@ public class ChunkOctTreeMan
 {
     private readonly IChunkServices services;
     private readonly ChunkGenerationProcessor processor;
-    private readonly int[] lodThresholds;
+    private int[] lodThresholds;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChunkOctTreeMan"/> class.
@@ -25,6 +25,12 @@ public class ChunkOctTreeMan
         this.services = services;
         this.processor = processor;
         this.lodThresholds = lodThresholds;
+    }
+
+    public int[] LODThresholds
+    {
+        get { return this.lodThresholds; }
+        set { this.lodThresholds = value; }
     }
 
     /// <summary>

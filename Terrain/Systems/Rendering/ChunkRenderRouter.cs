@@ -11,7 +11,7 @@ using UnityEngine;
 /// - Not thread-safe; call from the main Unity thread.
 /// - LOD0 physics/collider hookups should live in your MonoBehaviour; this just routes keys.
 /// </remarks>
-public class ChunkRenderLayers : IDisposable
+public class ChunkRenderRouter : IDisposable
 {
     private ChunkRenderBucketCollection lod0;
     private ChunkRenderBucketCollection main;
@@ -29,7 +29,7 @@ public class ChunkRenderLayers : IDisposable
     /// <param name="mainThres">Removals before a non-LOD0 bucket regenerates.</param>
     /// <param name="lod0Cap">Max items per LOD0 bucket (keep this small: 24–32 is nice).</param>
     /// <param name="lod0Thres">Removals before an LOD0 bucket regenerates.</param>
-    public ChunkRenderLayers(IChunkGenerator chunkGenerator, int mainCap, int mainThres, int lod0Cap, int lod0Thres)
+    public ChunkRenderRouter(IChunkGenerator chunkGenerator, int mainCap, int mainThres, int lod0Cap, int lod0Thres)
     {
         lod0 = new ChunkRenderBucketCollection(chunkGenerator, lod0Cap, lod0Thres);
         main = new ChunkRenderBucketCollection(chunkGenerator, mainCap, mainThres);

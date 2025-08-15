@@ -22,9 +22,11 @@ public class ChunkRenderer : MonoBehaviour
     private ChunkManager chunkManager;
     private IChunkServices chunkServices;
     private ChunkGenerationProcessor processor;
+    private ChunkRenderRouter router;
 
     private Quaternion lastFollowerRotation;
 
+    private ChunkOctTreeMan treeMan;
     private List<ChunkOctTreeNode> rootTrees = new List<ChunkOctTreeNode>();
 
     /// <summary>
@@ -88,6 +90,11 @@ public class ChunkRenderer : MonoBehaviour
         }
     }
 
+    private void OnValidate()
+    {
+        this.treeMan.LODThresholds = this.lodThresholds.ToArray();
+    }
+
     /// <summary>
     /// Initialize the <see cref="ChunkRenderer"/> to create initial chunks and start rendering.
     /// </summary>
@@ -101,11 +108,20 @@ public class ChunkRenderer : MonoBehaviour
         this.chunkManager = this.GetComponent<ChunkManager>();
 
         this.chunkServices = services;
-        this.processor = new ChunkGenerationProcessor(this.chunkServices, new ChunkRenderLayers(this.chunkServices.Generator, 128,64,32,16));
+        this.router = new ChunkRenderRouter(this.chunkServices.Generator, 128, 64, 32, 16);
+        this.processor = new ChunkGenerationProcessor(this.chunkServices, router);
 
         isInitialized = true;
 
         this.InitializeRootChunks();
+    }
+
+    /// <summary>
+    /// Refresh chunks now.
+    /// </summary>
+    public void RefreshChunks()
+    {
+        this.router.MarkAsDirty(true);
     }
 
     /// <summary>
@@ -135,13 +151,13 @@ public class ChunkRenderer : MonoBehaviour
         }
 
         // Create manager.
-        ChunkOctTreeMan tree = new ChunkOctTreeMan(this.chunkServices, this.processor, lodThresholds.ToArray());
+        treeMan = new ChunkOctTreeMan(this.chunkServices, this.processor, lodThresholds.ToArray());
 
         // Create root nodes.
         for (int dx = initialRootRange.X.Min; dx < initialRootRange.X.Max; dx++)
             for (int dy = initialRootRange.Y.Min; dy < initialRootRange.Y.Max; dy++)
                 for (int dz = initialRootRange.Z.Min; dz < initialRootRange.Z.Max; dz++)
-                    CreateRoot(tree, new Vector3Int(dx, dy, dz), chunkSize, startPos);
+                    CreateRoot(treeMan, new Vector3Int(dx, dy, dz), chunkSize, startPos);
     }
 
     /// <summary>

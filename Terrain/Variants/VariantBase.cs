@@ -27,6 +27,11 @@ public abstract class VariantBase<TConfig> : MonoBehaviour, IChunkServices where
         chunkRenderer.Initialize(chunkManager, this);
     }
 
+    protected virtual void OnValidate()
+    {
+        chunkRenderer.RefreshChunks();
+    }
+
     // Abstracts to be implemented by derived classes
     protected abstract IChunkGenerator CreateGenerator();
     protected abstract IChunkLayout CreateLayout();

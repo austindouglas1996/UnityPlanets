@@ -23,7 +23,7 @@ public class ChunkRenderBucket : IDisposable
     private int RemainingTicksToUpdate = 5;
 
     private IChunkGenerator chunkGenerator;
-    private GPUSet RenderData;
+    private ChunkRenderBatch RenderData;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ChunkRenderBucket"/>.

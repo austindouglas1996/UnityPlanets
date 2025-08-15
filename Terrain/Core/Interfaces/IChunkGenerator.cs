@@ -23,5 +23,5 @@ public interface IChunkGenerator : IDisposable
     /// </summary>
     /// <param name="keys">List of chunk keys to generate.</param>
     /// <returns>GPU data set for the generated chunks.</returns>
-    GPUSet DispatchGeneration(IReadOnlyList<ChunkKey> keys);
+    ChunkRenderBatch DispatchGeneration(IReadOnlyList<ChunkKey> keys);
 }

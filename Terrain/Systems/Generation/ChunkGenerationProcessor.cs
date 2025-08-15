@@ -20,7 +20,7 @@ public class ChunkGenerationProcessor : IDisposable
     /// <summary>
     /// Manages GPU-side render regions for generated chunks.
     /// </summary>
-    private readonly ChunkRenderLayers layerRenderer;
+    private readonly ChunkRenderRouter layerRenderer;
 
     /// <summary>
     /// Core services used for chunk generation (density generator, colorizer, layout, etc.).
@@ -31,7 +31,7 @@ public class ChunkGenerationProcessor : IDisposable
     /// Creates a new generation processor.
     /// Initializes the GPU render region manager and sets up default material parameters.
     /// </summary>
-    public ChunkGenerationProcessor(IChunkServices services, ChunkRenderLayers layerRenderer)
+    public ChunkGenerationProcessor(IChunkServices services, ChunkRenderRouter layerRenderer)
     {
         this.chunkServices = services;
         this.layerRenderer = layerRenderer;
