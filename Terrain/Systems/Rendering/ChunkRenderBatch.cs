@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
@@ -7,7 +8,7 @@ using UnityEngine.Rendering;
 /// Draw-ready container for a chunk group: triangle append buffer + indirect args + culling bounds.
 /// Created by generation, consumed by rendering and (optionally) collider baking.
 /// </summary>
-public class ChunkRenderBatch // consider : System.IDisposable
+public class ChunkRenderBatch : IDisposable
 {
     /// <summary>
     /// Append buffer containing generated triangles (ComputeBufferType.Append).
@@ -37,11 +38,10 @@ public class ChunkRenderBatch // consider : System.IDisposable
     /// <param name="keys">Chunk keys included in this batch (for bounds computation).</param>
     /// <param name="services">Layout/services used to convert chunk keys to world space.</param>
     /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="Args"/> is null.</exception>
-    public ChunkRenderBatch(ComputeBuffer Triangle, ComputeBuffer Args, List<ChunkKey> keys, IChunkServices services)
+    public ChunkRenderBatch(ComputeBuffer Triangle, ComputeBuffer Args, IReadOnlyList<ChunkKey> keys, IChunkServices services)
     {
         if (Args == null)
             throw new System.ArgumentNullException("args");
-        // (Optional) also guard Triangle
 
         this.Triangle = Triangle;
         this.Args = Args;
@@ -68,7 +68,7 @@ public class ChunkRenderBatch // consider : System.IDisposable
     /// Compute world-space bounds from the batch's keys.
     /// Padding should roughly match your chunk world size so triangles at edges aren't culled.
     /// </summary>
-    private Bounds ComputeBounds(List<ChunkKey> chunkContexts, IChunkServices services)
+    private Bounds ComputeBounds(IReadOnlyList<ChunkKey> chunkContexts, IChunkServices services)
     {
         if (chunkContexts.Count == 0)
             return new Bounds(Vector3.zero, Vector3.zero);

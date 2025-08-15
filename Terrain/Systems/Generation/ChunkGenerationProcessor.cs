@@ -96,7 +96,7 @@ public class ChunkGenerationProcessor : IDisposable
         int n = surfaceBatcher.TryBatch(1024, tmpSurfaceJobs);
         if (n == 0) return;
 
-        var surfaceResults = chunkServices.Generator.DispatchSurface(tmpSurfaceJobs);
+        var surfaceResults = chunkServices.Generator.DispatchSurfaceChecks(tmpSurfaceJobs);
 
         for (int i = 0; i < n; i++)
             tmpSurfaceJobs[i].OnDone(surfaceResults[i] == 1);
