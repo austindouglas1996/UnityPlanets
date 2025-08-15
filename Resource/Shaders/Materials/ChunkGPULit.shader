@@ -36,12 +36,12 @@ Shader "Custom/URP_CustomLitGPU"
             #pragma multi_compile _ _SHADOWS_SOFT
             #pragma multi_compile_fog
 
-            #include "Triangle.hlsl"
+            #include "../Types/ChunkTriangleData.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
 
-            StructuredBuffer<Triangle> _TriangleBuffer;
+            StructuredBuffer<ChunkTriangleData> _TriangleBuffer;
 
             float _SizePerChunk;
             float4 _BaseColor;
@@ -67,7 +67,7 @@ Shader "Custom/URP_CustomLitGPU"
                 uint triIndex = IN.vertexID / 3;
                 uint subIndex = IN.vertexID % 3;
 
-                Triangle tri = _TriangleBuffer[triIndex];
+                ChunkTriangleData tri = _TriangleBuffer[triIndex];
 
                 float3 pos = subIndex == 0 ? tri.a :
                              subIndex == 1 ? tri.b :

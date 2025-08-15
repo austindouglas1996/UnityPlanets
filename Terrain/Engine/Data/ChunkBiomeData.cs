@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 
 [StructLayout(LayoutKind.Sequential)]
-struct BiomeData
+struct ChunkBiomeData
 {
     public float MinSurface;
     public float MaxSurface;

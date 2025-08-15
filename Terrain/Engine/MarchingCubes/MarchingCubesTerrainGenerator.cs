@@ -31,8 +31,8 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private int BiomesCount = 0;
 
     // Reused staging lists -> no per-dispatch GC. Capacity matches caps above.
-    private List<ChunkInput> InputSurface = new(SurfaceCap);
-    private List<ChunkInput> InputGenerate = new(GenerateCap);
+    private List<ChunkDispatchKey> InputSurface = new(SurfaceCap);
+    private List<ChunkDispatchKey> InputGenerate = new(GenerateCap);
 
     public MarchingCubesTerrainGenerator(IChunkServices chunkServices, ComputeShader generateShader, ComputeShader marchingShader)
     {
@@ -44,7 +44,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     }
 
     // Convenience snapshot so I don’t keep typing the long path.
-    private DensityMapOptions densityOptions => chunkServices.Configuration.DensityOptions;
+    private TerrainDensityOptions densityOptions => chunkServices.Configuration.DensityOptions;
 
     public void Dispose()
     {
@@ -67,14 +67,14 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         FillGenerateChunkInputs(keys);
 
         // Per-result buffers (owned by the returned batch; caller disposes)
-        ComputeBuffer triangleBuffer = new ComputeBuffer(totalVoxels, Marshal.SizeOf<Triangle>(), ComputeBufferType.Append);
+        ComputeBuffer triangleBuffer = new ComputeBuffer(totalVoxels, Marshal.SizeOf<ChunkTriangleData>(), ComputeBufferType.Append);
         ComputeBuffer argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
         triangleBuffer.SetCounterValue(0);
 
         // Generate density
         GenerateShader.SetBuffer(0, "ChunkInputs", GenerateChunkInputBuffer);
-        GenerateShader.SetBuffer(0, "DensityMap", DensityBuffer);
         GenerateShader.SetBuffer(0, "DensityOptions", DensityOptionsBuffer);
+        GenerateShader.SetBuffer(0, "DensityMap", DensityBuffer);
 
         // NOTE: thread group dims assume [numthreads(8,8,8)] and X packs chunkIndex*XWithinChunk
         GenerateShader.Dispatch(0,
@@ -83,10 +83,10 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
             Mathf.CeilToInt(size / 8f));
 
         // Marching cubes
-        MarchingShader.SetBuffer(0, "DensityMap", DensityBuffer);
-        MarchingShader.SetBuffer(0, "TriangleBuffer", triangleBuffer);
         MarchingShader.SetBuffer(0, "ChunkInputs", GenerateChunkInputBuffer);
+        MarchingShader.SetBuffer(0, "DensityMap", DensityBuffer);
         MarchingShader.SetBuffer(0, "DensityOptions", DensityOptionsBuffer);
+        MarchingShader.SetBuffer(0, "TriangleBuffer", triangleBuffer);
         MarchingShader.SetBuffer(0, "BiomeColors", BiomeBuffer);
         MarchingShader.SetInt("_BiomeCount", BiomesCount);
         MarchingShader.Dispatch(0, batchSize * 2, 2, 2); // simple grid; good enough for now
@@ -136,11 +136,11 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         var biomes = chunkServices.Configuration.Biomes.OrderBy(b => b.MinSurface).ToList();
         BiomesCount = biomes.Count;
 
-        var biomeData = new BiomeData[biomes.Count];
+        var biomeData = new ChunkBiomeData[biomes.Count];
         for (int i = 0; i < biomes.Count; i++)
         {
             // NOTE: I grab first/last color key; good enough for now.
-            biomeData[i] = new BiomeData
+            biomeData[i] = new ChunkBiomeData
             {
                 MinSurface = biomes[i].MinSurface,
                 MaxSurface = biomes[i].MaxSurface,
@@ -158,10 +158,10 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private void InitBuffer()
     {
         // Small table (I start with 5; UpdateOptions writes actual count)
-        BiomeBuffer = new ComputeBuffer(5, Marshal.SizeOf<BiomeData>());
+        BiomeBuffer = new ComputeBuffer(5, Marshal.SizeOf<ChunkBiomeData>());
 
         // Single struct (Structured buffer of length 1)
-        DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<DensityMapOptions>(), ComputeBufferType.Structured);
+        DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<TerrainDensityOptions>(), ComputeBufferType.Structured);
 
         // Scalar field big enough for 128 chunks at current chunk size (rough over-alloc)
         int size = densityOptions.ChunkSize + 1;
@@ -170,8 +170,8 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         DensityBuffer = new ComputeBuffer(maxTotalVoxels, sizeof(float));
 
         // Per-kernel inputs + mask output
-        SurfaceChunkInputBuffer = new ComputeBuffer(SurfaceCap, Marshal.SizeOf<ChunkInput>());
-        GenerateChunkInputBuffer = new ComputeBuffer(GenerateCap, Marshal.SizeOf<ChunkInput>());
+        SurfaceChunkInputBuffer = new ComputeBuffer(SurfaceCap, Marshal.SizeOf<ChunkDispatchKey>());
+        GenerateChunkInputBuffer = new ComputeBuffer(GenerateCap, Marshal.SizeOf<ChunkDispatchKey>());
         SurfaceMaskBuffer = new ComputeBuffer(SurfaceCap, sizeof(uint));
 
         // Prime options/biomes on GPU
@@ -192,7 +192,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         for (int i = 0; i < n; i++)
         {
             var ctx = keys[i];
-            InputSurface.Add(new ChunkInput
+            InputSurface.Add(new ChunkDispatchKey
             {
                 CoordPos = ctx.Key.Coordinates,
                 WorldPos = chunkServices.Layout.ToWorld(ctx.Key),
@@ -217,7 +217,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         for (int i = 0; i < n; i++)
         {
             var ctx = keys[i];
-            InputGenerate.Add(new ChunkInput
+            InputGenerate.Add(new ChunkDispatchKey
             {
                 CoordPos = ctx.Coordinates,
                 WorldPos = chunkServices.Layout.ToWorld(ctx),

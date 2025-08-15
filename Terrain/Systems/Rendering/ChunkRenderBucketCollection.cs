@@ -178,7 +178,7 @@ public class ChunkRenderBucketCollection : IDisposable
     private void NewColl_OnGenerate(object sender, EventArgs e)
     {
         ChunkRenderBucket bucket = (ChunkRenderBucket)sender;
-        ChunkRenderBatch.ReadTrianglesAsync(bucket.RenderData, (Triangle[] tri) =>
+        ChunkRenderBatch.ReadTrianglesAsync(bucket.RenderData, (ChunkTriangleData[] tri) =>
         {
             var mesh = TriangleMeshBuilder.BuildMesh(tri);
             var newGo = TriangleMeshBuilder.CreateGOMeshWithCollider(mesh);

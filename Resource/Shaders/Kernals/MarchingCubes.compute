@@ -1,54 +1,46 @@
-// === MarchingCubes.compute ===
-// This compute shader will generate triangles using Marching Cubes.
+#pragma kernel MarchingCubesPass
+#pragma kernel PrepareIndirectDrawArgs
 
-#pragma kernel March
-#pragma kernel FinalizeArgs
+#include "../Includes/TriangleTable.hlsl"
+#include "../Types/TerrainDensityOptions.hlsl"
+#include "../Types/ChunkDispatchKey.hlsl"
+#include "../Types/ChunkTriangleData.hlsl"
+#include "../Types/ChunkBiomeData.hlsl"
 
-#include "Includes/TriangleTable.hlsl"
-#include "Triangle.hlsl"
-#include "ChunkInput.hlsl"
-#include "ChunkDensityOptions.hlsl"
-#include "Biomes.hlsl"
-
-RWStructuredBuffer<ChunkInput> ChunkInputs;
+/* Inputs */
+RWStructuredBuffer<ChunkDispatchKey> ChunkInputs;
+StructuredBuffer<TerrainDensityOptions> DensityOptions;
 StructuredBuffer<float> DensityMap;
-StructuredBuffer<DensityMapOptions> DensityOptions;
-AppendStructuredBuffer<Triangle> TriangleBuffer;
+
+/* Outputs */
+AppendStructuredBuffer<ChunkTriangleData> TriangleBuffer;
 RWStructuredBuffer<uint> ArgsBuffer;
 
+// GetUV
+// Simple planar UV projection based on XZ world position.
+// Used for terrain-style meshes without complicated UV mapping.
 float2 GetUV(float3 worldPos)
 {
     // Planar projection: good for terrain-style meshes
     return worldPos.xz * 0.05;
 }
 
-float4 GetLODColor(int stepSize)
-{
-    if (stepSize == 1)
-        return float4(1, 1, 1, 1); // LOD0 - White
-    if (stepSize == 2)
-        return float4(1, 0, 0, 1); // LOD1 - Red
-    if (stepSize == 4)
-        return float4(1, 1, 0, 1); // LOD2 - Yellow
-    if (stepSize == 8)
-        return float4(0, 1, 0, 1); // LOD3 - Green
-    if (stepSize == 16)
-        return float4(0, 0, 1, 1); // LOD4 - Blue
-    if (stepSize == 32)
-        return float4(1, 0, 1, 1); // LOD5 - Magenta
-    return float4(0, 0, 0, 1); // Unknown
-}
-
+// MarchingCubesPass
+// Main meshing kernel. Reads voxel density data for a given chunk, determines
+// which edges of the cube intersect the ISO surface, and emits triangles
+// according to the marching cubes lookup tables.
+// 
+// Each thread processes one cube in the chunk's voxel grid.
 [numthreads(8, 8, 8)]
-void March(uint3 id : SV_DispatchThreadID)
+void MarchingCubesPass(uint3 id : SV_DispatchThreadID)
 {
-    DensityMapOptions mo = DensityOptions[0];
+    TerrainDensityOptions mo = DensityOptions[0];
     
     int chunkSize = mo.ChunkSize;
     int chunkLogicalSize = mo.ChunkSize + 1;
     
     int chunkVoxelSize = chunkLogicalSize * chunkLogicalSize * chunkLogicalSize;
-    ChunkAccessInfo access = GetChunkAccess(id, chunkSize, chunkSize, chunkSize, ChunkInputs);
+    ChunkDispatchKeyInfo access = GetChunkAccess(id, chunkSize, chunkSize, chunkSize, ChunkInputs);
 
     if (access.mapIndex < 0)
         return;
@@ -100,7 +92,7 @@ void March(uint3 id : SV_DispatchThreadID)
         float3 worldB = v1 + access.chunk.WorldPos;
         float3 worldC = v2 + access.chunk.WorldPos;
 
-        Triangle tri;
+        ChunkTriangleData tri;
         
         tri.a = worldA;
         tri.b = worldB;
@@ -114,8 +106,14 @@ void March(uint3 id : SV_DispatchThreadID)
     }
 }
 
+// PrepareIndirectDrawArgs
+// Small kernel to finalize DrawMeshInstancedIndirect args after triangle
+// generation. Multiplies triangle count by 3 to get vertex count and sets
+// instance count to 1.
+// 
+// This is run after MarchingCubesPass and CopyCount to populate ArgsBuffer.
 [numthreads(1, 1, 1)]
-void FinalizeArgs(uint3 id : SV_DispatchThreadID)
+void PrepareIndirectDrawArgs(uint3 id : SV_DispatchThreadID)
 {
     // ArgsBuffer[0] is the number of triangles from CopyCount
     // Convert to vertex count by multiplying by 3

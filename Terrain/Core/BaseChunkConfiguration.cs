@@ -5,8 +5,8 @@ using UnityEngine;
 [Serializable]
 public class BaseChunkConfiguration : IChunkConfiguration
 {
-    [SerializeField] private DensityMapOptions densityMapOptions;
-    public DensityMapOptions DensityOptions => densityMapOptions;
+    [SerializeField] private TerrainDensityOptions densityMapOptions;
+    public TerrainDensityOptions DensityOptions => densityMapOptions;
 
     /// <summary>
     /// A collection of biomes to use throughout the generation.

@@ -92,6 +92,7 @@ public class ChunkRenderer : MonoBehaviour
 
     private void OnValidate()
     {
+        if (this.treeMan == null) return;
         this.treeMan.LODThresholds = this.lodThresholds.ToArray();
     }
 

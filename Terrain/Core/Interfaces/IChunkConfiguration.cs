@@ -12,7 +12,7 @@ public interface IChunkConfiguration
     /// <summary>
     /// Density Options used for marching cubes generator.
     /// </summary>
-    DensityMapOptions DensityOptions { get; }
+    TerrainDensityOptions DensityOptions { get; }
 
     /// <summary>
     /// Biomes to use when generating chunks.

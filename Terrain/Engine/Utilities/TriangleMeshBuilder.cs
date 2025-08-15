@@ -3,7 +3,7 @@ using UnityEngine;
 
 public static class TriangleMeshBuilder
 {
-    public static Mesh BuildMesh(IReadOnlyList<Triangle> tris)
+    public static Mesh BuildMesh(IReadOnlyList<ChunkTriangleData> tris)
     {
         if (tris == null || tris.Count == 0) return null;
 

@@ -1,0 +1,140 @@
+﻿#pragma kernel GenerateBatch
+#pragma kernel GetSurfaceMaskChecks
+
+#include "../Lib/PerlinNoise.hlsl"
+#include "../Includes/TriangleTable.hlsl"
+#include "../Types/ChunkDispatchKey.hlsl"
+#include "../Types/TerrainDensityOptions.hlsl"
+
+/* Inputs */
+RWStructuredBuffer<ChunkDispatchKey> ChunkInputs;
+StructuredBuffer<TerrainDensityOptions> DensityOptions;
+
+/* Outputs */
+RWStructuredBuffer<uint> SurfaceMask;
+RWStructuredBuffer<float> DensityMap;
+
+// Helper parameter used in GetSurfaceMaskChecks to tell if the X exceeds our limit.
+int _ChunkInputCount;
+
+// Retrieve the density value for a given position (Fast)
+float GetFastDensityValue(TerrainDensityOptions options, float worldX, float worldY, float worldZ)
+{
+    float2 posXZ = float2(worldX, worldZ);
+
+    // Base landmass shape (low-octave FBM for continents)
+    float baseNoise = fbm2D((posXZ + options.BaseOffset) * options.BaseFreq, 2);
+    baseNoise = smoothstep(0.0, 1.0, (baseNoise + 1.0) * 0.5);
+
+    float height = baseNoise * options.BaseGain;
+
+    return -(worldY - height);
+}
+
+// Retrieve the density value for a given position.
+float GetDensityValue(TerrainDensityOptions options, float worldX, float worldY, float worldZ, int lod)
+{
+    float2 posXZ = float2(worldX, worldZ);
+    
+    int octaves;
+    switch (lod)
+    {
+        case 0:
+            octaves = 6;
+            break;
+        case 1:
+            octaves = 4;
+            break;
+        case 2:
+            octaves = 2;
+            break;
+        default:
+            octaves = 1;
+            break;
+    }
+
+    // Base continent layer
+    float2 basePos = (posXZ + options.BaseOffset) * options.BaseFreq;
+    float baseNoise = fbm2D(basePos, 2);
+    baseNoise = smoothstep(0.0, 1.0, (baseNoise + 1.0) * 0.5);
+
+    // Mid/large-scale detail layer
+    float2 detailPos = (posXZ + options.DetailOffset) * options.DetailFreq;
+    float detailNoise = fbm2D(detailPos, (lod == 1 ? 6 : octaves));
+
+    // Flatness mask layer
+    float2 flatPos = (posXZ + options.FlatMaskOffset) * options.FlatMaskFreq;
+    float flatNoise = fbm2D(flatPos, 3);
+    flatNoise = saturate((flatNoise + 1.0) * 0.5);
+    flatNoise = pow(saturate(1.0 - flatNoise), options.FlatMaskPower);
+
+    // Combine height contributions
+    float rawHeight =
+        baseNoise * options.BaseGain +
+        detailNoise * options.DetailGain * flatNoise;
+
+    // Normalize to keep final scale consistent
+    float heightScale = max(options.BaseGain, 0.0001);
+    float normalized = rawHeight / heightScale;
+    float finalHeight = normalized * options.ElevationScale;
+
+    // Final density value (negative if inside terrain)
+    float value = -(worldY - finalHeight);
+    return (isnan(value) || isinf(value)) ? 0.0 : value;
+}
+
+// Generates the density data for a marching cube algorithm.
+[numthreads(8,8,8)]
+void GenerateBatch(uint3 id : SV_DispatchThreadID)
+{
+    TerrainDensityOptions mOptions = DensityOptions[0];
+    int chunkLogicalSize = mOptions.ChunkSize + 1;
+    
+    ChunkDispatchKeyInfo info = GetChunkAccess(id, chunkLogicalSize, chunkLogicalSize, chunkLogicalSize, ChunkInputs);
+    if (info.mapIndex < 0)
+        return;
+
+    float3 worldPos = info.WorldPos;
+    DensityMap[info.mapIndex] = GetDensityValue(mOptions, worldPos.x, worldPos.y, worldPos.z, log2(info.chunk.stepSize));
+}
+
+// Generates a simple surface mask to tell if a given chunk has surface data.
+[numthreads(64, 1, 1)]
+void GetSurfaceMaskChecks(uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.x;
+    if (index >= _ChunkInputCount)
+        return;
+
+    ChunkDispatchKey chunk = ChunkInputs[index];
+    TerrainDensityOptions mOptions = DensityOptions[0];
+
+    float iso = mOptions.ISOLevel;
+    int chunkSize = mOptions.ChunkSize + 3;
+    int step = chunk.stepSize;
+
+    bool hasAbove = false;
+    bool hasBelow = false;
+
+    // Always loop over 16³ voxels, but sample in world space using step
+    for (int x = 0; x < chunkSize; x++)
+        for (int y = 0; y < chunkSize; y++)
+            for (int z = 0; z < chunkSize; z++)
+            {
+                float3 samplePos = chunk.WorldPos + float3(x * step, y * step, z * step);
+                float v = GetDensityValue(mOptions, samplePos.x, samplePos.y, samplePos.z, chunk.stepSize);
+
+                if (v >= iso)
+                    hasAbove = true;
+                if (v < iso)
+                    hasBelow = true;
+
+                if (hasAbove && hasBelow)
+                {
+                    SurfaceMask[index] = 1;
+                    return;
+                }
+            }
+
+    SurfaceMask[index] = 0;
+}

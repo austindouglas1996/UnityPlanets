@@ -1,3 +1,9 @@
+#ifndef MARCHING_CUBES_TABLE_INCLUDED
+#define MARCHING_CUBES_TABLE_INCLUDED
+
+// CornerOffsets:
+// The relative position of each of the 8 cube corners.
+// Used when sampling density values in marching cubes.
 static const float3 CornerOffsets[8] =
 {
     float3(0, 0, 0), float3(1, 0, 0),
@@ -6,6 +12,10 @@ static const float3 CornerOffsets[8] =
     float3(1, 1, 1), float3(0, 1, 1)
 };
 
+// EdgeConnections:
+// Each entry defines which two corners form an edge of the cube.
+// Indexed by edge ID (0–11). These are used to interpolate
+// vertex positions between corners when the surface crosses the edge.
 static const int2 EdgeConnections[12] =
 {
     int2(0, 1), int2(1, 2), int2(2, 3), int2(3, 0),
@@ -13,6 +23,12 @@ static const int2 EdgeConnections[12] =
     int2(0, 4), int2(1, 5), int2(2, 6), int2(3, 7)
 };
 
+// TriangleTable:
+// For each of the 256 possible cube corner configurations (rows),
+// defines up to 5 triangles (15 vertex indices + -1 terminator)
+// that should be generated for that configuration.
+// Each index refers to an entry in EdgeConnections.
+// A value of -1 indicates no more vertices for that case.
 static const int TriangleTable[256][16] =
 {
     { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
@@ -272,3 +288,5 @@ static const int TriangleTable[256][16] =
     { 0, 3, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
     { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }
 };
+
+#endif // MARCHING_CUBES_TABLE_INCLUDED
