@@ -23,7 +23,6 @@ public class ChunkRenderBucket : IDisposable
     private int RemainingTicksToUpdate = 5;
 
     private IChunkGenerator chunkGenerator;
-    private ChunkRenderBatch RenderData;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ChunkRenderBucket"/>.
@@ -41,6 +40,21 @@ public class ChunkRenderBucket : IDisposable
 
         this.chunkGenerator = chunkGenerator;
     }
+
+    /// <summary>
+    /// Gets the render batch data created during <see cref="Generate"/>
+    /// </summary>
+    public ChunkRenderBatch RenderData
+    {
+        get { return renderData; }
+        private set { renderData = value; }
+    }
+    private ChunkRenderBatch renderData;
+
+    /// <summary>
+    /// Method called on <see cref="Generate"/> call.
+    /// </summary>
+    public event EventHandler OnGenerate;
 
     /// <summary>
     /// Has this bucket reached maximum capacity.
@@ -160,11 +174,18 @@ public class ChunkRenderBucket : IDisposable
     private void Generate()
     {
         RenderData?.Dispose();
+        RenderData = null;
 
         if (this.items.Count != 0)
             RenderData = chunkGenerator.DispatchGeneration(this.items);
 
         this.IsDirty = false;
         removedCount = 0;
+
+        // Something went wrong to reach this.
+        if (this.RenderData == null)
+            return;
+
+        OnGenerate?.Invoke(this, EventArgs.Empty);
     }
 }

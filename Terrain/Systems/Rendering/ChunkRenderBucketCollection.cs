@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using VHierarchy.Libs;
 
 /// <summary>
 /// A collection container for <see cref="ChunkRenderBucket"/> that can grow as needed
@@ -20,9 +21,11 @@ public class ChunkRenderBucketCollection : IDisposable
     /// Who owns a key right now? (instant remove, no scans)
     /// </summary>
     private readonly Dictionary<ChunkKey, ChunkRenderBucket> keys = new();
+    private readonly Dictionary<ChunkRenderBucket, GameObject> colliders = new();
 
     private int capacity = 128;
     private int rebuildThreshold = 64;
+    private bool isLod0 = false;
 
     private IChunkGenerator chunkGenerator;
 
@@ -32,11 +35,12 @@ public class ChunkRenderBucketCollection : IDisposable
     /// <param name="chunkGenerator">Shared generator used by all buckets.</param>
     /// <param name="capacity">Max items per bucket (default 128).</param>
     /// <param name="rebuiltThreshold">Removals per bucket before it regenerates.</param>
-    public ChunkRenderBucketCollection(IChunkGenerator chunkGenerator, int capacity = 128, int rebuiltThreshold = 64)
+    public ChunkRenderBucketCollection(IChunkGenerator chunkGenerator, bool isLod0 = false, int capacity = 128, int rebuiltThreshold = 64)
     {
         this.chunkGenerator = chunkGenerator;
         this.capacity = capacity;
         this.rebuildThreshold = rebuiltThreshold;
+        this.isLod0 = isLod0;
     }
 
     /// <summary>
@@ -157,6 +161,36 @@ public class ChunkRenderBucketCollection : IDisposable
         var newColl = new ChunkRenderBucket(capacity, rebuildThreshold, this.chunkGenerator);
         buckets.Add(newColl);
 
+        if (isLod0)
+        {
+            newColl.OnGenerate += NewColl_OnGenerate;
+        }
+
         return newColl;
+    }
+
+    /// <summary>
+    /// Generate a <see cref="GameObject"/> for collision on the terrain.
+    /// </summary>
+    /// <param name="sender">The bucket with the <see cref="ChunkRenderBucket"/></param>
+    /// <param name="e"></param>
+    /// <remarks>This is not thread safe. Must be called from main thread.</remarks>
+    private void NewColl_OnGenerate(object sender, EventArgs e)
+    {
+        ChunkRenderBucket bucket = (ChunkRenderBucket)sender;
+        ChunkRenderBatch.ReadTrianglesAsync(bucket.RenderData, (Triangle[] tri) =>
+        {
+            var mesh = TriangleMeshBuilder.BuildMesh(tri);
+            var newGo = TriangleMeshBuilder.CreateGOMeshWithCollider(mesh);
+            GameObject oldGo = null;
+
+            if (colliders.ContainsKey(bucket))
+                oldGo = colliders[bucket];
+
+            colliders[bucket] = newGo;
+
+            if (oldGo != null)
+                oldGo.Destroy();
+        });
     }
 }

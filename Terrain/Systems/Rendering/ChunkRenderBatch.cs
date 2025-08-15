@@ -25,6 +25,11 @@ public class ChunkRenderBatch // consider : System.IDisposable
     public Bounds Bounds;
 
     /// <summary>
+    /// Has <see cref="Dispose"/> been called?
+    /// </summary>
+    private bool isDisposed = false;
+
+    /// <summary>
     /// Initialize a new <see cref="ChunkRenderBatch"/>.
     /// </summary>
     /// <param name="Triangle">Append buffer holding the generated <see cref="Triangle"/> data.</param>
@@ -49,6 +54,9 @@ public class ChunkRenderBatch // consider : System.IDisposable
     /// </summary>
     public void Dispose()
     {
+        if (this.isDisposed) return;
+        this.isDisposed = true;
+
         if (Args != null) Args.Dispose();
         if (Triangle != null) Triangle.Dispose();
 
@@ -89,6 +97,11 @@ public class ChunkRenderBatch // consider : System.IDisposable
     /// <param name="onDone">Callback with the CPU-side triangle array (may be empty).</param>
     public static void ReadTrianglesAsync(ChunkRenderBatch set, System.Action<Triangle[]> onDone)
     {
+        if (set.isDisposed)
+        {
+            throw new System.InvalidOperationException("Set has been disposed of.");
+        }
+
         uint triCount = GetAppendCount(set.Triangle);
         if (triCount == 0) { onDone(System.Array.Empty<Triangle>()); return; }
 

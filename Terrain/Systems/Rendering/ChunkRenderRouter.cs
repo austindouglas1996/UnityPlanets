@@ -31,8 +31,8 @@ public class ChunkRenderRouter : IDisposable
     /// <param name="lod0Thres">Removals before an LOD0 bucket regenerates.</param>
     public ChunkRenderRouter(IChunkGenerator chunkGenerator, int mainCap, int mainThres, int lod0Cap, int lod0Thres)
     {
-        lod0 = new ChunkRenderBucketCollection(chunkGenerator, lod0Cap, lod0Thres);
-        main = new ChunkRenderBucketCollection(chunkGenerator, mainCap, mainThres);
+        lod0 = new ChunkRenderBucketCollection(chunkGenerator, true, lod0Cap, lod0Thres);
+        main = new ChunkRenderBucketCollection(chunkGenerator, false, mainCap, mainThres);
 
         ChunkMaterial = new Material(Shader.Find("Custom/URP_CustomLitGPU"));
         ChunkMaterial.SetFloat("_Smoothness", 0f);
