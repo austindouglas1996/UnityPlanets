@@ -86,6 +86,8 @@ public class ChunkGenerationProcessor : IDisposable
     /// </summary>
     public void Dispose() => layerRenderer.Dispose();
 
+    private bool SurfaceBusy = false;
+
     /// <summary>
     /// Processes a batch of surface-check jobs.
     /// </summary>
@@ -93,16 +95,23 @@ public class ChunkGenerationProcessor : IDisposable
     {
         if (!surfaceBatcher.HasPending) return;
 
+        if (SurfaceBusy) 
+            return;
+        SurfaceBusy = true;
+
         int n = surfaceBatcher.TryBatch(1024, tmpSurfaceJobs);
         if (n == 0) return;
 
-        var surfaceResults = chunkServices.Generator.DispatchSurfaceChecks(tmpSurfaceJobs);
-
-        for (int i = 0; i < n; i++)
+        chunkServices.Generator.DispatchSurfaceChecks(tmpSurfaceJobs, (uint[] surfaceResults) =>
         {
-            bool hasSurface = surfaceResults[i] == 1;
-            tmpSurfaceJobs[i].OnDone(hasSurface);
-        }
+            for (int i = 0; i < n; i++)
+            {
+                bool hasSurface = surfaceResults[i] == 1;
+                tmpSurfaceJobs[i].OnDone(hasSurface);
+            }
+
+            SurfaceBusy = false;
+        });
     }
 
     /// <summary>

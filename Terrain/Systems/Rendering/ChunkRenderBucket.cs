@@ -20,6 +20,7 @@ public class ChunkRenderBucket : IDisposable
     private int removedCount = 0;
 
     private bool IsDirty = false;
+    private bool GenerateInProgress = false;
     private int RemainingTicksToUpdate = 5;
 
     private IChunkGenerator chunkGenerator;
@@ -138,7 +139,7 @@ public class ChunkRenderBucket : IDisposable
             return;
         }
 
-        if (IsDirty)
+        if (IsDirty & !this.GenerateInProgress)
         {
             this.Generate();
         }
@@ -189,19 +190,29 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     private void Generate()
     {
+        if (GenerateInProgress)
+            return;
+        GenerateInProgress = true;
+
         RenderData?.Dispose();
         RenderData = null;
 
         if (this.items.Count != 0)
-            RenderData = chunkGenerator.DispatchGeneration(this.items);
+        {
+            chunkGenerator.DispatchGeneration(this.items, (ChunkRenderBatch output) =>
+            {
+                RenderData = output;
 
-        this.IsDirty = false;
-        removedCount = 0;
+                this.IsDirty = false;
+                this.GenerateInProgress = false;
+                removedCount = 0;
 
-        // Something went wrong to reach this.
-        if (this.RenderData == null)
-            return;
+                // Something went wrong to reach this.
+                if (this.RenderData == null)
+                    return;
 
-        OnGenerate?.Invoke(this, EventArgs.Empty);
+                OnGenerate?.Invoke(this, EventArgs.Empty);
+            });
+        }
     }
 }

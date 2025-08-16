@@ -20,7 +20,7 @@ public interface ITerrainGenerator : IDisposable
     /// Array of mask words; semantics are generator-specific (e.g., nonzero = has surface).
     /// Length equals <paramref name="keys"/>. Never null.
     /// </returns>
-    uint[] GetSurfaceMaskChecks(IReadOnlyList<ChunkGenerationJob> keys);
+    public void GetSurfaceMaskChecks(IReadOnlyList<ChunkGenerationJob> keys, Action<uint[]> output);
 
     /// <summary>
     /// Generate a draw-ready batch (triangle append buffer + indirect args + bounds)
@@ -29,7 +29,12 @@ public interface ITerrainGenerator : IDisposable
     /// </summary>
     /// <param name="keys">Non-empty list of chunk keys to build.</param>
     /// <returns>A <see cref="ChunkRenderBatch"/> the caller must Dispose when done.</returns>
-    ChunkRenderBatch GenerateBatch(IReadOnlyList<ChunkKey> keys);
+    void GenerateBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output);
+
+    /// <summary>
+    /// Used to help with generators that may schedule jobs.
+    /// </summary>
+    void Update();
 
     /// <summary>
     /// Apply updated runtime/editor options to the generator (e.g., density params, biome tables).

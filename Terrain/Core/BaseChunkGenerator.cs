@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 /// <summary>
@@ -41,9 +42,9 @@ public abstract class BaseChunkGenerator : IChunkGenerator
     /// </summary>
     /// <param name="keys">Non-empty list of chunk keys to build.</param>
     /// <returns>A <see cref="ChunkRenderBatch"/> ready to render, or throws if empty.</returns>
-    public virtual ChunkRenderBatch DispatchGeneration(IReadOnlyList<ChunkKey> keys)
+    public virtual void DispatchGeneration(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output)
     {
-        return this.Generator.GenerateBatch(keys);
+        this.Generator.GenerateBatch(keys, output);
     }
 
     /// <summary>
@@ -54,9 +55,9 @@ public abstract class BaseChunkGenerator : IChunkGenerator
     /// <returns>
     /// One <c>uint</c> per job containing the bitmask/word produced by the mask kernel.
     /// </returns>
-    public uint[] DispatchSurfaceChecks(IReadOnlyList<ChunkGenerationJob> jobs)
+    public void DispatchSurfaceChecks(IReadOnlyList<ChunkGenerationJob> jobs, Action<uint[]> output)
     {
-        return this.Generator.GetSurfaceMaskChecks(jobs);
+        this.Generator.GetSurfaceMaskChecks(jobs, output);
     }
 
     /// <summary>
@@ -66,6 +67,14 @@ public abstract class BaseChunkGenerator : IChunkGenerator
     public void Dispose()
     {
         this.Generator.Dispose();
+    }
+
+    /// <summary>
+    /// Used for generators that operate on a schedule.
+    /// </summary>
+    public void Update()
+    {
+        this.Generator.Update();
     }
 
     /// <summary>

@@ -36,6 +36,8 @@ public class ChunkRenderer : MonoBehaviour
     {
         if (!isInitialized) return;
         this.UpdateLayout();
+
+        this.chunkServices.Generator.Update();
     }
 
     [SerializeField] private bool forceActiveUpdate = false;
@@ -109,7 +111,7 @@ public class ChunkRenderer : MonoBehaviour
         this.chunkManager = this.GetComponent<ChunkManager>();
 
         this.chunkServices = services;
-        this.router = new ChunkRenderRouter(this.chunkServices.Generator, 128, 64, 32, 16);
+        this.router = new ChunkRenderRouter(this.chunkServices.Generator, 128, 2, 32, 2);
         this.processor = new ChunkGenerationProcessor(this.chunkServices, router);
 
         isInitialized = true;
