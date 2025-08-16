@@ -30,15 +30,21 @@ float2 GetUV(float3 worldPos)
 
 float GetSurfaceHeightForColor(TerrainDensityOptions options, float3 worldPos)
 {
+    float height;
+    
     if (options.SubVariant == SUBVARIANT_PLANET)
     {
         float dist = length(worldPos - PlanetOptions[0].Center);
-        return dist - PlanetOptions[0].Radius; // elevation relative to planet surface
+        height = dist - PlanetOptions[0].Radius; // elevation relative to planet surface
     }
     else
     {
-        return worldPos.y; // flat terrain: just use Y
+        height = worldPos.y; // flat terrain: just use Y
     }
+    
+    // Normalize into 0–1 range using ElevationScale
+    // So biome MinSurface/MaxSurface can always be defined in [0..1]
+    return saturate(height / options.ElevationScale);
 }
 
 // Convert HSV -> RGB (Unity's Color.HSVToRGB equivalent)

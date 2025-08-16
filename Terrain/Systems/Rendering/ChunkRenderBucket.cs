@@ -62,6 +62,11 @@ public class ChunkRenderBucket : IDisposable
     public bool IsFull => items.Count == capacity;
 
     /// <summary>
+    /// Has this bucket no items?
+    /// </summary>
+    public bool IsEmpty => items.Count == 0;
+
+    /// <summary>
     /// Fast append. If we add anything, mark dirty so we rebuild soon.
     /// </summary>
     /// <param name="key"></param>
@@ -104,6 +109,15 @@ public class ChunkRenderBucket : IDisposable
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Remove all elements from this collection.
+    /// </summary>
+    public void Clear()
+    {
+        this.items.Clear();
+        this.index.Clear();
     }
 
     /// <summary>

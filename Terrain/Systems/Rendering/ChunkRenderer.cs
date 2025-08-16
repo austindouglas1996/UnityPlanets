@@ -122,7 +122,9 @@ public class ChunkRenderer : MonoBehaviour
     /// </summary>
     public void RefreshChunks()
     {
-        this.router.MarkAsDirty(true);
+        rootTrees.Clear();
+        this.router.Clear();
+        this.InitializeRootChunks();
     }
 
     /// <summary>

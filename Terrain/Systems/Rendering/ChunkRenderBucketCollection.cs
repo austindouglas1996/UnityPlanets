@@ -82,13 +82,33 @@ public class ChunkRenderBucketCollection : IDisposable
         {
             this.keys.Remove(key);
 
-            if (!bucketsWithSpace.Contains(bucket))
+            if (bucket.IsEmpty)
+            {
+                if (bucketsWithSpace.Contains(bucket))
+                    bucketsWithSpace.Remove(bucket);
+
+                this.buckets.Remove(bucket);
+            }
+            else if (!bucketsWithSpace.Contains(bucket))
                 bucketsWithSpace.Add(bucket);
 
             return true;
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Remove all elements.
+    /// </summary>
+    public void Clear()
+    {
+        foreach (var bucket in buckets)
+        {
+            bucket.Clear();
+        }
+
+        keys.Clear();
     }
 
     /// <summary>

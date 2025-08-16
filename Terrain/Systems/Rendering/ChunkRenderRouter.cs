@@ -64,6 +64,14 @@ public class ChunkRenderRouter : IDisposable
     }
 
     /// <summary>
+    /// Remove all elements.
+    /// </summary>
+    public void Clear()
+    {
+        lod0.Clear(); main.Clear();
+    }
+
+    /// <summary>
     /// Tick both lanes. Buckets handle their own debounce/regeneration internally.
     /// </summary>
     public void Update()
