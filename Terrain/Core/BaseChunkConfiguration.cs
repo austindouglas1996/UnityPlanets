@@ -8,6 +8,10 @@ public class BaseChunkConfiguration : IChunkConfiguration
     [SerializeField] private TerrainDensityOptions densityMapOptions;
     public TerrainDensityOptions DensityOptions => densityMapOptions;
 
+
+    [SerializeField] private PlanetDensityOptions planetMapOptions;
+    public PlanetDensityOptions PlanetOptions => planetMapOptions;
+
     /// <summary>
     /// A collection of biomes to use throughout the generation.
     /// </summary>

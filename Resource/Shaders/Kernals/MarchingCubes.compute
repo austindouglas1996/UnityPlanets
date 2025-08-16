@@ -1,4 +1,4 @@
-#pragma kernel MarchingCubesPass
+﻿#pragma kernel MarchingCubesPass
 #pragma kernel PrepareIndirectDrawArgs
 
 #include "../Includes/TriangleTable.hlsl"
@@ -12,6 +12,9 @@ RWStructuredBuffer<ChunkDispatchKey> ChunkInputs;
 StructuredBuffer<TerrainDensityOptions> DensityOptions;
 StructuredBuffer<float> DensityMap;
 
+/* Inputs Special */
+StructuredBuffer<PlanetDensityOptions> PlanetOptions;
+
 /* Outputs */
 AppendStructuredBuffer<ChunkTriangleData> TriangleBuffer;
 RWStructuredBuffer<uint> ArgsBuffer;
@@ -23,6 +26,44 @@ float2 GetUV(float3 worldPos)
 {
     // Planar projection: good for terrain-style meshes
     return worldPos.xz * 0.05;
+}
+
+float GetSurfaceHeightForColor(TerrainDensityOptions options, float3 worldPos)
+{
+    if (options.SubVariant == SUBVARIANT_PLANET)
+    {
+        float dist = length(worldPos - PlanetOptions[0].Center);
+        return dist - PlanetOptions[0].Radius; // elevation relative to planet surface
+    }
+    else
+    {
+        return worldPos.y; // flat terrain: just use Y
+    }
+}
+
+// Convert HSV -> RGB (Unity's Color.HSVToRGB equivalent)
+float3 HSVtoRGB(float h, float s, float v)
+{
+    float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    float3 p = abs(frac(h + float3(0, K.y, K.z)) * 6.0 - K.w);
+    return v * lerp(K.xxx, saturate(p - K.xxx), s);
+}
+
+// Get a color based on LOD index (green -> red, like LodColor)
+float4 GetLodColor(int lod)
+{
+    const int maxLod = 4;
+
+    // t = 0 at farthest (maxLod), 1 at nearest (0)
+    float t = saturate((float) (maxLod - lod) / (float) maxLod);
+
+    // Hue: green (0.33) → red (0.0)
+    float hue = lerp(0.33, 0.0, t);
+    float sat = 0.95;
+    float val = 1.0;
+
+    float3 rgb = HSVtoRGB(hue, sat, val);
+    return float4(rgb, 1.0); // add alpha = 1
 }
 
 // MarchingCubesPass
@@ -98,9 +139,18 @@ void MarchingCubesPass(uint3 id : SV_DispatchThreadID)
         tri.b = worldB;
         tri.c = worldC;
         
-        tri.colorA = GetColorForHeight(worldA.y);
-        tri.colorB = GetColorForHeight(worldB.y);
-        tri.colorC = GetColorForHeight(worldC.y);
+        if (mo.LODHeatMap)
+        {
+            tri.colorA = GetLodColor(log2(access.chunk.stepSize));
+            tri.colorB = GetLodColor(log2(access.chunk.stepSize));
+            tri.colorC = GetLodColor(log2(access.chunk.stepSize));
+        }
+        else
+        {
+            tri.colorA = GetColorForHeight(GetSurfaceHeightForColor(mo, worldA));
+            tri.colorB = GetColorForHeight(GetSurfaceHeightForColor(mo, worldB));
+            tri.colorC = GetColorForHeight(GetSurfaceHeightForColor(mo, worldC));
+        }
         
         TriangleBuffer.Append(tri);
     }

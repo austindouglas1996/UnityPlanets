@@ -15,6 +15,11 @@ public interface IChunkConfiguration
     TerrainDensityOptions DensityOptions { get; }
 
     /// <summary>
+    /// Density Options used for planet marching cubes.
+    /// </summary>
+    PlanetDensityOptions PlanetOptions { get; }
+
+    /// <summary>
     /// Biomes to use when generating chunks.
     /// </summary>
     List<Biome> Biomes { get; }

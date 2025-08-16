@@ -24,7 +24,7 @@ public class ChunkRenderBucketCollection : IDisposable
     private readonly Dictionary<ChunkRenderBucket, GameObject> colliders = new();
 
     private int capacity = 128;
-    private int rebuildThreshold = 64;
+    private int rebuildThreshold = 1;
     private bool isLod0 = false;
 
     private IChunkGenerator chunkGenerator;

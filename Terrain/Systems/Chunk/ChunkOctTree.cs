@@ -50,8 +50,17 @@ public class ChunkOctTreeMan
         int desired = DesiredLodFromRings(dChunks0, ringsInChunks0);
 
         int L = node.Key.LODIndex;
-        if (L > desired && node.IsLeaf && node.CurrentContentPhase != ContentPhase.Subdivided) return LodDecision.Subdivide;
-        if (L < desired && node.HasChildren) return LodDecision.Merge;
+        if (L > desired
+            && node.IsLeaf
+            && node.CurrentContentPhase != ContentPhase.Subdivided
+            && node.CurrentOccupancyState == OccupancyState.NonEmpty)
+        {
+            return LodDecision.Subdivide;
+        }
+
+        if (L < desired && node.HasChildren) 
+            return LodDecision.Merge;
+
         return LodDecision.KeepLeaf;
     }
 
@@ -191,7 +200,7 @@ public class ChunkOctTreeNode
     /// <summary>
     /// The current state of the node if it contains surface data
     /// </summary>
-    private OccupancyState CurrentOccupancyState = OccupancyState.Unknown;
+    public OccupancyState CurrentOccupancyState = OccupancyState.Unknown;
 
     /// <summary>
     /// The current transition to help subdivide/merge.
@@ -202,6 +211,11 @@ public class ChunkOctTreeNode
     /// The remaining ticks of a transition before executing an action.
     /// </summary>
     private int TransitionTicks = 0;
+
+    /// <summary>
+    /// The amount of children checked in a subdivide. Helps in case the children fail to render.
+    /// </summary>
+    private int childrenChecked = 0;
 
     /// <summary>
     /// Initialize a new instance of the <see cref="ChunkOctTree"/> class. 
@@ -305,8 +319,14 @@ public class ChunkOctTreeNode
     {
         if (this.IsLeaf)
         {
-            if (this.CurrentOccupancyState != OccupancyState.Empty)
+            if (this.CurrentOccupancyState == OccupancyState.NonEmpty &&
+                this.CurrentContentPhase != ContentPhase.Subdivided)
             {
+                if (this.Key.LODIndex != 0)
+                {
+                    string but = "";
+                }
+
                 Color c = LodColor(this.Key.LODIndex, 4, 0.85f);
 
                 Gizmos.color = c;
@@ -348,7 +368,7 @@ public class ChunkOctTreeNode
         this.RequestChildSurfaceCheck(new Vector3Int(cx + 1, cy + 1, cz + 1)); // Top NE
 
         this.CurrentTransition = Transition.Subdivide;
-        this.TransitionTicks = 30;
+        this.TransitionTicks = 3;
     }
 
     /// <summary>
@@ -362,7 +382,7 @@ public class ChunkOctTreeNode
 
         this.CurrentContentPhase = ContentPhase.Loading;
         this.CurrentTransition = Transition.Merge;
-        this.TransitionTicks = 30;
+        this.TransitionTicks = 3;
     }
 
     /// <summary>
@@ -380,7 +400,9 @@ public class ChunkOctTreeNode
                 this.CurrentOccupancyState = OccupancyState.NonEmpty;
             }
             else
+            {
                 this.CurrentOccupancyState = OccupancyState.Empty;
+            }
         });
     }
 
@@ -394,6 +416,8 @@ public class ChunkOctTreeNode
 
         this.Tree.RequestSurfaceCheck(ck, (bool result) =>
         {
+            this.childrenChecked++;
+
             if (result)
             {
                 ChunkOctTreeNode newNode = Tree.CreateChild(this, coordinate);
@@ -442,21 +466,28 @@ public class ChunkOctTreeNode
     /// </summary>
     private void FinalizeMerge()
     {
-        if (this.HasChildren)
+        this.DestroyChildren();
+        this.CurrentContentPhase = ContentPhase.Ready;
+    }
+
+    /// <summary>
+    /// Destroy the children part of this object (Recursive).
+    /// </summary>
+    private void DestroyChildren()
+    {
+        if (!this.HasChildren)
+            return;
+
+        foreach (var child in Children)
         {
-            foreach (var child in Children)
-            {
-                if (child == null)
-                    continue;
+            if (child == null)
+                continue;
 
-                child.Merge();
-                this.Tree.RemoveChild(child);
-            }
-
-            this.Children.Clear();
+            child.DestroyChildren();
+            this.Tree.RemoveChild(child);
         }
 
-        this.CurrentContentPhase = ContentPhase.Ready;
+        this.Children.Clear();
     }
 
     /// <summary>

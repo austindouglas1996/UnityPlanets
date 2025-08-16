@@ -26,6 +26,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private ComputeBuffer GenerateChunkInputBuffer;// StructuredBuffer<ChunkInput> for full gen
     private ComputeBuffer BiomeBuffer;             // StructuredBuffer<BiomeData> (small table)
     private ComputeBuffer DensityOptionsBuffer;    // StructuredBuffer<DensityMapOptions> (1 element)
+    private ComputeBuffer PlanetOptionsBuffer;     // StructuredBuffer<PlanetDensityOptions> (1 element)
     private ComputeBuffer SurfaceMaskBuffer;       // RWStructuredBuffer<uint> (results for mask pass)
 
     private int BiomesCount = 0;
@@ -74,6 +75,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         // Generate density
         GenerateShader.SetBuffer(0, "ChunkInputs", GenerateChunkInputBuffer);
         GenerateShader.SetBuffer(0, "DensityOptions", DensityOptionsBuffer);
+        GenerateShader.SetBuffer(0, "PlanetOptions", PlanetOptionsBuffer);
         GenerateShader.SetBuffer(0, "DensityMap", DensityBuffer);
 
         // NOTE: thread group dims assume [numthreads(8,8,8)] and X packs chunkIndex*XWithinChunk
@@ -86,6 +88,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.SetBuffer(0, "ChunkInputs", GenerateChunkInputBuffer);
         MarchingShader.SetBuffer(0, "DensityMap", DensityBuffer);
         MarchingShader.SetBuffer(0, "DensityOptions", DensityOptionsBuffer);
+        MarchingShader.SetBuffer(0, "PlanetOptions", PlanetOptionsBuffer);
         MarchingShader.SetBuffer(0, "TriangleBuffer", triangleBuffer);
         MarchingShader.SetBuffer(0, "BiomeColors", BiomeBuffer);
         MarchingShader.SetInt("_BiomeCount", BiomesCount);
@@ -101,7 +104,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     }
 
     /// <summary>
-    /// Quick-and-dirty mask pass to cull empty chunks before I spend time meshing them.
+    /// Quick-and-dirty mask pass to cull empty chunks before we spend time meshing them.
     /// </summary>
     public uint[] GetSurfaceMaskChecks(IReadOnlyList<ChunkGenerationJob> keys)
     {
@@ -114,6 +117,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         GenerateShader.SetInt("_ChunkInputCount", batchSize);
         GenerateShader.SetBuffer(1, "ChunkInputs", SurfaceChunkInputBuffer);
         GenerateShader.SetBuffer(1, "DensityOptions", DensityOptionsBuffer);
+        GenerateShader.SetBuffer(1, "PlanetOptions", PlanetOptionsBuffer);
         GenerateShader.SetBuffer(1, "SurfaceMask", SurfaceMaskBuffer);
         GenerateShader.Dispatch(1, Mathf.CeilToInt(batchSize / 64f), 1, 1);
 
@@ -131,6 +135,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     {
         // Options buffer is a single struct; just overwrite it.
         DensityOptionsBuffer.SetData(new[] { densityOptions });
+        PlanetOptionsBuffer.SetData(new[] { this.chunkServices.Configuration.PlanetOptions });
 
         // Rebuild biome table (small) and upload.
         var biomes = chunkServices.Configuration.Biomes.OrderBy(b => b.MinSurface).ToList();
@@ -162,6 +167,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
 
         // Single struct (Structured buffer of length 1)
         DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<TerrainDensityOptions>(), ComputeBufferType.Structured);
+        PlanetOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<PlanetDensityOptions>(), ComputeBufferType.Structured);
 
         // Scalar field big enough for 128 chunks at current chunk size (rough over-alloc)
         int size = densityOptions.ChunkSize + 1;

@@ -99,7 +99,10 @@ public class ChunkGenerationProcessor : IDisposable
         var surfaceResults = chunkServices.Generator.DispatchSurfaceChecks(tmpSurfaceJobs);
 
         for (int i = 0; i < n; i++)
-            tmpSurfaceJobs[i].OnDone(surfaceResults[i] == 1);
+        {
+            bool hasSurface = surfaceResults[i] == 1;
+            tmpSurfaceJobs[i].OnDone(hasSurface);
+        }
     }
 
     /// <summary>

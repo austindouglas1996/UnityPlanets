@@ -1,6 +1,10 @@
 #ifndef DENSITY_OPTIONS_SHARED
 #define DENSITY_OPTIONS_SHARED
 
+#define SUBVARIANT_LANDMASS 0
+#define SUBVARIANT_PLANET   1
+#define SUBVARIANT_CAVE     2
+
 // ============================================================================
 // DensityMapOptions
 // Must match C# struct `TerrainDensityOptions` exactly in:
@@ -17,6 +21,12 @@ struct TerrainDensityOptions
 
     // Noise seed. Use this to derive offsets so worlds are stable per seed.
     int Seed;
+    
+    // A LOD heat map to see what LOD the chunks are.
+    int LODHeatMap;
+    
+    // HLSL does not support enum, this is just for the subvarient to help with coding.
+    int SubVariant;
 
     // Iso threshold used by marching. Keep if your meshing kernel reads it.
     float ISOLevel;
@@ -50,6 +60,12 @@ struct TerrainDensityOptions
 
     // XY offset for flatness domain (replaces +5555).
     float2 FlatMaskOffset;
+};
+
+struct PlanetDensityOptions
+{
+    float3 Center;
+    float Radius; 
 };
 
 #endif

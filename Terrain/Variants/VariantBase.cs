@@ -29,6 +29,9 @@ public abstract class VariantBase<TConfig> : MonoBehaviour, IChunkServices where
 
     protected virtual void OnValidate()
     {
+        if (!Application.isPlaying)
+            return;
+
         generator.UpdateOptions();
         chunkRenderer.RefreshChunks();
     }

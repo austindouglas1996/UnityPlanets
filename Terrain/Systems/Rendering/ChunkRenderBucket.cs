@@ -36,7 +36,7 @@ public class ChunkRenderBucket : IDisposable
         this.index = new(capacity);
 
         this.capacity = capacity;
-        this.rebuildThreshold = rebuildThreshhold;
+        this.rebuildThreshold = 1;
 
         this.chunkGenerator = chunkGenerator;
     }
@@ -136,6 +136,8 @@ public class ChunkRenderBucket : IDisposable
     /// <param name="vertexMat"></param>
     public void Draw(Material vertexMat)
     {
+        if (items.Count == 0) return;
+
         var rd = RenderData;
         if (rd == null || rd.Triangle == null || rd.Args == null) return;
 

@@ -1,12 +1,34 @@
 using System;
+using System.Runtime.InteropServices;
 using UnityEngine;
+
+/// <summary>
+/// Subvarient types for better rendering.
+/// </summary>
+public enum SubVariant
+{
+    /// <summary>
+    /// Endless land, no roof or floor.
+    /// </summary>
+    LandMass,
+
+    /// <summary>
+    /// A sphere of land, no roof but has a center.
+    /// </summary>
+    Planet,
+
+    /// <summary>
+    /// Cave systems, roof and floor.
+    /// </summary>
+    Cave
+}
 
 /// <summary>
 /// First/pass base terrain layer. Shapes the big landmass, sprinkles broad detail,
 /// and modulates detail with a flatness mask. Later layers (rivers, caves, mountains)
 /// can stack on top.
 /// </summary>
-[Serializable]
+[Serializable, StructLayout(LayoutKind.Sequential)]
 public struct TerrainDensityOptions
 {
     [Header("Global")]
@@ -15,6 +37,12 @@ public struct TerrainDensityOptions
 
     [Tooltip("Noise seed. Use this to derive offsets so worlds are stable per seed.")]
     public int Seed;
+
+    [Tooltip("A debug tool to show the LOD of each chunk."), Range(0,1)]
+    public int LODHeatMap;
+
+    [Tooltip("Those chosen subvariant for choosing the correct type of density options.")]
+    public SubVariant Variant;
 
     [Tooltip("Iso threshold used by marching. Keep if your meshing kernel reads it.")]
     [Range(-1f, 1f)]
