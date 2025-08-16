@@ -122,11 +122,11 @@ void GenerateBatch(uint3 id : SV_DispatchThreadID)
 
     if (mOptions.SubVariant == 0)
     {
-        DensityMap[info.mapIndex] = GetLandMassValue(mOptions, worldPos.x, worldPos.y, worldPos.z, log2(info.chunk.stepSize));
+        DensityMap[info.mapIndex] = GetLandMassValue(mOptions, worldPos.x, worldPos.y, worldPos.z, info.chunk.LodIndex);
     }
     else if (mOptions.SubVariant == 1)
     {
-        DensityMap[info.mapIndex] = GetPlanetValue(mOptions, worldPos.x, worldPos.y, worldPos.z, log2(info.chunk.stepSize));
+        DensityMap[info.mapIndex] = GetPlanetValue(mOptions, worldPos.x, worldPos.y, worldPos.z, info.chunk.LodIndex);
     }
 }
 
@@ -143,7 +143,7 @@ void GetSurfaceMaskChecks(uint3 id : SV_DispatchThreadID)
 
     float iso = mOptions.ISOLevel;
     int chunkSize = mOptions.ChunkSize + 3;
-    int step = chunk.stepSize;
+    int step = (1 << chunk.LodIndex);
 
     bool hasAbove = false;
     bool hasBelow = false;
@@ -153,16 +153,16 @@ void GetSurfaceMaskChecks(uint3 id : SV_DispatchThreadID)
         for (int y = 0; y < chunkSize; y++)
             for (int z = 0; z < chunkSize; z++)
             {
-                float3 samplePos = chunk.WorldPos + float3(x * step, y * step, z * step);
+                float3 samplePos = ToWorld(chunk) + float3(x * step, y * step, z * step);
                 float v;
                 
                 if (mOptions.SubVariant == 0)
                 {
-                    v = GetLandMassValue(mOptions, samplePos.x, samplePos.y, samplePos.z, log2(chunk.stepSize));
+                    v = GetLandMassValue(mOptions, samplePos.x, samplePos.y, samplePos.z, chunk.LodIndex);
                 }
                 else if (mOptions.SubVariant == 1)
                 {
-                    v = GetPlanetValue(mOptions, samplePos.x, samplePos.y, samplePos.z, log2(chunk.stepSize));
+                    v = GetPlanetValue(mOptions, samplePos.x, samplePos.y, samplePos.z, chunk.LodIndex);
                 }
 
                 if (v >= iso)

@@ -109,7 +109,7 @@ void MarchingCubesPass(uint3 id : SV_DispatchThreadID)
         int fullIndex = access.chunkIndex * chunkVoxelSize + localIndex;
 
         corner[i] = DensityMap[fullIndex];
-        cornerPos[i] = float3(pos) * access.chunk.stepSize;
+        cornerPos[i] = float3(pos) * (1 << access.chunk.LodIndex);
 
         if (corner[i] > mo.ISOLevel)
             cubeIndex |= (1 << i);
@@ -135,9 +135,9 @@ void MarchingCubesPass(uint3 id : SV_DispatchThreadID)
         float3 v2 = lerp(cornerPos[edge2.x], cornerPos[edge2.y],
                          (corner[edge2.x] - mo.ISOLevel) / (corner[edge2.x] - corner[edge2.y] + 0.0001));
 
-        float3 worldA = v0 + access.chunk.WorldPos;
-        float3 worldB = v1 + access.chunk.WorldPos;
-        float3 worldC = v2 + access.chunk.WorldPos;
+        float3 worldA = v0 + ToWorld(access.chunk);
+        float3 worldB = v1 + ToWorld(access.chunk);
+        float3 worldC = v2 + ToWorld(access.chunk);
 
         ChunkTriangleData tri;
         
@@ -147,9 +147,9 @@ void MarchingCubesPass(uint3 id : SV_DispatchThreadID)
         
         if (mo.LODHeatMap)
         {
-            tri.colorA = GetLodColor(log2(access.chunk.stepSize));
-            tri.colorB = GetLodColor(log2(access.chunk.stepSize));
-            tri.colorC = GetLodColor(log2(access.chunk.stepSize));
+            tri.colorA = GetLodColor(access.chunk.LodIndex);
+            tri.colorB = GetLodColor(access.chunk.LodIndex);
+            tri.colorC = GetLodColor(access.chunk.LodIndex);
         }
         else
         {

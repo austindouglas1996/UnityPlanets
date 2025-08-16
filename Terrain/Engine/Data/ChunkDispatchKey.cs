@@ -10,6 +10,5 @@ using UnityEngine;
 public struct ChunkDispatchKey
 {
     public Vector3 CoordPos;
-    public Vector3 WorldPos;
-    public int stepSize;
+    public int LodIndex;
 }

@@ -12,11 +12,8 @@ struct ChunkDispatchKey
     // The logical coodinates of the key.
     float3 CoordPos;
     
-    // The world position of this key.
-    float3 WorldPos;
-    
     // The LOD converted into a step size.
-    int stepSize;
+    int LodIndex;
 };
 
 // Helper struct returned by GetChunkAccess() to provide both chunk-level
@@ -31,6 +28,47 @@ struct ChunkDispatchKeyInfo
 };
 
 #endif
+
+// Full chunk size in world units for this key
+int GetChunkSize(ChunkDispatchKey key)
+{
+    return 16 << key.LodIndex;
+}
+
+// Coordinates -> world origin (computed on GPU if you didn’t pass WorldPos)
+float3 ToWorld(ChunkDispatchKey key)
+{
+    return key.CoordPos * GetChunkSize(key);
+}
+
+// World -> chunk coordinates for this key’s LOD
+int3 ToCoordinates(float3 worldPos, ChunkDispatchKey key)
+{
+    int chunkSize = GetChunkSize(key);
+    return int3(
+        (int) floor(worldPos.x / chunkSize),
+        (int) floor(worldPos.y / chunkSize),
+        (int) floor(worldPos.z / chunkSize)
+    );
+}
+
+// A simple debug function for returning a simple color based on LOD.
+float4 GetLODColor(int lodIndex)
+{
+    if (lodIndex == 0)
+        return float4(1, 1, 1, 1); // LOD0 - White
+    if (lodIndex == 1)
+        return float4(1, 0, 0, 1); // LOD1 - Red
+    if (lodIndex == 2)
+        return float4(1, 1, 0, 1); // LOD2 - Yellow
+    if (lodIndex == 3)
+        return float4(0, 1, 0, 1); // LOD3 - Green
+    if (lodIndex == 4)
+        return float4(0, 0, 1, 1); // LOD4 - Blue
+    if (lodIndex == 5)
+        return float4(1, 0, 1, 1); // LOD5 - Magenta
+    return float4(0, 0, 0, 1); // Unknown
+}
 
 // ============================================================================
 // GetChunkAccess()
@@ -75,25 +113,7 @@ ChunkDispatchKeyInfo GetChunkAccess(uint3 id,int sizeX, int sizeY, int sizeZ,Str
     // Fetch key and compute world position
     ChunkDispatchKey key = keys[r.chunkIndex];
     r.chunk = key;
-    r.WorldPos = key.WorldPos + float3(r.voxelCoord) * key.stepSize;
+    r.WorldPos = ToWorld(key) + float3(r.voxelCoord) * (1 << key.LodIndex);
 
     return r;
-}
-
-// A simple debug function for returning a simple color based on LOD.
-float4 GetLODColor(int stepSize)
-{
-    if (stepSize == 1)
-        return float4(1, 1, 1, 1); // LOD0 - White
-    if (stepSize == 2)
-        return float4(1, 0, 0, 1); // LOD1 - Red
-    if (stepSize == 4)
-        return float4(1, 1, 0, 1); // LOD2 - Yellow
-    if (stepSize == 8)
-        return float4(0, 1, 0, 1); // LOD3 - Green
-    if (stepSize == 16)
-        return float4(0, 0, 1, 1); // LOD4 - Blue
-    if (stepSize == 32)
-        return float4(1, 0, 1, 1); // LOD5 - Magenta
-    return float4(0, 0, 0, 1); // Unknown
 }

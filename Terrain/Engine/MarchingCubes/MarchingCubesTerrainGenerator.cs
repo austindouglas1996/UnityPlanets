@@ -250,8 +250,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
             InputSurface.Add(new ChunkDispatchKey
             {
                 CoordPos = ctx.Key.Coordinates,
-                WorldPos = chunkServices.Layout.ToWorld(ctx.Key),
-                stepSize = 1 << ctx.Key.LODIndex
+                LodIndex = ctx.Key.LODIndex
             });
         }
 
@@ -275,8 +274,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
             InputGenerate.Add(new ChunkDispatchKey
             {
                 CoordPos = ctx.Coordinates,
-                WorldPos = chunkServices.Layout.ToWorld(ctx),
-                stepSize = 1 << ctx.LODIndex
+                LodIndex = ctx.LODIndex
             });
         }
 
