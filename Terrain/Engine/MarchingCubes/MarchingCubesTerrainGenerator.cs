@@ -80,9 +80,9 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
 
         // NOTE: thread group dims assume [numthreads(8,8,8)] and X packs chunkIndex*XWithinChunk
         GenerateShader.Dispatch(0,
-            Mathf.CeilToInt(batchSize * size / 8f),
-            Mathf.CeilToInt(size / 8f),
-            Mathf.CeilToInt(size / 8f));
+            Mathf.CeilToInt(batchSize * size / 4f),
+            Mathf.CeilToInt(size / 4f),
+            Mathf.CeilToInt(size / 4f));
 
         // Marching cubes
         MarchingShader.SetBuffer(0, "ChunkInputs", GenerateChunkInputBuffer);
@@ -92,10 +92,10 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.SetBuffer(0, "TriangleBuffer", triangleBuffer);
         MarchingShader.SetBuffer(0, "BiomeColors", BiomeBuffer);
         MarchingShader.SetInt("_BiomeCount", BiomesCount);
-        MarchingShader.Dispatch(0, batchSize * 2, 2, 2); // simple grid; good enough for now
+        MarchingShader.Dispatch(0, batchSize * 4, 4, 4); 
 
         // Build indirect args from append count
-        ComputeBuffer.CopyCount(triangleBuffer, argsBuffer, 0);
+        MarchingShader.SetBuffer(1, "TriangleBuffer", triangleBuffer);
         MarchingShader.SetBuffer(1, "ArgsBuffer", argsBuffer);
         MarchingShader.Dispatch(1, 1, 1, 1);
 

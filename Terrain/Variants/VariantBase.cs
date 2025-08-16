@@ -29,7 +29,7 @@ public abstract class VariantBase<TConfig> : MonoBehaviour, IChunkServices where
 
     protected virtual void OnValidate()
     {
-        if (!Application.isPlaying)
+        if (!Application.isPlaying || generator == null)
             return;
 
         generator.UpdateOptions();

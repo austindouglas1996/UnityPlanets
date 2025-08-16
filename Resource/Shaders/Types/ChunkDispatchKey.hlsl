@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // ChunkDispatchKey.hlsl
 // Defines the chunk dispatch key used for chunk operations.
 // Must match the C# struct `ChunkDispatchKey` exactly.
@@ -45,41 +45,39 @@ struct ChunkDispatchKeyInfo
 //   sizeX, sizeY, sizeZ : Chunk dimensions in voxels (per axis)
 //   keys   : Structured buffer of all active chunks to process
 // ============================================================================
-ChunkDispatchKeyInfo GetChunkAccess(uint3 id, int sizeX, int sizeY, int sizeZ, RWStructuredBuffer<ChunkDispatchKey> keys)
+ChunkDispatchKeyInfo GetChunkAccess(uint3 id,int sizeX, int sizeY, int sizeZ,StructuredBuffer<ChunkDispatchKey> keys)
 {
-    ChunkDispatchKeyInfo result;
+    ChunkDispatchKeyInfo r;
 
-    int chunkSize = sizeX;
-    int voxelCount = sizeX * sizeY * sizeZ;
+    // Get number of chunks in this batch
+    uint keyCount, strideBytes;
+    keys.GetDimensions(keyCount, strideBytes); // batchSize = keyCount
 
-    // Figure out which chunk this voxel belongs to (in keys buffer)
-    result.chunkIndex = id.x / chunkSize;
-    
-    // Local voxel coordinate inside the chunk
-    result.voxelCoord = int3(id.x % chunkSize, id.y, id.z);
+    const int voxelCount = sizeX * sizeY * sizeZ;
+    const uint logicalX = keyCount * (uint) sizeX;
 
-    if (result.voxelCoord.x >= sizeX || result.voxelCoord.y >= sizeY || result.voxelCoord.z >= sizeZ)
+    // Guard extra threads from ceil() in Dispatch()
+    if (id.x >= logicalX || id.y >= (uint) sizeY || id.z >= (uint) sizeZ)
     {
-        result.mapIndex = -1;
-        return result;
+        r.mapIndex = -1;
+        return r;
     }
 
-    // Flat index into the voxel map buffer for this voxel
-    //   mapIndex = chunk offset + local voxel index
-    result.mapIndex = result.chunkIndex * voxelCount +
-                         (result.voxelCoord.x + result.voxelCoord.y * sizeX + result.voxelCoord.z * sizeX * sizeY);
+    // Map X → (chunkIndex, localX)
+    r.chunkIndex = (int) (id.x / (uint) sizeX);
+    r.voxelCoord = int3((int) (id.x - (uint) (r.chunkIndex * sizeX)), (int) id.y, (int) id.z);
 
-    // Retrieve the chunk's dispatch key (position + step size)
-    ChunkDispatchKey input = keys[result.chunkIndex];
-    float3 inputWorld = input.WorldPos;
-    
-    result.chunk = input;
-    result.WorldPos = float3(
-        inputWorld.x + result.voxelCoord.x * result.chunk.stepSize,
-        inputWorld.y + result.voxelCoord.y * result.chunk.stepSize,
-        inputWorld.z + result.voxelCoord.z * result.chunk.stepSize);
-    
-    return result;
+    // Flat index into the packed voxel buffer
+    r.mapIndex =
+        r.chunkIndex * voxelCount +
+        (r.voxelCoord.x + r.voxelCoord.y * sizeX + r.voxelCoord.z * sizeX * sizeY);
+
+    // Fetch key and compute world position
+    ChunkDispatchKey key = keys[r.chunkIndex];
+    r.chunk = key;
+    r.WorldPos = key.WorldPos + float3(r.voxelCoord) * key.stepSize;
+
+    return r;
 }
 
 // A simple debug function for returning a simple color based on LOD.

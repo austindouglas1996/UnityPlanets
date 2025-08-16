@@ -8,7 +8,7 @@
 #include "../Types/ChunkBiomeData.hlsl"
 
 /* Inputs */
-RWStructuredBuffer<ChunkDispatchKey> ChunkInputs;
+StructuredBuffer<ChunkDispatchKey> ChunkInputs;
 StructuredBuffer<TerrainDensityOptions> DensityOptions;
 StructuredBuffer<float> DensityMap;
 
@@ -78,7 +78,7 @@ float4 GetLodColor(int lod)
 // according to the marching cubes lookup tables.
 // 
 // Each thread processes one cube in the chunk's voxel grid.
-[numthreads(8, 8, 8)]
+[numthreads(4,4,4)]
 void MarchingCubesPass(uint3 id : SV_DispatchThreadID)
 {
     TerrainDensityOptions mo = DensityOptions[0];
@@ -171,10 +171,13 @@ void MarchingCubesPass(uint3 id : SV_DispatchThreadID)
 [numthreads(1, 1, 1)]
 void PrepareIndirectDrawArgs(uint3 id : SV_DispatchThreadID)
 {
-    // ArgsBuffer[0] is the number of triangles from CopyCount
-    // Convert to vertex count by multiplying by 3
-    ArgsBuffer[0] *= 3;
+    uint triCount;
+    uint stride; // Dummy
+    TriangleBuffer.GetDimensions(triCount,stride); // query append counter
 
-    // Set instance count to 1
-    ArgsBuffer[1] = 1;
+    ArgsBuffer[0] = triCount * 3; // vertex count
+    ArgsBuffer[1] = 1; // instance count
+    ArgsBuffer[2] = 0; // start vertex
+    ArgsBuffer[3] = 0; // start instance
+    ArgsBuffer[4] = 0; // padding (if needed)
 }

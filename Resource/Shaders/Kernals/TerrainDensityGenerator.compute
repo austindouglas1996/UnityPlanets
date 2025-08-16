@@ -7,7 +7,7 @@
 #include "../Types/TerrainDensityOptions.hlsl"
 
 /* Inputs */
-RWStructuredBuffer<ChunkDispatchKey> ChunkInputs;
+StructuredBuffer<ChunkDispatchKey> ChunkInputs;
 StructuredBuffer<TerrainDensityOptions> DensityOptions;
 
 /* Inputs Special */
@@ -108,7 +108,7 @@ float GetPlanetValue(TerrainDensityOptions options, float worldX, float worldY, 
 }
 
 // Generates the density data for a marching cube algorithm.
-[numthreads(8,8,8)]
+[numthreads(4,4,4)]
 void GenerateBatch(uint3 id : SV_DispatchThreadID)
 {
     TerrainDensityOptions mOptions = DensityOptions[0];
