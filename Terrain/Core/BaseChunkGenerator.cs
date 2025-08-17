@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// Abstract base for terrain chunk generators that produce marching-cubes outputs.
@@ -86,4 +87,9 @@ public abstract class BaseChunkGenerator : IChunkGenerator
     {
         this.Generator.UpdateOptions();
     }
+
+    /// <summary>
+    /// Get the custom material used in generation.
+    /// </summary>
+    public Material GetMaterial => this.Generator.GetMaterial;
 }

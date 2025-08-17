@@ -37,6 +37,8 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private ComputeBuffer PlanetOptionsBuffer;     // StructuredBuffer<PlanetDensityOptions> (1 element)
     private ComputeBuffer SurfaceMaskBuffer;       // RWStructuredBuffer<uint> (results for mask pass)
 
+    private Material chunkMaterial;
+
     private int BiomesCount = 0;
 
     // Reused staging lists -> no per-dispatch GC. Capacity matches caps above.
@@ -60,11 +62,24 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         GenerateShader = generateShader;
         MarchingShader = marchingShader;
 
+        this.chunkMaterial = new Material(Shader.Find("Custom/URP_CustomLitGPU"));
+        this.chunkMaterial.SetFloat("_Smoothness", 0f);
+        this.chunkMaterial.SetFloat("_UseVertexColor", 1f);
+
         this.InitBuffer();
     }
 
     // Convenience snapshot so I don’t keep typing the long path.
     private TerrainDensityOptions densityOptions => chunkServices.Configuration.DensityOptions;
+
+    /// <summary>
+    /// Get the custom material used in generation.
+    /// </summary>
+    public Material GetMaterial
+    {
+        get {  return chunkMaterial; }
+        private set {  chunkMaterial = value; }
+    }
 
     /// <summary>
     /// Process multiple jobs from the queue to generate chunks.
@@ -155,6 +170,12 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         }
 
         BiomeBuffer.SetData(biomeData);
+
+        // Update material.
+        this.chunkMaterial.SetBuffer("DensityOptions", DensityOptionsBuffer);
+        this.chunkMaterial.SetBuffer("PlanetOptions", PlanetOptionsBuffer);
+        this.chunkMaterial.SetBuffer("BiomeColors", BiomeBuffer);
+        this.chunkMaterial.SetInt("_BiomeCount", BiomesCount);
     }
 
     /// <summary>
@@ -193,7 +214,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.SetBuffer(0, "DensityOptions", DensityOptionsBuffer);
         MarchingShader.SetBuffer(0, "PlanetOptions", PlanetOptionsBuffer);
         MarchingShader.SetBuffer(0, "TriangleBuffer", triangleBuffer);
-        MarchingShader.SetBuffer(0, "BiomeColors", BiomeBuffer);
         MarchingShader.SetInt("_BiomeCount", BiomesCount);
         MarchingShader.Dispatch(0, batchSize * 4, 4, 4);
 

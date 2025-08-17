@@ -52,24 +52,6 @@ int3 ToCoordinates(float3 worldPos, ChunkDispatchKey key)
     );
 }
 
-// A simple debug function for returning a simple color based on LOD.
-float4 GetLODColor(int lodIndex)
-{
-    if (lodIndex == 0)
-        return float4(1, 1, 1, 1); // LOD0 - White
-    if (lodIndex == 1)
-        return float4(1, 0, 0, 1); // LOD1 - Red
-    if (lodIndex == 2)
-        return float4(1, 1, 0, 1); // LOD2 - Yellow
-    if (lodIndex == 3)
-        return float4(0, 1, 0, 1); // LOD3 - Green
-    if (lodIndex == 4)
-        return float4(0, 0, 1, 1); // LOD4 - Blue
-    if (lodIndex == 5)
-        return float4(1, 0, 1, 1); // LOD5 - Magenta
-    return float4(0, 0, 0, 1); // Unknown
-}
-
 // ============================================================================
 // GetChunkAccess()
 // Maps a dispatch thread ID (id) into:

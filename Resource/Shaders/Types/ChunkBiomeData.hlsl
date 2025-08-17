@@ -1,4 +1,4 @@
-#ifndef BIOME_SHARED_INCLUDED
+﻿#ifndef BIOME_SHARED_INCLUDED
 #define BIOME_SHARED_INCLUDED
 
 // ============================================================================

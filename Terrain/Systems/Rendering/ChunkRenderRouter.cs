@@ -15,11 +15,7 @@ public class ChunkRenderRouter : IDisposable
 {
     private ChunkRenderBucketCollection lod0;
     private ChunkRenderBucketCollection main;
-
-    /// <summary>
-    /// The material shader used for generation.
-    /// </summary>
-    private Material ChunkMaterial;
+    private IChunkGenerator chunkGenerator;
 
     /// <summary>
     /// Build two lanes with their own capacities/thresholds.
@@ -31,12 +27,9 @@ public class ChunkRenderRouter : IDisposable
     /// <param name="lod0Thres">Removals before an LOD0 bucket regenerates.</param>
     public ChunkRenderRouter(IChunkGenerator chunkGenerator, int mainCap, int mainThres, int lod0Cap, int lod0Thres)
     {
+        this.chunkGenerator = chunkGenerator;
         lod0 = new ChunkRenderBucketCollection(chunkGenerator, true, lod0Cap, lod0Thres);
         main = new ChunkRenderBucketCollection(chunkGenerator, false, mainCap, mainThres);
-
-        ChunkMaterial = new Material(Shader.Find("Custom/URP_CustomLitGPU"));
-        ChunkMaterial.SetFloat("_Smoothness", 0f);
-        ChunkMaterial.SetFloat("_UseVertexColor", 1f);
     }
 
     /// <summary>
@@ -86,8 +79,8 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void Draw()
     {
-        lod0.Draw(this.ChunkMaterial);
-        main.Draw(this.ChunkMaterial);
+        lod0.Draw(this.chunkGenerator.GetMaterial);
+        main.Draw(this.chunkGenerator.GetMaterial);
     }
 
     /// <summary>

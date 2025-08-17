@@ -37,13 +37,16 @@ Shader "Custom/URP_CustomLitGPU"
             #pragma multi_compile_fog
 
             #include "../Types/ChunkTriangleData.hlsl"
+            #include "../Types/ChunkBiomeData.hlsl"
+            #include "../Types/TerrainDensityOptions.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
 
             StructuredBuffer<ChunkTriangleData> _TriangleBuffer;
+            StructuredBuffer<TerrainDensityOptions> DensityOptions;
+            StructuredBuffer<PlanetDensityOptions> PlanetOptions;
 
-            float _SizePerChunk;
             float4 _BaseColor;
             float _UseVertexColor;
 
@@ -73,15 +76,10 @@ Shader "Custom/URP_CustomLitGPU"
                              subIndex == 1 ? tri.b :
                                              tri.c;
                     
-                float3 worldPos = pos;
-
-                OUT.positionWS = worldPos;
+                OUT.positionWS = pos;
                 OUT.normalWS = normalize(cross(tri.b - tri.a, tri.c - tri.a));
-                OUT.color = subIndex == 0 ? tri.colorA :
-                            subIndex == 1 ? tri.colorB :
-                            tri.colorC;
-
-                OUT.positionCS = TransformWorldToHClip(worldPos);
+                OUT.color = GetColorForHeight(pos.y);
+                OUT.positionCS = TransformWorldToHClip(pos);
 
                 return OUT;
             }
@@ -103,7 +101,7 @@ Shader "Custom/URP_CustomLitGPU"
                 surfaceData.albedo = finalColor;
                 surfaceData.alpha = 1.0;
                 surfaceData.metallic = 0.0;
-                surfaceData.smoothness = 0.0;
+                surfaceData.smoothness = 0.1;
                 surfaceData.occlusion = 1.0;
                 surfaceData.emission = 0.0;
                 surfaceData.normalTS = float3(0, 0, 1);

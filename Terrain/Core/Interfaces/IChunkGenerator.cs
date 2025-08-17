@@ -36,4 +36,9 @@ public interface IChunkGenerator : IDisposable
     /// so subsequent builds reflect the new settings.
     /// </summary>
     void UpdateOptions();
+
+    /// <summary>
+    /// Get the custom material used in generation.
+    /// </summary>
+    Material GetMaterial { get; }
 }

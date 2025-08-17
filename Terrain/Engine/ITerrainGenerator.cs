@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// Strategy interface for terrain generation backends (e.g., marching cubes, dual contouring, etc.).
@@ -42,4 +43,9 @@ public interface ITerrainGenerator : IDisposable
     /// so subsequent builds reflect the new settings.
     /// </summary>
     void UpdateOptions();
+
+    /// <summary>
+    /// Get the custom material used in generation.
+    /// </summary>
+    Material GetMaterial { get; }
 }
