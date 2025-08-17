@@ -194,13 +194,13 @@ public class ChunkRenderBucket : IDisposable
             return;
         GenerateInProgress = true;
 
-        RenderData?.Dispose();
-        RenderData = null;
-
         if (this.items.Count != 0)
         {
             chunkGenerator.DispatchGeneration(this.items, (ChunkRenderBatch output) =>
             {
+                RenderData?.Dispose();
+                RenderData = null;
+
                 RenderData = output;
 
                 this.IsDirty = false;

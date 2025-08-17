@@ -117,7 +117,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         GenerateShader.SetBuffer(1, "DensityOptions", DensityOptionsBuffer);
         GenerateShader.SetBuffer(1, "PlanetOptions", PlanetOptionsBuffer);
         GenerateShader.SetBuffer(1, "SurfaceMask", SurfaceMaskBuffer);
-        GenerateShader.Dispatch(1, Mathf.CeilToInt(batchSize / 64f), 1, 1);
+        GenerateShader.Dispatch(1, batchSize, 1, 1);
 
         var req = AsyncGPUReadback.Request(SurfaceMaskBuffer, r =>
         {

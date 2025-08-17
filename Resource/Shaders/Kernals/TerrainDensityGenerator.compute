@@ -130,52 +130,86 @@ void GenerateBatch(uint3 id : SV_DispatchThreadID)
     }
 }
 
-// Generates a simple surface mask to tell if a given chunk has surface data.
-[numthreads(64, 1, 1)]
-void GetSurfaceMaskChecks(uint3 id : SV_DispatchThreadID)
+    // Shared flags so any thread can “trip” the result
+groupshared uint gHasAbove;
+groupshared uint gHasBelow;
+
+// One group per chunk, 4x4x4 = 64 threads per group
+[numthreads(4, 4, 4)]
+void GetSurfaceMaskChecks(uint3 groupId : SV_GroupID,
+                          uint3 tid : SV_GroupThreadID,
+                          uint groupIdx : SV_GroupIndex)
 {
-    uint index = id.x;
+    uint index = groupId.x; // 1D group grid: (batchSize,1,1)
     if (index >= _ChunkInputCount)
         return;
 
+    // Load once per group (uniform)
     ChunkDispatchKey chunk = ChunkInputs[index];
     TerrainDensityOptions mOptions = DensityOptions[0];
 
-    float iso = mOptions.ISOLevel;
-    int chunkSize = mOptions.ChunkSize + 3;
-    int step = (1 << chunk.LodIndex);
+    // Precompute invariants
+    const float iso = mOptions.ISOLevel;
+    const int baseSize = mOptions.ChunkSize + 3; // your pad; keep if you need it
+    const int step = (1 << chunk.LodIndex);
 
-    bool hasAbove = false;
-    bool hasBelow = false;
+    const float3 origin = ToWorld(chunk);
 
-    // Always loop over 16³ voxels, but sample in world space using step
-    for (int x = 0; x < chunkSize; x++)
-        for (int y = 0; y < chunkSize; y++)
-            for (int z = 0; z < chunkSize; z++)
+    if (groupIdx == 0)
+    {
+        gHasAbove = 0;
+        gHasBelow = 0;
+    }
+    GroupMemoryBarrierWithGroupSync();
+
+    // Partition the 3D region across 4x4x4 threads
+    // Each thread processes a strided subset.
+    for (int x = tid.x; x < baseSize; x += 4)
+    {
+        // Early exit: if another thread already proved mixed signs, stop
+        if (gHasAbove & gHasBelow)
+            break;
+
+        const float wx = origin.x + x * step;
+
+        for (int y = tid.y; y < baseSize; y += 4)
+        {
+            if (gHasAbove & gHasBelow)
+                break;
+
+            const float wy = origin.y + y * step;
+
+            for (int z = tid.z; z < baseSize; z += 4)
             {
-                float3 samplePos = ToWorld(chunk) + float3(x * step, y * step, z * step);
+                if (gHasAbove & gHasBelow)
+                    break;
+
+                const float wz = origin.z + z * step;
+
+                // Uniform branch on subvariant is fine; compiler will keep it outside inner loop
                 float v;
-                
                 if (mOptions.SubVariant == 0)
-                {
-                    v = GetLandMassValue(mOptions, samplePos.x, samplePos.y, samplePos.z, chunk.LodIndex);
-                }
-                else if (mOptions.SubVariant == 1)
-                {
-                    v = GetPlanetValue(mOptions, samplePos.x, samplePos.y, samplePos.z, chunk.LodIndex);
-                }
+                    v = GetLandMassValue(mOptions, wx, wy, wz, chunk.LodIndex);
+                else /* SubVariant == 1 */
+                    v = GetPlanetValue(mOptions, wx, wy, wz, chunk.LodIndex);
 
-                if (v >= iso)
-                    hasAbove = true;
-                if (v < iso)
-                    hasBelow = true;
+                // Set flags (branchless) and combine with atomics
+                // (bool → uint: (v >= iso) ? 1 : 0)
+                InterlockedOr(gHasAbove, (uint) (v >= iso));
+                InterlockedOr(gHasBelow, (uint) (v < iso));
 
-                if (hasAbove && hasBelow)
-                {
-                    SurfaceMask[index] = 1;
-                    return;
-                }
+                // Optional super-early exit: if this thread discovered both, hint others
+                if ((gHasAbove & gHasBelow) != 0)
+                    break;
             }
+        }
+    }
 
-    SurfaceMask[index] = 0;
+    GroupMemoryBarrierWithGroupSync();
+
+    // One thread writes the mask
+    if (groupIdx == 0)
+    {
+        SurfaceMask[index] = (gHasAbove & gHasBelow) ? 1u : 0u;
+    }
 }
