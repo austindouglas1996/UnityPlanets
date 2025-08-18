@@ -6,12 +6,7 @@
 // Based on the original implementation by Ken Perlin
 // http://mrl.nyu.edu/~perlin/noise/
 //
-//
-//
-//
-//
 // This was in C#, did the work to bring to a compute.
-//
 
 #ifndef PERLIN_NOISE_INCLUDED
 #define PERLIN_NOISE_INCLUDED

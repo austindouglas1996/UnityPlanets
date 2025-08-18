@@ -1,9 +1,56 @@
-﻿#ifndef DENSITY_OPTIONS_SHARED
-#define DENSITY_OPTIONS_SHARED
+#ifndef CHUNK_COMMON_STRUCT_INCLUDED
+#define CHUNK_COMMON_STRUCT_INCLUDED
 
-#define SUBVARIANT_LANDMASS 0
-#define SUBVARIANT_PLANET   1
-#define SUBVARIANT_CAVE     2
+// ============================================================================
+// ChunkBiomeData
+// Holds the color gradient and height thresholds for a biome.
+// Must match the C# struct `BiomeData` exactly in:
+//   - Field order
+//   - Data type size/alignment
+// ============================================================================
+
+struct ChunkBiomeData
+{
+    // Minimum surface height for this biome (inclusive).
+    float minSurface;
+
+    // Maximum surface height for this biome (exclusive).
+    float maxSurface;
+
+    // Gradient start color for the biome (usually lower height color).
+    float4 gradientStart;
+
+    // Gradient end color for the biome (usually higher height color).
+    float4 gradientEnd;
+};
+
+struct ChunkDispatchKey
+{
+    // The logical coodinates of the key.
+    float3 CoordPos;
+    
+    // The LOD converted into a step size.
+    int LodIndex;
+};
+
+// Helper struct returned by GetChunkAccess() to provide both chunk-level
+// and voxel-level access data for compute shader dispatches.
+struct ChunkDispatchKeyInfo
+{
+    int chunkIndex;
+    int mapIndex;
+    int3 voxelCoord;
+    float3 WorldPos;
+    ChunkDispatchKey chunk;
+};
+
+struct ChunkTriangleData
+{
+    // Triangle vertex positions (world space)
+    float3 a;
+    float3 b;
+    float3 c;
+};
 
 // ============================================================================
 // DensityMapOptions
@@ -65,51 +112,8 @@ struct TerrainDensityOptions
 struct PlanetDensityOptions
 {
     float3 Center;
-    float Radius; 
+    float Radius;
 };
 
+
 #endif
-
-// Convert HSV -> RGB (Unity's Color.HSVToRGB equivalent)
-float3 HSVtoRGB(float h, float s, float v)
-{
-    float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-    float3 p = abs(frac(h + float3(0, K.y, K.z)) * 6.0 - K.w);
-    return v * lerp(K.xxx, saturate(p - K.xxx), s);
-}
-
-// Get a color based on LOD index (green -> red, like LodColor)
-float4 GetLodColor(int lod)
-{
-    const int maxLod = 4;
-
-    // t = 0 at farthest (maxLod), 1 at nearest (0)
-    float t = saturate((float) (maxLod - lod) / (float) maxLod);
-
-    // Hue: green (0.33) → red (0.0)
-    float hue = lerp(0.33, 0.0, t);
-    float sat = 0.95;
-    float val = 1.0;
-
-    float3 rgb = HSVtoRGB(hue, sat, val);
-    return float4(rgb, 1.0); // add alpha = 1
-}
-
-float GetSurfaceHeightForColor(TerrainDensityOptions options, PlanetDensityOptions PlanetOptions, float3 worldPos)
-{
-    float height;
-    
-    if (options.SubVariant == SUBVARIANT_PLANET)
-    {
-        float dist = length(worldPos - PlanetOptions.Center);
-        height = dist - PlanetOptions.Radius; // elevation relative to planet surface
-    }
-    else
-    {
-        height = worldPos.y; // flat terrain: just use Y
-    }
-    
-    // Normalize into 0–1 range using ElevationScale
-    // So biome MinSurface/MaxSurface can always be defined in [0..1]
-    return saturate(height / options.ElevationScale);
-}

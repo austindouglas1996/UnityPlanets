@@ -2,9 +2,7 @@
 #pragma kernel PrepareIndirectDrawArgs
 
 #include "../Includes/TriangleTable.hlsl"
-#include "../Types/TerrainDensityOptions.hlsl"
-#include "../Types/ChunkDispatchKey.hlsl"
-#include "../Types/ChunkTriangleData.hlsl"
+#include "../ChunkFunctions.hlsl"
 
 /* Inputs */
 StructuredBuffer<ChunkDispatchKey> ChunkInputs;

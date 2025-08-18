@@ -2,9 +2,7 @@
 #pragma kernel GetSurfaceMaskChecks
 
 #include "../Lib/PerlinNoise.hlsl"
-#include "../Includes/TriangleTable.hlsl"
-#include "../Types/ChunkDispatchKey.hlsl"
-#include "../Types/TerrainDensityOptions.hlsl"
+#include "../ChunkFunctions.hlsl"
 
 /* Inputs */
 StructuredBuffer<ChunkDispatchKey> ChunkInputs;
@@ -19,26 +17,6 @@ RWStructuredBuffer<float> DensityMap;
 
 // Helper parameter used in GetSurfaceMaskChecks to tell if the X exceeds our limit.
 int _ChunkInputCount;
-
-int GetOctaves(int lod)
-{
-    switch (lod)
-    {
-        case 0:
-            return 6;
-        case 1:
-            return 4;
-        case 2:
-            return 2;
-        default:
-            return 1;
-    }
-}
-
-float Sanitize(float v)
-{
-    return (isnan(v) || isinf(v)) ? 0.0 : v;
-}
 
 // Retrieve the density value for a given position.
 float GetDensityValue(TerrainDensityOptions options, float worldX, float worldY, float worldZ, int lod)

@@ -1,56 +1,7 @@
-﻿// ============================================================================
-// ChunkDispatchKey.hlsl
-// Defines the chunk dispatch key used for chunk operations.
-// Must match the C# struct `ChunkDispatchKey` exactly.
-// ============================================================================
+﻿#ifndef CHUNK_COMMON_FUNCTIONS_INCLUDED
+#define CHUNK_COMMON_FUNCTIONS_INCLUDED
 
-#ifndef CHUNK_DISPATCH_KEY_INCLUDED
-#define CHUNK_DISPATCH_KEY_INCLUDED
-
-struct ChunkDispatchKey
-{
-    // The logical coodinates of the key.
-    float3 CoordPos;
-    
-    // The LOD converted into a step size.
-    int LodIndex;
-};
-
-// Helper struct returned by GetChunkAccess() to provide both chunk-level
-// and voxel-level access data for compute shader dispatches.
-struct ChunkDispatchKeyInfo
-{
-    int chunkIndex;
-    int mapIndex;
-    int3 voxelCoord;
-    float3 WorldPos;
-    ChunkDispatchKey chunk;
-};
-
-#endif
-
-// Full chunk size in world units for this key
-int GetChunkSize(ChunkDispatchKey key)
-{
-    return 16 << key.LodIndex;
-}
-
-// Coordinates -> world origin (computed on GPU if you didn’t pass WorldPos)
-float3 ToWorld(ChunkDispatchKey key)
-{
-    return key.CoordPos * GetChunkSize(key);
-}
-
-// World -> chunk coordinates for this key’s LOD
-int3 ToCoordinates(float3 worldPos, ChunkDispatchKey key)
-{
-    int chunkSize = GetChunkSize(key);
-    return int3(
-        (int) floor(worldPos.x / chunkSize),
-        (int) floor(worldPos.y / chunkSize),
-        (int) floor(worldPos.z / chunkSize)
-    );
-}
+#include "ChunkCommon.hlsl"
 
 // ============================================================================
 // GetChunkAccess()
@@ -65,7 +16,7 @@ int3 ToCoordinates(float3 worldPos, ChunkDispatchKey key)
 //   sizeX, sizeY, sizeZ : Chunk dimensions in voxels (per axis)
 //   keys   : Structured buffer of all active chunks to process
 // ============================================================================
-ChunkDispatchKeyInfo GetChunkAccess(uint3 id,int sizeX, int sizeY, int sizeZ,StructuredBuffer<ChunkDispatchKey> keys)
+ChunkDispatchKeyInfo GetChunkAccess(uint3 id, int sizeX, int sizeY, int sizeZ, StructuredBuffer<ChunkDispatchKey> keys)
 {
     ChunkDispatchKeyInfo r;
 
@@ -99,3 +50,5 @@ ChunkDispatchKeyInfo GetChunkAccess(uint3 id,int sizeX, int sizeY, int sizeZ,Str
 
     return r;
 }
+
+#endif

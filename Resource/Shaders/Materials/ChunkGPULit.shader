@@ -36,9 +36,8 @@ Shader "Custom/URP_CustomLitGPU"
             #pragma multi_compile _ _SHADOWS_SOFT
             #pragma multi_compile_fog
 
-            #include "../Types/ChunkTriangleData.hlsl"
-            #include "../Types/ChunkBiomeData.hlsl"
-            #include "../Types/TerrainDensityOptions.hlsl"
+            #include "../ChunkFunctions.hlsl"
+            #include "../ChunkColoring.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
