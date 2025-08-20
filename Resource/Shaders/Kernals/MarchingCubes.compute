@@ -3,27 +3,16 @@
 
 #include "../Includes/TriangleTable.hlsl"
 #include "../ChunkFunctions.hlsl"
+#include "../Algo/ChunkMarchingCubes.hlsl"
 
 /* Inputs */
 StructuredBuffer<ChunkDispatchKey> ChunkInputs;
 StructuredBuffer<TerrainDensityOptions> DensityOptions;
 StructuredBuffer<float> DensityMap;
 
-/* Inputs Special */
-StructuredBuffer<PlanetDensityOptions> PlanetOptions;
-
 /* Outputs */
 AppendStructuredBuffer<ChunkTriangleData> TriangleBuffer;
 RWStructuredBuffer<uint> ArgsBuffer;
-
-// GetUV
-// Simple planar UV projection based on XZ world position.
-// Used for terrain-style meshes without complicated UV mapping.
-float2 GetUV(float3 worldPos)
-{
-    // Planar projection: good for terrain-style meshes
-    return worldPos.xz * 0.05;
-}
 
 // MarchingCubesPass
 // Main meshing kernel. Reads voxel density data for a given chunk, determines
@@ -45,61 +34,7 @@ void MarchingCubesPass(uint3 id : SV_DispatchThreadID)
     if (access.mapIndex < 0)
         return;
 
-    int cubeIndex = 0;
-    float corner[8];
-    float3 cornerPos[8];
-
-    for (int i = 0; i < 8; i++)
-    {
-        int3 offset = CornerOffsets[i];
-        int3 pos = access.voxelCoord + offset;
-
-        // Check bounds
-        if (any(pos < 0) || pos.x >= chunkLogicalSize || pos.y >= chunkLogicalSize || pos.z >= chunkLogicalSize)
-            return;
-
-        int localIndex = pos.x + pos.y * chunkLogicalSize + pos.z * chunkLogicalSize * chunkLogicalSize;
-        int fullIndex = access.chunkIndex * chunkVoxelSize + localIndex;
-
-        corner[i] = DensityMap[fullIndex];
-        cornerPos[i] = float3(pos) * (1 << access.chunk.LodIndex);
-
-        if (corner[i] > mo.ISOLevel)
-            cubeIndex |= (1 << i);
-    }
-
-    if (cubeIndex == 0 || cubeIndex == 255)
-        return;
-
-    for (int i = 0; TriangleTable[cubeIndex][i] != -1; i += 3)
-    {
-        int a = TriangleTable[cubeIndex][i + 0];
-        int b = TriangleTable[cubeIndex][i + 1];
-        int c = TriangleTable[cubeIndex][i + 2];
-
-        int2 edge0 = EdgeConnections[a];
-        int2 edge1 = EdgeConnections[b];
-        int2 edge2 = EdgeConnections[c];
-
-        float3 v0 = lerp(cornerPos[edge0.x], cornerPos[edge0.y],
-                         (corner[edge0.x] - mo.ISOLevel) / (corner[edge0.x] - corner[edge0.y] + 0.0001));
-        float3 v1 = lerp(cornerPos[edge1.x], cornerPos[edge1.y],
-                         (corner[edge1.x] - mo.ISOLevel) / (corner[edge1.x] - corner[edge1.y] + 0.0001));
-        float3 v2 = lerp(cornerPos[edge2.x], cornerPos[edge2.y],
-                         (corner[edge2.x] - mo.ISOLevel) / (corner[edge2.x] - corner[edge2.y] + 0.0001));
-
-        float3 worldA = v0 + ToWorld(access.chunk);
-        float3 worldB = v1 + ToWorld(access.chunk);
-        float3 worldC = v2 + ToWorld(access.chunk);
-
-        ChunkTriangleData tri;
-        
-        tri.a = worldA;
-        tri.b = worldB;
-        tri.c = worldC;
-        
-        TriangleBuffer.Append(tri);
-    }
+    March(access, TriangleBuffer, DensityMap, DensityOptions[0]);
 }
 
 // PrepareIndirectDrawArgs
