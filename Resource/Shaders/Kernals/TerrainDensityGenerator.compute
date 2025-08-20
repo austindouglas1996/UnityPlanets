@@ -6,10 +6,6 @@
 
 /* Inputs */
 StructuredBuffer<ChunkDispatchKey> ChunkInputs;
-StructuredBuffer<TerrainDensityOptions> DensityOptions;
-
-/* Inputs Special */
-StructuredBuffer<PlanetDensityOptions> PlanetOptions;
 
 /* Outputs */
 RWStructuredBuffer<uint> SurfaceMask;
@@ -19,19 +15,19 @@ RWStructuredBuffer<float> DensityMap;
 int _ChunkInputCount;
 
 // Retrieve the density value for a given position.
-float GetDensityValue(TerrainDensityOptions options, float worldX, float worldY, float worldZ, int lod)
+float GetDensityValue(float worldX, float worldY, float worldZ, int lod)
 {
     // Decide noise sample coordinates based on variant
     float3 samplePos3D;
 
-    if (options.SubVariant == SUBVARIANT_PLANET)
+    if (SubVariant == SUBVARIANT_PLANET)
     {
         // For planet, use normalized direction from center for consistent wrapping
         float3 wp = float3(worldX, worldY, worldZ);
-        float3 dir = normalize(wp - PlanetOptions[0].Center);
+        float3 dir = normalize(wp - PlanetCenter);
 
         // Offset so noise moves with BaseOffset/DetailOffset in 3D
-        samplePos3D = dir * PlanetOptions[0].Radius;
+        samplePos3D = dir * PlanetRadius;
     }
     else
     {
@@ -42,55 +38,54 @@ float GetDensityValue(TerrainDensityOptions options, float worldX, float worldY,
     int octaves = GetOctaves(lod);
 
     // === Base continent layer ===
-    float3 basePos = (samplePos3D + float3(options.BaseOffset, 0)) * options.BaseFreq;
+    float3 basePos = (samplePos3D + float3(BaseOffset, 0)) * BaseFreq;
     float baseNoise = fbm3D(basePos, 2); // using 3D even for landmass so system is future-proof
     baseNoise = smoothstep(0.0, 1.0, (baseNoise + 1.0) * 0.5);
 
     // === Mid/large-scale detail ===
-    float3 detailPos = (samplePos3D + float3(options.DetailOffset, 0)) * options.DetailFreq;
+    float3 detailPos = (samplePos3D + float3(DetailOffset, 0)) * DetailFreq;
     float detailNoise = fbm3D(detailPos, (lod == 1 ? 6 : octaves));
 
     // === Flatness mask ===
-    float3 flatPos = (samplePos3D + float3(options.FlatMaskOffset, 0)) * options.FlatMaskFreq;
+    float3 flatPos = (samplePos3D + float3(FlatMaskOffset, 0)) * FlatMaskFreq;
     float flatNoise = fbm3D(flatPos, 3);
     flatNoise = saturate((flatNoise + 1.0) * 0.5);
-    flatNoise = pow(saturate(1.0 - flatNoise), options.FlatMaskPower);
+    flatNoise = pow(saturate(1.0 - flatNoise), FlatMaskPower);
 
     // === Combine height contributions ===
     float rawHeight =
-        baseNoise * options.BaseGain +
-        detailNoise * options.DetailGain * flatNoise;
+        baseNoise * BaseGain +
+        detailNoise * DetailGain * flatNoise;
 
-    float heightScale = max(options.BaseGain, 0.0001);
+    float heightScale = max(BaseGain, 0.0001);
     float normalized = rawHeight / heightScale;
-    float finalHeight = normalized * options.ElevationScale;
+    float finalHeight = normalized * ElevationScale;
 
     return Sanitize(finalHeight);
 }
 
 
-float GetLandMassValue(TerrainDensityOptions options, float worldX, float worldY, float worldZ, int lod)
+float GetLandMassValue(float worldX, float worldY, float worldZ, int lod)
 {
-    float v = GetDensityValue(options, worldX, worldY, worldZ, lod);
+    float v = GetDensityValue(worldX, worldY, worldZ, lod);
     float result = -(worldY - v);
     
     return Sanitize(result);
 
 }
 
-float GetPlanetValue(TerrainDensityOptions options, float worldX, float worldY, float worldZ, int lod)
+float GetPlanetValue(float worldX, float worldY, float worldZ, int lod)
 {
-    float elev = GetDensityValue(options, worldX, worldY, worldZ, lod);
-    float dist = length(float3(worldX, worldY, worldZ) - PlanetOptions[0].Center);
-    return (PlanetOptions[0].Radius + elev) - dist; // Positive inside sphere
+    float elev = GetDensityValue(worldX, worldY, worldZ, lod);
+    float dist = length(float3(worldX, worldY, worldZ) - PlanetCenter);
+    return (PlanetRadius + elev) - dist; // Positive inside sphere
 }
 
 // Generates the density data for a marching cube algorithm.
 [numthreads(4,4,4)]
 void GenerateBatch(uint3 id : SV_DispatchThreadID)
 {
-    TerrainDensityOptions mOptions = DensityOptions[0];
-    int chunkLogicalSize = mOptions.ChunkSize + 1;
+    int chunkLogicalSize = ChunkSize + 1;
     
     ChunkDispatchKeyInfo info = GetChunkAccess(id, chunkLogicalSize, chunkLogicalSize, chunkLogicalSize, ChunkInputs);
     if (info.mapIndex < 0)
@@ -98,13 +93,13 @@ void GenerateBatch(uint3 id : SV_DispatchThreadID)
     
     float3 worldPos = info.WorldPos;
 
-    if (mOptions.SubVariant == 0)
+    if (SubVariant == 0)
     {
-        DensityMap[info.mapIndex] = GetLandMassValue(mOptions, worldPos.x, worldPos.y, worldPos.z, info.chunk.LodIndex);
+        DensityMap[info.mapIndex] = GetLandMassValue(worldPos.x, worldPos.y, worldPos.z, info.chunk.LodIndex);
     }
-    else if (mOptions.SubVariant == 1)
+    else if (SubVariant == 1)
     {
-        DensityMap[info.mapIndex] = GetPlanetValue(mOptions, worldPos.x, worldPos.y, worldPos.z, info.chunk.LodIndex);
+        DensityMap[info.mapIndex] = GetPlanetValue(worldPos.x, worldPos.y, worldPos.z, info.chunk.LodIndex);
     }
 }
 
@@ -124,11 +119,10 @@ void GetSurfaceMaskChecks(uint3 groupId : SV_GroupID,
 
     // Load once per group (uniform)
     ChunkDispatchKey chunk = ChunkInputs[index];
-    TerrainDensityOptions mOptions = DensityOptions[0];
 
     // Precompute invariants
-    const float iso = mOptions.ISOLevel;
-    const int baseSize = mOptions.ChunkSize + 3; // your pad; keep if you need it
+    const float iso = ISOLevel;
+    const int baseSize = ChunkSize + 3; 
     const int step = (1 << chunk.LodIndex);
 
     const float3 origin = ToWorld(chunk);
@@ -166,10 +160,10 @@ void GetSurfaceMaskChecks(uint3 groupId : SV_GroupID,
 
                 // Uniform branch on subvariant is fine; compiler will keep it outside inner loop
                 float v;
-                if (mOptions.SubVariant == 0)
-                    v = GetLandMassValue(mOptions, wx, wy, wz, chunk.LodIndex);
+                if (SubVariant == 0)
+                    v = GetLandMassValue(wx, wy, wz, chunk.LodIndex);
                 else /* SubVariant == 1 */
-                    v = GetPlanetValue(mOptions, wx, wy, wz, chunk.LodIndex);
+                    v = GetPlanetValue(wx, wy, wz, chunk.LodIndex);
 
                 // Set flags (branchless) and combine with atomics
                 // (bool → uint: (v >= iso) ? 1 : 0)

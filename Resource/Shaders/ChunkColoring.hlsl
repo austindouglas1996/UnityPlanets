@@ -34,14 +34,14 @@ float4 GetLodColor(int lod)
     return float4(rgb, 1.0); // add alpha = 1
 }
 
-float GetSurfaceHeightForColor(TerrainDensityOptions options, PlanetDensityOptions PlanetOptions, float3 worldPos)
+float GetSurfaceHeightForColor(float3 worldPos)
 {
     float height;
     
-    if (options.SubVariant == SUBVARIANT_PLANET)
+    if (SubVariant == SUBVARIANT_PLANET)
     {
-        float dist = length(worldPos - PlanetOptions.Center);
-        height = dist - PlanetOptions.Radius; // elevation relative to planet surface
+        float dist = length(worldPos - PlanetCenter);
+        height = dist - PlanetRadius; // elevation relative to planet surface
     }
     else
     {
@@ -50,7 +50,7 @@ float GetSurfaceHeightForColor(TerrainDensityOptions options, PlanetDensityOptio
     
     // Normalize into 0–1 range using ElevationScale
     // So biome MinSurface/MaxSurface can always be defined in [0..1]
-    return saturate(height / options.ElevationScale);
+    return saturate(height / ElevationScale);
 }
 
 // ============================================================================

@@ -7,7 +7,6 @@
 
 /* Inputs */
 StructuredBuffer<ChunkDispatchKey> ChunkInputs;
-StructuredBuffer<TerrainDensityOptions> DensityOptions;
 StructuredBuffer<float> DensityMap;
 
 /* Outputs */
@@ -23,18 +22,12 @@ RWStructuredBuffer<uint> ArgsBuffer;
 [numthreads(4,4,4)]
 void MarchingCubesPass(uint3 id : SV_DispatchThreadID)
 {
-    TerrainDensityOptions mo = DensityOptions[0];
-    
-    int chunkSize = mo.ChunkSize;
-    int chunkLogicalSize = mo.ChunkSize + 1;
-    
-    int chunkVoxelSize = chunkLogicalSize * chunkLogicalSize * chunkLogicalSize;
-    ChunkDispatchKeyInfo access = GetChunkAccess(id, chunkSize, chunkSize, chunkSize, ChunkInputs);
+    ChunkDispatchKeyInfo access = GetChunkAccess(id, ChunkSize, ChunkSize, ChunkSize, ChunkInputs);
 
     if (access.mapIndex < 0)
         return;
 
-    March(access, TriangleBuffer, DensityMap, DensityOptions[0]);
+    March(access, TriangleBuffer, DensityMap);
 }
 
 // PrepareIndirectDrawArgs

@@ -4,11 +4,10 @@
 void March(
     ChunkDispatchKeyInfo key, 
     AppendStructuredBuffer<ChunkTriangleData> TriangleBuffer, 
-    StructuredBuffer<float> DensityMap,
-    TerrainDensityOptions densityOptions)
+    StructuredBuffer<float> DensityMap)
 {
-    int chunkSize = densityOptions.ChunkSize;
-    int chunkLogicalSize = densityOptions.ChunkSize + 1;
+    int chunkSize = ChunkSize;
+    int chunkLogicalSize = ChunkSize + 1;
     int chunkVoxelSize = chunkLogicalSize * chunkLogicalSize * chunkLogicalSize;
     
     int cubeIndex = 0;
@@ -30,7 +29,7 @@ void March(
         corner[i] = DensityMap[fullIndex];
         cornerPos[i] = float3(pos) * (1 << key.chunk.LodIndex);
 
-        if (corner[i] > densityOptions.ISOLevel)
+        if (corner[i] > ISOLevel)
             cubeIndex |= (1 << i);
     }
 
@@ -48,11 +47,11 @@ void March(
         int2 edge2 = EdgeConnections[c];
 
         float3 v0 = lerp(cornerPos[edge0.x], cornerPos[edge0.y],
-                         (corner[edge0.x] - densityOptions.ISOLevel) / (corner[edge0.x] - corner[edge0.y] + 0.0001));
+                         (corner[edge0.x] - ISOLevel) / (corner[edge0.x] - corner[edge0.y] + 0.0001));
         float3 v1 = lerp(cornerPos[edge1.x], cornerPos[edge1.y],
-                         (corner[edge1.x] - densityOptions.ISOLevel) / (corner[edge1.x] - corner[edge1.y] + 0.0001));
+                         (corner[edge1.x] - ISOLevel) / (corner[edge1.x] - corner[edge1.y] + 0.0001));
         float3 v2 = lerp(cornerPos[edge2.x], cornerPos[edge2.y],
-                         (corner[edge2.x] - densityOptions.ISOLevel) / (corner[edge2.x] - corner[edge2.y] + 0.0001));
+                         (corner[edge2.x] - ISOLevel) / (corner[edge2.x] - corner[edge2.y] + 0.0001));
 
         float3 worldA = v0 + ToWorld(key.chunk);
         float3 worldB = v1 + ToWorld(key.chunk);

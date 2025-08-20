@@ -2,6 +2,7 @@
 #define CHUNK_COMMON_INCLUDED
 
 #include "ChunkStruct.hlsl"
+#include "ChunkCBuffer.hlsl"
 
 #define SUBVARIANT_LANDMASS 0
 #define SUBVARIANT_PLANET   1

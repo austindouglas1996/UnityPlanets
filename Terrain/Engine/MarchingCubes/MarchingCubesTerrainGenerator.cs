@@ -129,8 +129,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         // Kick the mask kernel
         GenerateShader.SetInt("_ChunkInputCount", batchSize);
         GenerateShader.SetBuffer(1, "ChunkInputs", SurfaceChunkInputBuffer);
-        GenerateShader.SetBuffer(1, "DensityOptions", DensityOptionsBuffer);
-        GenerateShader.SetBuffer(1, "PlanetOptions", PlanetOptionsBuffer);
         GenerateShader.SetBuffer(1, "SurfaceMask", SurfaceMaskBuffer);
         GenerateShader.Dispatch(1, batchSize, 1, 1);
 
@@ -172,8 +170,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         BiomeBuffer.SetData(biomeData);
 
         // Update material.
-        this.chunkMaterial.SetBuffer("DensityOptions", DensityOptionsBuffer);
-        this.chunkMaterial.SetBuffer("PlanetOptions", PlanetOptionsBuffer);
         this.chunkMaterial.SetBuffer("BiomeColors", BiomeBuffer);
         this.chunkMaterial.SetInt("_BiomeCount", BiomesCount);
     }
@@ -198,8 +194,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
 
         // Generate density
         GenerateShader.SetBuffer(0, "ChunkInputs", GenerateChunkInputBuffer);
-        GenerateShader.SetBuffer(0, "DensityOptions", DensityOptionsBuffer);
-        GenerateShader.SetBuffer(0, "PlanetOptions", PlanetOptionsBuffer);
         GenerateShader.SetBuffer(0, "DensityMap", DensityBuffer);
 
         // NOTE: thread group dims assume [numthreads(8,8,8)] and X packs chunkIndex*XWithinChunk
@@ -211,8 +205,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         // Marching cubes
         MarchingShader.SetBuffer(0, "ChunkInputs", GenerateChunkInputBuffer);
         MarchingShader.SetBuffer(0, "DensityMap", DensityBuffer);
-        MarchingShader.SetBuffer(0, "DensityOptions", DensityOptionsBuffer);
-        MarchingShader.SetBuffer(0, "PlanetOptions", PlanetOptionsBuffer);
         MarchingShader.SetBuffer(0, "TriangleBuffer", triangleBuffer);
         MarchingShader.SetInt("_BiomeCount", BiomesCount);
         MarchingShader.Dispatch(0, batchSize * 4, 4, 4);
@@ -235,8 +227,17 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         BiomeBuffer = new ComputeBuffer(5, Marshal.SizeOf<ChunkBiomeData>());
 
         // Single struct (Structured buffer of length 1)
-        DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<TerrainDensityOptions>(), ComputeBufferType.Structured);
-        PlanetOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<PlanetDensityOptions>(), ComputeBufferType.Structured);
+        DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<TerrainDensityOptions>(), ComputeBufferType.Constant);
+        PlanetOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<PlanetDensityOptions>(), ComputeBufferType.Constant);
+
+        DensityOptionsBuffer.SetData(new[] { densityOptions });
+        PlanetOptionsBuffer.SetData(new[] { this.chunkServices.Configuration.PlanetOptions });
+
+        this.GenerateShader.SetConstantBuffer("TerrainDensityOptions", DensityOptionsBuffer, 0, Marshal.SizeOf<TerrainDensityOptions>());
+        this.GenerateShader.SetConstantBuffer("PlanetDensityOptions", PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
+
+        this.MarchingShader.SetConstantBuffer("TerrainDensityOptions", DensityOptionsBuffer, 0, Marshal.SizeOf<TerrainDensityOptions>());
+        this.MarchingShader.SetConstantBuffer("PlanetDensityOptions", PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
 
         // Scalar field big enough for 128 chunks at current chunk size (rough over-alloc)
         int size = densityOptions.ChunkSize + 1;
@@ -309,7 +310,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     {
         int size = densityOptions.ChunkSize + 1;
         int voxelCountPerChunk = size * size * size;
-        int totalVoxels = voxelCountPerChunk * 16;
+        int totalVoxels = (voxelCountPerChunk * 16);
 
         var newBuff = new ComputeBuffer(totalVoxels, Marshal.SizeOf<ChunkTriangleData>(), ComputeBufferType.Append);
 

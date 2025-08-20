@@ -43,8 +43,6 @@ Shader "Custom/URP_CustomLitGPU"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
 
             StructuredBuffer<ChunkTriangleData> _TriangleBuffer;
-            StructuredBuffer<TerrainDensityOptions> DensityOptions;
-            StructuredBuffer<PlanetDensityOptions> PlanetOptions;
 
             float4 _BaseColor;
             float _UseVertexColor;

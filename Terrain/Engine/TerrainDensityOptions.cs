@@ -82,4 +82,7 @@ public struct TerrainDensityOptions
 
     [Tooltip("XY offset for flatness domain (replaces +5555).")]
     public Vector2 FlatMaskOffset;
+
+    [HideInInspector]
+    private Vector2 _Padding;
 }
