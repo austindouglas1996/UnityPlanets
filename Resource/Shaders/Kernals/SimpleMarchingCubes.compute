@@ -3,11 +3,12 @@
 #pragma kernel RunMarchingCubes
 #pragma kernel PrepareDrawArgs
 
-#include "../ChunkFunctions.hlsl"
-#include "../Lib/PerlinNoise.hlsl"
+/* WARNING: The order here very much matters. Very annoying */
 #include "../Includes/TriangleTable.hlsl"
-#include "../Algo/SimpleDensityGen.hlsl"
+#include "../ChunkFunctions.hlsl"
 #include "../Algo/ChunkMarchingCubes.hlsl"
+#include "../Lib/PerlinNoise.hlsl"
+#include "../Algo/SimpleDensityGen.hlsl"
 
 /* Inputs */
 StructuredBuffer<ChunkDispatchKey> ChunkInputs;
