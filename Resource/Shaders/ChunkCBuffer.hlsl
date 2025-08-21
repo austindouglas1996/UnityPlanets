@@ -10,7 +10,7 @@
 // This is the parameter block used in density generation kernels.
 // ============================================================================
 
-cbuffer TerrainDensityOptions : register(b0)
+cbuffer TerrainDensityOptions
 {
     // Logical voxel width of a chunk (before LOD).
     int ChunkSize;
@@ -60,7 +60,7 @@ cbuffer TerrainDensityOptions : register(b0)
     float2 _Padding;
 };
 
-cbuffer PlanetDensityOptions : register(b1)
+cbuffer PlanetDensityOptions
 {
     float3 PlanetCenter;
     float PlanetRadius;
