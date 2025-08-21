@@ -20,7 +20,6 @@ public class ChunkManager : MonoBehaviour
     [HideInInspector] public Transform Follower;
 
     [SerializeField] public ComputeShader MarchingCubes;
-    [SerializeField] public ComputeShader GenerateDensity;
 
     [SerializeField] public bool ShowTerrain = true;
 

@@ -4,7 +4,7 @@
 void March(
     ChunkDispatchKeyInfo key, 
     AppendStructuredBuffer<ChunkTriangleData> TriangleBuffer, 
-    StructuredBuffer<float> DensityMap)
+    RWStructuredBuffer<float> DensityMap)
 {
     int chunkSize = ChunkSize;
     int chunkLogicalSize = ChunkSize + 1;

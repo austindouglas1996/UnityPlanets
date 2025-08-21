@@ -1,24 +1,30 @@
-﻿#pragma kernel GenerateBatch
-#pragma kernel GetSurfaceMaskChecks
+﻿#pragma kernel GenerateDensityMap
+#pragma kernel GenerateSurfaceMask
+#pragma kernel RunMarchingCubes
+#pragma kernel PrepareDrawArgs
 
-#include "../Lib/PerlinNoise.hlsl"
 #include "../ChunkFunctions.hlsl"
+#include "../Lib/PerlinNoise.hlsl"
+#include "../Includes/TriangleTable.hlsl"
 #include "../Algo/SimpleDensityGen.hlsl"
+#include "../Algo/ChunkMarchingCubes.hlsl"
 
 /* Inputs */
 StructuredBuffer<ChunkDispatchKey> ChunkInputs;
+RWStructuredBuffer<float> DensityMap;
 
 /* Outputs */
 RWStructuredBuffer<uint> SurfaceMask;
-RWStructuredBuffer<float> DensityMap;
+AppendStructuredBuffer<ChunkTriangleData> TriangleBuffer;
+RWStructuredBuffer<uint> ArgsBuffer;
 
 // Shared flags so any thread can “trip” the result in GetSurfaceData.
 groupshared uint gHasAbove;
 groupshared uint gHasBelow;
 
 // Generates the density data for a marching cube algorithm.
-[numthreads(4,4,4)]
-void GenerateBatch(uint3 id : SV_DispatchThreadID)
+[numthreads(4, 4, 4)]
+void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
 {
     int chunkLogicalSize = ChunkSize + 1;
     
@@ -32,14 +38,14 @@ void GenerateBatch(uint3 id : SV_DispatchThreadID)
 
 // One group per chunk, 4x4x4 = 64 threads per group
 [numthreads(4, 4, 4)]
-void GetSurfaceMaskChecks(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadID, uint groupIdx : SV_GroupIndex)
+void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadID, uint groupIdx : SV_GroupIndex)
 {
     // Load once per group (uniform)
     ChunkDispatchKey chunk = ChunkInputs[groupId.x];
 
     // Precompute invariants
     const float iso = ISOLevel;
-    const int baseSize = ChunkSize + 3; 
+    const int baseSize = ChunkSize + 3;
     const int step = (1 << chunk.LodIndex);
 
     const float3 origin = ToWorld(chunk);
@@ -97,4 +103,41 @@ void GetSurfaceMaskChecks(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThread
     {
         SurfaceMask[groupId.x] = (gHasAbove & gHasBelow) ? 1u : 0u;
     }
+}
+
+// MarchingCubesPass
+// Main meshing kernel. Reads voxel density data for a given chunk, determines
+// which edges of the cube intersect the ISO surface, and emits triangles
+// according to the marching cubes lookup tables.
+// 
+// Each thread processes one cube in the chunk's voxel grid.
+[numthreads(4, 4, 4)]
+void RunMarchingCubes(uint3 id : SV_DispatchThreadID)
+{
+    ChunkDispatchKeyInfo access = GetChunkAccess(id, ChunkSize, ChunkSize, ChunkSize, ChunkInputs);
+
+    if (access.mapIndex < 0)
+        return;
+
+    March(access, TriangleBuffer, DensityMap);
+}
+
+// PrepareIndirectDrawArgs
+// Small kernel to finalize DrawMeshInstancedIndirect args after triangle
+// generation. Multiplies triangle count by 3 to get vertex count and sets
+// instance count to 1.
+// 
+// This is run after MarchingCubesPass and CopyCount to populate ArgsBuffer.
+[numthreads(1, 1, 1)]
+void PrepareDrawArgs(uint3 id : SV_DispatchThreadID)
+{
+    uint triCount;
+    uint stride; // Dummy
+    TriangleBuffer.GetDimensions(triCount, stride); // query append counter
+
+    ArgsBuffer[0] = triCount * 3; // vertex count
+    ArgsBuffer[1] = 1; // instance count
+    ArgsBuffer[2] = 0; // start vertex
+    ArgsBuffer[3] = 0; // start instance
+    ArgsBuffer[4] = 0; // padding (if needed)
 }

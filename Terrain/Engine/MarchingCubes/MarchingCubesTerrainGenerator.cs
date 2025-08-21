@@ -25,7 +25,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private IChunkServices chunkServices;
 
     // Shaders doing the real work
-    private ComputeShader GenerateShader;
     private ComputeShader MarchingShader;
 
     // Shared GPU state
@@ -56,10 +55,9 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     /// <param name="chunkServices"></param>
     /// <param name="generateShader"></param>
     /// <param name="marchingShader"></param>
-    public MarchingCubesTerrainGenerator(IChunkServices chunkServices, ComputeShader generateShader, ComputeShader marchingShader)
+    public MarchingCubesTerrainGenerator(IChunkServices chunkServices, ComputeShader marchingShader)
     {
         this.chunkServices = chunkServices;
-        GenerateShader = generateShader;
         MarchingShader = marchingShader;
 
         this.chunkMaterial = new Material(Shader.Find("Custom/URP_CustomLitGPU"));
@@ -126,11 +124,12 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         // Refill list + upload
         FillSurfaceChunkInputs(keys);
 
+        int kernalId = MarchingShader.FindKernel("GenerateSurfaceMask");
+
         // Kick the mask kernel
-        GenerateShader.SetInt("_ChunkInputCount", batchSize);
-        GenerateShader.SetBuffer(1, "ChunkInputs", SurfaceChunkInputBuffer);
-        GenerateShader.SetBuffer(1, "SurfaceMask", SurfaceMaskBuffer);
-        GenerateShader.Dispatch(1, batchSize, 1, 1);
+        MarchingShader.SetBuffer(kernalId, "ChunkInputs", SurfaceChunkInputBuffer);
+        MarchingShader.SetBuffer(kernalId, "SurfaceMask", SurfaceMaskBuffer);
+        MarchingShader.Dispatch(kernalId, batchSize, 1, 1);
 
         var req = AsyncGPUReadback.Request(SurfaceMaskBuffer, r =>
         {
@@ -192,27 +191,31 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         ComputeBuffer argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
         triangleBuffer.SetCounterValue(0);
 
+        int genKernal = MarchingShader.FindKernel("GenerateDensityMap");
+        int marchKernal = MarchingShader.FindKernel("RunMarchingCubes");
+        int argsKernal = MarchingShader.FindKernel("PrepareDrawArgs");
+
         // Generate density
-        GenerateShader.SetBuffer(0, "ChunkInputs", GenerateChunkInputBuffer);
-        GenerateShader.SetBuffer(0, "DensityMap", DensityBuffer);
+        MarchingShader.SetBuffer(genKernal, "ChunkInputs", GenerateChunkInputBuffer);
+        MarchingShader.SetBuffer(genKernal, "DensityMap", DensityBuffer);
 
         // NOTE: thread group dims assume [numthreads(8,8,8)] and X packs chunkIndex*XWithinChunk
-        GenerateShader.Dispatch(0,
+        MarchingShader.Dispatch(genKernal,
             Mathf.CeilToInt(batchSize * size / 4f),
             Mathf.CeilToInt(size / 4f),
             Mathf.CeilToInt(size / 4f));
 
         // Marching cubes
-        MarchingShader.SetBuffer(0, "ChunkInputs", GenerateChunkInputBuffer);
-        MarchingShader.SetBuffer(0, "DensityMap", DensityBuffer);
-        MarchingShader.SetBuffer(0, "TriangleBuffer", triangleBuffer);
+        MarchingShader.SetBuffer(marchKernal, "ChunkInputs", GenerateChunkInputBuffer);
+        MarchingShader.SetBuffer(marchKernal, "DensityMap", DensityBuffer);
+        MarchingShader.SetBuffer(marchKernal, "TriangleBuffer", triangleBuffer);
         MarchingShader.SetInt("_BiomeCount", BiomesCount);
-        MarchingShader.Dispatch(0, batchSize * 4, 4, 4);
+        MarchingShader.Dispatch(marchKernal, batchSize * 4, 4, 4);
 
         // Build indirect args from append count
-        MarchingShader.SetBuffer(1, "TriangleBuffer", triangleBuffer);
-        MarchingShader.SetBuffer(1, "ArgsBuffer", argsBuffer);
-        MarchingShader.Dispatch(1, 1, 1, 1);
+        MarchingShader.SetBuffer(argsKernal, "TriangleBuffer", triangleBuffer);
+        MarchingShader.SetBuffer(argsKernal, "ArgsBuffer", argsBuffer);
+        MarchingShader.Dispatch(argsKernal, 1, 1, 1);
 
         // Hand back a draw-ready batch (triangles + args + bounds computed from keys)
         output.Invoke(new ChunkRenderBatch(triangleBuffer, argsBuffer, keys, this.chunkServices));
@@ -232,9 +235,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
 
         DensityOptionsBuffer.SetData(new[] { densityOptions });
         PlanetOptionsBuffer.SetData(new[] { this.chunkServices.Configuration.PlanetOptions });
-
-        this.GenerateShader.SetConstantBuffer("TerrainDensityOptions", DensityOptionsBuffer, 0, Marshal.SizeOf<TerrainDensityOptions>());
-        this.GenerateShader.SetConstantBuffer("PlanetDensityOptions", PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
 
         this.MarchingShader.SetConstantBuffer("TerrainDensityOptions", DensityOptionsBuffer, 0, Marshal.SizeOf<TerrainDensityOptions>());
         this.MarchingShader.SetConstantBuffer("PlanetDensityOptions", PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());

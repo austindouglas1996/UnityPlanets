@@ -20,7 +20,7 @@ public class PlanetChunkGenerator : BaseChunkGenerator
         : base(services.Configuration) 
     {
         this.generator = new MarchingCubesTerrainGenerator
-            (services, services.ChunkManager.GenerateDensity, services.ChunkManager.MarchingCubes);
+            (services, services.ChunkManager.MarchingCubes);
     }
 
     public override ITerrainGenerator Generator => generator;

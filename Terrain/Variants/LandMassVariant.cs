@@ -29,7 +29,7 @@ public class LandMassChunkGenerator : BaseChunkGenerator
         get
         {
             if (this.generator == null)
-                this.generator = new MarchingCubesTerrainGenerator(services, services.ChunkManager.GenerateDensity, services.ChunkManager.MarchingCubes);
+                this.generator = new MarchingCubesTerrainGenerator(services, services.ChunkManager.MarchingCubes);
             return this.generator;
         }
     }
