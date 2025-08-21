@@ -34,6 +34,26 @@ float4 GetLodColor(int lod)
     return float4(rgb, 1.0); // add alpha = 1
 }
 
+
+float3 GetTerrainColor(float3 normalWS)
+{
+    float3 rockColor = float3(93, 63, 47) / 255.0; 
+    float3 grassColor = float3(61, 102, 46) / 255.0;
+
+    // slope = 1 when flat, 0 when vertical
+    float slope = dot(normalize(normalWS), float3(0, 1, 0));
+
+    float grassWeight = saturate(slope * 4.0); 
+    float rockWeight = saturate(1.0 - slope * 4.0); 
+
+    return grassColor * grassWeight + rockColor * rockWeight;
+}
+
+
+
+
+
+
 float GetSurfaceHeightForColor(float3 worldPos)
 {
     float height;
