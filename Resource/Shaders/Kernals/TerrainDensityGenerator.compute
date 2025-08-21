@@ -3,6 +3,7 @@
 
 #include "../Lib/PerlinNoise.hlsl"
 #include "../ChunkFunctions.hlsl"
+#include "../Algo/SimpleDensityGen.hlsl"
 
 /* Inputs */
 StructuredBuffer<ChunkDispatchKey> ChunkInputs;
@@ -11,75 +12,9 @@ StructuredBuffer<ChunkDispatchKey> ChunkInputs;
 RWStructuredBuffer<uint> SurfaceMask;
 RWStructuredBuffer<float> DensityMap;
 
-// Helper parameter used in GetSurfaceMaskChecks to tell if the X exceeds our limit.
-int _ChunkInputCount;
-
-// Retrieve the density value for a given position.
-float GetDensityValue(float worldX, float worldY, float worldZ, int lod)
-{
-    // Decide noise sample coordinates based on variant
-    float3 samplePos3D;
-
-    if (SubVariant == SUBVARIANT_PLANET)
-    {
-        // For planet, use normalized direction from center for consistent wrapping
-        float3 wp = float3(worldX, worldY, worldZ);
-        float3 dir = normalize(wp - PlanetCenter);
-
-        // Offset so noise moves with BaseOffset/DetailOffset in 3D
-        samplePos3D = dir * PlanetRadius;
-    }
-    else
-    {
-        // For landmass (and cave for now), just use flat XZ mapping
-        samplePos3D = float3(worldX, 0.0, worldZ);
-    }
-
-    int octaves = GetOctaves(lod);
-
-    // === Base continent layer ===
-    float3 basePos = (samplePos3D + float3(BaseOffset, 0)) * BaseFreq;
-    float baseNoise = fbm3D(basePos, 2); // using 3D even for landmass so system is future-proof
-    baseNoise = smoothstep(0.0, 1.0, (baseNoise + 1.0) * 0.5);
-
-    // === Mid/large-scale detail ===
-    float3 detailPos = (samplePos3D + float3(DetailOffset, 0)) * DetailFreq;
-    float detailNoise = fbm3D(detailPos, (lod == 1 ? 6 : octaves));
-
-    // === Flatness mask ===
-    float3 flatPos = (samplePos3D + float3(FlatMaskOffset, 0)) * FlatMaskFreq;
-    float flatNoise = fbm3D(flatPos, 3);
-    flatNoise = saturate((flatNoise + 1.0) * 0.5);
-    flatNoise = pow(saturate(1.0 - flatNoise), FlatMaskPower);
-
-    // === Combine height contributions ===
-    float rawHeight =
-        baseNoise * BaseGain +
-        detailNoise * DetailGain * flatNoise;
-
-    float heightScale = max(BaseGain, 0.0001);
-    float normalized = rawHeight / heightScale;
-    float finalHeight = normalized * ElevationScale;
-
-    return Sanitize(finalHeight);
-}
-
-
-float GetLandMassValue(float worldX, float worldY, float worldZ, int lod)
-{
-    float v = GetDensityValue(worldX, worldY, worldZ, lod);
-    float result = -(worldY - v);
-    
-    return Sanitize(result);
-
-}
-
-float GetPlanetValue(float worldX, float worldY, float worldZ, int lod)
-{
-    float elev = GetDensityValue(worldX, worldY, worldZ, lod);
-    float dist = length(float3(worldX, worldY, worldZ) - PlanetCenter);
-    return (PlanetRadius + elev) - dist; // Positive inside sphere
-}
+// Shared flags so any thread can “trip” the result in GetSurfaceData.
+groupshared uint gHasAbove;
+groupshared uint gHasBelow;
 
 // Generates the density data for a marching cube algorithm.
 [numthreads(4,4,4)]
@@ -92,33 +27,15 @@ void GenerateBatch(uint3 id : SV_DispatchThreadID)
         return;
     
     float3 worldPos = info.WorldPos;
-
-    if (SubVariant == 0)
-    {
-        DensityMap[info.mapIndex] = GetLandMassValue(worldPos.x, worldPos.y, worldPos.z, info.chunk.LodIndex);
-    }
-    else if (SubVariant == 1)
-    {
-        DensityMap[info.mapIndex] = GetPlanetValue(worldPos.x, worldPos.y, worldPos.z, info.chunk.LodIndex);
-    }
+    DensityMap[info.mapIndex] = GenerateNoiseValue(worldPos.x, worldPos.y, worldPos.z, info.chunk.LodIndex);
 }
-
-    // Shared flags so any thread can “trip” the result
-groupshared uint gHasAbove;
-groupshared uint gHasBelow;
 
 // One group per chunk, 4x4x4 = 64 threads per group
 [numthreads(4, 4, 4)]
-void GetSurfaceMaskChecks(uint3 groupId : SV_GroupID,
-                          uint3 tid : SV_GroupThreadID,
-                          uint groupIdx : SV_GroupIndex)
+void GetSurfaceMaskChecks(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadID, uint groupIdx : SV_GroupIndex)
 {
-    uint index = groupId.x; // 1D group grid: (batchSize,1,1)
-    if (index >= _ChunkInputCount)
-        return;
-
     // Load once per group (uniform)
-    ChunkDispatchKey chunk = ChunkInputs[index];
+    ChunkDispatchKey chunk = ChunkInputs[groupId.x];
 
     // Precompute invariants
     const float iso = ISOLevel;
@@ -159,11 +76,7 @@ void GetSurfaceMaskChecks(uint3 groupId : SV_GroupID,
                 const float wz = origin.z + z * step;
 
                 // Uniform branch on subvariant is fine; compiler will keep it outside inner loop
-                float v;
-                if (SubVariant == 0)
-                    v = GetLandMassValue(wx, wy, wz, chunk.LodIndex);
-                else /* SubVariant == 1 */
-                    v = GetPlanetValue(wx, wy, wz, chunk.LodIndex);
+                float v = GenerateNoiseValue(wx, wy, wz, chunk.LodIndex);
 
                 // Set flags (branchless) and combine with atomics
                 // (bool → uint: (v >= iso) ? 1 : 0)
@@ -182,6 +95,6 @@ void GetSurfaceMaskChecks(uint3 groupId : SV_GroupID,
     // One thread writes the mask
     if (groupIdx == 0)
     {
-        SurfaceMask[index] = (gHasAbove & gHasBelow) ? 1u : 0u;
+        SurfaceMask[groupId.x] = (gHasAbove & gHasBelow) ? 1u : 0u;
     }
 }
