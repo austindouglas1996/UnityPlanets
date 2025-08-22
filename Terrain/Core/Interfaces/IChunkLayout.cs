@@ -50,4 +50,11 @@ public interface IChunkLayout
     /// <param name="world"></param>
     /// <returns></returns>
     Vector3Int ToCoordinates(Vector3 worldPosition, int lodIndex);
+
+    /// <summary>
+    /// Get the desired LOD level for a given chunk.
+    /// </summary>
+    /// <param name="chunkCoordinates"></param>
+    /// <returns></returns>
+    public int GetLODForChunk(ChunkKey key);
 }

@@ -18,7 +18,5 @@ public class LODThresholds
     [Tooltip("LOD4 — horizon terrain")]
     public int LOD4 = 16;
 
-    [Tooltip("LOD5 — horizon terrain (proxy/shader only)")]
-    public int LOD5 = 32;
-    public int[] ToArray() => new[] { LOD0, LOD1, LOD2, LOD3, LOD4, LOD5 };
+    public int[] ToArray() => new[] { LOD0, LOD0+LOD1, LOD1+LOD2, LOD2+LOD3, LOD3+LOD4};
 }

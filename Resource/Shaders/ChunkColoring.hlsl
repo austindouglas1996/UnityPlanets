@@ -20,6 +20,11 @@ float3 HSVtoRGB(float h, float s, float v)
 // Get a color based on LOD index (green -> red, like LodColor)
 float4 GetLodColor(int lod)
 {
+    if (lod == 10)
+    {
+        return float4(1.0, 0.0, 1.0, 1.0); // Bright magenta (R=1, G=0, B=1, A=1)
+    }
+    
     const int maxLod = 4;
 
     // t = 0 at farthest (maxLod), 1 at nearest (0)

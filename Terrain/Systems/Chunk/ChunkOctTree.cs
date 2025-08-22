@@ -12,7 +12,6 @@ public class ChunkOctTreeMan
 {
     private readonly IChunkServices services;
     private readonly ChunkGenerationProcessor processor;
-    private int[] lodThresholds;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChunkOctTreeMan"/> class.
@@ -20,17 +19,10 @@ public class ChunkOctTreeMan
     /// <param name="services"></param>
     /// <param name="processor"></param>
     /// <param name="lodThresholds"></param>
-    public ChunkOctTreeMan(IChunkServices services, ChunkGenerationProcessor processor, int[] lodThresholds)
+    public ChunkOctTreeMan(IChunkServices services, ChunkGenerationProcessor processor)
     {
         this.services = services;
         this.processor = processor;
-        this.lodThresholds = lodThresholds;
-    }
-
-    public int[] LODThresholds
-    {
-        get { return this.lodThresholds; }
-        set { this.lodThresholds = value; }
     }
 
     /// <summary>
@@ -44,10 +36,7 @@ public class ChunkOctTreeMan
         if (node.CurrentTransition != Transition.None)
             return LodDecision.KeepLeaf;
 
-        int[] ringsInChunks0 = this.lodThresholds.ToArray();
-
-        int dChunks0 = ChebDistanceChunks0(services.Layout.FollowerWorldPosition, node.Bounds, 16);
-        int desired = DesiredLodFromRings(dChunks0, ringsInChunks0);
+        int desired = services.Layout.GetLODForChunk(node.Key);
 
         int L = node.Key.LODIndex;
         if (L > desired
@@ -133,53 +122,7 @@ public class ChunkOctTreeMan
             Mathf.FloorToInt(pos.z / chunkSize)
         );
     }
-
-    /// <summary>
-    /// I found this in some StackOverflow thing, I dont really understand too much how it works
-    /// https://en.wikipedia.org/wiki/Chebyshev_distance
-    /// </summary>
-    /// <param name="playerWorld"></param>
-    /// <param name="b"></param>
-    /// <param name="baseChunkSize"></param>
-    /// <returns></returns>
-    private static int ChebDistanceChunks0(Vector3 playerWorld, Bounds b, int baseChunkSize = 16)
-    {
-        // XZ only
-        int dx = DistToInterval(playerWorld.x, b.min.x, b.max.x);
-        int dz = DistToInterval(playerWorld.z, b.min.z, b.max.z);
-
-        return Mathf.CeilToInt(Mathf.Max(dx, dz) / (float)baseChunkSize);
-    }
-
-    /// <summary>
-    /// Determine the best LOD ring to use based on the distance.
-    /// </summary>
-    /// <param name="dChunks0"></param>
-    /// <param name="rings"></param>
-    /// <returns></returns>
-    private static int DesiredLodFromRings(int dChunks0, int[] rings)
-    {
-        // rings[L] = max distance (in LOD0 chunks) where LOD == L
-        for (int L = 0; L < rings.Length; L++)
-            if (dChunks0 <= rings[L]) return L;
-        return rings.Length - 1;
-    }
-
-    /// <summary>
-    /// Returns the distance between two variables.
-    /// </summary>
-    /// <param name="p"></param>
-    /// <param name="a"></param>
-    /// <param name="b"></param>
-    /// <returns></returns>
-    private static int DistToInterval(float p, float a, float b)
-    {
-        if (p < a) return Mathf.CeilToInt(a - p);
-        if (p > b) return Mathf.CeilToInt(p - b);
-        return 0;
-    }
 }
-
 
 /// <summary>
 /// Represents a node in the terrain quadtree structure. Each node covers a chunk of terrain at a specific LOD.

@@ -17,7 +17,7 @@ float fade(float t)
     return t * t * t * (t * (t * 6 - 15) + 10);
 }
 
-float lerp(float t, float a, float b)
+float lerpCustom(float t, float a, float b)
 {
     return a + t * (b - a);
 }
@@ -97,13 +97,13 @@ float noise3D(float x, float y, float z)
     int BA = (perm[B] + Z) & 255;
     int BB = (perm[B + 1] + Z) & 255;
 
-    return lerp(w,
-        lerp(v,
-            lerp(u, grad(perm[AA], x, y, z), grad(perm[BA], x - 1, y, z)),
-            lerp(u, grad(perm[AB], x, y - 1, z), grad(perm[BB], x - 1, y - 1, z))),
-        lerp(v,
-            lerp(u, grad(perm[AA + 1], x, y, z - 1), grad(perm[BA + 1], x - 1, y, z - 1)),
-            lerp(u, grad(perm[AB + 1], x, y - 1, z - 1), grad(perm[BB + 1], x - 1, y - 1, z - 1)))
+    return lerpCustom(w,
+        lerpCustom(v,
+            lerpCustom(u, grad(perm[AA], x, y, z), grad(perm[BA], x - 1, y, z)),
+            lerpCustom(u, grad(perm[AB], x, y - 1, z), grad(perm[BB], x - 1, y - 1, z))),
+        lerpCustom(v,
+            lerpCustom(u, grad(perm[AA + 1], x, y, z - 1), grad(perm[BA + 1], x - 1, y, z - 1)),
+            lerpCustom(u, grad(perm[AB + 1], x, y - 1, z - 1), grad(perm[BB + 1], x - 1, y - 1, z - 1)))
     );
 }
 
@@ -113,7 +113,7 @@ float noise1D(float x)
     int X = (int) floor(x) & 255;
     x -= floor(x);
     float u = fade(x);
-    return lerp(u, grad(perm[X], x), grad(perm[X + 1], x - 1)) * 2.0;
+    return lerpCustom(u, grad(perm[X], x), grad(perm[X + 1], x - 1)) * 2.0;
 }
 
 // 2D Perlin noise
@@ -131,9 +131,9 @@ float noise2D(float x, float y)
     int A = (perm[X] + Y) & 255;
     int B = (perm[X + 1] + Y) & 255;
 
-    return lerp(v,
-        lerp(u, grad(perm[A], x, y), grad(perm[B], x - 1, y)),
-        lerp(u, grad(perm[A + 1], x, y - 1), grad(perm[B + 1], x - 1, y - 1))
+    return lerpCustom(v,
+        lerpCustom(u, grad(perm[A], x, y), grad(perm[B], x - 1, y)),
+        lerpCustom(u, grad(perm[A + 1], x, y - 1), grad(perm[B + 1], x - 1, y - 1))
     );
 }
 

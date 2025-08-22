@@ -53,6 +53,7 @@ struct ChunkTriangleData
     float3 a;
     float3 b;
     float3 c;
+    int LodKey;
 };
 
 #endif

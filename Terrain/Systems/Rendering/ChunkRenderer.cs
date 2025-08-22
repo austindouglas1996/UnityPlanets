@@ -5,10 +5,6 @@ using UnityEngine;
 [RequireComponent (typeof(ChunkManager))]
 public class ChunkRenderer : MonoBehaviour
 {
-    [Header("LOD Settings (Additive)")]
-    [SerializeField]
-    private LODThresholds lodThresholds = new();
-
     [Tooltip("Initial range for LOD4 chunk loading.")]
     [SerializeField]
     private ChunkRenderRange initialRootRange = new ChunkRenderRange(-8, 8, 0, 2, -8, 8);
@@ -95,7 +91,6 @@ public class ChunkRenderer : MonoBehaviour
     private void OnValidate()
     {
         if (this.treeMan == null) return;
-        this.treeMan.LODThresholds = this.lodThresholds.ToArray();
     }
 
     /// <summary>
@@ -156,7 +151,7 @@ public class ChunkRenderer : MonoBehaviour
         }
 
         // Create manager.
-        treeMan = new ChunkOctTreeMan(this.chunkServices, this.processor, lodThresholds.ToArray());
+        treeMan = new ChunkOctTreeMan(this.chunkServices, this.processor);
 
         // Create root nodes.
         for (int dx = initialRootRange.X.Min; dx < initialRootRange.X.Max; dx++)

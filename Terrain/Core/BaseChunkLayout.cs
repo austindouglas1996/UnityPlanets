@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Mathematics;
 using Unity.VisualScripting;
 using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
@@ -21,12 +22,18 @@ public abstract class BaseChunkLayout : IChunkLayout
     private IChunkConfiguration Configuration;
 
     /// <summary>
+    /// The set of LOD thresholds for chunk rendering.
+    /// </summary>
+    private int[] LODRings;
+
+    /// <summary>
     /// Initializes a new instance of <see cref="BaseChunkLayout"/>
     /// </summary>
     /// <param name="configuration"></param>
     public BaseChunkLayout(IChunkConfiguration configuration)
     {
         this.Configuration = configuration;
+        this.LODRings = this.Configuration.LODThresholds.ToArray();
     }
 
     /// <summary>
@@ -117,5 +124,60 @@ public abstract class BaseChunkLayout : IChunkLayout
             Mathf.FloorToInt(worldPositon.x / chunkSize),
             Mathf.FloorToInt(worldPositon.y / chunkSize),
             Mathf.FloorToInt(worldPositon.z / chunkSize));
+    }
+
+    /// <summary>
+    /// Retrieve the expected chunk LOD level for a given coordinate.
+    /// </summary>
+    /// <param name="chunkCoordinates"></param>
+    /// <returns></returns>
+    public int GetLODForChunk(ChunkKey key)
+    {
+        int baseChunkSize = Configuration.DensityOptions.ChunkSize;
+        int chunkSize = baseChunkSize << key.LODIndex;
+
+        // Compute chunk world bounds (no Bounds)
+        int chunkMinX = key.Coordinates.x * chunkSize;
+        int chunkMaxX = chunkMinX + chunkSize;
+        int chunkMinZ = key.Coordinates.z * chunkSize;
+        int chunkMaxZ = chunkMinZ + chunkSize;
+
+        float px = FollowerWorldPosition.x;
+        float pz = FollowerWorldPosition.z;
+
+        int dx = DistToInterval(px, chunkMinX, chunkMaxX);
+        int dz = DistToInterval(pz, chunkMinZ, chunkMaxZ);
+
+        int chebDist = Mathf.CeilToInt(Mathf.Max(dx, dz) / (float)baseChunkSize);
+        return DesiredLodFromRings(chebDist);
+    }
+
+    /// <summary>
+    /// Determine the best LOD ring to use based on the distance.
+    /// </summary>
+    /// <param name="dChunks0"></param>
+    /// <param name="rings"></param>
+    /// <returns></returns>
+    private int DesiredLodFromRings(int dChunks0)
+    {
+        // rings[L] = max distance (in LOD0 chunks) where LOD == L
+        for (int L = 0; L < LODRings.Length; L++)
+            if (dChunks0 <= LODRings[L]) 
+                return L;
+        return LODRings.Length - 1;
+    }
+
+    /// <summary>
+    /// Returns the distance between two variables.
+    /// </summary>
+    /// <param name="p"></param>
+    /// <param name="a"></param>
+    /// <param name="b"></param>
+    /// <returns></returns>
+    private static int DistToInterval(float p, float a, float b)
+    {
+        if (p < a) return Mathf.CeilToInt(a - p);
+        if (p > b) return Mathf.CeilToInt(p - b);
+        return 0;
     }
 }

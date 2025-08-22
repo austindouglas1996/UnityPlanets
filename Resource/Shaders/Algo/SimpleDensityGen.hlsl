@@ -1,3 +1,6 @@
+#ifndef SIMPLEDENSITY_INCLUDED
+#define SIMPLEDENSITY_INCLUDED
+
 #include "../Lib/PerlinNoise.hlsl"
 #include "../ChunkFunctions.hlsl"
 
@@ -65,7 +68,7 @@ float GetPlanetNoise(float worldX, float worldY, float worldZ, int lod)
     return (PlanetRadius + elev) - dist; // Positive inside sphere
 }
 
-float GenerateNoiseValue(float worldX, float worldY, float worldZ, int lod)
+float GenerateNoiseValue(float3 chunkCoord, float worldX, float worldY, float worldZ, int lod)
 {
     float baseNoise;
     
@@ -81,3 +84,6 @@ float GenerateNoiseValue(float worldX, float worldY, float worldZ, int lod)
     
     return baseNoise;
 }
+
+
+#endif
