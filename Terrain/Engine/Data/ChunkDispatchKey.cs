@@ -11,7 +11,4 @@ public struct ChunkDispatchKey
 {
     public Vector3 CoordPos;
     public int LodIndex;
-
-    public int Face;
-    public int NeighborLOD;
 }

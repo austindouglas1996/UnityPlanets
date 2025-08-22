@@ -2,7 +2,6 @@
 #pragma kernel GenerateSurfaceMask
 #pragma kernel RunMarchingCubes
 #pragma kernel PrepareDrawArgs
-#pragma kernel StitchLODChunks
 
 #include "../ChunkFunctions.hlsl"
 #include "../Lib/PerlinNoise.hlsl"
@@ -141,11 +140,4 @@ void PrepareDrawArgs(uint3 id : SV_DispatchThreadID)
     ArgsBuffer[2] = 0; // start vertex
     ArgsBuffer[3] = 0; // start instance
     ArgsBuffer[4] = 0; // padding (if needed)
-}
-
-
-[numthreads(4, 4, 4)]
-void StitchLODChunks(uint3 id : SV_DispatchThreadID)
-{
-
 }

@@ -31,9 +31,6 @@ struct ChunkDispatchKey
     
     // The LOD converted into a step size.
     int LodIndex;
-    
-    int Face; // -1 if not a transition job
-    int NeighborLOD; // Only valid if Face != -1
 };
 
 // Helper struct returned by GetChunkAccess() to provide both chunk-level

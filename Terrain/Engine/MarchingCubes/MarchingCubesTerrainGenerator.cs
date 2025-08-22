@@ -31,7 +31,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private ComputeBuffer DensityBuffer;           // RWStructuredBuffer<float>  (voxel scalar field)
     private ComputeBuffer SurfaceChunkInputBuffer; // StructuredBuffer<ChunkInput> for mask pass
     private ComputeBuffer GenerateChunkInputBuffer;// StructuredBuffer<ChunkInput> for full gen
-    private ComputeBuffer TransChunkInputBuffer;   // StructuredBuffer<ChunkInput> for transvoxel processing.
     private ComputeBuffer BiomeBuffer;             // StructuredBuffer<BiomeData> (small table)
     private ComputeBuffer DensityOptionsBuffer;    // StructuredBuffer<DensityMapOptions> (1 element)
     private ComputeBuffer PlanetOptionsBuffer;     // StructuredBuffer<PlanetDensityOptions> (1 element)
@@ -200,7 +199,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         int genKernal = MarchingShader.FindKernel("GenerateDensityMap");
         int marchKernal = MarchingShader.FindKernel("RunMarchingCubes");
         int argsKernal = MarchingShader.FindKernel("PrepareDrawArgs");
-        int stitchKernal = MarchingShader.FindKernel("StitchLODChunks");
 
         // Generate density
         MarchingShader.SetBuffer(genKernal, "ChunkInputs", GenerateChunkInputBuffer);
@@ -218,16 +216,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.SetBuffer(marchKernal, "TriangleBuffer", triangleBuffer);
         MarchingShader.SetInt("_BiomeCount", BiomesCount);
         MarchingShader.Dispatch(marchKernal, batchSize * 4, 4, 4);
-
-        // Stitch
-        int ft = FillTransChunkInputs(keys);
-        if (ft != 0)
-        {
-            MarchingShader.SetBuffer(stitchKernal, "ChunkInputs", TransChunkInputBuffer);
-            MarchingShader.SetBuffer(stitchKernal, "DensityMap", DensityBuffer);
-            MarchingShader.SetBuffer(stitchKernal, "TriangleBuffer", triangleBuffer);
-            MarchingShader.Dispatch(stitchKernal, ft * 4, 4, 4);
-        }
 
         // Build indirect args from append count
         MarchingShader.SetBuffer(argsKernal, "TriangleBuffer", triangleBuffer);
@@ -265,7 +253,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         // Per-kernel inputs + mask output
         SurfaceChunkInputBuffer = new ComputeBuffer(SurfaceCap, Marshal.SizeOf<ChunkDispatchKey>());
         GenerateChunkInputBuffer = new ComputeBuffer(GenerateCap, Marshal.SizeOf<ChunkDispatchKey>());
-        TransChunkInputBuffer = new ComputeBuffer(GenerateCap * 3, Marshal.SizeOf<ChunkDispatchKey>());
         SurfaceMaskBuffer = new ComputeBuffer(SurfaceCap, sizeof(uint));
 
         // Set static buffers
@@ -273,11 +260,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.SetBuffer(marchKernal, "CornerOffsetsBuffer", CornerOffsetsBuffer);
         MarchingShader.SetBuffer(marchKernal, "EdgeConnectionsBuffer", EdgeConnectionsBuffer);
         MarchingShader.SetBuffer(marchKernal, "TriangleTableBuffer", TriangleTableBuffer);
-
-        int stitchKernal = MarchingShader.FindKernel("StitchLODChunks");
-        MarchingShader.SetBuffer(stitchKernal, "CornerOffsetsBuffer", CornerOffsetsBuffer);
-        MarchingShader.SetBuffer(stitchKernal, "EdgeConnectionsBuffer", EdgeConnectionsBuffer);
-        MarchingShader.SetBuffer(stitchKernal, "TriangleTableBuffer", TriangleTableBuffer);
 
         // Prime options/biomes on GPU
         UpdateOptions();
@@ -365,60 +347,5 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         var buf = TriangleBuffers[0];
         TriangleBuffers.RemoveAt(0);
         return buf;
-    }
-
-    /// <summary>
-    /// Fill a list of chunks that need Transvoxel stitching across LOD transitions.
-    /// Only triggers if a neighboring chunk has a higher LOD (i.e., lower detail).
-    /// </summary>
-    private int FillTransChunkInputs(IReadOnlyList<ChunkKey> keys)
-    {
-        var transKeys = new List<ChunkDispatchKey>();
-
-        foreach (var key in keys)
-        {
-            for (int face = 0; face < 3; face++)
-            {
-                var offset = FaceOffset(face);
-                var neighborKey = new ChunkKey(key.Coordinates + offset, key.LODIndex);
-
-                // Determine what LOD should be used for the neighbor
-                int neighborDesiredLOD = this.chunkServices.Layout.GetLODForChunk(neighborKey);
-
-                // If the neighbor is a lower-detail (higher LOD index), we need to stitch the edge
-                if (neighborDesiredLOD > key.LODIndex)
-                {
-                    transKeys.Add(new ChunkDispatchKey
-                    {
-                        CoordPos = key.Coordinates,
-                        LodIndex = key.LODIndex,
-                        Face = face,
-                        NeighborLOD = neighborDesiredLOD
-                    });
-                }
-            }
-        }
-
-        // Upload to GPU buffer
-        TransChunkInputBuffer.SetData(transKeys, 0, 0, transKeys.Count);
-        return transKeys.Count;
-    }
-
-    /// <summary>
-    /// Returns a directional offset for the given face index (0–5).
-    /// Matches Unity's left/right/back/forward/down/up convention.
-    /// </summary>
-    public static Vector3Int FaceOffset(int face)
-    {
-        return face switch
-        {
-            0 => new Vector3Int(-1, 0, 0), // -X (Left)
-            1 => new Vector3Int(1, 0, 0), // +X (Right)
-            2 => new Vector3Int(0, 0, -1), // -Z (Back)
-            3 => new Vector3Int(0, 0, 1), // +Z (Forward)
-            4 => new Vector3Int(0, -1, 0), // -Y (Down)
-            5 => new Vector3Int(0, 1, 0), // +Y (Up)
-            _ => Vector3Int.zero
-        };
     }
 }
