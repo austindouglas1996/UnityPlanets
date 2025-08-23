@@ -12,15 +12,16 @@ using UnityEngine.Rendering;
 /// </summary>
 public class MarchingCubesTerrainGenerator : ITerrainGenerator
 {
+    // Hard caps I tune for my buckets. 1024 = surface mask scan, 128 = per-batch gen.
+    private const int SurfaceCap = 1024;
+    private const int GenerateCap = 128;
+    private const int JobsPerTick = 2;
+
     private struct TerrainJob
     {
         public IReadOnlyList<ChunkKey> Keys;
         public Action<ChunkRenderBatch> Output;
     }
-
-    // Hard caps I tune for my buckets. 1024 = surface mask scan, 128 = per-batch gen.
-    private const int SurfaceCap = 1024;
-    private const int GenerateCap = 128;
 
     private IChunkServices chunkServices;
 
@@ -41,6 +42,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private ComputeBuffer EdgeConnectionsBuffer = MarchingCubesTables.EdgeConnectionsBuffer();
     private ComputeBuffer TriangleTableBuffer = MarchingCubesTables.TriangleTableBuffer();
 
+    // Material for chunks
     private Material chunkMaterial;
 
     private int BiomesCount = 0;
@@ -50,6 +52,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private List<ChunkDispatchKey> InputGenerate = new(GenerateCap);
 
     // A bunch of buffers to help with GC problems.
+    // (Before keeping a collection of buffers there was a very small, but very noticeable stutter on large collections)
     private List<ComputeBuffer> TriangleBuffers = new List<ComputeBuffer>();
 
     private List<TerrainJob> Jobs = new();
@@ -72,7 +75,9 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         this.InitBuffer();
     }
 
-    // Convenience snapshot so I don’t keep typing the long path.
+    /// <summary>
+    /// Convenience snapshot so I don’t keep typing the long path.
+    /// </summary>
     private TerrainDensityOptions densityOptions => chunkServices.Configuration.DensityOptions;
 
     /// <summary>
@@ -91,7 +96,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     {
         if (this.Jobs.Count == 0) return;
 
-        for (int i = 0; i < 2; i++)
+        for (int i = 0; i < JobsPerTick; i++)
         {
             if (this.Jobs.Count == 0) break;
 
@@ -105,9 +110,28 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     /// <exception cref="System.NotImplementedException"></exception>
     public void Dispose()
     {
-        // TODO: make this idempotent + null-safe; for now just a reminder I need to wire it.
-        // DensityBuffer?.Dispose(); etc…
-        throw new System.NotImplementedException();
+        DensityBuffer.Dispose();
+        SurfaceChunkInputBuffer.Dispose();
+        GenerateChunkInputBuffer.Dispose();
+        BiomeBuffer.Dispose();
+        DensityOptionsBuffer.Dispose();
+        PlanetOptionsBuffer.Dispose();
+        SurfaceMaskBuffer.Dispose();
+
+        CornerOffsetsBuffer.Dispose();
+        EdgeConnectionsBuffer.Dispose();
+        TriangleTableBuffer.Dispose();
+
+        chunkMaterial = null;
+        InputSurface.Clear();
+        InputGenerate.Clear();
+
+        foreach (var triangle in TriangleBuffers)
+            triangle.Dispose();
+
+        TriangleBuffers.Clear();
+
+        Jobs.Clear();
     }
 
     /// <summary>
@@ -214,7 +238,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.SetBuffer(marchKernal, "ChunkInputs", GenerateChunkInputBuffer);
         MarchingShader.SetBuffer(marchKernal, "DensityMap", DensityBuffer);
         MarchingShader.SetBuffer(marchKernal, "TriangleBuffer", triangleBuffer);
-        MarchingShader.SetInt("_BiomeCount", BiomesCount);
         MarchingShader.Dispatch(marchKernal, batchSize * 4, 4, 4);
 
         // Build indirect args from append count

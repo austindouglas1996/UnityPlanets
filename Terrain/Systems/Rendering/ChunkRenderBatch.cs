@@ -105,7 +105,7 @@ public class ChunkRenderBatch : IDisposable
         uint triCount = GetAppendCount(set.Triangle);
         if (triCount == 0) { onDone(System.Array.Empty<ChunkTriangleData>()); return; }
 
-        int stride = Marshal.SizeOf<ChunkTriangleData>(); // e.g., 96 if using float4s
+        int stride = Marshal.SizeOf<ChunkTriangleData>();
         int size = (int)(triCount * stride);
 
         AsyncGPUReadback.Request(set.Triangle, size, 0, req =>

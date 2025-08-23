@@ -18,6 +18,12 @@ public class ChunkGenerationProcessor : IDisposable
     private readonly ChunkGenerationBatcher generationBatcher = new();
 
     /// <summary>
+    /// In earlier tests, batching surfaces takes multiple frames so this stops multiple calls. Hmm,
+    /// maybe we should have one for generation if it ever takes multiple frames.
+    /// </summary>
+    private bool SurfaceBusy = false;
+
+    /// <summary>
     /// Manages GPU-side render regions for generated chunks.
     /// </summary>
     private readonly ChunkRenderRouter layerRenderer;
@@ -85,8 +91,6 @@ public class ChunkGenerationProcessor : IDisposable
     /// Releases any GPU resources held by the render region manager.
     /// </summary>
     public void Dispose() => layerRenderer.Dispose();
-
-    private bool SurfaceBusy = false;
 
     /// <summary>
     /// Processes a batch of surface-check jobs.

@@ -10,7 +10,7 @@ using UnityEngine;
 /// - Call from the main Unity thread; typical implementations touch GPU buffers.
 /// - Lifetime: the callee owns any temporary buffers; the caller owns and must Dispose returned batches.
 /// </remarks>
-public interface ITerrainGenerator : IDisposable
+public interface ITerrainGenerator : IDisposable, IChunkGenerator
 {
     /// <summary>
     /// Fast prepass to decide which chunks likely contain surface.
@@ -31,21 +31,4 @@ public interface ITerrainGenerator : IDisposable
     /// <param name="keys">Non-empty list of chunk keys to build.</param>
     /// <returns>A <see cref="ChunkRenderBatch"/> the caller must Dispose when done.</returns>
     void GenerateBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output);
-
-    /// <summary>
-    /// Used to help with generators that may schedule jobs.
-    /// </summary>
-    void Update();
-
-    /// <summary>
-    /// Apply updated runtime/editor options to the generator (e.g., density params, biome tables).
-    /// Implementations should re-upload constant/structured buffers and invalidate any caches
-    /// so subsequent builds reflect the new settings.
-    /// </summary>
-    void UpdateOptions();
-
-    /// <summary>
-    /// Get the custom material used in generation.
-    /// </summary>
-    Material GetMaterial { get; }
 }

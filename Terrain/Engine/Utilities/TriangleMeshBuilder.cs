@@ -1,6 +1,9 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Helper functions for building meshes and GO (Game Object)'s with a set of triangles.
+/// </summary>
 public static class TriangleMeshBuilder
 {
     public static Mesh BuildMesh(IReadOnlyList<ChunkTriangleData> tris)
