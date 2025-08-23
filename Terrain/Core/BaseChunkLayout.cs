@@ -4,13 +4,8 @@ using UnityEngine;
 /// A generic instance of <see cref="IChunkLayout"/> that fits most scenarios when creating a chunk layout
 /// to help with reducing code reuse.
 /// </summary>
-public abstract class BaseChunkLayout : IChunkLayout
+public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
 {
-    /// <summary>
-    /// Configuration used for chunk generation.
-    /// </summary>
-    private IChunkConfiguration Configuration;
-
     /// <summary>
     /// The set of LOD thresholds for chunk rendering.
     /// </summary>
@@ -21,8 +16,8 @@ public abstract class BaseChunkLayout : IChunkLayout
     /// </summary>
     /// <param name="configuration"></param>
     public BaseChunkLayout(IChunkConfiguration configuration)
+        : base(configuration)
     {
-        this.Configuration = configuration;
         this.LODRings = this.Configuration.LODThresholds.ToArray();
     }
 

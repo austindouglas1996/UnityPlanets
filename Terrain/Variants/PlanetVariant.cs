@@ -1,6 +1,6 @@
-public class PlanetVariant : VariantBase<PlanetChunkConfiguration>
+public class PlanetVariant : VariantBaseMono<PlanetChunkConfiguration>
 {
-    protected override IChunkGenerator CreateGenerator() => new PlanetChunkGenerator(this);
+    protected override IChunkGenerator CreateGenerator() => new PlanetChunkGenerator(chunkRenderer, this);
     protected override IChunkLayout CreateLayout() => new PlanetChunkLayout(ChunkConfiguration);
 }
 
@@ -16,11 +16,11 @@ public class PlanetChunkLayout : BaseChunkLayout
 
 public class PlanetChunkGenerator : BaseChunkGenerator
 {
-    public PlanetChunkGenerator(IChunkServices services)
+    public PlanetChunkGenerator(ChunkRendererMono renderer, IChunkServices services)
         : base(services.Configuration) 
     {
         this.generator = new MarchingCubesTerrainGenerator
-            (services, services.ChunkManager.MarchingCubes);
+            (services, renderer.MarchingCubes);
     }
 
     public override ITerrainGenerator Generator => generator;

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public enum OccupancyState { Unknown, Loading, Empty, NonEmpty }
@@ -17,7 +15,7 @@ public class ChunkOctTreeNode
     /// <summary>
     /// The parent this node belongs to.
     /// </summary>
-    private ChunkOctTreeMan Tree;
+    private ChunkOctreeService treeService;
 
     /// <summary>
     /// The current phase of the content. This will help to know if we should skip.
@@ -47,13 +45,12 @@ public class ChunkOctTreeNode
     /// <summary>
     /// Initialize a new instance of the <see cref="ChunkOctTree"/> class. 
     /// </summary>
-    /// <param name="services"></param>
-    /// <param name="renderer"></param>
+    /// <param name="tree"></param>
     /// <param name="bounds"></param>
     /// <param name="parent"></param>
-    public ChunkOctTreeNode(ChunkOctTreeMan tree, Bounds bounds, ChunkOctTreeNode? parent = null)
+    public ChunkOctTreeNode(ChunkOctreeService tree, Bounds bounds, ChunkOctTreeNode? parent = null)
     {
-        this.Tree = tree;
+        this.treeService = tree;
         this.Bounds = bounds;
         this.Parent = parent;
 
@@ -97,7 +94,6 @@ public class ChunkOctTreeNode
     /// <summary>
     /// An update method for the node, but this method will not be called every Update() called in Unity.
     /// </summary>
-    /// <param name="followerPosition"></param>
     public void Tick()
     {
         if (HasChildren)
@@ -125,7 +121,7 @@ public class ChunkOctTreeNode
         if (this.CurrentOccupancyState == OccupancyState.Empty)
             return;
 
-        var decision = this.Tree.EvaluateLod(this);
+        var decision = this.treeService.EvaluateLod(this);
 
         if (decision == LodDecision.Subdivide)
             this.Subdivide();
@@ -220,7 +216,7 @@ public class ChunkOctTreeNode
         if (CurrentOccupancyState == OccupancyState.Loading) return;
         CurrentOccupancyState = OccupancyState.Loading;
 
-        this.Tree.RequestSurfaceCheck(this.Key, (bool result) =>
+        this.treeService.RequestSurfaceCheck(this.Key, (bool result) =>
         {
             if (result)
             {
@@ -241,13 +237,13 @@ public class ChunkOctTreeNode
     {
         ChunkKey ck = new ChunkKey(coordinate, this.Key.LODIndex - 1);
 
-        this.Tree.RequestSurfaceCheck(ck, (bool result) =>
+        this.treeService.RequestSurfaceCheck(ck, (bool result) =>
         {
             this.childrenChecked++;
 
             if (result)
             {
-                ChunkOctTreeNode newNode = Tree.CreateChild(this, coordinate);
+                ChunkOctTreeNode newNode = treeService.CreateChild(this, coordinate);
                 newNode.CurrentOccupancyState = OccupancyState.NonEmpty;
 
                 this.Children.Add(newNode);
@@ -262,7 +258,7 @@ public class ChunkOctTreeNode
     {
         this.CurrentContentPhase = ContentPhase.Loading;
 
-        Tree.RequestGeneration(Key, success =>
+        treeService.RequestGeneration(Key, success =>
         {
             if (success)
             {
@@ -273,7 +269,7 @@ public class ChunkOctTreeNode
             {
                 CurrentOccupancyState = OccupancyState.Empty;
                 CurrentContentPhase = ContentPhase.Unloaded;
-                Tree.RemoveChild(this);
+                treeService.RemoveChild(this);
             }
         });
     }
@@ -285,7 +281,7 @@ public class ChunkOctTreeNode
     private void FinalizeSubdivide()
     {
         this.CurrentContentPhase = ContentPhase.Subdivided;
-        this.Tree.RemoveChild(this);
+        this.treeService.RemoveChild(this);
     }
 
     /// <summary>
@@ -311,7 +307,7 @@ public class ChunkOctTreeNode
                 continue;
 
             child.DestroyChildren();
-            this.Tree.RemoveChild(child);
+            this.treeService.RemoveChild(child);
         }
 
         this.Children.Clear();

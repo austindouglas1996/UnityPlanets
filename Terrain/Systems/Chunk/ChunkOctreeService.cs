@@ -1,18 +1,18 @@
 using System;
 using UnityEngine;
 
-public class ChunkOctTreeMan
+public class ChunkOctreeService
 {
     private readonly IChunkServices services;
     private readonly ChunkGenerationProcessor processor;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ChunkOctTreeMan"/> class.
+    /// Initializes a new instance of the <see cref="ChunkOctreeService"/> class.
     /// </summary>
     /// <param name="services"></param>
     /// <param name="processor"></param>
     /// <param name="lodThresholds"></param>
-    public ChunkOctTreeMan(IChunkServices services, ChunkGenerationProcessor processor)
+    public ChunkOctreeService(IChunkServices services, ChunkGenerationProcessor processor)
     {
         this.services = services;
         this.processor = processor;

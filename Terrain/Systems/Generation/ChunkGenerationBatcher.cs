@@ -1,7 +1,5 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using Unity.Jobs.LowLevel.Unsafe;
 
 /// <summary>
 /// Queues <see cref="ChunkGenerationJob"/> instances for later processing, 

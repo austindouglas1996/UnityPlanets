@@ -11,25 +11,15 @@ using UnityEngine;
 /// - This class does not create Unity GameObjects; it only returns GPU draw data.
 /// - Derive from this to swap dispatchers or inject preprocessing/postprocessing.
 /// </remarks>
-public abstract class BaseChunkGenerator : IChunkGenerator
+public abstract class BaseChunkGenerator : BaseChunkCore, IChunkGenerator
 {
-    private IChunkConfiguration configuration;
-
     /// <summary>
     /// Construct a generator base bound to a shared chunk configuration.
     /// </summary>
     /// <param name="configuration">Static/runtime settings that inform generation.</param>
     public BaseChunkGenerator(IChunkConfiguration configuration)
+        : base(configuration)
     {
-        this.configuration = configuration;
-    }
-
-    /// <summary>
-    /// The active configuration used by derived classes during generation.
-    /// </summary>
-    protected IChunkConfiguration Configuration
-    {
-        get { return configuration; }
     }
 
     /// <summary>

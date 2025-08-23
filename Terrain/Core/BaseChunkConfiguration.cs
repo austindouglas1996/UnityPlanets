@@ -12,13 +12,11 @@ public class BaseChunkConfiguration : IChunkConfiguration
     [SerializeField] private PlanetDensityOptions planetMapOptions;
     public PlanetDensityOptions PlanetOptions => planetMapOptions;
 
-    /// <summary>
-    /// A collection of biomes to use throughout the generation.
-    /// </summary>
-    public List<Biome> Biomes => biomes;
 
     [SerializeField] private List<Biome> biomes = new();
+    public List<Biome> Biomes => biomes;
 
-    public LODThresholds LODThresholds => lodThresholds;
+
     [SerializeField] private LODThresholds lodThresholds = new();
+    public LODThresholds LODThresholds => lodThresholds;
 }

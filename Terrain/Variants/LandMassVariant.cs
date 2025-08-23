@@ -1,9 +1,9 @@
 using System;
 using UnityEngine;
 
-public class LandMassVariant : VariantBase<LandMassChunkConfiguration>
+public class LandMassVariant : VariantBaseMono<LandMassChunkConfiguration>
 {
-    protected override IChunkGenerator CreateGenerator() => new LandMassChunkGenerator(this);
+    protected override IChunkGenerator CreateGenerator() => new LandMassChunkGenerator(chunkRenderer, this);
     protected override IChunkLayout CreateLayout() => new LandMassChunkLayout(ChunkConfiguration);
 }
 
@@ -14,24 +14,15 @@ public class LandMassChunkConfiguration : BaseChunkConfiguration
 
 public class LandMassChunkGenerator : BaseChunkGenerator
 {
-    private IChunkConfiguration configuration;
-    private IChunkServices services;
-
-    public LandMassChunkGenerator(IChunkServices services)
+    public LandMassChunkGenerator(ChunkRendererMono renderer, IChunkServices services)
         : base(services.Configuration)
     {
-        this.services = services;
-        this.configuration = services.Configuration;
+        this.generator = new MarchingCubesTerrainGenerator(services, renderer.MarchingCubes);
     }
 
     public override ITerrainGenerator Generator
     {
-        get
-        {
-            if (this.generator == null)
-                this.generator = new MarchingCubesTerrainGenerator(services, services.ChunkManager.MarchingCubes);
-            return this.generator;
-        }
+        get { return generator; }
     }
     private MarchingCubesTerrainGenerator generator;
 }

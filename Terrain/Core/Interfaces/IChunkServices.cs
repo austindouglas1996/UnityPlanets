@@ -1,25 +1,22 @@
 /// <summary>
-/// Central access point for all chunk-related systems and settings.
+/// Runtime facade for chunk world state and generation.
+/// Provides configuration, layout, and generation services used by
+/// rendering and non-rendering systems alike. Intentionally render-agnostic.
 /// </summary>
 public interface IChunkServices
 {
     /// <summary>
-    /// Current chunk configuration/settings.
+    /// Immutable settings that control chunk sizing/behavior.
     /// </summary>
-    public IChunkConfiguration Configuration { get; }
+    IChunkConfiguration Configuration { get; }
 
     /// <summary>
-    /// Handles chunk grid layout and positioning.
+    /// Computes which chunks should exist and where (grid logic, follower tracking).
     /// </summary>
-    public IChunkLayout Layout { get; }
+    IChunkLayout Layout { get; }
 
     /// <summary>
-    /// Generates chunk data.
+    /// Produces the data needed to build chunk meshes/fields.
     /// </summary>
-    public IChunkGenerator Generator { get; }
-
-    /// <summary>
-    /// Manages active chunks in the world.
-    /// </summary>
-    public ChunkManager ChunkManager { get; }
+    IChunkGenerator Generator { get; }
 }

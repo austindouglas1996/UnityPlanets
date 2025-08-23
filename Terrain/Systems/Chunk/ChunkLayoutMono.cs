@@ -1,37 +1,27 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using TMPro;
-using Unity.VisualScripting;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
-using static UnityEditor.PlayerSettings;
 
 /// <summary>
-/// Manages all active chunks in the world. Handles loading, unloading, re-coloring,
-/// and modifying terrain based on player movement and brush interactions.
+/// Unity-facing driver for chunk layout.
+/// Mirrors the follower's position into the layout each frame and (optionally)
+/// samples camera/frustum data at a throttled cadence for culling/prioritization logic.
 /// </summary>
-[RequireComponent(typeof(ChunkRenderer))]
-public class ChunkManager : MonoBehaviour
+public class ChunkLayoutMono : MonoBehaviour
 {
     /// <summary>
     /// The transform that this chunk system follows, like the player.
     /// </summary>
-    [HideInInspector] public Transform Follower;
-
-    [SerializeField] public ComputeShader MarchingCubes;
-
-    [SerializeField] public bool ShowTerrain = true;
+    [Tooltip("The main character of the world. The object we should spawn chunks around.")]
+    public Transform Follower;
 
     /// <summary>
-    /// Services used to help with chunk generation and management.
+    /// Manages the layout of the terrain.
     /// </summary>
-    public IChunkServices Services { get; private set; }
+    private IChunkLayout layout;
 
     /// <summary>
-    /// Handles the chunk rendering and logic.
+    /// The last rotation of the player camera on the last Unity update.
     /// </summary>
-    public ChunkRenderer Renderer { get; private set; }
+    private Quaternion lastFollowerRotation;
 
     /// <summary>
     /// Returns whether <see cref="Initialize(IChunkConfiguration, IChunkLayout, IChunkControllerFactory)"/> has been successful.
@@ -48,7 +38,13 @@ public class ChunkManager : MonoBehaviour
 
         // This makes it so it is safe in a different thread as you cannot
         // access Transform in a different thread, there is just a very small delay.
-        this.Services.Layout.FollowerWorldPosition = this.Follower.position;
+        this.layout.FollowerWorldPosition = this.Follower.position;
+
+        if (Time.frameCount % 5 != 0)
+            return;
+
+        Plane[] frustum = GeometryUtility.CalculateFrustumPlanes(Camera.main);
+        float deltaAngle = Quaternion.Angle(lastFollowerRotation, Follower.rotation);
     }
 
     /// <summary>
@@ -58,16 +54,11 @@ public class ChunkManager : MonoBehaviour
     /// <param name="layout">Logic to determine visible chunk positions.</param>
     /// <param name="factory">Factory that builds new chunk controllers.</param>
     /// <exception cref="System.ArgumentNullException">If any required dependency is missing.</exception>
-    public void Initialize(Transform follower, IChunkServices services)
+    public void Initialize(IChunkLayout layout)
     {
-        System.GC.Collect();
-
-        this.Follower = follower;
-        this.Services = services;
-        this.Renderer = this.GetComponent<ChunkRenderer>();
-
-        this.Services.Layout.Follower = this.Follower;
-        this.Services.Layout.FollowerWorldPosition = this.Follower.position;
+        this.layout = layout;
+        this.layout.Follower = this.Follower;
+        this.layout.FollowerWorldPosition = this.Follower.position;
 
         this.IsInitialized = true;
     }

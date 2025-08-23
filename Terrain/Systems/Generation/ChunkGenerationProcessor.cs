@@ -1,8 +1,6 @@
 ﻿using System.Collections.Generic;
 using System;
 
-using UnityEngine;
-
 /// <summary>
 /// Coordinates the asynchronous-like generation and modification of terrain chunks.
 /// Jobs are queued and processed in small batches during <see cref="Update"/> to avoid frame hitches.
@@ -37,10 +35,10 @@ public class ChunkGenerationProcessor : IDisposable
     /// Creates a new generation processor.
     /// Initializes the GPU render region manager and sets up default material parameters.
     /// </summary>
-    public ChunkGenerationProcessor(IChunkServices services, ChunkRenderRouter layerRenderer)
+    public ChunkGenerationProcessor(IChunkServices services)
     {
         this.chunkServices = services;
-        this.layerRenderer = layerRenderer;
+        this.layerRenderer = new ChunkRenderRouter(services.Generator, 128, 2, 32, 2);
     }
 
     /// <summary>
@@ -66,6 +64,14 @@ public class ChunkGenerationProcessor : IDisposable
         surfaceBatcher.Remove(key);
         generationBatcher.Remove(key);
         layerRenderer.Remove(key);
+    }
+
+    /// <summary>
+    /// Remove all chunks in the system.
+    /// </summary>
+    public void RemoveAll()
+    {
+        this.layerRenderer.Clear();
     }
 
     /// <summary>
