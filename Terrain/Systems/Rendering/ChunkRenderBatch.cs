@@ -84,7 +84,7 @@ public class ChunkRenderBatch : IDisposable
         }
 
         Vector3 center = (min + max) * 0.5f;
-        Vector3 size = (max - min) + Vector3.one * 16;
+        Vector3 size = (max - min) + Vector3.one * services.Configuration.DensityOptions.ChunkSize;
 
         return new Bounds(center, size);
     }

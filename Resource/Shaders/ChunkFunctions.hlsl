@@ -46,7 +46,7 @@ ChunkDispatchKeyInfo GetChunkAccess(uint3 id, int sizeX, int sizeY, int sizeZ, S
     // Fetch key and compute world position
     ChunkDispatchKey key = keys[r.chunkIndex];
     r.chunk = key;
-    r.WorldPos = ToWorld(key) + float3(r.voxelCoord) * (1 << key.LodIndex);
+    r.WorldPos = ToWorld(key) + float3(r.voxelCoord) * GetChunkSizeStep(r.chunk);
 
     return r;
 }

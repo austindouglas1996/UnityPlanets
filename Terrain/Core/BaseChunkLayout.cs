@@ -119,7 +119,7 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
     public int GetLODForChunk(ChunkKey key)
     {
         int baseChunkSize = Configuration.DensityOptions.ChunkSize;
-        int chunkSize = baseChunkSize << key.LODIndex;
+        int chunkSize = GetChunkSize(key.LODIndex);
 
         // Compute chunk world bounds (no Bounds)
         int chunkMinX = key.Coordinates.x * chunkSize;

@@ -31,7 +31,7 @@ void March(
         int fullIndex = key.chunkIndex * chunkVoxelSize + localIndex;
         
         corner[i] = DensityMap[fullIndex];
-        cornerPos[i] = float3(pos) * (1 << key.chunk.LodIndex) + ToWorld(key.chunk);
+        cornerPos[i] = float3(pos) * GetChunkSizeStep(key.chunk) + ToWorld(key.chunk);
 
         if (corner[i] > ISOLevel)
             cubeIndex |= (1 << i);

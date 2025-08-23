@@ -8,10 +8,14 @@
 #define SUBVARIANT_PLANET   1
 #define SUBVARIANT_CAVE     2
 
-// Full chunk size in world units for this key
 int GetChunkSize(ChunkDispatchKey key)
 {
-    return 16 << key.LodIndex;
+    return ChunkSize << key.LodIndex;
+}
+
+int GetChunkSizeStep(ChunkDispatchKey key)
+{
+    return 1 << key.LodIndex;
 }
 
 // Coordinates -> world origin (computed on GPU if you didn’t pass WorldPos)
