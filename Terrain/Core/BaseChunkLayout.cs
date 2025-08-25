@@ -1,3 +1,4 @@
+using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -173,20 +174,28 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
     /// <returns></returns>
     public int GetLODForChunk(ChunkKey key)
     {
-        // Use chunk coordinates at LOD0 scale
-        float3 chunkCenter = new float3(
-            key.Coordinates.x + 0.5f,
-            0,
-            key.Coordinates.z + 0.5f
-        );
+        int chunkSize = GetChunkSize(key.LODIndex); 
+        int baseChunkSize = GetChunkSize(0); 
 
-        // Get follower position in LOD0 chunk units
-        float px = FollowerWorldPosition.x / Configuration.DensityOptions.ChunkSize;
-        float pz = FollowerWorldPosition.z / Configuration.DensityOptions.ChunkSize;
+        Vector3 worldMin = new Vector3(
+            key.Coordinates.x * chunkSize,
+            key.Coordinates.y * chunkSize,
+            key.Coordinates.z * chunkSize);
 
-        float dx = Mathf.Abs(px - chunkCenter.x);
-        float dz = Mathf.Abs(pz - chunkCenter.z);
-        int ring = Mathf.CeilToInt(Mathf.Max(dx, dz));
+        Vector3 worldMax = worldMin + new Vector3(chunkSize, chunkSize, chunkSize);
+
+        Vector3 player = FollowerWorldPosition;
+
+        // Clamp player position to chunk AABB
+        float px = Mathf.Clamp(player.x, worldMin.x, worldMax.x);
+        float pz = Mathf.Clamp(player.z, worldMin.z, worldMax.z);
+
+        float dx = Mathf.Abs(player.x - px);
+        float dz = Mathf.Abs(player.z - pz);
+
+        // Convert distance to LOD0 chunk units
+        float maxDist = Mathf.Max(dx, dz);
+        int ring = Mathf.CeilToInt(maxDist / baseChunkSize);
 
         return DesiredLodFromRings(ring);
     }
@@ -199,10 +208,12 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
     /// <returns></returns>
     private int DesiredLodFromRings(int dChunks0)
     {
-        // rings[L] = max distance (in LOD0 chunks) where LOD == L
-        for (int L = 0; L < LODRings.Length; L++)
-            if (dChunks0 <= LODRings[L]) 
-                return L;
-        return LODRings.Length - 1;
+        for (int i = 0; i < LODRings.Length; i++)
+        {
+            if (dChunks0 < LODRings[i])
+                return i;
+        }
+
+        return LODRings.Count() - 1;
     }
 }

@@ -46,9 +46,51 @@ ChunkDispatchKeyInfo GetChunkAccess(uint3 id, int sizeX, int sizeY, int sizeZ, S
     // Fetch key and compute world position
     ChunkDispatchKey key = keys[r.chunkIndex];
     r.chunk = key;
-    r.WorldPos = ToWorld(key) + float3(r.voxelCoord) * GetChunkSizeStep(r.chunk);
+    r.WorldPos = ToWorld(key.CoordPos, key.LodIndex) + float3(r.voxelCoord) * GetChunkSizeStep(r.chunk.LodIndex);
 
     return r;
 }
+
+static const int LODRings[4] = { 4, 8, 16, 32 };
+
+// Convert chunk coordinate to world min position at the given LOD
+float3 GetWorldMin(int3 coordinates, int lodIndex)
+{
+    int chunkSize = GetChunkSize(lodIndex);
+    return coordinates * chunkSize;
+}
+
+int DesiredLodFromRings(int dChunks0)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        if (dChunks0 < LODRings[i])
+            return i;
+    }
+
+    return 4;
+}
+
+// Static version of GetLODForChunk (player is at 0,0,0)
+int GetLODForChunk(int3 coordinates, int lodIndex)
+{
+    int chunkSize = GetChunkSize(lodIndex);
+
+    float3 worldMin = GetWorldMin(coordinates, lodIndex);
+    float3 worldMax = worldMin + chunkSize;
+
+    // Player is at (0, 0, 0), clamp within chunk bounds
+    float px = clamp(0.0, worldMin.x, worldMax.x);
+    float pz = clamp(0.0, worldMin.z, worldMax.z);
+
+    float dx = abs(0.0 - px);
+    float dz = abs(0.0 - pz);
+
+    float maxDist = max(dx, dz);
+    int ring = (int) ceil(maxDist / 16);
+
+    return DesiredLodFromRings(ring);
+}
+
 
 #endif

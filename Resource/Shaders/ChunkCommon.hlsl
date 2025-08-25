@@ -8,31 +8,33 @@
 #define SUBVARIANT_PLANET   1
 #define SUBVARIANT_CAVE     2
 
-int GetChunkSize(ChunkDispatchKey key)
+int GetChunkSize(int lodIndex)
 {
-    return ChunkSize << key.LodIndex;
+    return ChunkSize << lodIndex;
 }
 
-int GetChunkSizeStep(ChunkDispatchKey key)
+int GetChunkSizeStep(int lodIndex)
 {
-    return 1 << key.LodIndex;
+    return 1 << lodIndex;
 }
 
-// Coordinates -> world origin (computed on GPU if you didn’t pass WorldPos)
-float3 ToWorld(ChunkDispatchKey key)
+float3 ToWorld(int3 coordinates)
 {
-    return key.CoordPos * GetChunkSize(key);
+    return coordinates * GetChunkSize(0);
 }
 
-// World -> chunk coordinates for this key’s LOD
-int3 ToCoordinates(float3 worldPos, ChunkDispatchKey key)
+float3 ToWorld(int3 coordinates, int lodIndex)
 {
-    int chunkSize = GetChunkSize(key);
+    return coordinates * GetChunkSize(lodIndex);
+}
+
+int3 ToCoordinates(float3 worldPos)
+{
+    int chunkSize = GetChunkSize(0);
     return int3(
         (int) floor(worldPos.x / chunkSize),
         (int) floor(worldPos.y / chunkSize),
-        (int) floor(worldPos.z / chunkSize)
-    );
+        (int) floor(worldPos.z / chunkSize));
 }
 
 int GetOctaves(int lod)

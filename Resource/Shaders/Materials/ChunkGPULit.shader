@@ -72,10 +72,12 @@ Shader "Custom/URP_CustomLitGPU"
                 float3 pos = subIndex == 0 ? tri.a :
                              subIndex == 1 ? tri.b :
                                              tri.c;
-                    
+
+                float4 color = GetLodColor(tri.LodKey);
+
                 OUT.positionWS = pos;
                 OUT.normalWS = normalize(cross(tri.b - tri.a, tri.c - tri.a));
-                OUT.color = LODHeatMap == 0 ? GetLodColor(tri.LodKey) : GetColorForHeight(pos.y);
+                OUT.color = color;
                 OUT.positionCS = TransformWorldToHClip(pos);
 
                 return OUT;

@@ -21,22 +21,26 @@ float3 HSVtoRGB(float h, float s, float v)
 float4 GetLodColor(int lod)
 {
     if (lod == 10)
-    {
-        return float4(1.0, 0.0, 1.0, 1.0); // Bright magenta (R=1, G=0, B=1, A=1)
-    }
-    
-    const int maxLod = 4;
+        return float4(1.0, 0.0, 1.0, 1.0); // Magenta = edge test
+    if (lod == 11)
+        return float4(1.0, 0.0, 0.0, 1.0);
 
-    // t = 0 at farthest (maxLod), 1 at nearest (0)
-    float t = saturate((float) (maxLod - lod) / (float) maxLod);
+        switch (lod)
+        {
+            case 0:
+                return float4(1.0, 0.0, 0.0, 1.0); // Red
+            case 1:
+                return float4(1.0, 0.5, 0.0, 1.0); // Orange
+            case 2:
+                return float4(0.0, 0.0, 1.0, 1.0);
+            case 3:
+                return float4(0.0, 1.0, 0.0, 1.0); // Green
+            case 4:
+                return float4(0.5, 0.8, 1.0, 1.0); // Light blue (snowy look)
+        }
 
-    // Hue: green (0.33) → red (0.0)
-    float hue = lerp(0.33, 0.0, t);
-    float sat = 0.95;
-    float val = 1.0;
-
-    float3 rgb = HSVtoRGB(hue, sat, val);
-    return float4(rgb, 1.0); // add alpha = 1
+    // Default/fallback
+    return float4(1.0, 1.0, 1.0, 1.0);
 }
 
 

@@ -18,16 +18,16 @@ public class LODThresholds
     [Tooltip("LOD4 — horizon terrain")]
     public int LOD4 = 2;
 
-    // Return cumulative ring edges measured in *LOD0 chunk units*
     public int[] ToArray()
     {
         int[] counts = { LOD0, LOD1, LOD2, LOD3, LOD4 };
         int[] rings = new int[counts.Length];
-        int acc = -1;
+        int acc = 0;
 
         for (int L = 0; L < counts.Length; L++)
         {
-            acc += counts[L] * 2;
+            int step = 1 << L;
+            acc += counts[L] * step;
             rings[L] = acc;
         }
 

@@ -5,6 +5,87 @@
 #include "../ChunkFunctions.hlsl"
 #include "SimpleDensityGen.hlsl"
 
+
+bool IsEdgeVoxel(int3 voxelCoord)
+{
+    return voxelCoord.x == ChunkSize - 1 ||
+    voxelCoord.y == ChunkSize - 1 ||
+    voxelCoord.z == ChunkSize - 1 ||
+    voxelCoord.x == 0 ||
+    voxelCoord.y == 0 ||
+    voxelCoord.z == 0;
+}
+
+void ChunkNeighbors(float3 C, out float3 nC[8])
+{
+    nC[0] = float3(C.x, C.y, C.z + 1); // top (Z+)
+    nC[1] = float3(C.x + 1, C.y, C.z); // right (X+)
+    nC[2] = float3(C.x, C.y, C.z - 1); // bottom (Z-)
+    nC[3] = float3(C.x - 1, C.y, C.z); // left (X-)
+
+    nC[4] = float3(C.x + 1, C.y, C.z + 1); // top-right (X+, Z+)
+    nC[5] = float3(C.x + 1, C.y, C.z - 1); // bottom-right (X+, Z-)
+    nC[6] = float3(C.x - 1, C.y, C.z - 1); // bottom-left (X-, Z-)
+    nC[7] = float3(C.x - 1, C.y, C.z + 1); // top-left (X-, Z+)
+}
+
+int GetEdgeSideXZ(int3 voxelCoord)
+{
+    bool top = voxelCoord.z == ChunkSize;
+    bool bottom = voxelCoord.z == 0;
+    bool right = voxelCoord.x == ChunkSize;
+    bool left = voxelCoord.x == 0;
+
+    if (top && right)
+        return 4; // top-right
+    if (bottom && right)
+        return 5; // bottom-right
+    if (bottom && left)
+        return 6; // bottom-left
+    if (top && left)
+        return 7; // top-left
+
+    if (top)
+        return 0;
+    if (right)
+        return 1;
+    if (bottom)
+        return 2;
+    if (left)
+        return 3;
+
+    return -1;
+}
+
+// Return true only if THIS marching-cubes cell lies on an X/Z side
+// whose same-LOD neighbor's WORLD position wants a different LOD.
+bool IsEdgeCell(ChunkDispatchKeyInfo key)
+{
+    int thisLod = GetLODForChunk(key.chunk.CoordPos, key.chunk.LodIndex);
+    
+    // Build face mask by comparing neighbor desired LOD to *our* desired LOD
+    float3 nC[8];
+    ChunkNeighbors(key.chunk.CoordPos, nC);
+    
+    [unroll]
+    for (int f = 0; f < 8; ++f)
+    {
+        int nWant = GetLODForChunk(nC[f], key.chunk.LodIndex);
+        
+        if (nWant != thisLod && GetEdgeSideXZ(key.voxelCoord) == f)
+        {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+
+
+
+
+
 void March(
     ChunkDispatchKeyInfo key,
     AppendStructuredBuffer<ChunkTriangleData> TriangleBuffer,
@@ -31,7 +112,7 @@ void March(
         int fullIndex = key.chunkIndex * chunkVoxelSize + localIndex;
         
         corner[i] = DensityMap[fullIndex];
-        cornerPos[i] = float3(pos) * GetChunkSizeStep(key.chunk) + ToWorld(key.chunk);
+        cornerPos[i] = float3(pos) * GetChunkSizeStep(key.chunk.LodIndex) + ToWorld(key.chunk.CoordPos, key.chunk.LodIndex);
 
         if (corner[i] > ISOLevel)
             cubeIndex |= (1 << i);
@@ -39,6 +120,12 @@ void March(
 
     if (cubeIndex == 0 || cubeIndex == 255)
         return;
+    
+    bool cLod = false;
+    if (IsEdgeVoxel(key.voxelCoord) && IsEdgeCell(key))
+    {
+        cLod = true;
+    }
 
     for (int i = 0; i < 16; i += 3)
     {
@@ -68,7 +155,12 @@ void March(
         tri.a = worldA;
         tri.b = worldB;
         tri.c = worldC;
-        tri.LodKey = key.chunk.LodIndex;
+        tri.LodKey = GetLODForChunk(key.chunk.CoordPos, key.chunk.LodIndex);
+        
+        if (cLod)
+        {
+            tri.LodKey = 10;
+        }
 
         TriangleBuffer.Append(tri);
     }

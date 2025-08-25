@@ -46,9 +46,9 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
     // Precompute invariants
     const float iso = ISOLevel;
     const int baseSize = ChunkSize + 3;
-    const int step = GetChunkSizeStep(chunk);
+    const int step = GetChunkSizeStep(chunk.LodIndex);
 
-    const float3 origin = ToWorld(chunk);
+    const float3 origin = ToWorld(chunk.CoordPos, chunk.LodIndex);
 
     if (groupIdx == 0)
     {
