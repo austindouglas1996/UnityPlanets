@@ -156,7 +156,7 @@ public class ChunkRendererMono : MonoBehaviour
         for (int dx = initialRootRange.X.Min; dx < initialRootRange.X.Max; dx++)
             for (int dy = initialRootRange.Y.Min; dy < initialRootRange.Y.Max; dy++)
                 for (int dz = initialRootRange.Z.Min; dz < initialRootRange.Z.Max; dz++)
-                    CreateRoot(treeMan, new Vector3Int(dx, dy, dz), chunkSize, startPos);
+                    CreateRoot(treeMan, new Vector3Int(dx, dy, dz), 4, startPos);
     }
 
     /// <summary>
@@ -165,14 +165,9 @@ public class ChunkRendererMono : MonoBehaviour
     /// <param name="coord"></param>
     /// <param name="lod"></param>
     /// <param name="offset"></param>
-    private void CreateRoot(ChunkOctreeService tree, Vector3Int coord, int chunkSize, Vector3 offset)
+    private void CreateRoot(ChunkOctreeService tree, Vector3Int coord, int lodIndex, Vector3 offset)
     {
-        Vector3 chunkWorldPos = offset + new Vector3(
-            coord.x * chunkSize,
-            coord.y * chunkSize,
-            coord.z * chunkSize);
-
-        Bounds bounds = new Bounds(chunkWorldPos + Vector3.one * (chunkSize / 2), Vector3.one * chunkSize);
+        Bounds bounds = this.chunkServices.Layout.GetBounds(coord, lodIndex);
 
         var root = new ChunkOctTreeNode(tree, bounds);
         rootTrees.Add(root);

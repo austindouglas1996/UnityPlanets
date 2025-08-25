@@ -75,18 +75,8 @@ public class ChunkOctreeService
     /// <returns></returns>
     public ChunkOctTreeNode CreateChild(ChunkOctTreeNode parent, Vector3Int childCoord)
     {
-        int chunkSize = services.Layout.GetChunkSize(parent.Key.LODIndex - 1);
-
-        Vector3 worldMin = new Vector3(
-            childCoord.x * chunkSize,
-            childCoord.y * chunkSize,
-            childCoord.z * chunkSize
-        );
-
-        Vector3 boundsCenter = worldMin + Vector3.one * (chunkSize / 2f);
-        Bounds bounds = new Bounds(boundsCenter, Vector3.one * chunkSize);
-
-        return new ChunkOctTreeNode(this, bounds, parent);
+        Bounds childBounds = this.services.Layout.GetBounds(childCoord, parent.Key.LODIndex - 1);
+        return new ChunkOctTreeNode(this, childBounds, parent);
     }
 
     /// <summary>
@@ -106,13 +96,6 @@ public class ChunkOctreeService
     /// <returns></returns>
     public Vector3Int BoundsToCoordinate(Bounds bounds, int lodIndex)
     {
-        int chunkSize = services.Layout.GetChunkSize(lodIndex);
-        Vector3 pos = bounds.min;
-
-        return new Vector3Int(
-            Mathf.FloorToInt(pos.x / chunkSize),
-            Mathf.FloorToInt(pos.y / chunkSize),
-            Mathf.FloorToInt(pos.z / chunkSize)
-        );
+        return this.services.Layout.BoundsToCoordinates(bounds, lodIndex);
     }
 }

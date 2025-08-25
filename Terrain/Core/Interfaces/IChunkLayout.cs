@@ -42,14 +42,31 @@ public interface IChunkLayout
     /// </summary>
     /// <param name="coordinates"></param>
     /// <returns></returns>
-    Vector3 ToWorld(ChunkKey key);
+    Vector3 ToWorld(Vector3 coordinates);
 
     /// <summary>
     /// Convert a vector into coordinates based on chunkSize.
     /// </summary>
     /// <param name="world"></param>
     /// <returns></returns>
-    Vector3Int ToCoordinates(Vector3 worldPosition, int lodIndex);
+    Vector3Int ToCoordinates(Vector3 worldPosition);
+
+    /// <summary>
+    /// Retrieve the <see cref="Bounds"/> for a given <see cref="ChunkKey"/>.
+    /// </summary>
+    Bounds GetBounds(ChunkKey key);
+
+    /// <summary>
+    /// Retrieve the <see cref="Bounds"/> for a given <see cref="ChunkKey"/>.
+    /// </summary>
+    Bounds GetBounds(Vector3Int coordinates, int lodIndex);
+
+    /// <summary>
+    /// Retrieve a set of coordinates based on a <see cref="Bounds"/>.
+    /// </summary>
+    /// <param name="bounds"></param>
+    /// <returns></returns>
+    Vector3Int BoundsToCoordinates(Bounds bounds, int lodIndex);
 
     /// <summary>
     /// Get the desired LOD level for a given chunk.

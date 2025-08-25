@@ -21,11 +21,6 @@ public class ChunkRenderBatch : IDisposable
     public ComputeBuffer Args;
 
     /// <summary>
-    /// World-space bounds for this batch used for culling when using non-Now draw paths.
-    /// </summary>
-    public Bounds Bounds;
-
-    /// <summary>
     /// Has <see cref="Dispose"/> been called?
     /// </summary>
     private bool isDisposed = false;
@@ -45,7 +40,6 @@ public class ChunkRenderBatch : IDisposable
 
         this.Triangle = Triangle;
         this.Args = Args;
-        this.Bounds = this.ComputeBounds(keys, services);
     }
 
     /// <summary>
@@ -62,31 +56,6 @@ public class ChunkRenderBatch : IDisposable
 
         Args = null;
         Triangle = null;
-    }
-
-    /// <summary>
-    /// Compute world-space bounds from the batch's keys.
-    /// Padding should roughly match your chunk world size so triangles at edges aren't culled.
-    /// </summary>
-    private Bounds ComputeBounds(IReadOnlyList<ChunkKey> chunkContexts, IChunkServices services)
-    {
-        if (chunkContexts.Count == 0)
-            return new Bounds(Vector3.zero, Vector3.zero);
-
-        Vector3 min = services.Layout.ToWorld(chunkContexts[0]);
-        Vector3 max = min;
-
-        foreach (var ctx in chunkContexts)
-        {
-            Vector3 pos = services.Layout.ToWorld(ctx);
-            min = Vector3.Min(min, pos);
-            max = Vector3.Max(max, pos);
-        }
-
-        Vector3 center = (min + max) * 0.5f;
-        Vector3 size = (max - min) + Vector3.one * services.Configuration.DensityOptions.ChunkSize;
-
-        return new Bounds(center, size);
     }
 
     /// <summary>

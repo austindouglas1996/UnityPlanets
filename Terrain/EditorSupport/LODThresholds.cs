@@ -7,16 +7,30 @@ public class LODThresholds
     public int LOD0 = 2;
 
     [Tooltip("LOD1 — near field: trees, paths")]
-    public int LOD1 = 4;
+    public int LOD1 = 2;
 
     [Tooltip("LOD2 — visible terrain shape, some structure")]
-    public int LOD2 = 6;
+    public int LOD2 = 2;
 
     [Tooltip("LOD3 — far terrain shape only")]
-    public int LOD3 = 8;
+    public int LOD3 = 2;
 
     [Tooltip("LOD4 — horizon terrain")]
-    public int LOD4 = 16;
+    public int LOD4 = 2;
 
-    public int[] ToArray() => new[] { LOD0, LOD0+LOD1, LOD1+LOD2, LOD2+LOD3, LOD3+LOD4};
+    // Return cumulative ring edges measured in *LOD0 chunk units*
+    public int[] ToArray()
+    {
+        int[] counts = { LOD0, LOD1, LOD2, LOD3, LOD4 };
+        int[] rings = new int[counts.Length];
+        int acc = -1;
+
+        for (int L = 0; L < counts.Length; L++)
+        {
+            acc += counts[L] * 2;
+            rings[L] = acc;
+        }
+
+        return rings;
+    }
 }

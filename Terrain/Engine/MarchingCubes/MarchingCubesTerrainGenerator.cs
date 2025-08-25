@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.Rendering;
+using WaveHarmonic.Crest;
 
 /// <summary>
 /// My marching-cubes generator. Feeds compute with chunk inputs, spits out a draw-ready batch.
@@ -372,3 +374,4 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         return buf;
     }
 }
+

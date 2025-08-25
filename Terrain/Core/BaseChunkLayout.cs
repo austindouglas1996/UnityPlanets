@@ -1,4 +1,6 @@
+using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// A generic instance of <see cref="IChunkLayout"/> that fits most scenarios when creating a chunk layout
@@ -35,7 +37,7 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
         set
         {
             followerWorldPosition = value;
-            followerCoordinates = this.ToCoordinates(FollowerWorldPosition, 0);
+            followerCoordinates = this.ToCoordinates(FollowerWorldPosition);
         }
     }
     private Vector3 followerWorldPosition;
@@ -91,10 +93,13 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
     /// </summary>
     /// <param name="coordinates"></param>
     /// <returns></returns>
-    public Vector3 ToWorld(ChunkKey key)
+    public Vector3 ToWorld(Vector3 coordinates)
     {
-        int chunkSize = GetChunkSize(key.LODIndex);
-        return new Vector3(key.Coordinates.x * chunkSize, key.Coordinates.y * chunkSize, key.Coordinates.z * chunkSize);
+        int chunkSize = GetChunkSize(0);
+        return new Vector3(
+            coordinates.x * chunkSize, 
+            coordinates.y * chunkSize, 
+            coordinates.z * chunkSize);
     }
 
     /// <summary>
@@ -102,13 +107,63 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
     /// </summary>
     /// <param name="world"></param>
     /// <returns></returns>
-    public Vector3Int ToCoordinates(Vector3 worldPositon, int lodIndex)
+    public Vector3Int ToCoordinates(Vector3 worldPositon)
     {
-        int chunkSize = GetChunkSize(lodIndex);
+        int chunkSize = GetChunkSize(0);
         return new Vector3Int(
             Mathf.FloorToInt(worldPositon.x / chunkSize),
             Mathf.FloorToInt(worldPositon.y / chunkSize),
             Mathf.FloorToInt(worldPositon.z / chunkSize));
+    }
+
+    /// <summary>
+    /// Retrieve the <see cref="Bounds"/> for a given <see cref="ChunkKey"/>.
+    /// </summary>
+    /// <param name="key"></param>
+    /// <returns></returns>
+    public Bounds GetBounds(ChunkKey key)
+    {
+        return GetBounds(key.Coordinates, key.LODIndex);
+    }
+
+    /// <summary>
+    /// Retrieve the <see cref="Bounds"/> for a given <see cref="ChunkKey"/>.
+    /// </summary>
+    /// <param name="key"></param>
+    /// <returns></returns>
+    public Bounds GetBounds(Vector3Int coordinates, int lodIndex)
+    {
+        int chunkSize = GetChunkSize(lodIndex);
+
+        Vector3 worldPos = new Vector3(
+             coordinates.x * chunkSize,
+             coordinates.y * chunkSize,
+             coordinates.z * chunkSize);
+
+        Bounds bounds = new Bounds
+        {
+            center = worldPos + new Vector3(chunkSize, chunkSize, chunkSize) * 0.5f,
+            size = new Vector3(chunkSize, chunkSize, chunkSize)
+        };
+
+        return bounds;
+    }
+
+    /// <summary>
+    /// Retrieve a set of coordinates based on a <see cref="Bounds"/> object.
+    /// </summary>
+    /// <param name="bounds"></param>
+    /// <param name="lodIndex"></param>
+    /// <returns></returns>
+    public Vector3Int BoundsToCoordinates(Bounds bounds, int lodIndex)
+    {
+        int chunkSize = GetChunkSize(lodIndex);
+        Vector3 pos = bounds.min;
+
+        return new Vector3Int(
+            Mathf.FloorToInt(pos.x / chunkSize),
+            Mathf.FloorToInt(pos.y / chunkSize),
+            Mathf.FloorToInt(pos.z / chunkSize));
     }
 
     /// <summary>
@@ -118,23 +173,22 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
     /// <returns></returns>
     public int GetLODForChunk(ChunkKey key)
     {
-        int baseChunkSize = Configuration.DensityOptions.ChunkSize;
-        int chunkSize = GetChunkSize(key.LODIndex);
+        // Use chunk coordinates at LOD0 scale
+        float3 chunkCenter = new float3(
+            key.Coordinates.x + 0.5f,
+            0,
+            key.Coordinates.z + 0.5f
+        );
 
-        // Compute chunk world bounds (no Bounds)
-        int chunkMinX = key.Coordinates.x * chunkSize;
-        int chunkMaxX = chunkMinX + chunkSize;
-        int chunkMinZ = key.Coordinates.z * chunkSize;
-        int chunkMaxZ = chunkMinZ + chunkSize;
+        // Get follower position in LOD0 chunk units
+        float px = FollowerWorldPosition.x / Configuration.DensityOptions.ChunkSize;
+        float pz = FollowerWorldPosition.z / Configuration.DensityOptions.ChunkSize;
 
-        float px = FollowerWorldPosition.x;
-        float pz = FollowerWorldPosition.z;
+        float dx = Mathf.Abs(px - chunkCenter.x);
+        float dz = Mathf.Abs(pz - chunkCenter.z);
+        int ring = Mathf.CeilToInt(Mathf.Max(dx, dz));
 
-        int dx = DistToInterval(px, chunkMinX, chunkMaxX);
-        int dz = DistToInterval(pz, chunkMinZ, chunkMaxZ);
-
-        int chebDist = Mathf.CeilToInt(Mathf.Max(dx, dz) / (float)baseChunkSize);
-        return DesiredLodFromRings(chebDist);
+        return DesiredLodFromRings(ring);
     }
 
     /// <summary>
@@ -150,19 +204,5 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
             if (dChunks0 <= LODRings[L]) 
                 return L;
         return LODRings.Length - 1;
-    }
-
-    /// <summary>
-    /// Returns the distance between two variables.
-    /// </summary>
-    /// <param name="p"></param>
-    /// <param name="a"></param>
-    /// <param name="b"></param>
-    /// <returns></returns>
-    private static int DistToInterval(float p, float a, float b)
-    {
-        if (p < a) return Mathf.CeilToInt(a - p);
-        if (p > b) return Mathf.CeilToInt(p - b);
-        return 0;
     }
 }
