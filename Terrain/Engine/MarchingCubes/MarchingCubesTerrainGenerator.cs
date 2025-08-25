@@ -210,7 +210,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private void ProcessBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output)
     {
         int batchSize = keys.Count;
-        int size = densityOptions.ChunkSize + 1;
+        int size = GetChunkSize();
         int voxelCountPerChunk = size * size * size;
         int totalVoxels = voxelCountPerChunk * batchSize;
 
@@ -270,7 +270,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         this.MarchingShader.SetConstantBuffer("PlanetDensityOptions", PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
 
         // Scalar field big enough for 128 chunks at current chunk size (rough over-alloc)
-        int size = densityOptions.ChunkSize + 1;
+        int size = GetChunkSize();
         int voxelCountPerChunk = size * size * size;
         int maxTotalVoxels = voxelCountPerChunk * GenerateCap;
         DensityBuffer = new ComputeBuffer(maxTotalVoxels, sizeof(float));
@@ -344,9 +344,9 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     /// <returns></returns>
     private ComputeBuffer CreateTriangleBuffer()
     {
-        int size = densityOptions.ChunkSize + 1;
+        int size = GetChunkSize();
         int voxelCountPerChunk = size * size * size;
-        int totalVoxels = (voxelCountPerChunk * densityOptions.ChunkSize);
+        int totalVoxels = (voxelCountPerChunk * GetChunkSize());
 
         var newBuff = new ComputeBuffer(totalVoxels, Marshal.SizeOf<ChunkTriangleData>(), ComputeBufferType.Append);
 
@@ -372,6 +372,11 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         var buf = TriangleBuffers[0];
         TriangleBuffers.RemoveAt(0);
         return buf;
+    }
+
+    private int GetChunkSize()
+    {
+        return densityOptions.ChunkSize + 3;
     }
 }
 

@@ -8,6 +8,17 @@
 #define SUBVARIANT_PLANET   1
 #define SUBVARIANT_CAVE     2
 
+int GetChunkLogicalSize()
+{
+    return ChunkSize + 1;
+}
+
+int3 GetChunkLogicalSize3()
+{
+    int logicalSize = GetChunkLogicalSize();
+    return int3(logicalSize, logicalSize, logicalSize);
+}
+
 int GetChunkSize(int lodIndex)
 {
     return ChunkSize << lodIndex;
@@ -35,21 +46,6 @@ int3 ToCoordinates(float3 worldPos)
         (int) floor(worldPos.x / chunkSize),
         (int) floor(worldPos.y / chunkSize),
         (int) floor(worldPos.z / chunkSize));
-}
-
-int GetOctaves(int lod)
-{
-    switch (lod)
-    {
-        case 0:
-            return 6;
-        case 1:
-            return 4;
-        case 2:
-            return 2;
-        default:
-            return 1;
-    }
 }
 
 float Sanitize(float v)
