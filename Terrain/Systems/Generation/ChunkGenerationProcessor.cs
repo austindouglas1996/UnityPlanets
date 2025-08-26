@@ -11,6 +11,7 @@ public class ChunkGenerationProcessor : IDisposable
 {
     private readonly List<ChunkGenerationJob> tmpSurfaceJobs = new(1024);
     private readonly List<ChunkGenerationJob> tmpGenerationJobs = new(1024);
+    private readonly List<ChunkGenerationJob> tmpEdgeGenerationJobs = new(1024);
 
     private readonly ChunkGenerationBatcher surfaceBatcher = new();
     private readonly ChunkGenerationBatcher generationBatcher = new();
@@ -52,8 +53,20 @@ public class ChunkGenerationProcessor : IDisposable
     /// Queues a chunk for full generation.
     /// The provided callback will be invoked once generation is complete.
     /// </summary>
-    public void RequestChunkGeneration(ChunkKey key, Action<bool> onDone) =>
-        generationBatcher.Add(new ChunkGenerationJob(key, onDone));
+    public void RequestChunkGeneration(ChunkKey key, Action<bool> onDone)
+    {
+        var job = new ChunkGenerationJob(key, onDone);
+        var edges = chunkServices.Layout.GetLODEdges(key);
+
+        // Check if this given key is the edge of an LOD level where
+        // it will need to be stitched to nearby chunks.
+        if (edges != EdgeDirection.None)
+        {        
+            job.IsEdge = true;
+        }
+
+        generationBatcher.Add(job);
+    }
 
     /// <summary>
     /// Removes all queued and active references to a given chunk.
@@ -137,7 +150,7 @@ public class ChunkGenerationProcessor : IDisposable
         foreach (var job in tmpGenerationJobs)
         {
             job.OnDone(true);
-            layerRenderer.Add(job.Key);
+            layerRenderer.Add(job);
         }
     }
 }

@@ -42,6 +42,11 @@ public class ChunkRenderBucket : IDisposable
         this.chunkGenerator = chunkGenerator;
     }
 
+    protected IChunkGenerator ChunkGenerator
+    {
+        get { return this.chunkGenerator; }
+    }
+
     /// <summary>
     /// Gets the render batch data created during <see cref="Generate"/>
     /// </summary>
@@ -60,7 +65,7 @@ public class ChunkRenderBucket : IDisposable
     /// <summary>
     /// Has this bucket reached maximum capacity.
     /// </summary>
-    public bool IsFull => items.Count == capacity;
+    public virtual bool IsFull => items.Count == capacity;
 
     /// <summary>
     /// Has this bucket no items?
@@ -186,6 +191,14 @@ public class ChunkRenderBucket : IDisposable
     }
 
     /// <summary>
+    /// Core logic that actually performs generation. Override in subclasses.
+    /// </summary>
+    protected virtual void GenerateCore(List<ChunkKey> items, Action<ChunkRenderBatch> onDone)
+    {
+        chunkGenerator.DispatchGeneration(items, onDone);
+    }
+
+    /// <summary>
     /// Call ths bucket with the included elements to be generated.
     /// </summary>
     private void Generate()
@@ -196,7 +209,7 @@ public class ChunkRenderBucket : IDisposable
 
         if (this.items.Count != 0)
         {
-            chunkGenerator.DispatchGeneration(this.items, (ChunkRenderBatch output) =>
+            GenerateCore(items, (ChunkRenderBatch output) =>
             {
                 RenderData?.Dispose();
                 RenderData = null;

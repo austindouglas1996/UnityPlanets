@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using UnityEngine;
+using static UnityEngine.XR.Interaction.Toolkit.Inputs.Interactions.SectorInteraction;
 
 /// <summary>
 /// Represents a single chunk generation request, containing its unique key 
@@ -29,4 +32,9 @@ public class ChunkGenerationJob
     /// The completion callback for this job.
     /// </summary>
     public Action<bool> OnDone;
+
+    /// <summary>
+    /// Returns whether this job contains a collection of related keys.
+    /// </summary>
+    public bool IsEdge = false;
 }

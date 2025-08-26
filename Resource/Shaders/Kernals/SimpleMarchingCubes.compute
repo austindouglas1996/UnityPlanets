@@ -1,6 +1,7 @@
 ﻿#pragma kernel GenerateDensityMap
 #pragma kernel GenerateSurfaceMask
 #pragma kernel RunMarchingCubes
+#pragma kernel RunMarchingCubesStitch
 #pragma kernel PrepareDrawArgs
 
 #include "../ChunkFunctions.hlsl"
@@ -13,6 +14,9 @@
 StructuredBuffer<ChunkDispatchKey> ChunkInputs;
 RWStructuredBuffer<float> DensityMap;
 
+StructuredBuffer<ChunkEdgeNeighbor> Neighbors;
+int NeighborsCount;
+
 /* Outputs */
 RWStructuredBuffer<uint> SurfaceMask;
 AppendStructuredBuffer<ChunkTriangleData> TriangleBuffer;
@@ -22,7 +26,6 @@ RWStructuredBuffer<uint> ArgsBuffer;
 groupshared uint gHasAbove;
 groupshared uint gHasBelow;
 
-// Generates the density data for a marching cube algorithm.
 [numthreads(4, 4, 4)]
 void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
 {
@@ -120,6 +123,25 @@ void RunMarchingCubes(uint3 id : SV_DispatchThreadID)
         return;
 
     March(access, TriangleBuffer, DensityMap);
+}
+
+// MarchingCubesPass
+// Main meshing kernel. Reads voxel density data for a given chunk, determines
+// which edges of the cube intersect the ISO surface, and emits triangles
+// according to the marching cubes lookup tables.
+// 
+// Each thread processes one cube in the chunk's voxel grid.
+[numthreads(4, 4, 4)]
+void RunMarchingCubesStitch(uint3 id : SV_DispatchThreadID)
+{
+    int chunkLogicalSize = GetChunkLogicalSize();
+    int size = int3(chunkLogicalSize - 1, chunkLogicalSize - 1, chunkLogicalSize - 1);
+    ChunkDispatchKeyInfo access = GetChunkAccess(id, size, ChunkInputs);
+
+    if (access.mapIndex < 0)
+        return;
+
+    MarchStitch(access, TriangleBuffer, DensityMap);
 }
 
 // PrepareIndirectDrawArgs

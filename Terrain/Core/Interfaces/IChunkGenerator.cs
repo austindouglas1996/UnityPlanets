@@ -26,6 +26,14 @@ public interface IChunkGenerator : IDisposable
     void DispatchGeneration(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output);
 
     /// <summary>
+    /// Creates a chunk mesh on the GPU for the given chunk keys.
+    /// Called the first time those chunks are loaded.
+    /// </summary>
+    /// <param name="keys">List of chunk keys to generate.</param>
+    /// <returns>GPU data set for the generated chunks.</returns>
+    void DispatchEdgeGeneration(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output);
+
+    /// <summary>
     /// Used for generators that operate on a schedule.
     /// </summary>
     void Update();

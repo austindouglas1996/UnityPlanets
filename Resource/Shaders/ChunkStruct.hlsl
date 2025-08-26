@@ -53,4 +53,13 @@ struct ChunkTriangleData
     int LodKey;
 };
 
+struct ChunkEdgeNeighbor
+{
+    float3 CoordPos;
+    int Index; // Neighbor chunk index in the density buffer array
+    int Face; // Which face/direction this neighbor is (0=Left, 1=Right, etc.)
+    int LodIndex; // LOD level of this neighbor (to know if different LOD)
+};
+
+
 #endif

@@ -15,6 +15,7 @@ public class ChunkRenderRouter : IDisposable
 {
     private ChunkRenderBucketCollection lod0;
     private ChunkRenderBucketCollection main;
+    private ChunkRenderBucketCollection edge;
     private IChunkGenerator chunkGenerator;
 
     /// <summary>
@@ -28,20 +29,23 @@ public class ChunkRenderRouter : IDisposable
     public ChunkRenderRouter(IChunkGenerator chunkGenerator, int mainCap, int mainThres, int lod0Cap, int lod0Thres)
     {
         this.chunkGenerator = chunkGenerator;
-        lod0 = new ChunkRenderBucketCollection(chunkGenerator, true, lod0Cap, lod0Thres);
-        main = new ChunkRenderBucketCollection(chunkGenerator, false, mainCap, mainThres);
+        lod0 = new ChunkRenderBucketCollection(chunkGenerator, true, false, lod0Cap, lod0Thres);
+        main = new ChunkRenderBucketCollection(chunkGenerator, false, false, mainCap, mainThres);
+        edge = new ChunkRenderBucketCollection(chunkGenerator, false, true, mainCap, mainThres);
     }
 
     /// <summary>
     /// Route a key into the right lane by its <see cref="ChunkKey.LODIndex"/>.
     /// Collection handles dedupe; this is a simple forwarder.
     /// </summary>
-    public void Add(ChunkKey key)
+    public void Add(ChunkGenerationJob job)
     {
-        if (key.LODIndex == 0)
-            lod0.Add(key);
+        if (job.Key.LODIndex == 0)
+            lod0.Add(job.Key);
+        else if (job.IsEdge)
+            edge.Add(job.Key);
         else
-            main.Add(key);
+            main.Add(job.Key);
     }
 
     /// <summary>
@@ -53,7 +57,7 @@ public class ChunkRenderRouter : IDisposable
         if (key.LODIndex == 0)
             return lod0.Remove(key);
         else
-            return main.Remove(key);
+            return main.Remove(key) || edge.Remove(key);
     }
 
     /// <summary>
@@ -61,7 +65,7 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void Clear()
     {
-        lod0.Clear(); main.Clear();
+        lod0.Clear(); main.Clear(); edge.Clear();
     }
 
     /// <summary>
@@ -71,6 +75,7 @@ public class ChunkRenderRouter : IDisposable
     {
         lod0.Update();
         main.Update();
+        edge.Update();
     }
 
     /// <summary>
@@ -81,6 +86,7 @@ public class ChunkRenderRouter : IDisposable
     {
         lod0.Draw(this.chunkGenerator.GetMaterial);
         main.Draw(this.chunkGenerator.GetMaterial);
+        edge.Draw(this.chunkGenerator.GetMaterial);
     }
 
     /// <summary>
@@ -91,6 +97,7 @@ public class ChunkRenderRouter : IDisposable
     {
         lod0.Dispose();
         main.Dispose();
+        edge.Dispose();
     }
 
     /// <summary>
@@ -101,5 +108,6 @@ public class ChunkRenderRouter : IDisposable
     {
         lod0.MarkAsDirty(force);
         main.MarkAsDirty(force);
+        edge.MarkAsDirty(force);
     }
 }
