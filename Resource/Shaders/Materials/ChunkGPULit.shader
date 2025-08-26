@@ -73,11 +73,9 @@ Shader "Custom/URP_CustomLitGPU"
                              subIndex == 1 ? tri.b :
                                              tri.c;
 
-                float4 color = GetLodColor(tri.LodKey);
-
                 OUT.positionWS = pos;
                 OUT.normalWS = normalize(cross(tri.b - tri.a, tri.c - tri.a));
-                OUT.color = color;
+                OUT.color = float4(GetTerrainColor(OUT.normalWS),1);
                 OUT.positionCS = TransformWorldToHClip(pos);
 
                 return OUT;

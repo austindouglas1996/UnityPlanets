@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
-using VHierarchy.Libs;
 
 public enum OccupancyState { Unknown, Loading, Empty, NonEmpty }
 public enum ContentPhase { Unloaded, Loading, Ready, Subdivided }

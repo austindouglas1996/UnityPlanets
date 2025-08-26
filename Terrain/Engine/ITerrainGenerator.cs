@@ -33,20 +33,6 @@ public interface ITerrainGenerator : IDisposable
     void GenerateBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output);
 
     /// <summary>
-    /// Generate a draw-ready batch (triangle append buffer + indirect args + bounds)
-    /// for the provided chunk keys where one or more chunks require LOD edge stitching.
-    /// This version ensures that neighboring chunk density data is included as needed
-    /// for seamless stitching at LOD transitions. Returns null or throws if the input is
-    /// empty, depending on implementation.
-    /// </summary>
-    /// <param name="keys">Non-empty list of chunk keys to build, including edge chunks.</param>
-    /// <param name="output">
-    /// A callback that receives a <see cref="ChunkRenderBatch"/> containing renderable mesh data.
-    /// The caller must <c>Dispose</c> the batch when done.
-    /// </param>
-    void GenerateEdgeBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output);
-
-    /// <summary>
     /// Used to help with generators that may schedule jobs.
     /// </summary>
     void Update();

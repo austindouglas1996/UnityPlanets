@@ -56,15 +56,6 @@ public class ChunkGenerationProcessor : IDisposable
     public void RequestChunkGeneration(ChunkKey key, Action<bool> onDone)
     {
         var job = new ChunkGenerationJob(key, onDone);
-        var edges = chunkServices.Layout.GetLODEdges(key);
-
-        // Check if this given key is the edge of an LOD level where
-        // it will need to be stitched to nearby chunks.
-        if (edges != EdgeDirection.None)
-        {        
-            job.IsEdge = true;
-        }
-
         generationBatcher.Add(job);
     }
 

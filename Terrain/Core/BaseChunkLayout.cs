@@ -1,8 +1,5 @@
-using System.Collections.Generic;
 using System.Linq;
-using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 /// <summary>
 /// A generic instance of <see cref="IChunkLayout"/> that fits most scenarios when creating a chunk layout
@@ -10,8 +7,6 @@ using UnityEngine.InputSystem;
 /// </summary>
 public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
 {
-    private Dictionary<EdgeDirection, Vector3Int> NeighborOffsets = EdgeDirectionHelper.DirectionOffsets;
-
     /// <summary>
     /// The set of LOD thresholds for chunk rendering.
     /// </summary>
@@ -201,30 +196,6 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
         int ring = Mathf.CeilToInt(maxDist / baseChunkSize);
 
         return DesiredLodFromRings(ring);
-    }
-
-    /// <summary>
-    /// Returns true whether a given <see cref="ChunkKey"/> is on the edge of a given LOD level and should be rendered
-    /// differently.
-    /// </summary>
-    /// <param name="key"></param>
-    /// <returns></returns>
-    public EdgeDirection GetLODEdges(ChunkKey key)
-    {
-        EdgeDirection edges = EdgeDirection.None;
-
-        foreach (var pair in NeighborOffsets)
-        {
-            EdgeDirection dir = pair.Key;
-            Vector3Int offset = pair.Value;
-
-            var neighborKey = new ChunkKey(key.Coordinates + offset, key.LODIndex);
-
-            if (GetLODForChunk(neighborKey) != key.LODIndex)
-                edges |= dir;
-        }
-
-        return edges;
     }
 
     /// <summary>

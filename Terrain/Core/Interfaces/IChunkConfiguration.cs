@@ -1,7 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Numerics;
-using UnityEngine;
 
 /// <summary>
 /// Contains config data for how chunks are sized, typed, and generated.

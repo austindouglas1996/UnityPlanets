@@ -43,7 +43,7 @@ float GetFoundationNoise(float3 world, int lod)
 
     // === Base continent layer ===
     float3 basePos = (samplePos3D + float3(BaseOffset, 0)) * BaseFreq;
-    float baseNoise = fbm3D(basePos, 2); 
+    float baseNoise = fbm3D(basePos, 2);
     baseNoise = smoothstep(0.0, 1.0, (baseNoise + 1.0) * 0.5);
 
     // === Mid/large-scale detail ===

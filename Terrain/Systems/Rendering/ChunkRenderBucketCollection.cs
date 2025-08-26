@@ -26,7 +26,6 @@ public class ChunkRenderBucketCollection : IDisposable
     private int capacity = 128;
     private int rebuildThreshold = 1;
     private bool isLod0 = false;
-    private bool isEdge = false;
 
     private IChunkGenerator chunkGenerator;
 
@@ -36,13 +35,12 @@ public class ChunkRenderBucketCollection : IDisposable
     /// <param name="chunkGenerator">Shared generator used by all buckets.</param>
     /// <param name="capacity">Max items per bucket (default 128).</param>
     /// <param name="rebuiltThreshold">Removals per bucket before it regenerates.</param>
-    public ChunkRenderBucketCollection(IChunkGenerator chunkGenerator, bool isLod0 = false, bool isEdge = false, int capacity = 128, int rebuiltThreshold = 2)
+    public ChunkRenderBucketCollection(IChunkGenerator chunkGenerator, bool isLod0 = false, int capacity = 128, int rebuiltThreshold = 2)
     {
         this.chunkGenerator = chunkGenerator;
         this.capacity = capacity;
         this.rebuildThreshold = rebuiltThreshold;
         this.isLod0 = isLod0;
-        this.isEdge = isEdge;
     }
 
     /// <summary>
@@ -181,11 +179,7 @@ public class ChunkRenderBucketCollection : IDisposable
     private ChunkRenderBucket CreateBucket()
     {
         ChunkRenderBucket newBucket;
-
-        if (this.isEdge)
-            newBucket = new ChunkRenderBucketEdge(capacity, rebuildThreshold, this.chunkGenerator);
-        else
-            newBucket = new ChunkRenderBucket(capacity, rebuildThreshold, this.chunkGenerator);
+        newBucket = new ChunkRenderBucket(capacity, rebuildThreshold, this.chunkGenerator);
 
         buckets.Add(newBucket);
 

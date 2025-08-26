@@ -39,17 +39,6 @@ public abstract class BaseChunkGenerator : BaseChunkCore, IChunkGenerator
     }
 
     /// <summary>
-    /// Generate a draw-ready batch (triangle buffer + indirect args + bounds)
-    /// for the given set of chunk keys. Forwards to <see cref="Generator"/>.
-    /// </summary>
-    /// <param name="keys">Non-empty list of chunk keys to build.</param>
-    /// <returns>A <see cref="ChunkRenderBatch"/> ready to render, or throws if empty.</returns>
-    public virtual void DispatchEdgeGeneration(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output)
-    {
-        this.Generator.GenerateEdgeBatch(keys, output);
-    }
-
-    /// <summary>
     /// Compute a per-chunk surface mask to quickly cull empty chunks before meshing.
     /// Forwards to <see cref="Generator"/>.
     /// </summary>

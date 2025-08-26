@@ -1,15 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Unity.XR.CoreUtils;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
-using WaveHarmonic.Crest;
-using static UnityEditor.Rendering.CameraUI;
-using static UnityEngine.XR.Interaction.Toolkit.Inputs.Interactions.SectorInteraction;
 
 /// <summary>
 /// My marching-cubes generator. Feeds compute with chunk inputs, spits out a draw-ready batch.
@@ -37,9 +32,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private ComputeBuffer DensityBuffer;           // RWStructuredBuffer<float>  (voxel scalar field)
     private ComputeBuffer SurfaceChunkInputBuffer; // StructuredBuffer<ChunkInput> for mask pass
     private ComputeBuffer GenerateChunkInputBuffer;// StructuredBuffer<ChunkInput> for full gen
-    private ComputeBuffer EdgeGenerateChunkInputBuffer;// StructuredBuffer<ChunkInput> for full gen
-    private ComputeBuffer EdgeChunkInputBuffer;// StructuredBuffer<ChunkInput> for full gen
-    private ComputeBuffer EdgeNeighborChunkBuffer;
     private ComputeBuffer BiomeBuffer;             // StructuredBuffer<BiomeData> (small table)
     private ComputeBuffer DensityOptionsBuffer;    // StructuredBuffer<DensityMapOptions> (1 element)
     private ComputeBuffer PlanetOptionsBuffer;     // StructuredBuffer<PlanetDensityOptions> (1 element)
@@ -64,7 +56,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private List<ComputeBuffer> TriangleBuffers = new List<ComputeBuffer>();
 
     private List<TerrainJob> Jobs = new();
-    private List<TerrainJob> EdgeJobs = new();
 
     /// <summary>
     /// Initialize a new instance of the <see cref="MarchingCubesTerrainGenerator"/> class.
@@ -112,14 +103,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
 
             ProcessBatch(Jobs[0].Keys, Jobs[0].Output); Jobs.RemoveAt(0);
         }
-
-        // Two edge jobs.
-        for (int i = 0; i < JobsPerTick; i++)
-        {
-            if (this.EdgeJobs.Count == 0) break;
-
-            ProcessEdgeBatches(EdgeJobs[0].Keys, EdgeJobs[0].Output); EdgeJobs.RemoveAt(0);
-        }
     }
 
     /// <summary>
@@ -159,16 +142,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     public void GenerateBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output)
     {
         this.Jobs.Add(new TerrainJob() { Keys = keys, Output = output });
-    }
-
-    /// <summary>
-    /// Full marching-cubes path. Builds density for the batch along with any
-    /// respective neighbors so we can stitch them together, runs MC, returns triangle + args buffers.
-    /// This job will be queued and ran in a further update to reduce GPU pressure.
-    /// </summary>
-    public void GenerateEdgeBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output)
-    {
-        this.EdgeJobs.Add(new TerrainJob() { Keys = keys, Output = output });
     }
 
     /// <summary>
@@ -288,97 +261,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     }
 
     /// <summary>
-    /// Full marching-cubes path. Builds density for the batch, runs MC, returns triangle + args buffers.
-    /// </summary>
-    /// <param name="keys"></param>
-    /// <param name="output"></param>
-    private void ProcessEdgeBatches(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output)
-    {
-        ComputeBuffer triangleBuffer = GetOrCreateBuffer();
-        triangleBuffer.SetCounterValue(0);
-
-        ComputeBuffer argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
-
-        foreach (var key in keys)
-        {
-            EdgeDirection edges = this.chunkServices.Layout.GetLODEdges(key);
-            if (edges == EdgeDirection.None)
-                continue;
-
-            List<ChunkKey> neighborKeys = new();
-            List<ChunkEdgeNeighbor> neighborEdges = new();
-            int index = 0;
-
-            // This is our parent.
-            neighborKeys.Add(key);
-
-            // Retrieve the neighbors.
-            foreach (var pair in EdgeDirectionHelper.DirectionOffsets)
-            {
-                if ((edges & pair.Key) != 0)
-                {
-                    neighborEdges.Add(new ChunkEdgeNeighbor(pair.Value, index, (int)pair.Key, key.LODIndex - 1));
-                    neighborKeys.Add(new ChunkKey(key.Coordinates + pair.Value, key.LODIndex));
-
-                    index++;
-                }
-            }
-
-            // Process.
-            ProcessEdgeBatch(key, neighborKeys,  neighborEdges, triangleBuffer, output);
-        }
-
-        // Build indirect args from append count
-        int argsKernal = MarchingShader.FindKernel("PrepareDrawArgs");
-        MarchingShader.SetBuffer(argsKernal, "TriangleBuffer", triangleBuffer);
-        MarchingShader.SetBuffer(argsKernal, "ArgsBuffer", argsBuffer);
-        MarchingShader.Dispatch(argsKernal, 1, 1, 1);
-
-        output.Invoke(new ChunkRenderBatch(triangleBuffer, argsBuffer, keys, this.chunkServices));
-    }
-
-    /// <summary>
-    /// Process an Edge batch to rendered.
-    /// </summary>
-    /// <param name="parent"></param>
-    /// <param name="keys"></param>
-    private void ProcessEdgeBatch(ChunkKey parent, List<ChunkKey> keys, List<ChunkEdgeNeighbor> neighborEdges, ComputeBuffer triangleBuffer, Action<ChunkRenderBatch> output)
-    {
-        int batchSize = keys.Count;
-        int size = GetChunkSize();
-        int voxelCountPerChunk = size * size * size;
-        int totalVoxels = voxelCountPerChunk * batchSize;
-
-        // Fill the reusable input list + upload to the per-kernel input buffer.
-        FillGenerateChunkInputs(keys);
-        EdgeNeighborChunkBuffer.SetData(neighborEdges.ToArray());
-
-        int genKernal = MarchingShader.FindKernel("GenerateDensityMap");
-        int marchKernal = MarchingShader.FindKernel("RunMarchingCubesStitch");
-
-        // Generate density
-        MarchingShader.SetBuffer(genKernal, "ChunkInputs", GenerateChunkInputBuffer);
-        MarchingShader.SetBuffer(genKernal, "DensityMap", DensityBuffer);
-
-        // NOTE: thread group dims assume [numthreads(8,8,8)] and X packs chunkIndex*XWithinChunk
-        MarchingShader.Dispatch(genKernal,
-            Mathf.CeilToInt(batchSize * size / 4f),
-            Mathf.CeilToInt(size / 4f),
-            Mathf.CeilToInt(size / 4f));
-
-        // We only want to do marching for our one input.
-        EdgeGenerateChunkInputBuffer.SetData(new[] { parent }, 0, 0, 1);
-
-        // Marching cubes
-        MarchingShader.SetBuffer(marchKernal, "Neighbors", EdgeNeighborChunkBuffer);
-        MarchingShader.SetInt("NeighborsCount", neighborEdges.Count);
-        MarchingShader.SetBuffer(marchKernal, "ChunkInputs", GenerateChunkInputBuffer);
-        MarchingShader.SetBuffer(marchKernal, "DensityMap", DensityBuffer);
-        MarchingShader.SetBuffer(marchKernal, "TriangleBuffer", triangleBuffer);
-        MarchingShader.Dispatch(marchKernal, size / 4, size / 4, size / 4);
-    }
-
-    /// <summary>
     /// One-time GPU allocations sized for my current caps. If I change caps, I should reallocate.
     /// </summary>
     private void InitBuffer()
@@ -405,9 +287,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         // Per-kernel inputs + mask output
         SurfaceChunkInputBuffer = new ComputeBuffer(SurfaceCap, Marshal.SizeOf<ChunkDispatchKey>());
         GenerateChunkInputBuffer = new ComputeBuffer(GenerateCap, Marshal.SizeOf<ChunkDispatchKey>());
-        EdgeGenerateChunkInputBuffer = new ComputeBuffer(GenerateCap, Marshal.SizeOf<ChunkDispatchKey>());
         SurfaceMaskBuffer = new ComputeBuffer(SurfaceCap, sizeof(uint));
-        EdgeNeighborChunkBuffer = new ComputeBuffer(8, Marshal.SizeOf<ChunkEdgeNeighbor>());
 
         // Set static buffers
         int marchKernal = MarchingShader.FindKernel("RunMarchingCubes");
@@ -416,12 +296,15 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.SetBuffer(marchKernal, "TriangleTableBuffer", TriangleTableBuffer);
         TransVoxelTable.LoadTransVoxelBuffers(MarchingShader, marchKernal);
 
+<<<<<<< HEAD
         int marchKernal1 = MarchingShader.FindKernel("MarchTransvoxelFace");
         MarchingShader.SetBuffer(marchKernal1, "CornerOffsetsBuffer", CornerOffsetsBuffer);
         MarchingShader.SetBuffer(marchKernal1, "EdgeConnectionsBuffer", EdgeConnectionsBuffer);
         MarchingShader.SetBuffer(marchKernal1, "TriangleTableBuffer", TriangleTableBuffer);
         TransVoxelTable.LoadTransVoxelBuffers(MarchingShader, marchKernal1);
 
+=======
+>>>>>>> e3b1c06 (Finished removing my old references to the systems I tried to implement, may be of use later, lets work on cleaning up the code now)
         // Prime options/biomes on GPU
         UpdateOptions();
     }

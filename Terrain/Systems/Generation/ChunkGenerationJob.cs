@@ -1,7 +1,4 @@
 using System;
-using System.Collections.Generic;
-using UnityEngine;
-using static UnityEngine.XR.Interaction.Toolkit.Inputs.Interactions.SectorInteraction;
 
 /// <summary>
 /// Represents a single chunk generation request, containing its unique key 

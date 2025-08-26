@@ -74,12 +74,4 @@ public interface IChunkLayout
     /// <param name="chunkCoordinates"></param>
     /// <returns></returns>
     int GetLODForChunk(ChunkKey key);
-
-    /// <summary>
-    /// Returns whether a given <see cref="ChunkKey"/> is the edge for a given LOD, this way the rendering systems knows
-    /// this chunk will need to be stitched together.
-    /// </summary>
-    /// <param name="key"></param>
-    /// <returns></returns>
-    EdgeDirection GetLODEdges(ChunkKey key);
 }
