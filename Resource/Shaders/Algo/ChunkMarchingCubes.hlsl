@@ -16,7 +16,7 @@ void March(
     bool cLod = false;
     if (IsEdgeVoxel(key.voxelCoord) && IsEdgeCell(key))
     {
-        cLod = true;
+        cLod = false;
     }
 
     for (int i = 0; i < 8; i++)
@@ -68,7 +68,7 @@ void March(
             tri.LodKey = 10;
         }
 
-        TriangleBuffer.Append(tri);
+        //TriangleBuffer.Append(tri);
     }
 }
 

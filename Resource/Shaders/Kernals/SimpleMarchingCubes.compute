@@ -3,10 +3,12 @@
 #pragma kernel RunMarchingCubes
 #pragma kernel RunMarchingCubesStitch
 #pragma kernel PrepareDrawArgs
+#pragma kernel MarchTransvoxelFace
 
 #include "../ChunkFunctions.hlsl"
 #include "../Lib/PerlinNoise.hlsl"
 #include "../Includes/TriangleTable.hlsl"
+#include "../Includes/TransVoxelsTable.hlsl"
 #include "../Algo/ChunkMarchingCubes.hlsl"
 #include "../Algo/SimpleDensityGen.hlsl"
 
@@ -143,6 +145,151 @@ void RunMarchingCubesStitch(uint3 id : SV_DispatchThreadID)
 
     MarchStitch(access, TriangleBuffer, DensityMap);
 }
+
+float3 ComputeCornerWorldPosition(uint2 cell, uint cornerIdx, uint face, int3 chunkCoord, int lod)
+{
+    // Lookup the corner offset (in transition cell space)
+    uint offsetPacked = TransitionCornerOffsets[cornerIdx];
+    int3 localOffset = int3(
+    (offsetPacked >> 0) & 0xF, // x
+    (offsetPacked >> 4) & 0xF, // y
+    (offsetPacked >> 8) & 0xF // z
+);
+
+
+    // Transition face is a 2D strip across a face of the chunk.
+    // Expand the 2D cell index into full local 3D position
+    int3 local;
+    if (face == 0) // +X
+        local = int3(GetChunkSize(lod) - 1, cell.x + localOffset.y, cell.y + localOffset.z);
+    else if (face == 1) // -X
+        local = int3(0, cell.x + localOffset.y, cell.y + localOffset.z);
+    else if (face == 2) // +Y
+        local = int3(cell.x + localOffset.x, GetChunkSize(lod) - 1, cell.y + localOffset.z);
+    else if (face == 3) // -Y
+        local = int3(cell.x + localOffset.x, 0, cell.y + localOffset.z);
+    else if (face == 4) // +Z
+        local = int3(cell.x + localOffset.x, cell.y + localOffset.y, GetChunkSize(lod) - 1);
+    else if (face == 5) // -Z
+        local = int3(cell.x + localOffset.x, cell.y + localOffset.y, 0);
+
+    // Convert to world position
+    float step = GetChunkSizeStep(lod);
+    float3 world = ToWorld(chunkCoord, lod) + float3(local) * GetChunkSizeStep(lod);
+    return world;
+}
+
+float3 InterpolateCorner(uint edgeData, float cornerDensities[13], float3 cornerPositions[13])
+{
+    uint c1 = (edgeData >> 8) & 0xFF;
+    uint c2 = (edgeData >> 0) & 0xFF;
+
+    if (c1 >= 13 || c2 >= 13 || c1 == c2)
+        return float3(0, 0, 0);
+
+    float d1 = cornerDensities[c1];
+    float d2 = cornerDensities[c2];
+
+    if (isnan(d1) || isnan(d2) || abs(d2 - d1) < 1e-6)
+        return cornerPositions[c1];
+
+    float t = saturate((ISOLevel - d1) / (d2 - d1));
+    return lerp(cornerPositions[c1], cornerPositions[c2], t);
+}
+
+
+
+
+
+[numthreads(4, 4, 4)]
+void MarchTransvoxelFace(uint3 id : SV_DispatchThreadID)
+{
+    int chunkLogicalSize = GetChunkLogicalSize();
+    int3 size = int3(chunkLogicalSize - 1, chunkLogicalSize - 1, chunkLogicalSize - 1);
+    ChunkDispatchKeyInfo access = GetChunkAccess(id, size, ChunkInputs);
+
+    uint2 cell = id.xy;
+    int face = 1; // Only doing one face for now
+
+    float cornerDensities[13];
+    float3 cornerPositions[13];
+
+    for (uint i = 0; i < 13; i++)
+    {
+        uint localCorner = FaceCorner(face, i);
+        if (localCorner >= 13)
+            return;
+
+        uint packed = TransitionCornerOffsets[localCorner];
+
+        // Unpack 3-bit encoded x/y/z offset
+        uint x = (packed >> 6) & 0x3;
+        uint y = (packed >> 3) & 0x7;
+        uint z = (packed >> 0) & 0x7;
+
+        float3 localOffset = float3(x, y, z);
+        float3 step = GetChunkSizeStep(access.chunk.LodIndex + 1);
+        float3 worldPos = localOffset * step + ToWorld(access.chunk.CoordPos, access.chunk.LodIndex + 1);
+
+        cornerPositions[i] = worldPos;
+        cornerDensities[i] = GetLandMassNoise(worldPos, access.chunk.LodIndex + 1);
+    }
+
+    // Build 13-bit mask
+    uint mask = 0;
+    for (uint i = 0; i < 13; i++)
+    {
+        if (cornerDensities[i] > ISOLevel)
+            mask |= (1 << i);
+    }
+
+    // Lookup transition config
+    uint cfg = mask & 0x1FF; // 9 bits
+    if (cfg >= 512)
+        return;
+
+    uint cellClass = TransitionCellClass[cfg & 0x7F];
+    if (cellClass >= 56)
+        return;
+
+    uint vertexStart = cfg * 12;
+
+    uint triCount = TransitionGeometryCounts[cellClass];
+    if (triCount == 0 || triCount > 36)
+        return;
+
+    for (uint t = 0; t < triCount; t += 3)
+    {
+        int vi0 = TransitionTriTable[cellClass * 36 + t + 0];
+        int vi1 = TransitionTriTable[cellClass * 36 + t + 1];
+        int vi2 = TransitionTriTable[cellClass * 36 + t + 2];
+
+        if (vi0 < 0 || vi1 < 0 || vi2 < 0)
+            continue;
+        if (vi0 >= 12 || vi1 >= 12 || vi2 >= 12)
+            continue;
+
+        uint e0 = TransitionVertexData[vertexStart + vi0];
+        uint e1 = TransitionVertexData[vertexStart + vi1];
+        uint e2 = TransitionVertexData[vertexStart + vi2];
+
+        float3 v0 = InterpolateCorner(e0, cornerDensities, cornerPositions);
+        float3 v1 = InterpolateCorner(e1, cornerDensities, cornerPositions);
+        float3 v2 = InterpolateCorner(e2, cornerDensities, cornerPositions);
+
+        if (any(isnan(v0)) || any(isnan(v1)) || any(isnan(v2)))
+            continue;
+
+        ChunkTriangleData tri;
+        tri.a = v0;
+        tri.b = v1;
+        tri.c = v2;
+        tri.LodKey = 10;
+
+        TriangleBuffer.Append(tri);
+    }
+}
+
 
 // PrepareIndirectDrawArgs
 // Small kernel to finalize DrawMeshInstancedIndirect args after triangle

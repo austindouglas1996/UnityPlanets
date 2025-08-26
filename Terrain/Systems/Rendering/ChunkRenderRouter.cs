@@ -29,7 +29,7 @@ public class ChunkRenderRouter : IDisposable
     public ChunkRenderRouter(IChunkGenerator chunkGenerator, int mainCap, int mainThres, int lod0Cap, int lod0Thres)
     {
         this.chunkGenerator = chunkGenerator;
-        lod0 = new ChunkRenderBucketCollection(chunkGenerator, true, false, lod0Cap, lod0Thres);
+        lod0 = new ChunkRenderBucketCollection(chunkGenerator, false, false, lod0Cap, lod0Thres);
         main = new ChunkRenderBucketCollection(chunkGenerator, false, false, mainCap, mainThres);
         edge = new ChunkRenderBucketCollection(chunkGenerator, false, true, mainCap, mainThres);
     }

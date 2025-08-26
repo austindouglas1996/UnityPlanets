@@ -250,6 +250,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
 
         int genKernal = MarchingShader.FindKernel("GenerateDensityMap");
         int marchKernal = MarchingShader.FindKernel("RunMarchingCubes");
+        int transKernal = MarchingShader.FindKernel("MarchTransvoxelFace");
         int argsKernal = MarchingShader.FindKernel("PrepareDrawArgs");
 
         // Generate density
@@ -267,6 +268,15 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.SetBuffer(marchKernal, "DensityMap", DensityBuffer);
         MarchingShader.SetBuffer(marchKernal, "TriangleBuffer", triangleBuffer);
         MarchingShader.Dispatch(marchKernal, batchSize * 4, 4, 4);
+
+        for (int i = 0; i < 4; i++)
+        {
+            // Transvoxel
+            MarchingShader.SetBuffer(transKernal, "ChunkInputs", GenerateChunkInputBuffer);
+            MarchingShader.SetBuffer(transKernal, "DensityMap", DensityBuffer);
+            MarchingShader.SetBuffer(transKernal, "TriangleBuffer", triangleBuffer);
+            MarchingShader.Dispatch(transKernal, batchSize * 4, 4, 4);
+        }
 
         // Build indirect args from append count
         MarchingShader.SetBuffer(argsKernal, "TriangleBuffer", triangleBuffer);
@@ -404,11 +414,13 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.SetBuffer(marchKernal, "CornerOffsetsBuffer", CornerOffsetsBuffer);
         MarchingShader.SetBuffer(marchKernal, "EdgeConnectionsBuffer", EdgeConnectionsBuffer);
         MarchingShader.SetBuffer(marchKernal, "TriangleTableBuffer", TriangleTableBuffer);
+        TransVoxelTable.LoadTransVoxelBuffers(MarchingShader, marchKernal);
 
-        int marchKernal1 = MarchingShader.FindKernel("RunMarchingCubesStitch");
+        int marchKernal1 = MarchingShader.FindKernel("MarchTransvoxelFace");
         MarchingShader.SetBuffer(marchKernal1, "CornerOffsetsBuffer", CornerOffsetsBuffer);
         MarchingShader.SetBuffer(marchKernal1, "EdgeConnectionsBuffer", EdgeConnectionsBuffer);
         MarchingShader.SetBuffer(marchKernal1, "TriangleTableBuffer", TriangleTableBuffer);
+        TransVoxelTable.LoadTransVoxelBuffers(MarchingShader, marchKernal1);
 
         // Prime options/biomes on GPU
         UpdateOptions();

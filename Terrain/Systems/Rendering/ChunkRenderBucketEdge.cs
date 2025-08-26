@@ -28,6 +28,7 @@ public class ChunkRenderBucketEdge : ChunkRenderBucket
     /// <param name="onDone">Callback to invoke when generation is complete.</param>
     protected override void GenerateCore(List<ChunkKey> items, Action<ChunkRenderBatch> onDone)
     {
-        ChunkGenerator.DispatchEdgeGeneration(items, onDone);
+        base.GenerateCore(items, onDone);
+        //ChunkGenerator.DispatchEdgeGeneration(items, onDone);
     }
 }

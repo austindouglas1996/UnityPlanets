@@ -10,6 +10,8 @@ public static class TransVoxelTable
         shader.SetBuffer(kernelId, "TransitionTriTable", TransitionTriTableBuffer());
         shader.SetBuffer(kernelId, "TransitionCornerOffsets", TransitionCornerOffsetsBuffer());
         shader.SetBuffer(kernelId, "TransitionVertexData", TransitionVertexDataBuffer());
+        shader.SetBuffer(kernelId, "TransitionFaceCornerRemap", TransitionFaceCornerRemapBuffer());
+
     }
 
     public static ComputeBuffer TransitionCellClassBuffer()
@@ -56,6 +58,14 @@ public static class TransVoxelTable
         return buffer;
     }
 
+    public static ComputeBuffer TransitionFaceCornerRemapBuffer()
+    {
+        var buffer = new ComputeBuffer(6 * 13, sizeof(uint), ComputeBufferType.Structured);
+        buffer.SetData(TransitionFaceCornerRemap);
+        return buffer;
+    }
+
+
     private static int[] FlattenInt(int[,] src)
     {
         int rows = src.GetLength(0);
@@ -74,6 +84,27 @@ public static class TransVoxelTable
         Buffer.BlockCopy(src, 0, dst, 0, rows * cols * sizeof(uint));
         return dst;
     }
+
+    private static uint[] TransitionFaceCornerRemap = new uint[]
+    {
+        // +X (0)
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12,
+
+        // -X (1)
+        1,  0,  3,  2,  5,  4,  7,  6,  9,  8, 11, 10, 12,
+
+        // +Y (2)
+        2,  3,  6,  7,  0,  1,  4,  5, 10, 11,  8,  9, 12,
+
+        // -Y (3)
+        3,  2,  7,  6,  1,  0,  5,  4, 11, 10,  9,  8, 12,
+
+        // +Z (4)
+        4,  5,  0,  1,  6,  7,  2,  3,  8,  9, 10, 11, 12,
+
+        // -Z (5)
+        5,  4,  1,  0,  7,  6,  3,  2,  9,  8, 11, 10, 12
+    };
 
     // Based off of https://github.com/EricLengyel/Transvoxel/blob/main/Transvoxel.cpp
     // The transitionCellClass table maps a 9-bit transition cell case index to an equivalence
