@@ -28,14 +28,8 @@ public class ChunkRenderRouter : IDisposable
     public ChunkRenderRouter(IChunkGenerator chunkGenerator, int mainCap, int mainThres, int lod0Cap, int lod0Thres)
     {
         this.chunkGenerator = chunkGenerator;
-<<<<<<< HEAD
-        lod0 = new ChunkRenderBucketCollection(chunkGenerator, false, false, lod0Cap, lod0Thres);
-        main = new ChunkRenderBucketCollection(chunkGenerator, false, false, mainCap, mainThres);
-        edge = new ChunkRenderBucketCollection(chunkGenerator, false, true, mainCap, mainThres);
-=======
         lod0 = new ChunkRenderBucketCollection(chunkGenerator, true, lod0Cap, lod0Thres);
         main = new ChunkRenderBucketCollection(chunkGenerator, false, mainCap, mainThres);
->>>>>>> e3b1c06 (Finished removing my old references to the systems I tried to implement, may be of use later, lets work on cleaning up the code now)
     }
 
     /// <summary>

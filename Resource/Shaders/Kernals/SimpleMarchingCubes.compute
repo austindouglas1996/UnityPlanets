@@ -2,12 +2,10 @@
 #pragma kernel GenerateSurfaceMask
 #pragma kernel RunMarchingCubes
 #pragma kernel PrepareDrawArgs
-#pragma kernel MarchTransvoxelFace
 
 #include "../ChunkFunctions.hlsl"
 #include "../Lib/PerlinNoise.hlsl"
 #include "../Includes/TriangleTable.hlsl"
-#include "../Includes/TransVoxelsTable.hlsl"
 #include "../Algo/ChunkMarchingCubes.hlsl"
 #include "../Algo/SimpleDensityGen.hlsl"
 

@@ -56,6 +56,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private List<ComputeBuffer> TriangleBuffers = new List<ComputeBuffer>();
 
     private List<TerrainJob> Jobs = new();
+    private List<TerrainJob> EdgeJobs = new();
 
     /// <summary>
     /// Initialize a new instance of the <see cref="MarchingCubesTerrainGenerator"/> class.
@@ -85,8 +86,8 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     /// </summary>
     public Material GetMaterial
     {
-        get {  return chunkMaterial; }
-        private set {  chunkMaterial = value; }
+        get { return chunkMaterial; }
+        private set { chunkMaterial = value; }
     }
 
     /// <summary>
@@ -142,6 +143,16 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     public void GenerateBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output)
     {
         this.Jobs.Add(new TerrainJob() { Keys = keys, Output = output });
+    }
+
+    /// <summary>
+    /// Full marching-cubes path. Builds density for the batch along with any
+    /// respective neighbors so we can stitch them together, runs MC, returns triangle + args buffers.
+    /// This job will be queued and ran in a further update to reduce GPU pressure.
+    /// </summary>
+    public void GenerateEdgeBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output)
+    {
+        this.EdgeJobs.Add(new TerrainJob() { Keys = keys, Output = output });
     }
 
     /// <summary>
@@ -223,7 +234,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
 
         int genKernal = MarchingShader.FindKernel("GenerateDensityMap");
         int marchKernal = MarchingShader.FindKernel("RunMarchingCubes");
-        int transKernal = MarchingShader.FindKernel("MarchTransvoxelFace");
         int argsKernal = MarchingShader.FindKernel("PrepareDrawArgs");
 
         // Generate density
@@ -231,25 +241,13 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.SetBuffer(genKernal, "DensityMap", DensityBuffer);
 
         // NOTE: thread group dims assume [numthreads(8,8,8)] and X packs chunkIndex*XWithinChunk
-        MarchingShader.Dispatch(genKernal,
-            Mathf.CeilToInt(batchSize * size / 4f),
-            Mathf.CeilToInt(size / 4f),
-            Mathf.CeilToInt(size / 4f));
+        MarchingShader.Dispatch(genKernal, Mathf.CeilToInt(batchSize * size / 4f), Mathf.CeilToInt(size / 4f), Mathf.CeilToInt(size / 4f));
 
         // Marching cubes
         MarchingShader.SetBuffer(marchKernal, "ChunkInputs", GenerateChunkInputBuffer);
         MarchingShader.SetBuffer(marchKernal, "DensityMap", DensityBuffer);
         MarchingShader.SetBuffer(marchKernal, "TriangleBuffer", triangleBuffer);
         MarchingShader.Dispatch(marchKernal, batchSize * 4, 4, 4);
-
-        for (int i = 0; i < 4; i++)
-        {
-            // Transvoxel
-            MarchingShader.SetBuffer(transKernal, "ChunkInputs", GenerateChunkInputBuffer);
-            MarchingShader.SetBuffer(transKernal, "DensityMap", DensityBuffer);
-            MarchingShader.SetBuffer(transKernal, "TriangleBuffer", triangleBuffer);
-            MarchingShader.Dispatch(transKernal, batchSize * 4, 4, 4);
-        }
 
         // Build indirect args from append count
         MarchingShader.SetBuffer(argsKernal, "TriangleBuffer", triangleBuffer);
@@ -294,17 +292,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.SetBuffer(marchKernal, "CornerOffsetsBuffer", CornerOffsetsBuffer);
         MarchingShader.SetBuffer(marchKernal, "EdgeConnectionsBuffer", EdgeConnectionsBuffer);
         MarchingShader.SetBuffer(marchKernal, "TriangleTableBuffer", TriangleTableBuffer);
-        TransVoxelTable.LoadTransVoxelBuffers(MarchingShader, marchKernal);
 
-<<<<<<< HEAD
-        int marchKernal1 = MarchingShader.FindKernel("MarchTransvoxelFace");
-        MarchingShader.SetBuffer(marchKernal1, "CornerOffsetsBuffer", CornerOffsetsBuffer);
-        MarchingShader.SetBuffer(marchKernal1, "EdgeConnectionsBuffer", EdgeConnectionsBuffer);
-        MarchingShader.SetBuffer(marchKernal1, "TriangleTableBuffer", TriangleTableBuffer);
-        TransVoxelTable.LoadTransVoxelBuffers(MarchingShader, marchKernal1);
-
-=======
->>>>>>> e3b1c06 (Finished removing my old references to the systems I tried to implement, may be of use later, lets work on cleaning up the code now)
         // Prime options/biomes on GPU
         UpdateOptions();
     }
@@ -340,7 +328,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private void FillGenerateChunkInputs(IReadOnlyList<ChunkKey> keys)
     {
         int n = keys.Count;
-
         InputGenerate.Clear();
         InputGenerate.EnsureCapacity(n);
 
@@ -398,4 +385,3 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         return densityOptions.ChunkSize + 3;
     }
 }
-

@@ -19,6 +19,12 @@ int3 GetChunkLogicalSize3()
     return int3(logicalSize, logicalSize, logicalSize);
 }
 
+int3 GetChunkLogicalSize31()
+{
+    int logicalSize = GetChunkLogicalSize();
+    return int3(logicalSize - 1, logicalSize - 1, logicalSize - 1);
+}
+
 int GetChunkSize(int lodIndex)
 {
     return ChunkSize << lodIndex;

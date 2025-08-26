@@ -13,12 +13,6 @@ void March(
     float corner[8];
     float3 cornerPos[8];
     
-    bool cLod = false;
-    if (IsEdgeVoxel(key.voxelCoord) && IsEdgeCell(key))
-    {
-        cLod = false;
-    }
-
     for (int i = 0; i < 8; i++)
     {
         int3 offset = GetCornerOffset(i);
@@ -63,12 +57,7 @@ void March(
         tri.c = worldC;
         tri.LodKey = key.chunk.LodIndex;
         
-        if (cLod)
-        {
-            tri.LodKey = 10;
-        }
-
-        //TriangleBuffer.Append(tri);
+        TriangleBuffer.Append(tri);
     }
 }
 #endif
