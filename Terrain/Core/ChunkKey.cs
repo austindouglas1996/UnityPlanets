@@ -9,6 +9,12 @@ using UnityEngine;
 public readonly struct ChunkKey : IEquatable<ChunkKey>
 {
     /// <summary>
+    /// A universal ID based on this chunk's position in LOD0-space.
+    /// Useful for spatial alignment across LODs.
+    /// </summary>
+    public Vector3Int Id => Coordinates * (1 << LODIndex);
+
+    /// <summary>
     /// The 3D grid coordinates of the chunk.
     /// </summary>
     public readonly Vector3Int Coordinates;

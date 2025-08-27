@@ -194,39 +194,6 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
     }
 
     /// <summary>
-    /// Retrieve the expected chunk LOD level for a given coordinate.
-    /// </summary>
-    /// <param name="chunkCoordinates"></param>
-    /// <returns></returns>
-    public int GetLODForChunk(ChunkKey key)
-    {
-        int chunkSize = GetChunkSize(key.LODIndex);
-        int baseChunkSize = GetChunkSize(0);
-
-        Vector3 worldMin = new Vector3(
-            key.Coordinates.x * chunkSize,
-            key.Coordinates.y * chunkSize,
-            key.Coordinates.z * chunkSize);
-
-        Vector3 worldMax = worldMin + new Vector3(chunkSize, chunkSize, chunkSize);
-
-        Vector3 player = FollowerWorldPosition;
-
-        // Clamp player position to chunk AABB
-        float px = Mathf.Clamp(player.x, worldMin.x, worldMax.x);
-        float pz = Mathf.Clamp(player.z, worldMin.z, worldMax.z);
-
-        float dx = Mathf.Abs(player.x - px);
-        float dz = Mathf.Abs(player.z - pz);
-
-        // Convert distance to LOD0 chunk units
-        float maxDist = Mathf.Max(dx, dz);
-        int ring = Mathf.CeilToInt(maxDist / baseChunkSize);
-
-        return DesiredLodFromRings(ring);
-    }
-
-    /// <summary>
     /// Determine the best LOD ring to use based on the distance.
     /// </summary>
     /// <param name="dChunks0"></param>

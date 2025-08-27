@@ -272,7 +272,7 @@ public class ChunkOctTreeNode
                 CurrentContentPhase = ContentPhase.Ready;
 
                 // Create the debug cube.
-                //this.CreateDebugCube();
+                this.CreateDebugCube();
             }
             else
             {
@@ -333,14 +333,16 @@ public class ChunkOctTreeNode
         DebugCube = GameObject.CreatePrimitive(PrimitiveType.Cube);
 
         // Name the object using LOD and coordinates
-        DebugCube.name = $"Chunk_Lod{Key.LODIndex}_({Key.Coordinates.x},{Key.Coordinates.y},{Key.Coordinates.z})";
+        Vector3Int lod0Coord = Key.Coordinates * (1 << Key.LODIndex);
+        DebugCube.name = $"Chunk_Lod{Key.LODIndex}_LOD0({lod0Coord.x},{lod0Coord.y},{lod0Coord.z})";
+
         DebugCube.transform.position = Bounds.center;
         DebugCube.transform.localScale = Bounds.size;
 
         var renderer = DebugCube.GetComponent<Renderer>();
         if (renderer != null)
         {
-            renderer.material = new Material(Shader.Find("Standard"));
+            renderer.material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
             renderer.material.color = LodColor(Key.LODIndex);
         }
 
