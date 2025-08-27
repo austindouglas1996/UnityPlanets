@@ -5,6 +5,10 @@ using UnityEngine;
 [Serializable]
 public class BaseChunkConfiguration : IChunkConfiguration
 {
+    [SerializeField] private DebugOptions debugOptions;
+    public DebugOptions DebugOptions => debugOptions;
+
+
     [SerializeField] private TerrainDensityOptions densityMapOptions;
     public TerrainDensityOptions DensityOptions => densityMapOptions;
 

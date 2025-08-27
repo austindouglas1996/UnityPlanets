@@ -73,5 +73,6 @@ public interface IChunkLayout
     /// </summary>
     /// <param name="chunkCoordinates"></param>
     /// <returns></returns>
+    int GetLODForChunk(Vector3Int coordinates);
     int GetLODForChunk(ChunkKey key);
 }

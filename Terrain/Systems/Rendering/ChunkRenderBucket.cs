@@ -20,6 +20,10 @@ public class ChunkRenderBucket : IDisposable
 
     private bool IsDirty = false;
     private bool GenerateInProgress = false;
+
+    /// <summary>
+    /// Give a small delay on tickets to update this way we get as many updates as possible.
+    /// </summary>
     private int RemainingTicksToUpdate = 5;
 
     private IChunkGenerator chunkGenerator;
@@ -41,6 +45,9 @@ public class ChunkRenderBucket : IDisposable
         this.chunkGenerator = chunkGenerator;
     }
 
+    /// <summary>
+    /// Retrieves the <see cref="IChunkGenerator"/> used in this <see cref="ChunkRenderBucket"/>.
+    /// </summary>
     protected IChunkGenerator ChunkGenerator
     {
         get { return this.chunkGenerator; }
@@ -217,6 +224,8 @@ public class ChunkRenderBucket : IDisposable
 
                 this.IsDirty = false;
                 this.GenerateInProgress = false;
+
+                // Reset this back to zero.
                 removedCount = 0;
 
                 // Something went wrong to reach this.

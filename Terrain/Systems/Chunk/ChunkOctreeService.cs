@@ -1,6 +1,10 @@
 using System;
 using UnityEngine;
 
+/// <summary>
+/// Handles high-level logic for controlling the octree LOD behavior — break, merge, etc.
+/// Acts as the "manager" layer that talks to layout and processing systems.
+/// </summary>
 public class ChunkOctreeService
 {
     private readonly IChunkServices services;
@@ -19,6 +23,11 @@ public class ChunkOctreeService
     }
 
     /// <summary>
+    /// Returns the preference for debug cube visibility.
+    /// </summary>
+    public OctTreeCubeVisibility DebugCubeVisibility => services.Configuration.DebugOptions.OctTreeCubes;
+
+    /// <summary>
     /// Evaluate the LOD for a given tree node to determine the best LOD.
     /// </summary>
     /// <param name="node"></param>
@@ -29,21 +38,40 @@ public class ChunkOctreeService
         if (node.CurrentTransition != Transition.None)
             return LodDecision.KeepLeaf;
 
-        int desired = services.Layout.GetLODForChunk(node.Key);
+        int desired = services.Layout.GetLODForChunk(node.Key.Coordinates);
 
-        int L = node.Key.LODIndex;
-        if (L > desired
-            && node.IsLeaf
-            && node.CurrentContentPhase != ContentPhase.Subdivided
-            && node.CurrentOccupancyState == OccupancyState.NonEmpty)
-        {
+        if (ShouldSubdivide(node, desired))
             return LodDecision.Subdivide;
-        }
 
-        if (L < desired && node.HasChildren)
+        if (ShouldMerge(node, desired))
             return LodDecision.Merge;
 
         return LodDecision.KeepLeaf;
+    }
+
+    /// <summary>
+    /// Should the <see cref="ChunkOctTreeNode"/> subdivide from its current state.
+    /// </summary>
+    /// <param name="node"></param>
+    /// <param name="desired"></param>
+    /// <returns></returns>
+    private bool ShouldSubdivide(ChunkOctTreeNode node, int desired)
+    {
+        return node.Key.LODIndex > desired
+            && node.IsLeaf
+            && node.CurrentContentPhase != ContentPhase.Subdivided
+            && node.CurrentOccupancyState == OccupancyState.NonEmpty;
+    }
+
+    /// <summary>
+    /// Should the <see cref="ChunkOctTreeNode"/> merge from its current state.
+    /// </summary>
+    /// <param name="node"></param>
+    /// <param name="desired"></param>
+    /// <returns></returns>
+    private bool ShouldMerge(ChunkOctTreeNode node, int desired)
+    {
+        return node.Key.LODIndex < desired && node.HasChildren;
     }
 
     /// <summary>

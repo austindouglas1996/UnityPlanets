@@ -7,7 +7,14 @@ using System.Collections.Generic;
 /// </summary>
 public class ChunkGenerationBatcher
 {
+    /// <summary>
+    /// Makes for an easier way to check for a key in the system.
+    /// </summary>
     private readonly Queue<ChunkKey> keys = new();
+
+    /// <summary>
+    /// A collection of items in this batch.
+    /// </summary>
     private readonly Dictionary<ChunkKey, ChunkGenerationJob> jobs = new();
 
     /// <summary>

@@ -11,7 +11,6 @@ public class ChunkGenerationProcessor : IDisposable
 {
     private readonly List<ChunkGenerationJob> tmpSurfaceJobs = new(1024);
     private readonly List<ChunkGenerationJob> tmpGenerationJobs = new(1024);
-    private readonly List<ChunkGenerationJob> tmpEdgeGenerationJobs = new(1024);
 
     private readonly ChunkGenerationBatcher surfaceBatcher = new();
     private readonly ChunkGenerationBatcher generationBatcher = new();

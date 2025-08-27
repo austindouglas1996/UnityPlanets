@@ -212,6 +212,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         // Update material.
         this.chunkMaterial.SetBuffer("BiomeColors", BiomeBuffer);
         this.chunkMaterial.SetInt("_BiomeCount", BiomesCount);
+        this.chunkMaterial.SetInt("LODHeatMap", this.densityOptions.LODHeatMap);
     }
 
     /// <summary>

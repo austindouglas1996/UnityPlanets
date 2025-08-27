@@ -29,9 +29,4 @@ public class ChunkGenerationJob
     /// The completion callback for this job.
     /// </summary>
     public Action<bool> OnDone;
-
-    /// <summary>
-    /// Returns whether this job contains a collection of related keys.
-    /// </summary>
-    public bool IsEdge = false;
 }

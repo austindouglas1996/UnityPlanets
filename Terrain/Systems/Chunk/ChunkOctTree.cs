@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using VHierarchy.Libs;
 
 public enum OccupancyState { Unknown, Loading, Empty, NonEmpty }
 public enum ContentPhase { Unloaded, Loading, Ready, Subdivided }
@@ -41,6 +42,11 @@ public class ChunkOctTreeNode
     /// The amount of children checked in a subdivide. Helps in case the children fail to render.
     /// </summary>
     private int childrenChecked = 0;
+
+    /// <summary>
+    /// A simple debug cube to visualize the node items.
+    /// </summary>
+    private GameObject DebugCube;
 
     /// <summary>
     /// Initialize a new instance of the <see cref="ChunkOctTree"/> class. 
@@ -264,6 +270,9 @@ public class ChunkOctTreeNode
             {
                 CurrentOccupancyState = OccupancyState.NonEmpty;
                 CurrentContentPhase = ContentPhase.Ready;
+
+                // Create the debug cube.
+                //this.CreateDebugCube();
             }
             else
             {
@@ -282,6 +291,9 @@ public class ChunkOctTreeNode
     {
         this.CurrentContentPhase = ContentPhase.Subdivided;
         this.treeService.RemoveChild(this);
+
+        // Delete debug cube.
+        this.DebugCube.Destroy();
     }
 
     /// <summary>
@@ -311,6 +323,31 @@ public class ChunkOctTreeNode
         }
 
         this.Children.Clear();
+    }
+
+    /// <summary>
+    /// Create a simple debug cube so we can see more about the nodes.
+    /// </summary>
+    private void CreateDebugCube()
+    {
+        DebugCube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+
+        // Name the object using LOD and coordinates
+        DebugCube.name = $"Chunk_Lod{Key.LODIndex}_({Key.Coordinates.x},{Key.Coordinates.y},{Key.Coordinates.z})";
+        DebugCube.transform.position = Bounds.center;
+        DebugCube.transform.localScale = Bounds.size;
+
+        var renderer = DebugCube.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            renderer.material = new Material(Shader.Find("Standard"));
+            renderer.material.color = LodColor(Key.LODIndex);
+        }
+
+        if (this.treeService.DebugCubeVisibility != OctTreeCubeVisibility.Active)
+        {
+            DebugCube.SetActive(true);
+        }
     }
 
     /// <summary>

@@ -7,6 +7,11 @@ using System.Collections.Generic;
 public interface IChunkConfiguration
 {
     /// <summary>
+    /// Simple debug options mostly for Unity editor.
+    /// </summary>
+    DebugOptions DebugOptions { get; }
+
+    /// <summary>
     /// Density Options used for marching cubes generator.
     /// </summary>
     TerrainDensityOptions DensityOptions { get; }

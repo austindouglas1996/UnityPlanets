@@ -14,7 +14,6 @@ using UnityEngine;
 public class ChunkRendererMono : MonoBehaviour
 {
     [Header("Debug")]
-    [SerializeField] private bool forceActiveUpdate = false;
     [SerializeField] public bool ShowTerrain = true;
     [HideInInspector] private bool isInitialized = false;
 
