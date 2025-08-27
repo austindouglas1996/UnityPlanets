@@ -11,15 +11,12 @@
 // ============================================================================
 
 cbuffer TerrainDensityOptions
-{
+{ 
     // Logical voxel width of a chunk (before LOD).
     int ChunkSize;
 
     // Noise seed. Use this to derive offsets so worlds are stable per seed.
     int Seed;
-    
-    // A LOD heat map to see what LOD the chunks are.
-    int LODHeatMap;
     
     // HLSL does not support enum, this is just for the subvarient to help with coding.
     int SubVariant;

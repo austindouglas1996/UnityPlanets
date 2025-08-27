@@ -46,6 +46,7 @@ Shader "Custom/URP_CustomLitGPU"
 
             float4 _BaseColor;
             float _UseVertexColor;
+            int LODHeatMap;
 
             struct Attributes
             {

@@ -17,4 +17,7 @@ public class DebugOptions
 {
     [Tooltip("When using OctTrees this will help visualize the chunks.")]
     public OctTreeCubeVisibility OctTreeCubes = OctTreeCubeVisibility.None;
+
+    [Tooltip("A debug tool to show the LOD of each chunk."), Range(0, 1)]
+    public int LODHeatMap;
 }

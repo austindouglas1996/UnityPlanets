@@ -31,10 +31,6 @@ public enum SubVariant
 [Serializable, StructLayout(LayoutKind.Sequential)]
 public struct TerrainDensityOptions
 {
-    [Header("Debug")]
-    [Tooltip("A debug tool to show the LOD of each chunk."), Range(0, 1)]
-    public int LODHeatMap;
-
     [Header("Global")]
     [Tooltip("Logical voxel width of a chunk (before LOD).")]
     public int ChunkSize;
