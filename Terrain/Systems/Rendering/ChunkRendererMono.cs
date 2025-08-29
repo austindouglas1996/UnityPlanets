@@ -32,14 +32,6 @@ public class ChunkRendererMono : MonoBehaviour
     private ChunkOctreeService treeMan;
     private ChunkLodTree lodTree;
 
-
-    // Debug test fields
-    private System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
-    private int frameCount = 0;
-    private float fpsSum = 0f;
-    private int phase = 0; // 0 = with update, 1 = without update
-    private float sampleDuration = 60f; // seconds
-
     /// <summary>
     /// Update the chunk layout and render any available chunks.
     /// </summary>
@@ -48,27 +40,10 @@ public class ChunkRendererMono : MonoBehaviour
         if (!isInitialized) return;
         this.chunkServices.Generator.Update();
 
-        // run LOD tree update only in phase 0
-        if (phase == 0)
-            lodTree.Update();
-
-        // FPS sampling
-        frameCount++;
-        fpsSum += 1f / Time.unscaledDeltaTime;
-
-        if (stopwatch.Elapsed.TotalSeconds >= sampleDuration)
-        {
-            float avgFps = fpsSum / frameCount;
-            UnityEngine.Debug.Log($"[Phase {phase}] Average FPS over {sampleDuration}s: {avgFps:F2}");
-
-            // reset counters
-            frameCount = 0;
-            fpsSum = 0f;
-            stopwatch.Restart();
-
-            // switch phase
-            phase++;
-        }
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        lodTree.Update(); 
+        sw.Stop();
+        UnityEngine.Debug.Log($"lodTree.Update() took {sw.Elapsed.TotalMilliseconds:F2} ms");
     }
 
     /// <summary>
@@ -124,7 +99,6 @@ public class ChunkRendererMono : MonoBehaviour
     /// <param name="services"></param>
     public void Initialize(IChunkServices services)
     {
-        stopwatch.Start();
         this.chunkServices = services;
         this.processor = new ChunkGenerationProcessor(this.chunkServices);
 
@@ -187,7 +161,6 @@ public class ChunkRendererMono : MonoBehaviour
     /// <param name="offset"></param>
     private void CreateRoot(Vector3Int coord, int lodIndex, Vector3 offset)
     {
-        Bounds bounds = this.chunkServices.Layout.GetBounds(coord, lodIndex);
-        lodTree.AddRoot(bounds);
+        lodTree.AddRoot(coord);
     }
 }

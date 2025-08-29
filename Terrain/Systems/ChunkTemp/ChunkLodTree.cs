@@ -1,4 +1,5 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public enum OccupancyState { Unknown, Loading, Empty, NonEmpty }
@@ -10,11 +11,11 @@ public class ChunkLodTreeNode
 {
     // Who I am
     public ChunkKey Key;
-    public Bounds Bounds;
 
     // Relationships
     public int ParentIndex = -1;
-    public int FirstChildIndex = -1;
+    public int[] Children = new int[8]; 
+    public int ChildCount = 0;
 
     // State
     public ContentPhase Phase = ContentPhase.Unloaded;    // Unloaded, Loading, Ready, Subdivided
@@ -24,18 +25,56 @@ public class ChunkLodTreeNode
 
     // Helpers
     public bool IsAlive = false;
-    public bool HasChildren => FirstChildIndex != -1;
+    public bool HasChildren => ChildCount != 0;
     public bool IsLeaf => !HasChildren;
     public int LODIndex => Key.LODIndex;
+
+    public void AddChild(int idx)
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            if (Children[i] == 0)
+            {
+                Children[i] = idx;
+                ChildCount++;
+                return;
+            }
+        }
+    }
+    public void RemoveChild(int idx)
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            if (Children[i] == idx)
+            {
+                Children[i] = 0;
+                ChildCount--;
+                return;
+            }
+        }
+    }
+    public void ClearChildren()
+    {
+        for (int i = 0; i < 8; i++) Children[i] = 0;
+        ChildCount = 0;
+    }
+    public IEnumerable<int> GetChildren()
+    {
+        for (int i = 0; i < 8; i++)
+            if (Children[i] != 0)
+                yield return Children[i];
+    }
 
     // Functions.
     public void Free()
     {
         this.ParentIndex = -1;
-        this.FirstChildIndex = -1;
+        this.ClearChildren();
+        this.ChildCount = 0;
         this.Phase = ContentPhase.Unloaded;
         this.Occupancy = OccupancyState.Unknown;
         this.Transition = Transition.None;
+        this.TransitionTicks = 0;
         this.IsAlive = false;
     }
     public void StartSubdivide()
@@ -47,11 +86,6 @@ public class ChunkLodTreeNode
     {
         this.Transition = Transition.Merge;
         this.TransitionTicks = 4;
-    }
-
-    public void RequestSurface(ChunkOctreeService service)
-    {
-
     }
 }
 
@@ -65,7 +99,6 @@ public class ChunkLodTree
     private List<ChunkLodTreeNode> Nodes = new();
     private Dictionary<ChunkKey, int> IndexByKey = new();
 
-    private readonly Stack<int> FreeChildBlocks = new();
     private readonly Stack<int> FreeSingleBlocks = new();
 
     public ChunkLodTree(IChunkServices services, ChunkGenerationProcessor processor)
@@ -74,9 +107,9 @@ public class ChunkLodTree
         this.processor = processor;
     }
 
-    public void AddRoot(Bounds bounds)
+    public void AddRoot(Vector3Int coord)
     {
-        CreateSingleNode(bounds);
+        TryCreateSingleNode(new ChunkKey(coord, RootLOD));
     }
 
     public void Update()
@@ -84,7 +117,19 @@ public class ChunkLodTree
         for (int i = 0; i < Nodes.Count; i++)
             if (Nodes[i].IsAlive)
                 UpdateNode(i);
+
+        DumpLodHistogram(this.Nodes);
     }
+
+    void DumpLodHistogram(List<ChunkLodTreeNode> nodes)
+    {
+        int[] h = new int[8];
+        int alive = 0;
+        foreach (var n in nodes) if (n.IsAlive) { h[Mathf.Clamp(n.LODIndex, 0, 7)]++; alive++; }
+        Debug.Log($"Alive={alive}  LODs: " +
+                  string.Join(" ", System.Linq.Enumerable.Range(0, h.Length).Select(i => $"{i}:{h[i]}")));
+    }
+
 
     private void UpdateNode(int index)
     {
@@ -95,7 +140,7 @@ public class ChunkLodTree
             if (--n.TransitionTicks <= 0)
             {
                 if (n.Transition == Transition.Subdivide) FinalizeSubdivide(n);
-                else if (n.Transition == Transition.Merge) FinalizeMerge(n);
+                else if (n.Transition == Transition.Merge) FinalizeMerge(index);
 
                 n.Transition = Transition.None;
                 n.TransitionTicks = 0;
@@ -103,8 +148,10 @@ public class ChunkLodTree
             return;
         }
 
-        if (n.Phase == ContentPhase.Loading) return;
-        if (n.Occupancy == OccupancyState.Empty || n.Occupancy == OccupancyState.Unknown) return;
+        if (n.Phase == ContentPhase.Loading) 
+            return;
+
+        if (n.Occupancy == OccupancyState.Empty) return;
 
         var decision = EvaluateLod(n);
         if (decision == LodDecision.Subdivide) PerformSubdivide(index);
@@ -121,62 +168,29 @@ public class ChunkLodTree
         return Nodes.Count - 1;
     }
 
-    private int AllocChildBlock()
-    {
-        if (FreeChildBlocks.Count > 0) return FreeChildBlocks.Pop();
-        int start = Nodes.Count;
-        for (int i = 0; i < 8; i++) Nodes.Add(new ChunkLodTreeNode());
-        return start;
-    }
-
     private void FreeSingleBlock(int index)
     {
         var n = Nodes[index];
-
-        // Remove children.
-        if (n.FirstChildIndex != -1)
-            FreeChildrenBlock(index);
-
         if (n.IsAlive)
+        {
             IndexByKey.Remove(n.Key);
-
+            processor.RemoveChunk(n.Key);
+        }
         n.Free();
-
         FreeSingleBlocks.Push(index);
     }
 
     private void FreeChildrenBlock(int parentIndex)
     {
         var parent = Nodes[parentIndex];
-        int startIndex = parent.FirstChildIndex;
-        if (startIndex == -1) return;
 
-        for (int i = 0; i < 8; i++)
+        foreach (var child in parent.Children)
         {
-            int index = startIndex + i;
-            var n = Nodes[index];
-
-            if (n.ParentIndex != parentIndex)
-            {
-                Debug.LogWarning("OctTree parent tried to destroy child not owned by it.");
-                continue;
-            }
-
-            if (!n.IsAlive)
-            {
-                continue;
-            }
-
-            // Destroy.
-            this.processor.RemoveChunk(n.Key);
-
-            IndexByKey.Remove(n.Key);
-            n.Free();
+            FreeSingleBlock(child);
         }
 
         // Reset parent.
-        Nodes[parentIndex].FirstChildIndex = -1;
-        FreeChildBlocks.Push(startIndex);
+        Nodes[parentIndex].ClearChildren();
     }
 
     private void PerformSubdivide(int index)
@@ -187,8 +201,6 @@ public class ChunkLodTree
         node.Phase = ContentPhase.Loading;
 
         CreateChildNodes(index);
-
-        node.StartSubdivide();
     }
 
     private void PerformMerge(int index)
@@ -198,24 +210,38 @@ public class ChunkLodTree
         if (!node.HasChildren || node.LODIndex == RootLOD || node.Transition != Transition.None) return;
         node.Phase = ContentPhase.Loading;
 
-        FreeChildrenBlock(index);
-
+        // Request gen.
+        this.RequestGeneration(node);
         node.StartMerge();
     }
 
-    private void RequestSurfaceCheck(ChunkLodTreeNode node)
+    private void TryCreateSingleNode(ChunkKey key, int parentIndex = -1)
     {
-        this.processor.RequestSurfaceCheck(node.Key, (bool hasSurface) =>
+        this.processor.RequestSurfaceCheck(key, (bool hasSurface) =>
         {
-            if (hasSurface)
+            if (!hasSurface)
+                return;
+
+            int index = AllocSingleBlock();
+            ChunkLodTreeNode node = Nodes[index];
+
+            node.Key = key;
+            node.IsAlive = true;
+            node.ParentIndex = parentIndex;
+            node.Occupancy = OccupancyState.NonEmpty;
+
+            if (parentIndex != -1)
             {
-                node.Occupancy = OccupancyState.NonEmpty;
+                var pNode = Nodes[parentIndex];
+                pNode.AddChild(index);
+
+                // Start to free the parent.
+                pNode.StartSubdivide();
             }
-            else
-            {
-                node.Occupancy = OccupancyState.Empty;
-                this.FreeSingleBlock(IndexByKey[node.Key]);
-            }
+
+            // Add to entry.
+            Nodes[index] = node;
+            IndexByKey.TryAdd(node.Key, index);
         });
     }
 
@@ -244,60 +270,23 @@ public class ChunkLodTree
         this.processor.RemoveChunk(node.Key);
     }
 
-    private void FinalizeMerge(ChunkLodTreeNode node)
+    private void FinalizeMerge(int index)
     {
-        node.Phase = ContentPhase.Ready;
-    }
-
-    private ChunkLodTreeNode CreateSingleNode(Bounds bounds, int parentIndex = -1)
-    {
-        int index = AllocSingleBlock();
-        ChunkLodTreeNode node = Nodes[index];
-
-        node.IsAlive = true;
-        node.ParentIndex = parentIndex;
-        node.Bounds = bounds;
-
-        var LODIndex = parentIndex == -1 ? RootLOD : Nodes[parentIndex].LODIndex - 1;
-        var coordinates = BoundsToCoordinate(bounds, LODIndex);
-        node.Key = new ChunkKey(coordinates, LODIndex);
-
-        // Add to entry.
-        Nodes[index] = node;
-        IndexByKey.TryAdd(node.Key, index);
-
-        // Request a surface check before leaving.
-        RequestSurfaceCheck(node);
-
-        return node;
+        FreeChildrenBlock(index);
+        Nodes[index].Phase = ContentPhase.Ready;
     }
 
     private bool CreateChildNodes(int parentIndex)
     {
         var parentNode = Nodes[parentIndex];
-        if (parentNode.FirstChildIndex != -1 || parentNode.LODIndex == 0) return false;
-
-        int start = AllocChildBlock();
-        Nodes[parentIndex].FirstChildIndex = start;
+        if (parentNode.HasChildren || parentNode.LODIndex == 0) return false;
 
         for (int i = 0; i < 8; i++)
         {
-            int childIndex = i + start;
-            var child = Nodes[childIndex];
-
-            child.IsAlive = true;
-            child.ParentIndex = parentIndex;
-
             var coordinates = GetChildOffset(i, parentNode.Key.Coordinates * 2);
             var lodIndex = parentNode.LODIndex - 1;
-            child.Key = new ChunkKey(coordinates, lodIndex);
-            child.Bounds = GetBounds(child.Key);
-
-            IndexByKey.TryAdd(child.Key, childIndex);
-            Nodes[childIndex] = child;
-
-            // Request a surface check before leaving.
-            RequestSurfaceCheck(child);
+            var chunkKey = new ChunkKey(coordinates, lodIndex);
+            TryCreateSingleNode(chunkKey, parentIndex);
         }
 
         return true;
@@ -371,21 +360,5 @@ public class ChunkLodTree
     private bool ShouldMerge(ChunkLodTreeNode node, int desired)
     {
         return node.Key.LODIndex < desired && node.HasChildren;
-    }
-
-    public Bounds GetBounds(ChunkKey key)
-    {
-        return this.services.Layout.GetBounds(key);
-    }
-
-    /// <summary>
-    /// Converts world-space bounds to chunk grid coordinates at the specified LOD.
-    /// </summary>
-    /// <param name="bounds"></param>
-    /// <param name="lodIndex"></param>
-    /// <returns></returns>
-    public Vector3Int BoundsToCoordinate(Bounds bounds, int lodIndex)
-    {
-        return this.services.Layout.BoundsToCoordinates(bounds, lodIndex);
     }
 }
