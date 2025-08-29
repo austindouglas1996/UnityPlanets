@@ -98,15 +98,6 @@ int GetLODForChunk(int3 coordinates, int lodIndex)
     return DesiredLodFromRings(ring);
 }
 
-
-
-
-
-
-
-
-
-
 bool IsEdgeVoxel(int3 voxelCoord)
 {
     return voxelCoord.x == ChunkSize - 1 ||

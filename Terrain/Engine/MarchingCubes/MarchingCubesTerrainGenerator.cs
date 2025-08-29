@@ -353,7 +353,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     {
         int size = GetChunkSize();
         int voxelCountPerChunk = size * size * size;
-        int totalVoxels = (voxelCountPerChunk * GetChunkSize());
+        int totalVoxels = (voxelCountPerChunk * (size));
 
         var newBuff = new ComputeBuffer(totalVoxels, Marshal.SizeOf<ChunkTriangleData>(), ComputeBufferType.Append);
 

@@ -151,11 +151,6 @@ public class ChunkOctTreeNode
             if (this.CurrentOccupancyState == OccupancyState.NonEmpty &&
                 this.CurrentContentPhase != ContentPhase.Subdivided)
             {
-                if (this.Key.LODIndex != 0)
-                {
-                    string but = "";
-                }
-
                 Color c = LodColor(this.Key.LODIndex, 4, 0.85f);
 
                 Gizmos.color = c;
@@ -271,8 +266,11 @@ public class ChunkOctTreeNode
                 CurrentOccupancyState = OccupancyState.NonEmpty;
                 CurrentContentPhase = ContentPhase.Ready;
 
-                // Create the debug cube.
-                this.CreateDebugCube();
+                if (this.treeService.DebugCubeVisibility == OctTreeCubeVisibility.Active)
+                {
+                    // Create the debug cube.
+                    this.CreateDebugCube();
+                }
             }
             else
             {

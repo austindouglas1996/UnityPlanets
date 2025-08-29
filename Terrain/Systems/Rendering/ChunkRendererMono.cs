@@ -42,10 +42,16 @@ public class ChunkRendererMono : MonoBehaviour
         if (Time.frameCount % 5 != 0)
             return;
 
+        var sw = new System.Diagnostics.Stopwatch();
+        sw.Start();
+
         foreach (var root in rootTrees)
         {
             root.Tick();
         }
+
+        sw.Stop();
+        UnityEngine.Debug.Log($"Octree Tick() took {sw.Elapsed.TotalMilliseconds:F3} ms");
     }
 
     /// <summary>

@@ -43,8 +43,8 @@ public class ChunkLayoutMono : MonoBehaviour
         if (Time.frameCount % 5 != 0)
             return;
 
-        Plane[] frustum = GeometryUtility.CalculateFrustumPlanes(Camera.main);
-        float deltaAngle = Quaternion.Angle(lastFollowerRotation, Follower.rotation);
+        //Plane[] frustum = GeometryUtility.CalculateFrustumPlanes(Camera.main);
+        //float deltaAngle = Quaternion.Angle(lastFollowerRotation, Follower.rotation);
     }
 
     /// <summary>

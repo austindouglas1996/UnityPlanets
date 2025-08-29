@@ -9,8 +9,11 @@ using System;
 /// </summary>
 public class ChunkGenerationProcessor : IDisposable
 {
-    private readonly List<ChunkGenerationJob> tmpSurfaceJobs = new(1024);
-    private readonly List<ChunkGenerationJob> tmpGenerationJobs = new(1024);
+    private const int SurfaceJobs = 1028;
+    private const int GenerationJobs = 64;
+
+    private readonly List<ChunkGenerationJob> tmpSurfaceJobs = new(SurfaceJobs);
+    private readonly List<ChunkGenerationJob> tmpGenerationJobs = new(GenerationJobs);
 
     private readonly ChunkGenerationBatcher surfaceBatcher = new();
     private readonly ChunkGenerationBatcher generationBatcher = new();
@@ -38,7 +41,7 @@ public class ChunkGenerationProcessor : IDisposable
     public ChunkGenerationProcessor(IChunkServices services)
     {
         this.chunkServices = services;
-        this.layerRenderer = new ChunkRenderRouter(services.Generator, 128, 2, 32, 2);
+        this.layerRenderer = new ChunkRenderRouter(services.Generator, 128, 2, GenerationJobs, 2);
     }
 
     /// <summary>
@@ -134,7 +137,7 @@ public class ChunkGenerationProcessor : IDisposable
     {
         if (!generationBatcher.HasPending) return;
 
-        int n = generationBatcher.TryBatch(64, tmpGenerationJobs);
+        int n = generationBatcher.TryBatch(GenerationJobs, tmpGenerationJobs);
         if (n == 0) return;
 
         foreach (var job in tmpGenerationJobs)

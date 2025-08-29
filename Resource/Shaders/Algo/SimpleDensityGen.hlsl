@@ -9,11 +9,11 @@ int GetOctaves(int lod)
     switch (lod)
     {
         case 0:
-            return 6;
+            return 4;
         case 1:
             return 4;
         case 2:
-            return 2;
+            return 4;
         default:
             return 1;
     }
