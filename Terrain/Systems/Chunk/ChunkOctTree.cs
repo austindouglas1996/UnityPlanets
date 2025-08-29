@@ -2,10 +2,6 @@
 using UnityEngine;
 using VHierarchy.Libs;
 
-public enum OccupancyState { Unknown, Loading, Empty, NonEmpty }
-public enum ContentPhase { Unloaded, Loading, Ready, Subdivided }
-public enum LodDecision { KeepLeaf, Subdivide, Merge }
-public enum Transition { None, Subdivide, Merge }
 
 /// <summary>
 /// One node in my octree. Handles one chunk of terrain at a certain LOD,

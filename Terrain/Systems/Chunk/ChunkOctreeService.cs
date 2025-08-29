@@ -50,6 +50,28 @@ public class ChunkOctreeService
     }
 
     /// <summary>
+    /// Evaluate the LOD for a given tree node to determine the best LOD.
+    /// </summary>
+    /// <param name="node"></param>
+    /// <returns></returns>
+    public LodDecision EvaluateLod(ChunkLodTreeNode node)
+    {
+        // Don't touch while transitioning. 
+        if (node.Transition != Transition.None)
+            return LodDecision.KeepLeaf;
+
+        int desired = services.Layout.GetLODForChunk(node.Key.Coordinates);
+
+        if (ShouldSubdivide(node, desired))
+            return LodDecision.Subdivide;
+
+        if (ShouldMerge(node, desired))
+            return LodDecision.Merge;
+
+        return LodDecision.KeepLeaf;
+    }
+
+    /// <summary>
     /// Should the <see cref="ChunkOctTreeNode"/> subdivide from its current state.
     /// </summary>
     /// <param name="node"></param>
@@ -64,12 +86,31 @@ public class ChunkOctreeService
     }
 
     /// <summary>
+    /// Should the <see cref="ChunkOctTreeNode"/> subdivide from its current state.
+    /// </summary>
+    /// <param name="node"></param>
+    /// <param name="desired"></param>
+    /// <returns></returns>
+    private bool ShouldSubdivide(ChunkLodTreeNode node, int desired)
+    {
+        return node.Key.LODIndex > desired
+            && node.IsLeaf
+            && node.Phase != ContentPhase.Subdivided
+            && node.Occupancy == OccupancyState.NonEmpty;
+    }
+
+    /// <summary>
     /// Should the <see cref="ChunkOctTreeNode"/> merge from its current state.
     /// </summary>
     /// <param name="node"></param>
     /// <param name="desired"></param>
     /// <returns></returns>
     private bool ShouldMerge(ChunkOctTreeNode node, int desired)
+    {
+        return node.Key.LODIndex < desired && node.HasChildren;
+    }
+
+    private bool ShouldMerge(ChunkLodTreeNode node, int desired)
     {
         return node.Key.LODIndex < desired && node.HasChildren;
     }
@@ -105,6 +146,11 @@ public class ChunkOctreeService
     {
         Bounds childBounds = this.services.Layout.GetBounds(childCoord, parent.Key.LODIndex - 1);
         return new ChunkOctTreeNode(this, childBounds, parent);
+    }
+
+    public Bounds GetBounds(ChunkKey key)
+    {
+        return this.services.Layout.GetBounds(key);
     }
 
     /// <summary>

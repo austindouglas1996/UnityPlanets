@@ -16,6 +16,7 @@ public class ChunkRendererMono : MonoBehaviour
     [Header("Debug")]
     [SerializeField] public bool ShowTerrain = true;
     [HideInInspector] private bool isInitialized = false;
+    [SerializeField] private bool LoveTheBoo = true;
 
     [Header("Shaders")]
     [SerializeField] public ComputeShader MarchingCubes;
@@ -29,7 +30,15 @@ public class ChunkRendererMono : MonoBehaviour
     private ChunkGenerationProcessor processor;
 
     private ChunkOctreeService treeMan;
-    private List<ChunkOctTreeNode> rootTrees = new List<ChunkOctTreeNode>();
+    private ChunkLodTree lodTree;
+
+
+    // Debug test fields
+    private System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
+    private int frameCount = 0;
+    private float fpsSum = 0f;
+    private int phase = 0; // 0 = with update, 1 = without update
+    private float sampleDuration = 60f; // seconds
 
     /// <summary>
     /// Update the chunk layout and render any available chunks.
@@ -39,19 +48,27 @@ public class ChunkRendererMono : MonoBehaviour
         if (!isInitialized) return;
         this.chunkServices.Generator.Update();
 
-        if (Time.frameCount % 5 != 0)
-            return;
+        // run LOD tree update only in phase 0
+        if (phase == 0)
+            lodTree.Update();
 
-        var sw = new System.Diagnostics.Stopwatch();
-        sw.Start();
+        // FPS sampling
+        frameCount++;
+        fpsSum += 1f / Time.unscaledDeltaTime;
 
-        foreach (var root in rootTrees)
+        if (stopwatch.Elapsed.TotalSeconds >= sampleDuration)
         {
-            root.Tick();
-        }
+            float avgFps = fpsSum / frameCount;
+            UnityEngine.Debug.Log($"[Phase {phase}] Average FPS over {sampleDuration}s: {avgFps:F2}");
 
-        sw.Stop();
-        UnityEngine.Debug.Log($"Octree Tick() took {sw.Elapsed.TotalMilliseconds:F3} ms");
+            // reset counters
+            frameCount = 0;
+            fpsSum = 0f;
+            stopwatch.Restart();
+
+            // switch phase
+            phase++;
+        }
     }
 
     /// <summary>
@@ -97,10 +114,7 @@ public class ChunkRendererMono : MonoBehaviour
     /// </summary>
     private void OnDrawGizmos()
     {
-        foreach (var root in rootTrees)
-        {
-            root.DrawDebugGizmo();
-        }
+
     }
 
     /// <summary>
@@ -110,6 +124,7 @@ public class ChunkRendererMono : MonoBehaviour
     /// <param name="services"></param>
     public void Initialize(IChunkServices services)
     {
+        stopwatch.Start();
         this.chunkServices = services;
         this.processor = new ChunkGenerationProcessor(this.chunkServices);
 
@@ -123,7 +138,7 @@ public class ChunkRendererMono : MonoBehaviour
     /// </summary>
     public void RefreshChunks()
     {
-        rootTrees.Clear();
+        //rootTrees.Clear();
         this.processor.RemoveAll();
         this.InitializeRootChunks();
     }
@@ -155,13 +170,13 @@ public class ChunkRendererMono : MonoBehaviour
         }
 
         // Create manager.
-        treeMan = new ChunkOctreeService(this.chunkServices, this.processor);
+        lodTree = new ChunkLodTree(this.chunkServices, this.processor);
 
         // Create root nodes.
         for (int dx = initialRootRange.X.Min; dx < initialRootRange.X.Max; dx++)
             for (int dy = initialRootRange.Y.Min; dy < initialRootRange.Y.Max; dy++)
                 for (int dz = initialRootRange.Z.Min; dz < initialRootRange.Z.Max; dz++)
-                    CreateRoot(treeMan, new Vector3Int(dx, dy, dz), 4, startPos);
+                    CreateRoot(new Vector3Int(dx, dy, dz), 4, startPos);
     }
 
     /// <summary>
@@ -170,11 +185,9 @@ public class ChunkRendererMono : MonoBehaviour
     /// <param name="coord"></param>
     /// <param name="lod"></param>
     /// <param name="offset"></param>
-    private void CreateRoot(ChunkOctreeService tree, Vector3Int coord, int lodIndex, Vector3 offset)
+    private void CreateRoot(Vector3Int coord, int lodIndex, Vector3 offset)
     {
         Bounds bounds = this.chunkServices.Layout.GetBounds(coord, lodIndex);
-
-        var root = new ChunkOctTreeNode(tree, bounds);
-        rootTrees.Add(root);
+        lodTree.AddRoot(bounds);
     }
 }
