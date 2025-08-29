@@ -8,48 +8,55 @@ public enum LodDecision { KeepLeaf, Subdivide, Merge }
 public enum Transition { None, Subdivide, Merge }
 
 /// <summary>
-/// Represents a node in the terrain quadtree structure. Each node covers a chunk of terrain at a specific LOD.
-/// Nodes can subdivide into 4 children for higher detail as the player gets closer.
+/// One node in my octree. Handles one chunk of terrain at a certain LOD,
+/// and can split into 8 smaller chunks or merge back up. 
+/// Basically the unit that drives what gets generated or shown.
 /// </summary>
 public class ChunkOctTreeNode
 {
     /// <summary>
-    /// The parent this node belongs to.
+    /// Shortcut back to the tree service so I can request surface checks and generation
+    /// without filling this class with extra logic.
     /// </summary>
     private ChunkOctreeService treeService;
 
     /// <summary>
-    /// The current phase of the content. This will help to know if we should skip.
+    /// What stage this chunk is in (not loaded, loading, ready, or subdivided).
+    /// Helps me know whether to skip work on this node this tick.
     /// </summary>
     public ContentPhase CurrentContentPhase = ContentPhase.Unloaded;
 
     /// <summary>
-    /// The current state of the node if it contains surface data
+    /// Whether this chunk actually has terrain in it. Unknown until I check,
+    /// then it’s either Empty or NonEmpty.
     /// </summary>
     public OccupancyState CurrentOccupancyState = OccupancyState.Unknown;
 
     /// <summary>
-    /// The current transition to help subdivide/merge.
+    /// If I’m currently in the middle of a split or merge transition.
     /// </summary>
     public Transition CurrentTransition = Transition.None;
 
     /// <summary>
-    /// The remaining ticks of a transition before executing an action.
+    /// Simple counter so transitions wait a few frames before finalizing,
+    /// gives children time to come online or parent time to render.
     /// </summary>
     private int TransitionTicks = 0;
 
     /// <summary>
-    /// The amount of children checked in a subdivide. Helps in case the children fail to render.
+    /// How many children I’ve checked during a subdivide. 
+    /// Prevents getting stuck if some fail.
     /// </summary>
     private int childrenChecked = 0;
 
     /// <summary>
-    /// A simple debug cube to visualize the node items.
+    /// Debug cube I spawn just to visualize bounds and LOD while testing.
     /// </summary>
     private GameObject DebugCube;
 
     /// <summary>
-    /// Initialize a new instance of the <see cref="ChunkOctTree"/> class. 
+    /// Create a new node. If I have a parent, this is one level deeper,
+    /// otherwise I’m the root at max LOD. Kick off a surface check right away.
     /// </summary>
     /// <param name="tree"></param>
     /// <param name="bounds"></param>
@@ -78,27 +85,28 @@ public class ChunkOctTreeNode
     public Bounds Bounds { get; private set; }
 
     /// <summary>
-    /// Parent node in the tree (if any).
+    /// Link back to my parent node (null if root).
     /// </summary>
     public ChunkOctTreeNode? Parent { get; private set; }
 
     /// <summary>
-    /// Child nodes (NE, NW, SE, SW) created if this node is subdivided.
+    /// My 8 children if I’ve been split. Only populated when subdivided.
     /// </summary>
     public List<ChunkOctTreeNode> Children = new List<ChunkOctTreeNode>(8);
 
     /// <summary>
-    /// Returns whether this node has any children.
+    /// True if I’ve split into children.
     /// </summary>
     public bool HasChildren => this.Children.Count > 0;
 
     /// <summary>
-    /// Returns whether this node has no children.
+    /// True if I don’t have children (leaf node).
     /// </summary>
     public bool IsLeaf => !HasChildren;
 
     /// <summary>
-    /// An update method for the node, but this method will not be called every Update() called in Unity.
+    /// Called on updates (not every Unity frame). Handles transitions,
+    /// checks LOD, splits/merges, or requests generation.
     /// </summary>
     public void Tick()
     {
@@ -167,7 +175,7 @@ public class ChunkOctTreeNode
     }
 
     /// <summary>
-    /// Subdivide the node into further parts.
+    /// Kick off a subdivide. Request all 8 child surface checks, then wait a few ticks.
     /// </summary>
     private void Subdivide()
     {
@@ -196,7 +204,7 @@ public class ChunkOctTreeNode
     }
 
     /// <summary>
-    /// Merge this node, deleting its children.
+    /// Kick off a merge. Children will get cleared after a few ticks.
     /// </summary>
     private void Merge()
     {
@@ -210,7 +218,7 @@ public class ChunkOctTreeNode
     }
 
     /// <summary>
-    /// Request the node check for surface before rendering.
+    /// Ask the service to see if this chunk has terrain in it.
     /// </summary>
     private void RequestSurfaceCheck()
     {
@@ -231,7 +239,7 @@ public class ChunkOctTreeNode
     }
 
     /// <summary>
-    /// Request children 
+    /// Ask the service to check one child coordinate during a subdivide.
     /// </summary>
     /// <param name="coordinate"></param>
     private void RequestChildSurfaceCheck(Vector3Int coordinate)
@@ -253,7 +261,7 @@ public class ChunkOctTreeNode
     }
 
     /// <summary>
-    /// Request the chunk to generate.
+    /// Tell the service to actually generate this chunk’s data.
     /// </summary>
     private void RequestGeneration()
     {
@@ -282,8 +290,7 @@ public class ChunkOctTreeNode
     }
 
     /// <summary>
-    /// Finalize the subdivide by removing this parent object. This is important because if not the parent will be removed before the children have
-    /// had a chance to be rendered.
+    /// Finish a subdivide: mark this node as replaced by children and clear my debug cube.
     /// </summary>
     private void FinalizeSubdivide()
     {
@@ -295,7 +302,7 @@ public class ChunkOctTreeNode
     }
 
     /// <summary>
-    /// Finalize the merge by removing the children now that the parent has had a chance to render itself at least once.
+    /// Finish a merge: remove my children and mark myself ready again.
     /// </summary>
     private void FinalizeMerge()
     {
@@ -304,7 +311,7 @@ public class ChunkOctTreeNode
     }
 
     /// <summary>
-    /// Destroy the children part of this object (Recursive).
+    /// Recursively kill all children and unregister them from the tree service.
     /// </summary>
     private void DestroyChildren()
     {
@@ -351,7 +358,7 @@ public class ChunkOctTreeNode
     }
 
     /// <summary>
-    /// A simple function to get a color based on LOD.
+    /// Helper: pick a debug color based on LOD (green = far, red = near).
     /// </summary>
     /// <param name="lod"></param>
     /// <param name="maxLod"></param>
