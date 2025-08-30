@@ -71,7 +71,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
 
         this.chunkMaterial = new Material(Shader.Find("Custom/URP_CustomLitGPU"));
         this.chunkMaterial.SetFloat("_Smoothness", 0f);
-        this.chunkMaterial.SetFloat("_UseVertexColor", 1f);
+        this.chunkMaterial.SetFloat("_UseVertexColor", 0f);
 
         this.InitBuffer();
     }

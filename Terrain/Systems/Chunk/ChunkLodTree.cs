@@ -1,8 +1,6 @@
-﻿using DistantLands.Cozy;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor.Experimental.GraphView;
-using UnityEditor.Rendering;
 using UnityEngine;
 
 public enum OccupancyState { Unknown, Loading, Empty, NonEmpty }
@@ -27,7 +25,6 @@ public class ChunkLodTreeNode
 
     // Helpers
     public bool IsAlive = false;
-    public bool MarkedForRemoval = false;
     public bool HasChildren => Children.Count != 0;
     public bool IsLeaf => !HasChildren;
     public int LODIndex => Key.LODIndex;
@@ -101,6 +98,8 @@ public class ChunkLodTree
     private List<ChunkLodTreeNode> Nodes = new();
     private Dictionary<ChunkKey, int> IndexByKey = new();
 
+    private Stack<int> MarkedForRemoval = new();
+
     private readonly Stack<int> FreeSingleBlocks = new();
 
     public ChunkLodTree(IChunkServices services, ChunkGenerationProcessor processor)
@@ -125,17 +124,11 @@ public class ChunkLodTree
     {
         var n = Nodes[index];
 
-        if (n.MarkedForRemoval)
-        {
-            this.processor.RemoveChunk(n.Key);
-            FreeSingleBlock(index);
-            return;
-        }
-
         if (n.Phase == ContentPhase.Loading) 
             return;
 
-        if (n.Occupancy == OccupancyState.Empty) return;
+        if (n.Occupancy == OccupancyState.Empty) 
+            return;
 
         var decision = EvaluateLod(n);
         if (decision == LodDecision.Subdivide) PerformSubdivide(index);
@@ -197,6 +190,12 @@ public class ChunkLodTree
             {
                 parent = Nodes[parentIndex];
                 parent.ChildrenChecked++;
+
+                if (parent.ChildrenChecked == 8)
+                {
+                    parent.FinishTransition();
+                    processor.RemoveChunk(parent.Key);
+                }
             }
 
             if (hasSurface)
@@ -212,12 +211,6 @@ public class ChunkLodTree
                 if (parentIndex != -1 && parent != null)
                 {
                     parent.Children.Add(index);
-
-                    if (parent.ChildrenChecked == 8)
-                    {
-                        parent.FinishTransition();
-                        processor.RemoveChunk(parent.Key);
-                    }
                 }
 
                 // Add to entry.
@@ -251,8 +244,12 @@ public class ChunkLodTree
                     foreach (var child in node.Children)
                     {
                         ChunkLodTreeNode cnode = Nodes[child];
-                        cnode.MarkedForRemoval = true;
+                        this.processor.RemoveChunk(cnode.Key);
+                        FreeSingleBlock(child);
                     }
+
+                    node.Children.Clear();
+                    node.ChildrenChecked = 0;
                 }
 
                 node.FinishTransition();

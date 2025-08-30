@@ -4,6 +4,13 @@ Shader "Custom/URP_CustomLitGPU"
     {
         _BaseColor("Base Color", Color) = (1, 0, 0, 1)
         _UseVertexColor("Use Vertex Color", Float) = 1
+
+        // New texture controls
+        _CustomBaseMap("Base Texture", 2D) = "white" {}
+        _UseBaseMap("Use Base Texture (0..1)", Range(0,1)) = 1
+        _TextureTint("Texture Tint", Color) = (1,1,1,1)
+        _TexScale("Texture Tiling (world units)", Float) = 1.0
+        _TriplanarSharpness("Triplanar Sharpness", Range(0.5,8)) = 2.0
     }
 
     SubShader
@@ -48,6 +55,14 @@ Shader "Custom/URP_CustomLitGPU"
             float _UseVertexColor;
             int LODHeatMap;
 
+            // === New texture uniforms ===
+            TEXTURE2D(_CustomBaseMap);
+            SAMPLER(sampler_CustomBaseMap);
+            float  _UseBaseMap;
+            float4 _TextureTint;
+            float  _TexScale;
+            float  _TriplanarSharpness;
+
             struct Attributes
             {
                 uint vertexID : SV_VertexID;
@@ -75,12 +90,37 @@ Shader "Custom/URP_CustomLitGPU"
                                              tri.c;
 
                 OUT.positionWS = pos;
+
+                // Face normal per triangle (flat shading)
                 OUT.normalWS = normalize(cross(tri.b - tri.a, tri.c - tri.a));
                 OUT.color = LODHeatMap == 1 ? GetLodColor(tri.LodKey) : float4(GetTerrainColor(OUT.normalWS),1);
                 OUT.positionCS = TransformWorldToHClip(pos);
-
                 return OUT;
             }
+
+            // Triplanar sampling in world space (no UVs required)
+float4 SampleBaseMapTriplanar(float3 wsPos, float3 wsNormal)
+{
+    float3 n = normalize(wsNormal);
+    float3 an = pow(abs(n), _TriplanarSharpness);
+    float sum = an.x + an.y + an.z + 1e-5;
+    float3 w = an / sum;
+
+    float s = max(_TexScale, 1e-4);
+
+    float2 uvX = wsPos.zy / s;
+    float2 uvY = wsPos.xz / s;
+    float2 uvZ = wsPos.xy / s;
+
+    float4 tx = SAMPLE_TEXTURE2D(_CustomBaseMap, sampler_CustomBaseMap, uvX);
+    float4 ty = SAMPLE_TEXTURE2D(_CustomBaseMap, sampler_CustomBaseMap, uvY);
+    float4 tz = SAMPLE_TEXTURE2D(_CustomBaseMap, sampler_CustomBaseMap, uvZ);
+
+    float4 c = tx * w.x + ty * w.y + tz * w.z;
+    c.rgb *= _TextureTint.rgb;
+    return float4(c.rgb, 1);
+}
+
 
             float4 frag(Varyings IN) : SV_Target
             {
@@ -93,7 +133,12 @@ Shader "Custom/URP_CustomLitGPU"
                 inputData.vertexLighting = float3(0, 0, 0);
                 inputData.bakedGI = SampleSH(inputData.normalWS);
 
-                float3 finalColor = lerp(_BaseColor.rgb, IN.color.rgb, _UseVertexColor);
+                // Base: color or triplanar texture
+                float3 texColor = SampleBaseMapTriplanar(IN.positionWS, inputData.normalWS).rgb;
+                float3 baseOrTex = lerp(_BaseColor.rgb, texColor, saturate(_UseBaseMap));
+
+                // Optional vertex-color override (your existing behavior)
+                float3 finalColor = lerp(baseOrTex, IN.color.rgb, saturate(_UseVertexColor));
 
                 SurfaceData surfaceData = (SurfaceData)0;
                 surfaceData.albedo = finalColor;
