@@ -332,7 +332,7 @@ public class ChunkLodTree
         if (node.Transition != Transition.None)
             return LodDecision.KeepLeaf;
 
-        int desired = services.Layout.GetLODForChunk(node.Key.Coordinates);
+        int desired = services.Layout.GetLODForChunk(node.Key.Id);
 
         if (ShouldSubdivide(node, desired))
             return LodDecision.Subdivide;
