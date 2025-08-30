@@ -14,8 +14,7 @@ public class ChunkLodTreeNode
 
     // Relationships
     public int ParentIndex = -1;
-    public int[] Children = new int[8]; 
-    public int ChildCount = 0;
+    public List<int> Children = new List<int>();
 
     // State
     public ContentPhase Phase = ContentPhase.Unloaded;    // Unloaded, Loading, Ready, Subdivided
@@ -25,52 +24,15 @@ public class ChunkLodTreeNode
 
     // Helpers
     public bool IsAlive = false;
-    public bool HasChildren => ChildCount != 0;
+    public bool HasChildren => Children.Count != 0;
     public bool IsLeaf => !HasChildren;
     public int LODIndex => Key.LODIndex;
-
-    public void AddChild(int idx)
-    {
-        for (int i = 0; i < 8; i++)
-        {
-            if (Children[i] == 0)
-            {
-                Children[i] = idx;
-                ChildCount++;
-                return;
-            }
-        }
-    }
-    public void RemoveChild(int idx)
-    {
-        for (int i = 0; i < 8; i++)
-        {
-            if (Children[i] == idx)
-            {
-                Children[i] = 0;
-                ChildCount--;
-                return;
-            }
-        }
-    }
-    public void ClearChildren()
-    {
-        for (int i = 0; i < 8; i++) Children[i] = 0;
-        ChildCount = 0;
-    }
-    public IEnumerable<int> GetChildren()
-    {
-        for (int i = 0; i < 8; i++)
-            if (Children[i] != 0)
-                yield return Children[i];
-    }
 
     // Functions.
     public void Free()
     {
         this.ParentIndex = -1;
-        this.ClearChildren();
-        this.ChildCount = 0;
+        this.Children.Clear();
         this.Phase = ContentPhase.Unloaded;
         this.Occupancy = OccupancyState.Unknown;
         this.Transition = Transition.None;
@@ -190,24 +152,26 @@ public class ChunkLodTree
         }
 
         // Reset parent.
-        Nodes[parentIndex].ClearChildren();
+        Nodes[parentIndex].Children.Clear();
     }
 
     private void PerformSubdivide(int index)
     {
         ChunkLodTreeNode node = Nodes[index];
-
-        if (node.HasChildren || node.LODIndex == 0 || node.Transition != Transition.None) return;
         node.Phase = ContentPhase.Loading;
 
-        CreateChildNodes(index);
+        for (int i = 0; i < 8; i++)
+        {
+            var coordinates = GetChildOffset(i, node.Key.Coordinates * 2);
+            var lodIndex = node.LODIndex - 1;
+            var chunkKey = new ChunkKey(coordinates, lodIndex);
+            TryCreateSingleNode(chunkKey, index);
+        }
     }
 
     private void PerformMerge(int index)
     {
         ChunkLodTreeNode node = Nodes[index];
-
-        if (!node.HasChildren || node.LODIndex == RootLOD || node.Transition != Transition.None) return;
         node.Phase = ContentPhase.Loading;
 
         // Request gen.
@@ -233,7 +197,7 @@ public class ChunkLodTree
             if (parentIndex != -1)
             {
                 var pNode = Nodes[parentIndex];
-                pNode.AddChild(index);
+                pNode.Children.Add(index);
 
                 // Start to free the parent.
                 pNode.StartSubdivide();
@@ -276,22 +240,6 @@ public class ChunkLodTree
         Nodes[index].Phase = ContentPhase.Ready;
     }
 
-    private bool CreateChildNodes(int parentIndex)
-    {
-        var parentNode = Nodes[parentIndex];
-        if (parentNode.HasChildren || parentNode.LODIndex == 0) return false;
-
-        for (int i = 0; i < 8; i++)
-        {
-            var coordinates = GetChildOffset(i, parentNode.Key.Coordinates * 2);
-            var lodIndex = parentNode.LODIndex - 1;
-            var chunkKey = new ChunkKey(coordinates, lodIndex);
-            TryCreateSingleNode(chunkKey, parentIndex);
-        }
-
-        return true;
-    }
-
     private Vector3Int GetChildOffset(int index, Vector3Int baseOffset)
     {
         int cx = baseOffset.x;
@@ -332,7 +280,7 @@ public class ChunkLodTree
         if (node.Transition != Transition.None)
             return LodDecision.KeepLeaf;
 
-        int desired = services.Layout.GetLODForChunk(node.Key.Id);
+        int desired = services.Layout.GetLODForChunk(node.Key.Global);
 
         if (ShouldSubdivide(node, desired))
             return LodDecision.Subdivide;

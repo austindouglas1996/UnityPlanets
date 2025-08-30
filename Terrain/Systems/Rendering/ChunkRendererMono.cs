@@ -28,8 +28,6 @@ public class ChunkRendererMono : MonoBehaviour
 
     private IChunkServices chunkServices;
     private ChunkGenerationProcessor processor;
-
-    private ChunkOctreeService treeMan;
     private ChunkLodTree lodTree;
 
     /// <summary>
