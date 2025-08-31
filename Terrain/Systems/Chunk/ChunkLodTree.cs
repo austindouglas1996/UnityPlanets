@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public enum OccupancyState { Unknown, Loading, Empty, NonEmpty }
 public enum ContentPhase { Unloaded, Loading, Ready, Subdivided }
 public enum LodDecision { KeepLeaf, Subdivide, Merge }
 public enum Transition { None, Subdivide, Merge }
@@ -20,7 +18,6 @@ public class ChunkLodTreeNode
 
     // State
     public ContentPhase Phase = ContentPhase.Unloaded;    // Unloaded, Loading, Ready, Subdivided
-    public OccupancyState Occupancy = OccupancyState.Unknown; // Unknown, Loading, Empty, NonEmpty
     public Transition Transition = Transition.None; // None, Subdivide, Merge
 
     // Helpers
@@ -34,8 +31,7 @@ public class ChunkLodTreeNode
         return Key.LODIndex > desired
             && Key.LODIndex != 0
             && IsLeaf
-            && Phase != ContentPhase.Subdivided
-            && Occupancy == OccupancyState.NonEmpty;
+            && Phase != ContentPhase.Subdivided;
     }
     public bool CanMerge(int desired)
     {
@@ -49,7 +45,6 @@ public class ChunkLodTreeNode
         this.Children.Clear();
         this.ChildrenChecked = 0;
         this.Phase = ContentPhase.Unloaded;
-        this.Occupancy = OccupancyState.Unknown;
         this.Transition = Transition.None;
         this.IsAlive = false;
     }
@@ -74,11 +69,10 @@ public class ChunkLodTreeNode
         {
             case Transition.Merge:
                 Phase = ContentPhase.Ready;
-                Occupancy = OccupancyState.NonEmpty;         // parent visible again
                 break;
 
             case Transition.Subdivide:
-                Phase = ContentPhase.Subdivided;             // parent becomes internal
+                Phase = ContentPhase.Subdivided; // parent becomes internal
                 break;
         }
 
@@ -91,6 +85,7 @@ public class ChunkLodTreeNode
 public class ChunkLodTree
 {
     private const int RootLOD = 4;
+    private const int UpdatePerTick = 500;
 
     private readonly IChunkServices services;
     private readonly ChunkGenerationProcessor processor;
@@ -98,9 +93,9 @@ public class ChunkLodTree
     private List<ChunkLodTreeNode> Nodes = new();
     private Dictionary<ChunkKey, int> IndexByKey = new();
 
-    private Stack<int> MarkedForRemoval = new();
-
     private readonly Stack<int> FreeSingleBlocks = new();
+
+    private int CurrentUpdateIndex = 0;
 
     public ChunkLodTree(IChunkServices services, ChunkGenerationProcessor processor)
     {
@@ -115,10 +110,22 @@ public class ChunkLodTree
 
     public void Update()
     {
-        for (int i = 0; i < Nodes.Count; i++)
-            if (Nodes[i].IsAlive)
-                UpdateNode(i);
+        int count = Nodes.Count;
+        int processed = 0;
+
+        while (processed < UpdatePerTick && count > 0)
+        {
+            if (CurrentUpdateIndex >= count)
+                CurrentUpdateIndex = 0;
+
+            if (Nodes[CurrentUpdateIndex].IsAlive)
+                UpdateNode(CurrentUpdateIndex);
+
+            CurrentUpdateIndex++;
+            processed++;
+        }
     }
+
 
     private void UpdateNode(int index)
     {
@@ -127,10 +134,7 @@ public class ChunkLodTree
         if (n.Phase == ContentPhase.Loading) 
             return;
 
-        if (n.Occupancy == OccupancyState.Empty) 
-            return;
-
-        var decision = EvaluateLod(n);
+        var decision = GetLODDecision(n);
         if (decision == LodDecision.Subdivide) PerformSubdivide(index);
         else if (decision == LodDecision.Merge) PerformMerge(index);
 
@@ -155,6 +159,23 @@ public class ChunkLodTree
         }
         n.Free();
         FreeSingleBlocks.Push(index);
+    }
+
+    public LodDecision GetLODDecision(ChunkLodTreeNode node)
+    {
+        // Don't touch while transitioning. 
+        if (node.Transition != Transition.None)
+            return LodDecision.KeepLeaf;
+
+        int desired = services.Layout.GetLODForChunk(node.Key.Global);
+
+        if (node.CanSubdivide(desired))
+            return LodDecision.Subdivide;
+
+        if (node.CanMerge(desired))
+            return LodDecision.Merge;
+
+        return LodDecision.KeepLeaf;
     }
 
     private void PerformSubdivide(int index)
@@ -206,7 +227,6 @@ public class ChunkLodTree
                 node.Key = key;
                 node.IsAlive = true;
                 node.ParentIndex = parentIndex;
-                node.Occupancy = OccupancyState.NonEmpty;
 
                 if (parentIndex != -1 && parent != null)
                 {
@@ -227,7 +247,6 @@ public class ChunkLodTree
         {
             if (success)
             {
-                node.Occupancy = OccupancyState.NonEmpty;
                 node.Phase = ContentPhase.Ready;
             }
             else
@@ -243,8 +262,6 @@ public class ChunkLodTree
                     // The children can be safely removed now.
                     foreach (var child in node.Children)
                     {
-                        ChunkLodTreeNode cnode = Nodes[child];
-                        this.processor.RemoveChunk(cnode.Key);
                         FreeSingleBlock(child);
                     }
 
@@ -284,31 +301,5 @@ public class ChunkLodTree
         }
 
         throw new System.IndexOutOfRangeException();
-    }
-
-    public LodDecision EvaluateLod(ChunkLodTreeNode node)
-    {
-        // Don't touch while transitioning. 
-        if (node.Transition != Transition.None)
-            return LodDecision.KeepLeaf;
-
-        int desired = services.Layout.GetLODForChunk(node.Key.Global);
-
-        if (node.CanSubdivide(desired))
-            return LodDecision.Subdivide;
-
-        if (node.CanMerge(desired))
-            return LodDecision.Merge;
-
-        return LodDecision.KeepLeaf;
-    }
-
-    void DumpLodHistogram(List<ChunkLodTreeNode> nodes)
-    {
-        int[] h = new int[8];
-        int alive = 0;
-        foreach (var n in nodes) if (n.IsAlive) { h[Mathf.Clamp(n.LODIndex, 0, 7)]++; alive++; }
-        Debug.Log($"Alive={alive}  LODs: " +
-                  string.Join(" ", System.Linq.Enumerable.Range(0, h.Length).Select(i => $"{i}:{h[i]}")));
     }
 }
