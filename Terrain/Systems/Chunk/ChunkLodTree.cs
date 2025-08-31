@@ -1,11 +1,29 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
+/// <summary>
+/// Tells the current content phase of a <see cref="ChunkLodTreeNode"/> to 
+/// helper better understand what may be happening in the background so
+/// actions are not duplicated.
+/// </summary>
 public enum ContentPhase { Unloaded, Loading, Ready, Subdivided }
+
+/// <summary>
+/// The LOD descision given to a <see cref="ChunkLodTreeNode"/> to help
+/// with making the render decisions a bit simpler.
+/// </summary>
 public enum LodDecision { KeepLeaf, Subdivide, Merge }
+
+/// <summary>
+/// A transition happening with a <see cref="ChunkLodTreeNode"/> to help with
+/// background processes to know what may be happening to not duplicate jobs.
+/// </summary>
 public enum Transition { None, Subdivide, Merge }
 
+/// <summary>
+/// Represents a single node in a <see cref="ChunkLodTree"/> holds information on the 
+/// chunks current position and state.
+/// </summary>
 public class ChunkLodTreeNode
 {
     // Who I am
@@ -24,8 +42,14 @@ public class ChunkLodTreeNode
     public bool IsAlive = false;
     public bool HasChildren => Children.Count != 0;
     public bool IsLeaf => !HasChildren;
+    public Vector3Int Coordinates => Key.Coordinates;
     public int LODIndex => Key.LODIndex;
 
+    /// <summary>
+    /// Returns whether a <see cref="ChunkLodTreeNode"/> can safely subdivide based on its current state.
+    /// </summary>
+    /// <param name="desired"></param>
+    /// <returns></returns>
     public bool CanSubdivide(int desired)
     {
         return Key.LODIndex > desired
@@ -33,12 +57,20 @@ public class ChunkLodTreeNode
             && IsLeaf
             && Phase != ContentPhase.Subdivided;
     }
+
+    /// <summary>
+    /// Returns whether a <see cref="ChunkLodTreeNode"/> can safely merge based on its current state.
+    /// </summary>
+    /// <param name="desired"></param>
+    /// <returns></returns>
     public bool CanMerge(int desired)
     {
         return Key.LODIndex < desired && HasChildren;
     }
 
-    // Functions.
+    /// <summary>
+    /// Reset the current <see cref="ChunkLodTreeNode"/> back to zero so it may be safely reused.
+    /// </summary>
     public void Free()
     {
         this.ParentIndex = -1;
@@ -49,6 +81,11 @@ public class ChunkLodTreeNode
         this.IsAlive = false;
     }
 
+    /// <summary>
+    /// Start a new <see cref="Transition"/> on this node telling whether background operations are in progress.
+    /// </summary>
+    /// <param name="newTransition"></param>
+    /// <returns></returns>
     public bool StartTransition(Transition newTransition)
     {
         if (this.Transition != Transition.None)
@@ -60,6 +97,10 @@ public class ChunkLodTreeNode
         return true;
     }
 
+    /// <summary>
+    /// Finalize a <see cref="Transition"/>, this is a helper function to make the code a bit cleaner to understand.
+    /// </summary>
+    /// <returns></returns>
     public bool FinishTransition()
     {
         if (this.Transition == Transition.None) 
@@ -82,32 +123,60 @@ public class ChunkLodTreeNode
     }
 }
 
+/// <summary>
+/// A chunk based tree structure to help with managing chunks in the game world by controlling detail by dividing the
+/// chunks by 8 to create higher detailed chunks in its place.
+/// </summary>
 public class ChunkLodTree
 {
+    /// <summary>
+    /// The lowest (I swear to god im going to change it so high is better detail) detail that can be used for a chunk.
+    /// </summary>
     private const int RootLOD = 4;
+
+    /// <summary>
+    /// The amount of <see cref="ChunkLodTreeNode"/> that is updated per frame.
+    /// </summary>
     private const int UpdatePerTick = 500;
 
     private readonly IChunkServices services;
     private readonly ChunkGenerationProcessor processor;
 
-    private List<ChunkLodTreeNode> Nodes = new();
-    private Dictionary<ChunkKey, int> IndexByKey = new();
-
+    private readonly List<ChunkLodTreeNode> Nodes = new();
+    private readonly Dictionary<ChunkKey, int> IndexByKey = new();
     private readonly Stack<int> FreeSingleBlocks = new();
 
+    /// <summary>
+    /// The current index of <see cref="Update"/> as we limit the amount of nodes updated during an
+    /// update to help streamline the process.
+    /// </summary>
     private int CurrentUpdateIndex = 0;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ChunkLodTree"/> class.
+    /// </summary>
+    /// <param name="services"></param>
+    /// <param name="processor"></param>
     public ChunkLodTree(IChunkServices services, ChunkGenerationProcessor processor)
     {
         this.services = services;
         this.processor = processor;
     }
 
+    /// <summary>
+    /// Add a new root node into the LOD system. After adding the root the system will automatically manage
+    /// the chunk and its children. The root coordinates should be sized to fit a <see cref="RootLOD"/> size.
+    /// </summary>
+    /// <param name="coord"></param>
     public void AddRoot(Vector3Int coord)
     {
         TryCreateSingleNode(new ChunkKey(coord, RootLOD));
     }
 
+    /// <summary>
+    /// Update the nodes part of this system. Updates will be staggered for the elements so this should be called
+    /// every Unity update frame.
+    /// </summary>
     public void Update()
     {
         int count = Nodes.Count;
@@ -126,7 +195,10 @@ public class ChunkLodTree
         }
     }
 
-
+    /// <summary>
+    /// Update an instance of <see cref="ChunkLodTreeNode"/> element.
+    /// </summary>
+    /// <param name="index"></param>
     private void UpdateNode(int index)
     {
         var n = Nodes[index];
@@ -142,6 +214,10 @@ public class ChunkLodTree
             RequestGeneration(n);
     }
 
+    /// <summary>
+    /// Create a single block to be used for generation purposes.
+    /// </summary>
+    /// <returns></returns>
     private int AllocSingleBlock()
     {
         if (FreeSingleBlocks.Count > 0) return FreeSingleBlocks.Pop();
@@ -149,6 +225,10 @@ public class ChunkLodTree
         return Nodes.Count - 1;
     }
 
+    /// <summary>
+    /// Free a see <see cref="ChunkLodTreeNode"/> that can be sent back into collections.
+    /// </summary>
+    /// <param name="index"></param>
     private void FreeSingleBlock(int index)
     {
         var n = Nodes[index];
@@ -161,6 +241,11 @@ public class ChunkLodTree
         FreeSingleBlocks.Push(index);
     }
 
+    /// <summary>
+    /// Return the <see cref="LodDecision"/> based on a <see cref="ChunkLodTreeNode"/> current state.
+    /// </summary>
+    /// <param name="node"></param>
+    /// <returns></returns>
     public LodDecision GetLODDecision(ChunkLodTreeNode node)
     {
         // Don't touch while transitioning. 
@@ -178,6 +263,11 @@ public class ChunkLodTree
         return LodDecision.KeepLeaf;
     }
 
+    /// <summary>
+    /// Perform a subdivide operation on a <see cref="ChunkLodTreeNode"/> based on index, dividing it by 8 
+    /// and creating new children (if possible)
+    /// </summary>
+    /// <param name="index"></param>
     private void PerformSubdivide(int index)
     {
         ChunkLodTreeNode node = Nodes[index];
@@ -192,6 +282,11 @@ public class ChunkLodTree
         }
     }
 
+    /// <summary>
+    /// Perform a merge operation on a <see cref="ChunkLodTreeNode"/> based on index. Deleting its 8 children
+    /// and making this the leaf again.
+    /// </summary>
+    /// <param name="index"></param>
     private void PerformMerge(int index)
     {
         ChunkLodTreeNode node = Nodes[index];
@@ -201,6 +296,12 @@ public class ChunkLodTree
         this.RequestGeneration(node);
     }
 
+    /// <summary>
+    /// Try to create a single <see cref="ChunkLodTreeNode"/>. We will check if the chunk will have surface before
+    /// rendering this system. We also take into account the parents state and if any additions should be made.
+    /// </summary>
+    /// <param name="key"></param>
+    /// <param name="parentIndex"></param>
     private void TryCreateSingleNode(ChunkKey key, int parentIndex = -1)
     {
         this.processor.RequestSurfaceCheck(key, (bool hasSurface) =>
@@ -240,6 +341,12 @@ public class ChunkLodTree
         });
     }
 
+    /// <summary>
+    /// Request a <see cref="ChunkLodTreeNode"/> to be generated, this would mean a chunk has passed surface
+    /// checks and is now ready to be seen in the world.
+    /// </summary>
+    /// <param name="node"></param>
+    /// <exception cref="System.ArgumentException"></exception>
     private void RequestGeneration(ChunkLodTreeNode node)
     {
         node.Phase = ContentPhase.Loading;
@@ -274,6 +381,13 @@ public class ChunkLodTree
         });
     }
 
+    /// <summary>
+    /// Returns the child offset based on position in the <see cref="ChunkLodTree"/>.
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="baseOffset"></param>
+    /// <returns></returns>
+    /// <exception cref="System.IndexOutOfRangeException"></exception>
     private Vector3Int GetChildOffset(int index, Vector3Int baseOffset)
     {
         int cx = baseOffset.x;
