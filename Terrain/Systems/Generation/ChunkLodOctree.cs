@@ -2,140 +2,168 @@
 using UnityEngine;
 
 /// <summary>
-/// Tells the current content phase of a <see cref="ChunkLodTreeNode"/> to 
-/// helper better understand what may be happening in the background so
-/// actions are not duplicated.
+/// A chunk-based octree that manages world detail through Level of Detail (LOD).
+/// 
+/// This structure decides which chunks should exist in the world at any given time,
+/// keeping far-away areas coarse (few, large chunks) and nearby areas detailed
+/// (many, small chunks). Each node in the tree represents a chunk of the world
+/// and can either:
+///   • Stay as a leaf (one chunk),
+///   • Subdivide into 8 smaller child chunks (higher detail),
+///   • Merge its children back into a single parent chunk (lower detail).
+/// 
+/// Why it matters:
+///   • Chooses what chunks to render in the in-game world by logic only. No rendering.
+///   • Dynamically adapts detail based on distance to the player.
+///   • Ensures transitions between LOD levels without overlaps. 
+/// 
+/// In short: this class is the brain of the chunk system. It decides which chunks
+/// exist, when they should split apart for more detail, and when they can safely
+/// collapse back together to save performance.
+/// 
+/// Important: The logic here is delicate. Small changes can easily break LOD
+/// transitions or cause missing chunks. Read the comments carefully before editing.
 /// </summary>
-public enum ContentPhase { Unloaded, Loading, Ready, Subdivided }
-
-/// <summary>
-/// The LOD descision given to a <see cref="ChunkLodTreeNode"/> to help
-/// with making the render decisions a bit simpler.
-/// </summary>
-public enum LodDecision { KeepLeaf, Subdivide, Merge }
-
-/// <summary>
-/// A transition happening with a <see cref="ChunkLodTreeNode"/> to help with
-/// background processes to know what may be happening to not duplicate jobs.
-/// </summary>
-public enum Transition { None, Subdivide, Merge }
-
-/// <summary>
-/// Represents a single node in a <see cref="ChunkLodTree"/> holds information on the 
-/// chunks current position and state.
-/// </summary>
-public class ChunkLodTreeNode
+public class ChunkLodOctree
 {
-    // Who I am
-    public ChunkKey Key;
-
-    // Relationships
-    public int ParentIndex = -1;
-    public List<int> Children = new List<int>();
-    public int ChildrenChecked = 0;
-
-    // State
-    public ContentPhase Phase = ContentPhase.Unloaded;    // Unloaded, Loading, Ready, Subdivided
-    public Transition Transition = Transition.None; // None, Subdivide, Merge
-
-    // Helpers
-    public bool IsAlive = false;
-    public bool HasChildren => Children.Count != 0;
-    public bool IsLeaf => !HasChildren;
-    public Vector3Int Coordinates => Key.Coordinates;
-    public int LODIndex => Key.LODIndex;
+    /// <summary>
+    /// Tracks what stage a node is in:
+    /// - Unloaded: not in memory
+    /// - Loading: async request pending
+    /// - Ready: mesh is generated
+    /// - Subdivided: node has been replaced by children
+    /// </summary>
+    internal enum ContentPhase { Unloaded, Loading, Ready, Subdivided }
 
     /// <summary>
-    /// Returns whether a <see cref="ChunkLodTreeNode"/> can safely subdivide based on its current state.
+    /// LOD decision outcome when evaluating a node:
+    /// - KeepLeaf: no change
+    /// - Subdivide: split into children
+    /// - Merge: collapse children back to parent
     /// </summary>
-    /// <param name="desired"></param>
-    /// <returns></returns>
-    public bool CanSubdivide(int desired)
-    {
-        return Key.LODIndex > desired
-            && Key.LODIndex != 0
-            && IsLeaf
-            && Phase != ContentPhase.Subdivided;
-    }
+    internal enum LodDecision { KeepLeaf, Subdivide, Merge }
 
     /// <summary>
-    /// Returns whether a <see cref="ChunkLodTreeNode"/> can safely merge based on its current state.
+    /// Transient state during async operations to avoid double-scheduling.
+    /// Nodes should only ever be in one transition at a time.
     /// </summary>
-    /// <param name="desired"></param>
-    /// <returns></returns>
-    public bool CanMerge(int desired)
-    {
-        return Key.LODIndex < desired && HasChildren;
-    }
+    internal enum Transition { None, Subdivide, Merge }
 
     /// <summary>
-    /// Reset the current <see cref="ChunkLodTreeNode"/> back to zero so it may be safely reused.
+    /// Represents a single node in the LOD tree.
+    /// Stores chunk identity, parent/children links, and current state.
     /// </summary>
-    public void Free()
+    internal class ChunkLodTreeNode
     {
-        this.ParentIndex = -1;
-        this.Children.Clear();
-        this.ChildrenChecked = 0;
-        this.Phase = ContentPhase.Unloaded;
-        this.Transition = Transition.None;
-        this.IsAlive = false;
-    }
+        // Who I am
+        public ChunkKey Key;
 
-    /// <summary>
-    /// Start a new <see cref="Transition"/> on this node telling whether background operations are in progress.
-    /// </summary>
-    /// <param name="newTransition"></param>
-    /// <returns></returns>
-    public bool StartTransition(Transition newTransition)
-    {
-        if (this.Transition != Transition.None)
-            return false;
+        // Relationships
+        public int ParentIndex = -1;
+        public List<int> Children = new List<int>();
+        public int ChildrenChecked = 0;
 
-        this.Phase = ContentPhase.Loading;
-        this.Transition = newTransition;
+        // State
+        public ContentPhase Phase = ContentPhase.Unloaded;    // Unloaded, Loading, Ready, Subdivided
+        public Transition Transition = Transition.None; // None, Subdivide, Merge
 
-        return true;
-    }
+        // Helpers
+        public bool IsAlive = false;
+        public bool HasChildren => Children.Count != 0;
+        public bool IsLeaf => !HasChildren;
+        public Vector3Int Coordinates => Key.Coordinates;
+        public int LODIndex => Key.LODIndex;
 
-    /// <summary>
-    /// Finalize a <see cref="Transition"/>, this is a helper function to make the code a bit cleaner to understand.
-    /// </summary>
-    /// <returns></returns>
-    public bool FinishTransition()
-    {
-        if (this.Transition == Transition.None) 
-            return false;
-
-        switch (Transition)
+        /// <summary>
+        /// Returns true if this node *can* safely subdivide given the desired LOD.
+        /// Landmine: Must only subdivide leaves that are NonEmpty and not already subdivided.
+        /// </summary>
+        /// <param name="desired"></param>
+        /// <returns></returns>
+        public bool CanSubdivide(int desired)
         {
-            case Transition.Merge:
-                Phase = ContentPhase.Ready;
-                break;
-
-            case Transition.Subdivide:
-                Phase = ContentPhase.Subdivided; // parent becomes internal
-                break;
+            return Key.LODIndex > desired
+                && Key.LODIndex != 0
+                && IsLeaf
+                && Phase != ContentPhase.Subdivided;
         }
 
-        this.Transition = Transition.None;
+        /// <summary>
+        /// Returns true if this node *can* safely merge back to a parent LOD.
+        /// Landmine: Only works if children exist.
+        /// </summary>
+        /// <param name="desired"></param>
+        /// <returns></returns>
+        public bool CanMerge(int desired)
+        {
+            return Key.LODIndex < desired && HasChildren;
+        }
 
-        return true;
+        /// <summary>
+        /// Reset all fields so the node can be reused.
+        /// </summary>
+        public void Free()
+        {
+            this.ParentIndex = -1;
+            this.Children.Clear();
+            this.ChildrenChecked = 0;
+            this.Phase = ContentPhase.Unloaded;
+            this.Transition = Transition.None;
+            this.IsAlive = false;
+        }
+
+        /// <summary>
+        /// Enter a transition state. Prevents double scheduling.
+        /// Returns false if a transition was already in progress.
+        /// </summary>
+        /// <param name="newTransition"></param>
+        /// <returns></returns>
+        public bool StartTransition(Transition newTransition)
+        {
+            if (this.Transition != Transition.None)
+                return false;
+
+            this.Phase = ContentPhase.Loading;
+            this.Transition = newTransition;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Finish the current transition and update Phase accordingly.
+        /// </summary>
+        /// <returns></returns>
+        public bool FinishTransition()
+        {
+            if (this.Transition == Transition.None)
+                return false;
+
+            switch (Transition)
+            {
+                case Transition.Merge:
+                    Phase = ContentPhase.Ready;
+                    break;
+
+                case Transition.Subdivide:
+                    Phase = ContentPhase.Subdivided; // parent becomes internal
+                    break;
+            }
+
+            this.Transition = Transition.None;
+
+            return true;
+        }
     }
-}
 
-/// <summary>
-/// A chunk based tree structure to help with managing chunks in the game world by controlling detail by dividing the
-/// chunks by 8 to create higher detailed chunks in its place.
-/// </summary>
-public class ChunkLodTree
-{
     /// <summary>
-    /// The lowest (I swear to god im going to change it so high is better detail) detail that can be used for a chunk.
+    /// RootLOD is the coarsest level (biggest chunks).
+    /// Personal note: this is inverted from what you'd expect ("higher" means *less* detail).
     /// </summary>
     private const int RootLOD = 4;
 
     /// <summary>
-    /// The amount of <see cref="ChunkLodTreeNode"/> that is updated per frame.
+    /// Max number of nodes updated per Unity frame.
+    /// This throttles Update() work to avoid spikes.
     /// </summary>
     private const int UpdatePerTick = 500;
 
@@ -153,11 +181,11 @@ public class ChunkLodTree
     private int CurrentUpdateIndex = 0;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ChunkLodTree"/> class.
+    /// Initializes a new instance of the <see cref="ChunkLodOctree"/> class.
     /// </summary>
     /// <param name="services"></param>
     /// <param name="processor"></param>
-    public ChunkLodTree(IChunkServices services, ChunkGenerationProcessor processor)
+    public ChunkLodOctree(IChunkServices services, ChunkGenerationProcessor processor)
     {
         this.services = services;
         this.processor = processor;
@@ -174,8 +202,8 @@ public class ChunkLodTree
     }
 
     /// <summary>
-    /// Update the nodes part of this system. Updates will be staggered for the elements so this should be called
-    /// every Unity update frame.
+    /// Called every frame. Processes up to UpdatePerTick nodes in round-robin fashion.
+    /// Landmine: never loop over all nodes each frame — that killed perf in the old version.
     /// </summary>
     public void Update()
     {
@@ -242,11 +270,12 @@ public class ChunkLodTree
     }
 
     /// <summary>
-    /// Return the <see cref="LodDecision"/> based on a <see cref="ChunkLodTreeNode"/> current state.
+    /// Decide whether to keep, subdivide, or merge a node based on desired LOD.
+    /// Skips nodes that are mid-transition.
     /// </summary>
     /// <param name="node"></param>
     /// <returns></returns>
-    public LodDecision GetLODDecision(ChunkLodTreeNode node)
+    private LodDecision GetLODDecision(ChunkLodTreeNode node)
     {
         // Don't touch while transitioning. 
         if (node.Transition != Transition.None)
@@ -264,8 +293,7 @@ public class ChunkLodTree
     }
 
     /// <summary>
-    /// Perform a subdivide operation on a <see cref="ChunkLodTreeNode"/> based on index, dividing it by 8 
-    /// and creating new children (if possible)
+    /// Split node into 8 children. Each child gets a surface check before creation.
     /// </summary>
     /// <param name="index"></param>
     private void PerformSubdivide(int index)
@@ -283,8 +311,8 @@ public class ChunkLodTree
     }
 
     /// <summary>
-    /// Perform a merge operation on a <see cref="ChunkLodTreeNode"/> based on index. Deleting its 8 children
-    /// and making this the leaf again.
+    /// Collapse children back to parent. Parent requests a new mesh generation.
+    /// Landmine: children are only actually freed once the parent finishes loading.
     /// </summary>
     /// <param name="index"></param>
     private void PerformMerge(int index)
@@ -297,8 +325,9 @@ public class ChunkLodTree
     }
 
     /// <summary>
-    /// Try to create a single <see cref="ChunkLodTreeNode"/>. We will check if the chunk will have surface before
-    /// rendering this system. We also take into account the parents state and if any additions should be made.
+    /// Request creation of a child node. Only allocates if the surface check passes.
+    /// Also increments parent's ChildrenChecked count. 
+    /// When all 8 callbacks return, parent transition is finished.
     /// </summary>
     /// <param name="key"></param>
     /// <param name="parentIndex"></param>
@@ -342,8 +371,9 @@ public class ChunkLodTree
     }
 
     /// <summary>
-    /// Request a <see cref="ChunkLodTreeNode"/> to be generated, this would mean a chunk has passed surface
-    /// checks and is now ready to be seen in the world.
+    /// Request actual chunk generation (mesh build). Called for leaves that passed surface check. 
+    /// Also used during merge to recreate parent mesh.
+    /// Landmine: if this fails or you forget to clear children, you'll leak nodes.
     /// </summary>
     /// <param name="node"></param>
     /// <exception cref="System.ArgumentException"></exception>
@@ -382,7 +412,9 @@ public class ChunkLodTree
     }
 
     /// <summary>
-    /// Returns the child offset based on position in the <see cref="ChunkLodTree"/>.
+    /// Returns offset coordinates for one of the 8 children in a subdivide.
+    /// IMPORTANT: this must stay consistent with your chunk layout math,
+    /// otherwise neighbors will not line up.
     /// </summary>
     /// <param name="index"></param>
     /// <param name="baseOffset"></param>

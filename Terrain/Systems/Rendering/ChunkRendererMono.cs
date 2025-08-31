@@ -28,7 +28,7 @@ public class ChunkRendererMono : MonoBehaviour
 
     private IChunkServices chunkServices;
     private ChunkGenerationProcessor processor;
-    private ChunkLodTree lodTree;
+    private ChunkLodOctree lodTree;
 
     /// <summary>
     /// Update the chunk layout and render any available chunks.
@@ -142,7 +142,7 @@ public class ChunkRendererMono : MonoBehaviour
         }
 
         // Create manager.
-        lodTree = new ChunkLodTree(this.chunkServices, this.processor);
+        lodTree = new ChunkLodOctree(this.chunkServices, this.processor);
 
         // Create root nodes.
         for (int dx = initialRootRange.X.Min; dx < initialRootRange.X.Max; dx++)
