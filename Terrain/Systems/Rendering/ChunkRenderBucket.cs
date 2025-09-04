@@ -46,14 +46,6 @@ public class ChunkRenderBucket : IDisposable
     }
 
     /// <summary>
-    /// Retrieves the <see cref="IChunkGenerator"/> used in this <see cref="ChunkRenderBucket"/>.
-    /// </summary>
-    protected IChunkGenerator ChunkGenerator
-    {
-        get { return this.chunkGenerator; }
-    }
-
-    /// <summary>
     /// Gets the render batch data created during <see cref="Generate"/>
     /// </summary>
     public ChunkRenderBatch RenderData

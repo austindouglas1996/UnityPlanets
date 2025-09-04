@@ -16,7 +16,6 @@ public class ChunkRendererMono : MonoBehaviour
     [Header("Debug")]
     [SerializeField] public bool ShowTerrain = true;
     [HideInInspector] private bool isInitialized = false;
-    [SerializeField] private bool LoveTheBoo = true;
 
     [Header("Shaders")]
     [SerializeField] public ComputeShader MarchingCubes;
@@ -80,14 +79,6 @@ public class ChunkRendererMono : MonoBehaviour
     {
         if (ShowTerrain)
             processor.Draw();
-    }
-
-    /// <summary>
-    /// Draw debug symbols.
-    /// </summary>
-    private void OnDrawGizmos()
-    {
-
     }
 
     /// <summary>

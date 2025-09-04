@@ -1,4 +1,4 @@
-#ifndef SIMPLEDENSITY_INCLUDED
+﻿#ifndef SIMPLEDENSITY_INCLUDED
 #define SIMPLEDENSITY_INCLUDED
 
 #include "../Lib/PerlinNoise.hlsl"
@@ -6,18 +6,19 @@
 
 int GetOctaves(int lod)
 {
-    switch (lod)
-    {
-        case 0:
-            return 4;
-        case 1:
-            return 4;
-        case 2:
-            return 4;
-        default:
-            return 1;
-    }
+    return 12;
 }
+
+// [-1,1] → [0,1]
+float N01(float n)
+{
+    return 0.5 * n + 0.5;
+} 
+
+float N11(float n)
+{
+    return saturate(n) * 2 - 1;
+} 
 
 float GetFoundationNoise(float3 world, int lod)
 {
@@ -43,8 +44,8 @@ float GetFoundationNoise(float3 world, int lod)
 
     // === Base continent layer ===
     float3 basePos = (samplePos3D + float3(BaseOffset, 0)) * BaseFreq;
-    float baseNoise = fbm3D(basePos, 2);
-    baseNoise = smoothstep(0.0, 1.0, (baseNoise + 1.0) * 0.5);
+    float baseNoise = N01(fbm3D(basePos, 2));
+    baseNoise = smoothstep(0.0, 1.0, baseNoise);
 
     // === Mid/large-scale detail ===
     float3 detailPos = (samplePos3D + float3(DetailOffset, 0)) * DetailFreq;
@@ -52,8 +53,7 @@ float GetFoundationNoise(float3 world, int lod)
 
     // === Flatness mask ===
     float3 flatPos = (samplePos3D + float3(FlatMaskOffset, 0)) * FlatMaskFreq;
-    float flatNoise = fbm3D(flatPos, octaves);
-    flatNoise = saturate((flatNoise + 1.0) * 0.5);
+    float flatNoise = N01(fbm3D(flatPos, octaves));
     flatNoise = pow(saturate(1.0 - flatNoise), FlatMaskPower);
 
     // === Combine height contributions ===

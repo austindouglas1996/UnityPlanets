@@ -56,28 +56,6 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
     public Vector3 LastFollowerPosition { get; protected set; } = new Vector3(999, 999, 999);
 
     /// <summary>
-    /// The minimum distance the player should walk before agreeing to update the layout.
-    /// </summary>
-    public float MinChangeToUpdateLayout { get; set; } = 100f;
-
-    /// <summary>
-    /// Returns whether the player has travelled far enough we should update the layout.
-    /// </summary>
-    /// <param name="followerPosition"></param>
-    /// <returns></returns>
-    public virtual bool ShouldUpdateLayout()
-    {
-        float viewerDistance = Vector3.Distance(this.FollowerWorldPosition, LastFollowerPosition);
-        if (viewerDistance > MinChangeToUpdateLayout)
-        {
-            this.LastFollowerPosition = this.FollowerWorldPosition;
-            return true;
-        }
-
-        return false;
-    }
-
-    /// <summary>
     /// Returns the chunk size for a given LOD level.
     /// </summary>
     /// <param name="lod"></param>

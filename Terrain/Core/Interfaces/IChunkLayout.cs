@@ -26,11 +26,6 @@ public interface IChunkLayout
     Vector3Int FollowerCoordinates { get; }
 
     /// <summary>
-    /// Simple function on whether the layout should be updated.
-    /// </summary>
-    bool ShouldUpdateLayout();
-
-    /// <summary>
     /// Gets the chunk size for a given LOD level.
     /// </summary>
     /// <param name="lod"></param>

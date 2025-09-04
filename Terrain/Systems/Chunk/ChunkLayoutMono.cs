@@ -19,11 +19,6 @@ public class ChunkLayoutMono : MonoBehaviour
     private IChunkLayout layout;
 
     /// <summary>
-    /// The last rotation of the player camera on the last Unity update.
-    /// </summary>
-    private Quaternion lastFollowerRotation;
-
-    /// <summary>
     /// Returns whether <see cref="Initialize(IChunkConfiguration, IChunkLayout, IChunkControllerFactory)"/> has been successful.
     /// </summary>
     private bool IsInitialized = false;
@@ -39,12 +34,6 @@ public class ChunkLayoutMono : MonoBehaviour
         // This makes it so it is safe in a different thread as you cannot
         // access Transform in a different thread, there is just a very small delay.
         this.layout.FollowerWorldPosition = this.Follower.position;
-
-        if (Time.frameCount % 5 != 0)
-            return;
-
-        //Plane[] frustum = GeometryUtility.CalculateFrustumPlanes(Camera.main);
-        //float deltaAngle = Quaternion.Angle(lastFollowerRotation, Follower.rotation);
     }
 
     /// <summary>
