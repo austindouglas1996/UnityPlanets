@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Unity.Mathematics;
 using UnityEngine;
 
 /// <summary>
@@ -11,5 +12,5 @@ public struct ChunkTriangleData
     public Vector3 a;
     public Vector3 b;
     public Vector3 c;
-    public int LodKey;
+    public uint LodKey;
 }

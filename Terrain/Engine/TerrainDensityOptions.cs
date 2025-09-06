@@ -45,19 +45,31 @@ public struct TerrainDensityOptions
     [Range(-1f, 1f)]
     public float ISOLevel;
 
-    [Header("Base Landmass (continents/oceans)")]
+    [Header("Base Landmass (continents")]
     [Tooltip("How wide the continents are. Lower = bigger continents.")]
     public float BaseFreq;    
 
     [Tooltip("How much the base layer lifts terrain up.")]
-    public float BaseGain;  
+    public float BaseGain;
+
+    [Header("Oceans & Coasts")]
+    [Tooltip("Land/ocean split. Higher = more ocean. Typical 0.45–0.6.")]
+    [Range(0f, 1f)]
+    public float SeaLevel;
+
+    [Tooltip("Width of the coast transition. Smaller = sharper coastlines.")]
+    [Range(0f, 1f)]
+    public float CoastWidth;
+
+    [Tooltip("How far below baseline oceans are carved. Negative values = carve downward.")]
+    public float OceanDepth;
 
     [Header("Broad Detail")]
     [Tooltip("Size of large-scale bumps on top of the base.")]
     public float DetailFreq;  
 
     [Tooltip("Strength of those broad details.")]
-    public float DetailGain; 
+    public float DetailGain;
 
     [Header("Flatness Mask")]
     [Tooltip("How large the flat regions run across the map.")]
@@ -68,18 +80,21 @@ public struct TerrainDensityOptions
 
     [Header("Vertical Scale")]
     [Tooltip("Global height scale for this layer after normalization.")]
-    public float ElevationScale;  
+    public float ElevationScale;
 
     [Header("Domain Offsets")]
-    [Tooltip("XY offset for base landmass noise domain.")]
-    public Vector2 BaseOffset;
+    [Tooltip("XYZ offset for generation. A simple way to control the position as generation happens at 0,0,0.")]
+    public Vector3 PositionOffset;
 
-    [Tooltip("XY offset for detail domain (replaces +1234).")]
-    public Vector2 DetailOffset;
+    [Tooltip("XYZ offset for base landmass noise domain.")]
+    public Vector3 BaseOffset;
 
-    [Tooltip("XY offset for flatness domain (replaces +5555).")]
-    public Vector2 FlatMaskOffset;
+    [Tooltip("XYZ offset for detail domain (replaces +1234).")]
+    public Vector3 DetailOffset;
+
+    [Tooltip("XYZ offset for flatness domain (replaces +5555).")]
+    public Vector3 FlatMaskOffset;
 
     [HideInInspector]
-    private Vector2 _Padding;
+    private Vector3 _Padding;
 }

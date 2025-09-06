@@ -70,8 +70,11 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader = marchingShader;
 
         this.chunkMaterial = new Material(Shader.Find("Custom/URP_CustomLitGPU"));
-        this.chunkMaterial.SetFloat("_Smoothness", 0f);
-        this.chunkMaterial.SetFloat("_UseVertexColor", 0f);
+        this.chunkMaterial.SetFloat("_UseVertexColor", 1f);
+        this.chunkMaterial.SetVector("PositionOffset", chunkServices.Configuration.DensityOptions.PositionOffset);
+        this.chunkMaterial.SetVector("PlanetCenter", chunkServices.Configuration.PlanetOptions.PlanetCenter);
+        this.chunkMaterial.SetFloat("PlanetRadius", chunkServices.Configuration.PlanetOptions.PlanetRadius);
+        this.chunkMaterial.SetInt("SubVariant", (int)chunkServices.Configuration.DensityOptions.Variant); 
 
         this.InitBuffer();
     }
@@ -197,13 +200,18 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         var biomeData = new ChunkBiomeData[biomes.Count];
         for (int i = 0; i < biomes.Count; i++)
         {
-            // NOTE: I grab first/last color key; good enough for now.
             biomeData[i] = new ChunkBiomeData
             {
                 MinSurface = biomes[i].MinSurface,
                 MaxSurface = biomes[i].MaxSurface,
-                GradientStart = biomes[i].SurfaceColorRange.colorKeys[0].color,
-                GradientEnd = biomes[i].SurfaceColorRange.colorKeys[^1].color,
+                MinTemp = biomes[i].MinTemp,
+                MaxTemp = biomes[i].MaxTemp,
+                Highlight = biomes[i].Highlight,
+                Light = biomes[i].Light,
+                MidLight = biomes[i].MidLight,
+                Mid = biomes[i].Mid,
+                Dark = biomes[i].Dark,
+                Shadow = biomes[i].Shadow
             };
         }
 

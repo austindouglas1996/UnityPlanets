@@ -2,20 +2,11 @@
 #define CHUNK_COMMON_COLORING_INCLUDED
 
 #include "ChunkCommon.hlsl"
+#include "Lib/PerlinNoise.hlsl"
 
 // Structured buffer of all active biome definitions.
 StructuredBuffer<ChunkBiomeData> BiomeColors;
-
-// Total number of biomes currently in the buffer.
 int _BiomeCount;
-
-// Convert HSV -> RGB (Unity's Color.HSVToRGB equivalent)
-float3 HSVtoRGB(float h, float s, float v)
-{
-    float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-    float3 p = abs(frac(h + float3(0, K.y, K.z)) * 6.0 - K.w);
-    return v * lerp(K.xxx, saturate(p - K.xxx), s);
-}
 
 // Get a color based on LOD index (green -> red, like LodColor)
 float4 GetLodColor(int lod)
@@ -32,7 +23,7 @@ float4 GetLodColor(int lod)
             case 1:
                 return float4(1.0, 0.5, 0.0, 1.0); // Orange
             case 2:
-                return float4(0.0, 0.0, 1.0, 1.0);
+                return float4(0.0, 0.0, 1.0, 1.0); // Blue
             case 3:
                 return float4(0.0, 1.0, 0.0, 1.0); // Green
             case 4:
@@ -43,105 +34,119 @@ float4 GetLodColor(int lod)
     return float4(1.0, 1.0, 1.0, 1.0);
 }
 
-
-float3 GetTerrainColor(float3 normalWS)
+float4 GetColorByIndex(ChunkBiomeData biome, int idx)
 {
-    float3 rockColor = float3(93, 63, 47) / 255.0; 
-    float3 grassColor = float3(61, 102, 46) / 255.0;
-
-    // slope = 1 when flat, 0 when vertical
-    float slope = dot(normalize(normalWS), float3(0, 1, 0));
-
-    float grassWeight = saturate(slope * 4.0); 
-    float rockWeight = saturate(1.0 - slope * 4.0); 
-
-    return grassColor * grassWeight + rockColor * rockWeight;
+    if (idx == 0)
+        return biome.Highlight;
+    if (idx == 1)
+        return biome.Light;
+    if (idx == 2)
+        return biome.MidLight;
+    if (idx == 3)
+        return biome.Mid;
+    if (idx == 4)
+        return biome.Dark;
+    return biome.Shadow;
 }
 
-
-
-
-
-
-float GetSurfaceHeightForColor(float3 worldPos)
+float BiomeHeightWeight(ChunkBiomeData b, float y, float feather)
 {
-    float height;
-    
-    if (SubVariant == SUBVARIANT_PLANET)
-    {
-        float dist = length(worldPos - PlanetCenter);
-        height = dist - PlanetRadius; // elevation relative to planet surface
-    }
-    else
-    {
-        height = worldPos.y; // flat terrain: just use Y
-    }
-    
-    // Normalize into 0–1 range using ElevationScale
-    // So biome MinSurface/MaxSurface can always be defined in [0..1]
-    return saturate(height / ElevationScale);
+    // center/halfWidth for a neat symmetric falloff
+    float center = 0.5 * (b.minSurface + b.maxSurface);
+    float halfWidth = 0.5 * (b.maxSurface - b.minSurface);
+
+    // distance from band center
+    float d = abs(y - center);
+
+    // Inside the "core" band (<= halfWidth - feather) => weight ~ 1
+    // Outside the band (>= halfWidth + feather)       => weight ~ 0
+    // Feather zone blends between.
+    float edge0 = max(halfWidth - feather, 0.0);
+    float edge1 = halfWidth + feather;
+
+    // Map d from [edge0, edge1] -> [0,1], clamp
+    float t = saturate((d - edge0) / max(edge1 - edge0, 1e-5));
+
+    // 1 inside, 0 outside, smooth in between
+    return 1.0 - t;
 }
 
-// ============================================================================
-// GetColorForHeight()
-// Returns the interpolated biome color for a given height value.
-//
-// Logic:
-//   1. Find the biome this height belongs to.
-//   2. Lerp within the current biome's gradient.
-//   3. If the height is near the upper bound, blend into the next biome's
-//      gradient for smooth biome transitions.
-//
-// Parameters:
-//   height : The normalized or absolute surface height to sample.
-//
-// Returns:
-//   float4 RGBA color from biome gradient.
-// ============================================================================
-float4 GetColorForHeight(float height)
+void FindTopTwoBiomesByHeight(float y, out int bi0, out int bi1, out float w0, out float w1)
 {
-    // Default to the highest biome if height exceeds all ranges.
-    ChunkBiomeData current = BiomeColors[_BiomeCount - 1];
-    ChunkBiomeData next = current;
-    bool hasUpper = false;
+    // Feather in world units. Tune to taste.
+    // Example: 2–6 meters feels good for wide bands.
+    const float FEATHER = 4.0;
 
-    // Find which biome this height falls into.
-    for (int i = 0; i < _BiomeCount - 1; i++)
+    bi0 = 0;
+    bi1 = 0;
+    w0 = 0.0;
+    w1 = 0.0;
+
+    // One pass, track best and second best
+    [loop]
+    for (int i = 0; i < _BiomeCount; i++)
     {
-        if (height >= BiomeColors[i].minSurface && height < BiomeColors[i + 1].minSurface)
+        float wi = BiomeHeightWeight(BiomeColors[i], y, FEATHER);
+
+        // Insert-sort into (bi0,w0) and (bi1,w1)
+        if (wi > w0)
         {
-            current = BiomeColors[i];
-
-            // Prepare next biome for blending if available.
-            if (i + 1 < _BiomeCount)
-            {
-                next = BiomeColors[i + 1];
-                hasUpper = true;
-            }
-            break;
+            w1 = w0;
+            bi1 = bi0;
+            w0 = wi;
+            bi0 = i;
+        }
+        else if (wi > w1)
+        {
+            w1 = wi;
+            bi1 = i;
         }
     }
 
-    // Step 1: Normalize height within the current biome's gradient range.
-    float tCurrent = saturate((height - current.minSurface) /
-                              max(current.maxSurface - current.minSurface, 0.0001));
-    float4 baseColor = lerp(current.gradientStart, current.gradientEnd, tCurrent);
+    // Normalize the top two so they sum to 1 (avoid NaN when both 0)
+    float sum = max(w0 + w1, 1e-5);
+    w0 /= sum;
+    w1 /= sum;
+}
 
-    // Step 2: Blend into the next biome if near the boundary.
-    if (hasUpper)
+float3 SampleBiomePalette(ChunkBiomeData biome, float2 xz)
+{
+    // Tunables
+    const float ColorFreq = 0.002; // lower = bigger blobs
+    const float2 ColorSeed = float2(13.1, 71.7);
+
+    float2 p2 = xz * ColorFreq + ColorSeed;
+    float n = N01(fbm3D(float3(p2, 0.0), 3));
+
+    // 6-step palette indexing with lerp between adjacent steps
+    const int N = 6;
+    float idxf = n * (N - 1);
+    int i0 = (int) floor(idxf);
+    int i1 = min(i0 + 1, N - 1);
+    float w = frac(idxf);
+
+    return lerp(GetColorByIndex(biome, i0).rgb, GetColorByIndex(biome, i1).rgb, w);
+}
+
+float3 GetTerrainColor(float3 normalWS, float3 positionWS)
+{
+    int b0, b1;
+    float w0, w1;
+    
+    if (SubVariant == SUBVARIANT_PLANET)
     {
-        // Normalize height within the next biome's gradient.
-        float tNext = saturate((height - next.minSurface) /
-                               max(next.maxSurface - next.minSurface, 0.0001));
-        float4 nextColor = lerp(next.gradientStart, next.gradientEnd, tNext);
-
-        // Blend amount between biomes based on proximity to boundary.
-        float blendAmount = saturate((height - current.maxSurface) /
-                                     max(next.minSurface - current.maxSurface, 0.0001));
-        return lerp(baseColor, nextColor, blendAmount);
+        float y = length(positionWS - PlanetCenter) - PlanetRadius;
+        FindTopTwoBiomesByHeight(y, b0, b1, w0, w1);
+    }
+    else
+    {
+        FindTopTwoBiomesByHeight(positionWS.y, b0, b1, w0, w1);
     }
 
-    return baseColor;
+    float3 c0 = SampleBiomePalette(BiomeColors[b0], positionWS.xz);
+    float3 c1 = SampleBiomePalette(BiomeColors[b1], positionWS.xz);
+
+    return c0 * w0 + c1 * w1;
 }
 
 #endif

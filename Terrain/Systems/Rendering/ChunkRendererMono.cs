@@ -114,18 +114,6 @@ public class ChunkRendererMono : MonoBehaviour
         if (!isInitialized)
             return;
 
-        // Use the highest level LOD.
-        int chunkSize = this.chunkServices.Layout.GetChunkSize(4);
-
-        // Use world position (float) instead of grid coord
-        Vector3 playerPos = this.chunkServices.Layout.FollowerWorldPosition;
-
-        // Convert to chunk-aligned center
-        Vector3 centerOffset = new Vector3(chunkSize / 2f, chunkSize / 2f, chunkSize / 2f);
-
-        // Determine base world position.
-        Vector3 startPos = playerPos - centerOffset;
-
         if (initialRootRange == null)
         {
             Debug.LogError("Initial Root Range is null.");
@@ -139,7 +127,7 @@ public class ChunkRendererMono : MonoBehaviour
         for (int dx = initialRootRange.X.Min; dx < initialRootRange.X.Max; dx++)
             for (int dy = initialRootRange.Y.Min; dy < initialRootRange.Y.Max; dy++)
                 for (int dz = initialRootRange.Z.Min; dz < initialRootRange.Z.Max; dz++)
-                    CreateRoot(new Vector3Int(dx, dy, dz), 4, startPos);
+                    CreateRoot(new Vector3Int(dx, dy, dz), 4);
     }
 
     /// <summary>
@@ -148,7 +136,7 @@ public class ChunkRendererMono : MonoBehaviour
     /// <param name="coord"></param>
     /// <param name="lod"></param>
     /// <param name="offset"></param>
-    private void CreateRoot(Vector3Int coord, int lodIndex, Vector3 offset)
+    private void CreateRoot(Vector3Int coord, int lodIndex)
     {
         lodTree.AddRoot(coord);
     }

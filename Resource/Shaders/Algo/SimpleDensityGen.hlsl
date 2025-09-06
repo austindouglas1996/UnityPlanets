@@ -6,19 +6,8 @@
 
 int GetOctaves(int lod)
 {
-    return 12;
+    return 6;
 }
-
-// [-1,1] → [0,1]
-float N01(float n)
-{
-    return 0.5 * n + 0.5;
-} 
-
-float N11(float n)
-{
-    return saturate(n) * 2 - 1;
-} 
 
 float GetFoundationNoise(float3 world, int lod)
 {
@@ -42,30 +31,30 @@ float GetFoundationNoise(float3 world, int lod)
 
     int octaves = GetOctaves(lod);
 
-    // === Base continent layer ===
-    float3 basePos = (samplePos3D + float3(BaseOffset, 0)) * BaseFreq;
-    float baseNoise = N01(fbm3D(basePos, 2));
-    baseNoise = smoothstep(0.0, 1.0, baseNoise);
+    // === Base continent layer -> land mask ===
+    float3 basePos = (samplePos3D + BaseOffset) * BaseFreq;
+    float base01 = N01(fbm3D(basePos, octaves)); 
+    float coastLo = SeaLevel - 0.5 * CoastWidth;
+    float coastHi = SeaLevel + 0.5 * CoastWidth;
+    float landMask = smoothstep(coastLo, coastHi, base01);
 
     // === Mid/large-scale detail ===
-    float3 detailPos = (samplePos3D + float3(DetailOffset, 0)) * DetailFreq;
-    float detailNoise = fbm3D(detailPos, octaves);
+    float3 detailPos = (samplePos3D + DetailOffset) * DetailFreq;
+    float detailNoise = fbm3D(detailPos, octaves); // [-1,1] (use N01(...) for outward-only)
 
     // === Flatness mask ===
-    float3 flatPos = (samplePos3D + float3(FlatMaskOffset, 0)) * FlatMaskFreq;
-    float flatNoise = N01(fbm3D(flatPos, octaves));
-    flatNoise = pow(saturate(1.0 - flatNoise), FlatMaskPower);
+    float3 flatPos = (samplePos3D + FlatMaskOffset) * FlatMaskFreq;
+    float flatNoise = pow(saturate(1.0 - N01(fbm3D(flatPos, 3))), FlatMaskPower);
 
-    // === Combine height contributions ===
+    // === Combine ===
+    // BaseGain lifts land; detail only on land; (optional) carve oceans a bit
     float rawHeight =
-        baseNoise * BaseGain +
-        detailNoise * DetailGain * flatNoise;
+    landMask * BaseGain +
+    landMask * (detailNoise * DetailGain) * flatNoise -
+    (1.0 - landMask) * OceanDepth;
 
-    float heightScale = max(BaseGain, 0.0001);
-    float normalized = rawHeight / heightScale;
-    float finalHeight = normalized * ElevationScale;
+    return Sanitize(rawHeight * ElevationScale);
 
-    return Sanitize(finalHeight);
 }
 
 float GetLandMassNoise(float3 world, int lod)

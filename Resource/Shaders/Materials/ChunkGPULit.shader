@@ -2,7 +2,7 @@ Shader "Custom/URP_CustomLitGPU"
 {
     Properties
     {
-        _BaseColor("Base Color", Color) = (1, 0, 0, 1)
+        _BaseColor("Base Color", Color) = (1, 1, 1, 1)
         _UseVertexColor("Use Vertex Color", Float) = 1
 
         // New texture controls
@@ -93,7 +93,7 @@ Shader "Custom/URP_CustomLitGPU"
 
                 // Face normal per triangle (flat shading)
                 OUT.normalWS = normalize(cross(tri.b - tri.a, tri.c - tri.a));
-                OUT.color = LODHeatMap == 1 ? GetLodColor(tri.LodKey) : float4(GetTerrainColor(OUT.normalWS),1);
+                OUT.color = LODHeatMap == 1 ? GetLodColor(tri.LodKey) : float4(GetTerrainColor(OUT.normalWS, OUT.positionWS),1);
                 OUT.positionCS = TransformWorldToHClip(pos);
                 return OUT;
             }
@@ -122,37 +122,50 @@ float4 SampleBaseMapTriplanar(float3 wsPos, float3 wsNormal)
 }
 
 
-            float4 frag(Varyings IN) : SV_Target
-            {
-                InputData inputData = (InputData)0;
-                inputData.positionWS = IN.positionWS;
-                inputData.normalWS = normalize(IN.normalWS);
-                inputData.viewDirectionWS = GetWorldSpaceViewDir(IN.positionWS);
-                inputData.shadowCoord = TransformWorldToShadowCoord(IN.positionWS);
-                inputData.fogCoord = ComputeFogFactor(IN.positionCS.z);
-                inputData.vertexLighting = float3(0, 0, 0);
-                inputData.bakedGI = SampleSH(inputData.normalWS);
+// Utility: convert sRGB to Linear only if project is in Linear color space
+inline float3 FromSRGB(float3 c)
+{
+#if defined(UNITY_COLORSPACE_GAMMA)
+    return c;                         // already gamma, do nothing
+#else
+    return SRGBToLinear(c);           // convert to linear
+#endif
+}
 
-                // Base: color or triplanar texture
-                float3 texColor = SampleBaseMapTriplanar(IN.positionWS, inputData.normalWS).rgb;
-                float3 baseOrTex = lerp(_BaseColor.rgb, texColor, saturate(_UseBaseMap));
+float4 frag(Varyings IN) : SV_Target
+{
+    InputData inputData = (InputData)0;
+    inputData.positionWS      = IN.positionWS;
+    inputData.normalWS        = normalize(IN.normalWS);
+    inputData.viewDirectionWS = GetWorldSpaceViewDir(IN.positionWS);
+    inputData.shadowCoord     = TransformWorldToShadowCoord(IN.positionWS);
+    inputData.fogCoord        = ComputeFogFactor(IN.positionCS.z);
+    inputData.vertexLighting  = float3(0, 0, 0);
+    inputData.bakedGI         = SampleSH(inputData.normalWS);
 
-                // Optional vertex-color override (your existing behavior)
-                float3 finalColor = lerp(baseOrTex, IN.color.rgb, saturate(_UseVertexColor));
+    // Base: color or triplanar texture
+    float3 texColor     = SampleBaseMapTriplanar(IN.positionWS, inputData.normalWS).rgb; // Unity handles sRGB
+    float3 baseColorLin = FromSRGB(_BaseColor.rgb);
+    float3 baseOrTex    = lerp(baseColorLin, texColor, saturate(_UseBaseMap));
 
-                SurfaceData surfaceData = (SurfaceData)0;
-                surfaceData.albedo = finalColor;
-                surfaceData.alpha = 1.0;
-                surfaceData.metallic = 0.0;
-                surfaceData.smoothness = 0.1;
-                surfaceData.occlusion = 1.0;
-                surfaceData.emission = 0.0;
-                surfaceData.normalTS = float3(0, 0, 1);
+    // Optional vertex-color override
+    float3 vertexColorLin = FromSRGB(IN.color.rgb);
+    float3 finalColor     = lerp(baseOrTex, vertexColorLin, saturate(_UseVertexColor));
 
-                float4 color = UniversalFragmentPBR(inputData, surfaceData);
-                color.rgb = MixFog(color.rgb, inputData.fogCoord);
-                return color;
-            }
+    SurfaceData surfaceData = (SurfaceData)0;
+    surfaceData.albedo      = finalColor;
+    surfaceData.alpha       = 1.0;
+    surfaceData.metallic    = 0.0;
+    surfaceData.smoothness  = 0.1;
+    surfaceData.occlusion   = 1.0;
+    surfaceData.emission    = 0.0;
+    surfaceData.normalTS    = float3(0, 0, 1);
+
+    float4 color = UniversalFragmentPBR(inputData, surfaceData);
+    color.rgb    = MixFog(color.rgb, inputData.fogCoord);
+    return color;
+}
+
 
             ENDHLSL
         }

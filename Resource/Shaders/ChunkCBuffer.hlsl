@@ -29,6 +29,15 @@ cbuffer TerrainDensityOptions
 
     // How much the base layer lifts terrain up.
     float BaseGain;
+    
+    // The amount of sea vs land.
+    float SeaLevel;
+    
+    // How wide coasts tend to be.
+    float CoastWidth;
+    
+    // The depth of the ocean.
+    float OceanDepth;
 
     // Size of large-scale bumps on top of the base.
     float DetailFreq;
@@ -44,17 +53,21 @@ cbuffer TerrainDensityOptions
 
     // Global height scale for this layer after normalization.
     float ElevationScale;
+    
+    // XYZ offset for the entire generation.
+    float3 PositionOffset;
 
     // XY offset for base landmass noise domain.
-    float2 BaseOffset;
+    float3 BaseOffset;
 
     // XY offset for detail domain (replaces +1234).
-    float2 DetailOffset;
+    float3 DetailOffset;
 
     // XY offset for flatness domain (replaces +5555).
-    float2 FlatMaskOffset;
+    float3 FlatMaskOffset;
     
-    float2 _Padding;
+    // Padding needed for some buffers.
+    float3 _Padding;
 };
 
 cbuffer PlanetDensityOptions
