@@ -30,7 +30,7 @@ void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
         return;
     
     float3 worldPos = info.WorldPos;
-    DensityMap[info.mapIndex] = GenerateNoiseValue(info.chunk.CoordPos, worldPos, info.chunk.LodIndex);
+    DensityMap[info.mapIndex] = GenerateNoiseValue(worldPos, info.chunk.LodIndex);
 }
 
 // One group per chunk, 4x4x4 = 64 threads per group
@@ -79,7 +79,7 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
                 const float wz = origin.z + z * step;
 
                 // Uniform branch on subvariant is fine; compiler will keep it outside inner loop
-                float v = GenerateNoiseValue(chunk.CoordPos, float3(wx, wy, wz), chunk.LodIndex);
+                float v = GenerateNoiseValue(float3(wx, wy, wz), chunk.LodIndex);
 
                 // Set flags (branchless) and combine with atomics
                 // (bool → uint: (v >= iso) ? 1 : 0)

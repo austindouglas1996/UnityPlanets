@@ -184,8 +184,11 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     public void Dispose()
     {
-        this.RenderData.Dispose();
-        this.RenderData = null;
+        if (this.RenderData != null)
+        {
+            this.RenderData.Dispose();
+            this.RenderData = null;
+        }
     }
 
     /// <summary>

@@ -3,6 +3,7 @@
 
 #include "../Includes/TriangleTable.hlsl"
 #include "../ChunkFunctions.hlsl"
+#include "../Biomes/BiomeSampler.hlsl"
 
 void March(
     ChunkDispatchKeyInfo key,
@@ -55,7 +56,8 @@ void March(
         tri.a = worldA;
         tri.b = worldB;
         tri.c = worldC;
-        tri.LodKey = key.chunk.LodIndex;
+        tri.LodKey = key.chunk.LodIndex;   
+        tri.Biome = GetTriangleBiomePacked(tri);
         
         TriangleBuffer.Append(tri);
     }

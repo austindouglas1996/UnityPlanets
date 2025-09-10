@@ -5,12 +5,12 @@ using UnityEngine;
 /// <summary>
 /// Subvarient types for better rendering.
 /// </summary>
-public enum SubVariant
+public enum TerrainType
 {
     /// <summary>
     /// Endless land, no roof or floor.
     /// </summary>
-    LandMass,
+    Terrain,
 
     /// <summary>
     /// A sphere of land, no roof but has a center.
@@ -21,6 +21,58 @@ public enum SubVariant
     /// Cave systems, roof and floor.
     /// </summary>
     Cave
+}
+
+/// <summary>
+/// Global override for how cold/hot the worlds feels overall.
+/// Shifts how often colder/hotter biomes (like tundras or volcanos) appear.
+/// </summary>
+public enum TemperatureBias
+{
+    ExtremelyCold = -4,
+    Cold = -2,
+    Normal = 0,
+    Hot = 2,
+    ExtremelyHot = 4
+}
+
+/// <summary>
+/// Global override for how wet the world feels overall.
+/// Shifts how often wetter biomes (like swamps) appear.
+/// </summary>
+public enum HumidityBias
+{
+    VeryDry = -4,
+    Dry = -2,
+    Normal = 0,
+    Wet = 2,
+    VeryWet = 4,
+}
+
+/// <summary>
+/// Global override for how dense vegetation appears.
+/// Doesn’t directly control trees, but affects how much *can* spawn.
+/// </summary>
+public enum FoliageBias
+{
+    None = -4,
+    VerySparse = -2,
+    Normal = 0,
+    Rich = 2,
+    VeryRich = 4
+}
+
+/// <summary>
+/// Global water bias controls how much land is underwater.
+/// Useful for creating more or less coastline without changing terrain height.
+/// </summary>
+public enum WaterBias
+{
+    DriedUp = -4,  
+    Low = -2,
+    Normal = 0,       
+    High = 2,
+    Flooded = 4     
 }
 
 /// <summary>
@@ -35,22 +87,44 @@ public struct TerrainDensityOptions
     [Tooltip("Logical voxel width of a chunk (before LOD).")]
     public int ChunkSize;
 
-    [Tooltip("Noise seed. Use this to derive offsets so worlds are stable per seed.")]
+    [Tooltip("The noise seed, use this to get a different set of generation")]
     public int Seed;
 
-    [Tooltip("Those chosen subvariant for choosing the correct type of density options.")]
-    public SubVariant Variant;
+    [Tooltip("Those chosen generation type. Each type has unique features or classification.")]
+    public TerrainType TerrainType;
 
-    [Tooltip("Iso threshold used by marching. Keep if your meshing kernel reads it.")]
+    [Tooltip("Iso threshold used by marching. You better have a good reason for changing this.")]
     [Range(-1f, 1f)]
     public float ISOLevel;
 
-    [Header("Base Landmass (continents")]
+
+    [Header("Climate")]
+    [Tooltip("Overall temperature of the generation.")]
+    public TemperatureBias TemperatureBias;
+
+    [Tooltip("Overall humidity of the generation.")]
+    public HumidityBias HumidityBias;
+
+    [Tooltip("Overall foliage of the generation.")]
+    public FoliageBias FoliageBias;
+
+    [Tooltip("Adjusts water level (lower = less ocean, higher = more ocean).")]
+    public WaterBias SeaLevelBias;
+
+
+    [Header("Continents")]
     [Tooltip("How wide the continents are. Lower = bigger continents.")]
-    public float BaseFreq;    
+    public float ContinentFreq;    
 
     [Tooltip("How much the base layer lifts terrain up.")]
-    public float BaseGain;
+    public float ContinentHeight;
+
+    [Tooltip("Global height scale for this layer after normalization.")]
+    public float ContinentAmp;
+
+    [Tooltip("The amount of Octaves to be used in FBM (Increases details at cost of processing)"), Range(1, 12)]
+    public uint ContinentOctaves;
+
 
     [Header("Oceans & Coasts")]
     [Tooltip("Land/ocean split. Higher = more ocean. Typical 0.45–0.6.")]
@@ -64,23 +138,23 @@ public struct TerrainDensityOptions
     [Tooltip("How far below baseline oceans are carved. Negative values = carve downward.")]
     public float OceanDepth;
 
+    /// <summary>
+    /// DETAIL & FLAT DO NOT DO ANYTHING, REWORK LATER.
+    /// </summary>
     [Header("Broad Detail")]
     [Tooltip("Size of large-scale bumps on top of the base.")]
     public float DetailFreq;  
 
     [Tooltip("Strength of those broad details.")]
-    public float DetailGain;
+    public float DetailAmp;
 
     [Header("Flatness Mask")]
     [Tooltip("How large the flat regions run across the map.")]
     public float FlatMaskFreq; 
 
     [Tooltip("Higher -> stronger flattening in masked zones.")]
-    public float FlatMaskPower; 
+    public float FlatMaskAmp; 
 
-    [Header("Vertical Scale")]
-    [Tooltip("Global height scale for this layer after normalization.")]
-    public float ElevationScale;
 
     [Header("Domain Offsets")]
     [Tooltip("XYZ offset for generation. A simple way to control the position as generation happens at 0,0,0.")]
@@ -94,7 +168,4 @@ public struct TerrainDensityOptions
 
     [Tooltip("XYZ offset for flatness domain (replaces +5555).")]
     public Vector3 FlatMaskOffset;
-
-    [HideInInspector]
-    private Vector3 _Padding;
 }

@@ -36,6 +36,7 @@ float N11(float n)
     return saturate(n) * 2 - 1;
 }
 
+// Normalize -1 to 1 with saturate.
 inline float N11SAT(float n)
 {
     return saturate(n) * 2 - 1;

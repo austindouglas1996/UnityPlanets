@@ -101,7 +101,6 @@ public class ChunkRendererMono : MonoBehaviour
     /// </summary>
     public void RefreshChunks()
     {
-        //rootTrees.Clear();
         this.processor.RemoveAll();
         this.InitializeRootChunks();
     }

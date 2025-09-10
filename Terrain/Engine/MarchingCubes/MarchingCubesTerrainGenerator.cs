@@ -70,11 +70,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader = marchingShader;
 
         this.chunkMaterial = new Material(Shader.Find("Custom/URP_CustomLitGPU"));
-        this.chunkMaterial.SetFloat("_UseVertexColor", 1f);
-        this.chunkMaterial.SetVector("PositionOffset", chunkServices.Configuration.DensityOptions.PositionOffset);
-        this.chunkMaterial.SetVector("PlanetCenter", chunkServices.Configuration.PlanetOptions.PlanetCenter);
-        this.chunkMaterial.SetFloat("PlanetRadius", chunkServices.Configuration.PlanetOptions.PlanetRadius);
-        this.chunkMaterial.SetInt("SubVariant", (int)chunkServices.Configuration.DensityOptions.Variant); 
 
         this.InitBuffer();
     }
@@ -194,7 +189,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         PlanetOptionsBuffer.SetData(new[] { this.chunkServices.Configuration.PlanetOptions });
 
         // Rebuild biome table (small) and upload.
-        var biomes = chunkServices.Configuration.Biomes.OrderBy(b => b.MinSurface).ToList();
+        var biomes = chunkServices.Configuration.Biomes.ToList();
         BiomesCount = biomes.Count;
 
         var biomeData = new ChunkBiomeData[biomes.Count];
@@ -202,10 +197,10 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         {
             biomeData[i] = new ChunkBiomeData
             {
-                MinSurface = biomes[i].MinSurface,
-                MaxSurface = biomes[i].MaxSurface,
-                MinTemp = biomes[i].MinTemp,
-                MaxTemp = biomes[i].MaxTemp,
+                Height = (uint)biomes[i].Height,
+                Temperature = (uint)biomes[i].Temperature,
+                Humidity = (uint)biomes[i].Humidity,
+                Foliage = (uint)biomes[i].Foliage,
                 Highlight = biomes[i].Highlight,
                 Light = biomes[i].Light,
                 MidLight = biomes[i].MidLight,
@@ -218,9 +213,15 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         BiomeBuffer.SetData(biomeData);
 
         // Update material.
-        this.chunkMaterial.SetBuffer("BiomeColors", BiomeBuffer);
-        this.chunkMaterial.SetInt("_BiomeCount", BiomesCount);
-        this.chunkMaterial.SetInt("LODHeatMap", this.chunkServices.Configuration.DebugOptions.LODHeatMap);
+        this.chunkMaterial.SetBuffer("Biomes", BiomeBuffer);
+        this.chunkMaterial.SetInt("_BiomesCount", BiomesCount);
+        this.chunkMaterial.SetInt("Overlay", (int)this.chunkServices.Configuration.DebugOptions.Overlay);
+
+        this.chunkMaterial.SetFloat("_UseVertexColor", 1f);
+        this.chunkMaterial.SetVector("PositionOffset", chunkServices.Configuration.DensityOptions.PositionOffset);
+        this.chunkMaterial.SetVector("PlanetCenter", chunkServices.Configuration.PlanetOptions.PlanetCenter);
+        this.chunkMaterial.SetFloat("PlanetRadius", chunkServices.Configuration.PlanetOptions.PlanetRadius);
+        this.chunkMaterial.SetInt("SubVariant", (int)chunkServices.Configuration.DensityOptions.TerrainType);
     }
 
     /// <summary>
@@ -232,6 +233,9 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         int size = GetChunkSize();
         int voxelCountPerChunk = size * size * size;
         int totalVoxels = voxelCountPerChunk * batchSize;
+
+        if (batchSize == 0)
+            return;
 
         // Fill the reusable input list + upload to the per-kernel input buffer.
         FillGenerateChunkInputs(keys);
@@ -253,6 +257,8 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.Dispatch(genKernal, Mathf.CeilToInt(batchSize * size / 4f), Mathf.CeilToInt(size / 4f), Mathf.CeilToInt(size / 4f));
 
         // Marching cubes
+        MarchingShader.SetBuffer(marchKernal, "Biomes", BiomeBuffer);
+        MarchingShader.SetInt("_BiomesCount", BiomesCount);
         MarchingShader.SetBuffer(marchKernal, "ChunkInputs", GenerateChunkInputBuffer);
         MarchingShader.SetBuffer(marchKernal, "DensityMap", DensityBuffer);
         MarchingShader.SetBuffer(marchKernal, "TriangleBuffer", triangleBuffer);
@@ -273,7 +279,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private void InitBuffer()
     {
         // Small table (I start with 5; UpdateOptions writes actual count)
-        BiomeBuffer = new ComputeBuffer(5, Marshal.SizeOf<ChunkBiomeData>());
+        BiomeBuffer = new ComputeBuffer(chunkServices.Configuration.Biomes.Count, Marshal.SizeOf<ChunkBiomeData>());
 
         // Single struct (Structured buffer of length 1)
         DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<TerrainDensityOptions>(), ComputeBufferType.Constant);

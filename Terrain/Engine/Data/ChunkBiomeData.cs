@@ -2,12 +2,12 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 
 [StructLayout(LayoutKind.Sequential)]
-struct ChunkBiomeData
+public struct ChunkBiomeData
 {
-    public float MinSurface;
-    public float MaxSurface;
-    public float MinTemp;
-    public float MaxTemp;
+    public uint Height;
+    public uint Temperature;
+    public uint Humidity;
+    public uint Foliage;
 
     public Vector4 Highlight;
     public Vector4 Light;

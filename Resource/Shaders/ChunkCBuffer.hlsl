@@ -19,16 +19,34 @@ cbuffer TerrainDensityOptions
     int Seed;
     
     // HLSL does not support enum, this is just for the subvarient to help with coding.
-    int SubVariant;
+    int TerrainType;
 
     // Iso threshold used by marching. Keep if your meshing kernel reads it.
     float ISOLevel;
+   
+    // A bias added to temperature to help curve generation.
+    int TemperatureBias;
+
+    // A bias added to humidity to help curve generation.
+    int HumidityBias;
+
+    // A bias added to foliage to help curve generation.
+    int FoliageBias;
+    
+    // A bias added to help curve generation in sea levels.
+    int SeaLevelBias;
 
     // How wide the continents are. Lower = bigger continents.
-    float BaseFreq;
+    float ContinentFreq;
 
     // How much the base layer lifts terrain up.
-    float BaseGain;
+    float ContinentHeight;
+    
+    // Global height scale for this layer after normalization.
+    float ContinentAmp;
+    
+    // The amount of Octaves to be used for continents.
+    uint ContinentOctaves;
     
     // The amount of sea vs land.
     float SeaLevel;
@@ -43,16 +61,13 @@ cbuffer TerrainDensityOptions
     float DetailFreq;
 
     // Strength of those broad details.
-    float DetailGain;
+    float DetailAmp;
 
     // How large the flat regions run across the map.
     float FlatMaskFreq;
 
     // Higher -> stronger flattening in masked zones.
-    float FlatMaskPower;
-
-    // Global height scale for this layer after normalization.
-    float ElevationScale;
+    float FlatMaskAmp;
     
     // XYZ offset for the entire generation.
     float3 PositionOffset;
@@ -65,18 +80,48 @@ cbuffer TerrainDensityOptions
 
     // XY offset for flatness domain (replaces +5555).
     float3 FlatMaskOffset;
-    
-    // Padding needed for some buffers.
-    float3 _Padding;
 };
 
 cbuffer PlanetDensityOptions
 {
     float3 PlanetCenter;
     float PlanetRadius;
-    
-    float _Padding0;
-    float3 _Padding1;
 };
+
+
+float GetSeaLevelBias()
+{
+    switch (SeaLevelBias)
+    {
+        case -4:
+            return -0.40f; // Confirms there will be no ocean.
+        case -2:
+            return -0.05f;
+        case 0:
+            return 0.0f;
+        case 2:
+            return 0.05f;
+        case 4:
+            return 0.10f;
+        default:
+            return 0.0f;
+    }
+}
+
+float GetHumidityBias()
+{
+    switch (HumidityBias)
+    {
+        case -2:
+            return -0.05f;
+        case 0:
+            return 0.0f;
+        case 2:
+            return 0.15f;
+        case 4:
+            return 0.30f;
+    }
+}
+
 
 #endif

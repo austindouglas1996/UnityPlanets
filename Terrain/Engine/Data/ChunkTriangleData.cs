@@ -13,4 +13,5 @@ public struct ChunkTriangleData
     public Vector3 b;
     public Vector3 c;
     public uint LodKey;
+    public uint Biome;
 }
