@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using System;
+using UnityEngine.InputSystem;
+using System.Linq;
 
 /// <summary>
 /// Coordinates the asynchronous-like generation and modification of terrain chunks.
@@ -17,6 +19,11 @@ public class ChunkGenerationProcessor : IDisposable
 
     private readonly ChunkGenerationBatcher surfaceBatcher = new();
     private readonly ChunkGenerationBatcher generationBatcher = new();
+
+    /// <summary>
+    /// A simple queue to help with items that need to be removed.
+    /// </summary>
+    private List<(ChunkKey key, int framesLeft)> removalQueue = new();
 
     /// <summary>
     /// In earlier tests, batching surfaces takes multiple frames so this stops multiple calls. Hmm,
@@ -67,9 +74,7 @@ public class ChunkGenerationProcessor : IDisposable
     /// </summary>
     public void RemoveChunk(ChunkKey key)
     {
-        surfaceBatcher.Remove(key);
-        generationBatcher.Remove(key);
-        layerRenderer.Remove(key);
+        this.removalQueue.Add(new (key, 15));
     }
 
     /// <summary>
@@ -97,12 +102,38 @@ public class ChunkGenerationProcessor : IDisposable
 
         UpdateSurface();
         UpdateGeneration();
+        UpdateRemoval();
     }
 
     /// <summary>
     /// Releases any GPU resources held by the render region manager.
     /// </summary>
     public void Dispose() => layerRenderer.Dispose();
+
+    /// <summary>
+    /// Loop thru the <see cref="removalQueue"/> and throw away old chunks.
+    /// </summary>
+    private void UpdateRemoval()
+    {
+        for (int i = removalQueue.Count - 1; i >= 0; i--)
+        {
+            var (key, framesLeft) = removalQueue[i];
+            framesLeft--;
+
+            if (framesLeft < 0)
+            {
+                surfaceBatcher.Remove(key);
+                generationBatcher.Remove(key);
+                layerRenderer.Remove(key);
+
+                removalQueue.RemoveAt(i);
+            }
+            else
+            {
+                removalQueue[i] = (key, framesLeft);
+            }
+        }
+    }
 
     /// <summary>
     /// Processes a batch of surface-check jobs.

@@ -108,6 +108,12 @@ public class ChunkRenderBucketCollection : IDisposable
             bucket.Clear();
         }
 
+        foreach (var go in colliders.Values)
+        {
+            go.Destroy();
+        }
+        colliders.Clear();
+
         keys.Clear();
     }
 
