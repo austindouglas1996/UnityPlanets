@@ -55,8 +55,7 @@ void March(
         ChunkTriangleData tri;
         tri.a = worldA;
         tri.b = worldB;
-        tri.c = worldC;
-        tri.LodKey = key.chunk.LodIndex;   
+        tri.c = worldC; 
         tri.Biome = GetTriangleBiomePacked(tri);
         
         TriangleBuffer.Append(tri);

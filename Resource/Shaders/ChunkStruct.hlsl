@@ -48,7 +48,6 @@ struct ChunkTriangleData
     float3 a;
     float3 b;
     float3 c;
-    uint LodKey;
     uint Biome;
 };
 

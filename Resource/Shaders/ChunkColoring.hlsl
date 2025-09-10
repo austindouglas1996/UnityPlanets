@@ -67,7 +67,7 @@ float4 GetBiomeBlend(ChunkBiomeData biome, float3 wp)
 }
 
 // Retrieves the set color to use for a biome on a vertex.
-float4 GetTerrainColor(float3 wp, uint vertex, uint lod, uint packedBiome)
+float4 GetTerrainColor(float3 wp, uint vertex, uint packedBiome)
 {
     // Unpack the biome index for this vertex
     uint biomeIndex = UnpackBiomeIndex(packedBiome, vertex);
@@ -86,9 +86,9 @@ float4 GetVertexColor(ChunkTriangleData tri, uint vertex, uint overlay)
     switch (overlay)
     {
         case 0:
-            return GetTerrainColor(wp, vertex, tri.LodKey, tri.Biome);
+            return GetTerrainColor(wp, vertex, tri.Biome);
         case 1:
-            return GetColorLOD(tri.LodKey);
+            //return GetColorLOD(tri.LodKey);
         case 2:
             return ReverseQuantize013(UnpackBiome(tri.Biome, vertex).BiomeHeight);
         case 3:

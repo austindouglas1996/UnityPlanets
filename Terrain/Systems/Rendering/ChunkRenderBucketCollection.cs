@@ -138,6 +138,13 @@ public class ChunkRenderBucketCollection : IDisposable
         for (int i = 0; i < buckets.Count; i++)
             buckets[i].Dispose();
 
+        foreach (var go in colliders.Values)
+        {
+            go.Destroy();
+        }
+
+        colliders.Clear();
+
         buckets = null;
     }
 
