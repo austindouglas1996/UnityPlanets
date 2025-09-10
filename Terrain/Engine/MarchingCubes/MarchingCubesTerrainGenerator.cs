@@ -88,6 +88,8 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         private set { chunkMaterial = value; }
     }
 
+    private Vector3 PlanetRotEular = new Vector3(0, 0, 0);
+
     /// <summary>
     /// Process multiple jobs from the queue to generate chunks.
     /// </summary>

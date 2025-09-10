@@ -86,6 +86,9 @@ cbuffer PlanetDensityOptions
 {
     float3 PlanetCenter;
     float PlanetRadius;
+    
+    float Tilt;
+    float4x4 Rotation;
 };
 
 

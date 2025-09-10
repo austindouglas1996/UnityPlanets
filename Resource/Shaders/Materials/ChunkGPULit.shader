@@ -54,6 +54,7 @@ Shader "Custom/URP_CustomLitGPU"
 
             float4 _BaseColor;
             float _UseVertexColor;
+            float4x4 PlanetRotation;
             int Overlay;
 
             TEXTURE2D(_CustomBaseMap);
@@ -81,6 +82,7 @@ Shader "Custom/URP_CustomLitGPU"
 
                 float3 pos = (subIndex == 0) ? tri.a :
                              (subIndex == 1) ? tri.b : tri.c;
+                pos = mul(PlanetRotation, float4(pos, 1.0)).xyz;
 
                 OUT.positionWS = pos;
                 OUT.normalWS   = normalize(cross(tri.b - tri.a, tri.c - tri.a));
