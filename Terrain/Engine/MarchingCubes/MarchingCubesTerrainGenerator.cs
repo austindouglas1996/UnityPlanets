@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
-using Unity.VisualScripting;
-using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -333,7 +331,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
 
         // Keep backing array; just reset count.
         InputSurface.Clear();
-        InputSurface.EnsureCapacity(n); // avoid growth churn if we spike
 
         for (int i = 0; i < n; i++)
         {
@@ -356,7 +353,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     {
         int n = keys.Count;
         InputGenerate.Clear();
-        InputGenerate.EnsureCapacity(n);
 
         for (int i = 0; i < n; i++)
         {

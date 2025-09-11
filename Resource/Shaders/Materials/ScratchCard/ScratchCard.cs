@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.InputSystem;
-using VHierarchy.Libs;
 
 [System.Serializable]
 public class ScratchItem

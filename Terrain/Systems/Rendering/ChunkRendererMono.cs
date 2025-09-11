@@ -36,13 +36,8 @@ public class ChunkRendererMono : MonoBehaviour
     {
         if (!isInitialized) return;
 
-        ConsoleTimer.Start("ChunkGenerator");
         this.chunkServices.Generator.Update();
-        ConsoleTimer.Stop("ChunkGenerator");
-
-        ConsoleTimer.Start("LODTree");
         lodTree.Update();
-        ConsoleTimer.Stop("LODTree");
     }
 
     /// <summary>
@@ -81,6 +76,14 @@ public class ChunkRendererMono : MonoBehaviour
     {
         if (ShowTerrain)
             processor.Draw();
+    }
+
+    /// <summary>
+    /// Dispose of the generator resources.
+    /// </summary>
+    private void OnDestroy()
+    {
+        this.chunkServices.Generator.Dispose();
     }
 
     /// <summary>

@@ -1,5 +1,7 @@
 using UnityEngine;
+using UnityEngine.Scripting;
 
+[Preserve]
 [RequireComponent(typeof(ChunkLayoutMono))]
 [RequireComponent(typeof(ChunkRendererMono))]
 public abstract class VariantBaseMono<TConfig> : MonoBehaviour, IChunkServices where TConfig : IChunkConfiguration
@@ -39,6 +41,15 @@ public abstract class VariantBaseMono<TConfig> : MonoBehaviour, IChunkServices w
     protected virtual void Update()
     {
         ConsoleTimer.WriteToConsole();
+    }
+
+    [RuntimeInitializeOnLoadMethod]
+    static void InitLogging()
+    {
+        Application.logMessageReceived += (condition, stackTrace, type) =>
+        {
+            System.Console.WriteLine(condition);
+        };
     }
 
     // Abstracts to be implemented by derived classes

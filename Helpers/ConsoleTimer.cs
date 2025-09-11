@@ -35,7 +35,6 @@ public static class ConsoleTimer
     {
         if (watches.Count == 0)
         {
-            UnityEngine.Debug.Log("No timers running.");
             return;
         }
 

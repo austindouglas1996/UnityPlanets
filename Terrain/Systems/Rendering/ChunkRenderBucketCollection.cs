@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using VHierarchy.Libs;
 
 /// <summary>
 /// A collection container for <see cref="ChunkRenderBucket"/> that can grow as needed
@@ -110,7 +109,7 @@ public class ChunkRenderBucketCollection : IDisposable
 
         foreach (var go in colliders.Values)
         {
-            go.Destroy();
+            UnityEngine.Object.Destroy(go);
         }
         colliders.Clear();
 
@@ -146,7 +145,7 @@ public class ChunkRenderBucketCollection : IDisposable
 
         foreach (var go in colliders.Values)
         {
-            go.Destroy();
+            UnityEngine.Object.Destroy(go);
         }
 
         colliders.Clear();
@@ -225,7 +224,7 @@ public class ChunkRenderBucketCollection : IDisposable
             colliders[bucket] = newGo;
 
             if (oldGo != null)
-                oldGo.Destroy();
+                UnityEngine.Object.Destroy(oldGo);
         });
     }
 }

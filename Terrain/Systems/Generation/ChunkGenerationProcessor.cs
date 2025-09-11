@@ -115,6 +115,8 @@ public class ChunkGenerationProcessor : IDisposable
     /// </summary>
     private void UpdateRemoval()
     {
+        if (removalQueue.Count == 0) return;
+
         for (int i = removalQueue.Count - 1; i >= 0; i--)
         {
             var (key, framesLeft) = removalQueue[i];
