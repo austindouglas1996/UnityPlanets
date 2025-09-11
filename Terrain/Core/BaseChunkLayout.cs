@@ -62,7 +62,7 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
     /// <returns></returns>
     public int GetChunkSize(int lod)
     {
-        return this.Configuration.DensityOptions.ChunkSize << lod;
+        return this.Configuration.DensityOptions.CubesPerAxis << lod;
     }
 
     /// <summary>

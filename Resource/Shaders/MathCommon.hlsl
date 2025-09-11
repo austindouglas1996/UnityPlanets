@@ -4,6 +4,11 @@
 static const float PI = 3.14159265359;
 static const float TAU = 6.28318530718;
 
+float Sanitize(float v)
+{
+    return (isnan(v) || isinf(v)) ? 0.0 : v;
+}
+
 inline float sqr(float x)
 {
     return x * x;

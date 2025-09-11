@@ -367,9 +367,9 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     /// <returns></returns>
     private ComputeBuffer CreateTriangleBuffer()
     {
-        int size = GetChunkSize();
-        int voxelCountPerChunk = size * size * size;
-        int totalVoxels = (voxelCountPerChunk * (size));
+        int n = GetChunkSize()+1;
+        int voxelCountPerChunk = n * n * n;
+        int totalVoxels = (voxelCountPerChunk * n);
 
         var newBuff = new ComputeBuffer(totalVoxels, Marshal.SizeOf<ChunkTriangleData>(), ComputeBufferType.Append);
 
@@ -399,6 +399,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
 
     private int GetChunkSize()
     {
-        return densityOptions.ChunkSize + 3;
+        return densityOptions.CubesPerAxis + 1;
     }
 }

@@ -85,7 +85,7 @@ public struct TerrainDensityOptions
 {
     [Header("Global")]
     [Tooltip("Logical voxel width of a chunk (before LOD).")]
-    public int ChunkSize;
+    public int CubesPerAxis;
 
     [Tooltip("The noise seed, use this to get a different set of generation")]
     public int Seed;

@@ -25,7 +25,7 @@
 struct ChunkDispatchKey
 {
     float3 CoordPos;
-    int LodIndex;
+    uint LodIndex;
 };
 
 // Returned by GetChunkAccess(). Holds everything needed
@@ -33,9 +33,9 @@ struct ChunkDispatchKey
 // world position, and the original chunk key.
 struct ChunkDispatchKeyInfo
 {
-    int chunkIndex;
-    int mapIndex;
-    int3 voxelCoord;
+    uint KeyIndex;
+    uint SampleIndex;
+    int3 LocalVoxelCoord;
     float3 WorldPos;
     ChunkDispatchKey chunk;
 };

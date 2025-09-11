@@ -4,14 +4,13 @@
 #include "ChunkCommon.hlsl"
 
 // Computes the flat index into the density map for a voxel within a chunk batch
-int GetVoxelMapIndex(int3 pos, int chunkIndex, int3 logicalSize)
+int GetVoxelSampleIndex(int3 pos, int KeyIndex, int3 sampleSize)
 {
-    int voxelCountPerChunk = logicalSize.x * logicalSize.y * logicalSize.z;
-    int localIndex = pos.x + pos.y * logicalSize.x + pos.z * logicalSize.x * logicalSize.y;
-    return chunkIndex * voxelCountPerChunk + localIndex;
+    int voxelCountPerChunk = sampleSize.x * sampleSize.y * sampleSize.z;
+    int localIndex = pos.x + pos.y * sampleSize.x + pos.z * sampleSize.x * sampleSize.y;
+    return KeyIndex * voxelCountPerChunk + localIndex;
 }
 
-// ============================================================================
 // GetChunkAccess()
 // Maps a dispatch thread ID (id) into:
 //   - which chunk it belongs to
@@ -21,10 +20,40 @@ int GetVoxelMapIndex(int3 pos, int chunkIndex, int3 logicalSize)
 //
 // Parameters:
 //   id     : Dispatch thread ID (x, y, z) from the compute shader
-//   size.x, size.y, size.z : Chunk dimensions in voxels (per axis)
+//   sampleSize.x, sampleSize.y, sampleSize.z : Chunk dimensions in voxels (per axis)
 //   keys   : Structured buffer of all active chunks to process
-// ============================================================================
-ChunkDispatchKeyInfo GetChunkAccess(uint3 id, int3 size, StructuredBuffer<ChunkDispatchKey> keys)
+ChunkDispatchKeyInfo GetChunkAccess(uint3 id, StructuredBuffer<ChunkDispatchKey> keys)
+{
+    ChunkDispatchKeyInfo r;
+
+    // Get number of chunks in this batch
+    uint keyCount, strideBytes;
+    keys.GetDimensions(keyCount, strideBytes);
+
+    // Map X → (KeyIndex, localX)
+    r.KeyIndex = (int) (id.x / CubesPerAxis);
+    r.LocalVoxelCoord = int3((int) (id.x - r.KeyIndex * CubesPerAxis), (int) id.y, (int) id.z);
+
+    // Fetch key and compute world position
+    ChunkDispatchKey key = keys[r.KeyIndex];
+    r.chunk = key;
+    r.WorldPos = ToWorld(key.CoordPos, key.LodIndex) + float3(r.LocalVoxelCoord) * GetCubeSizeStep(r.chunk.LodIndex);
+
+    return r;
+}
+
+// GetChunkAccess()
+// Maps a dispatch thread ID (id) into:
+//   - which chunk it belongs to
+//   - the voxel's coordinates within that chunk
+//   - its corresponding world position
+//   - its flat index in the voxel map buffer
+//
+// Parameters:
+//   id     : Dispatch thread ID (x, y, z) from the compute shader
+//   sampleSize.x, sampleSize.y, sampleSize.z : Chunk dimensions in voxels (per axis)
+//   keys   : Structured buffer of all active chunks to process
+ChunkDispatchKeyInfo GetChunkAccess(uint3 id, int3 sampleSize, StructuredBuffer<ChunkDispatchKey> keys)
 {
     ChunkDispatchKeyInfo r;
 
@@ -32,27 +61,27 @@ ChunkDispatchKeyInfo GetChunkAccess(uint3 id, int3 size, StructuredBuffer<ChunkD
     uint keyCount, strideBytes;
     keys.GetDimensions(keyCount, strideBytes); // batchSize = keyCount
 
-    const int voxelCount = size.x * size.y * size.z;
-    const uint logicalX = keyCount * (uint) size.x;
+    const int voxelCount = sampleSize.x * sampleSize.y * sampleSize.z;
+    const uint logicalX = keyCount * (uint) sampleSize.x;
 
     // Guard extra threads from ceil() in Dispatch()
-    if (id.x >= logicalX || id.y >= (uint) size.y || id.z >= (uint) size.z)
+    if (id.x >= logicalX || id.y >= (uint) sampleSize.y || id.z >= (uint) sampleSize.z)
     {
-        r.mapIndex = -1;
+        r.SampleIndex = -1;
         return r;
     }
 
-    // Map X → (chunkIndex, localX)
-    r.chunkIndex = (int) (id.x / (uint) size.x);
-    r.voxelCoord = int3((int) (id.x - (uint) (r.chunkIndex * size.x)), (int) id.y, (int) id.z);
+    // Map X → (KeyIndex, localX)
+    r.KeyIndex = (int) (id.x / (uint) sampleSize.x);
+    r.LocalVoxelCoord = int3((int) (id.x - (uint) (r.KeyIndex * sampleSize.x)), (int) id.y, (int) id.z);
 
     // Flat index into the packed voxel buffer
-    r.mapIndex = GetVoxelMapIndex(r.voxelCoord, r.chunkIndex, size);
+    r.SampleIndex = GetVoxelSampleIndex(r.LocalVoxelCoord, r.KeyIndex, sampleSize);
 
     // Fetch key and compute world position
-    ChunkDispatchKey key = keys[r.chunkIndex];
+    ChunkDispatchKey key = keys[r.KeyIndex];
     r.chunk = key;
-    r.WorldPos = ToWorld(key.CoordPos, key.LodIndex) + float3(r.voxelCoord) * GetChunkSizeStep(r.chunk.LodIndex);
+    r.WorldPos = ToWorld(key.CoordPos, key.LodIndex) + float3(r.LocalVoxelCoord) * GetCubeSizeStep(r.chunk.LodIndex);
 
     return r;
 }

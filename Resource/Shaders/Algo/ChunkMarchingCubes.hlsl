@@ -17,12 +17,12 @@ void March(
     for (int i = 0; i < 8; i++)
     {
         int3 offset = GetCornerOffset(i);
-        int3 pos = key.voxelCoord + offset;
+        int3 pos = key.LocalVoxelCoord + offset;
 
-        int fullIndex = GetVoxelMapIndex(pos, key.chunkIndex, GetChunkLogicalSize3());
+        int fullIndex = GetVoxelSampleIndex(pos, key.KeyIndex, GetSamplesPerChunk3());
 
         corner[i] = DensityMap[fullIndex];
-        cornerPos[i] = float3(pos) * GetChunkSizeStep(key.chunk.LodIndex) + ToWorld(key.chunk.CoordPos, key.chunk.LodIndex);
+        cornerPos[i] = float3(pos) * GetCubeSizeStep(key.chunk.LodIndex) + ToWorld(key.chunk.CoordPos, key.chunk.LodIndex);
         
         if (corner[i] > ISOLevel)
             cubeIndex |= (1 << i);

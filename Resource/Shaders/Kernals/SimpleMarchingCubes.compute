@@ -25,12 +25,12 @@ groupshared uint gHasBelow;
 [numthreads(4, 4, 4)]
 void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
 {
-    ChunkDispatchKeyInfo info = GetChunkAccess(id, GetChunkLogicalSize3(), ChunkInputs);
-    if (info.mapIndex < 0)
+    ChunkDispatchKeyInfo info = GetChunkAccess(id, GetSamplesPerChunk3(), ChunkInputs);
+    if (info.SampleIndex < 0)
         return;
     
     float3 worldPos = info.WorldPos;
-    DensityMap[info.mapIndex] = GenerateNoiseValue(worldPos, info.chunk.LodIndex);
+    DensityMap[info.SampleIndex] = GenerateNoiseValue(worldPos, info.chunk.LodIndex);
 }
 
 // One group per chunk, 4x4x4 = 64 threads per group
@@ -42,8 +42,8 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
 
     // Precompute invariants
     const float iso = ISOLevel;
-    const int baseSize = GetChunkLogicalSize();
-    const int step = GetChunkSizeStep(chunk.LodIndex);
+    const int baseSize = GetSamplesPerChunk3();
+    const int step = GetCubeSizeStep(chunk.LodIndex);
 
     const float3 origin = ToWorld(chunk.CoordPos, chunk.LodIndex);
 
@@ -111,11 +111,9 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
 [numthreads(4, 4, 4)]
 void RunMarchingCubes(uint3 id : SV_DispatchThreadID)
 {
-    int chunkLogicalSize = GetChunkLogicalSize();
-    int size = int3(chunkLogicalSize - 1, chunkLogicalSize - 1, chunkLogicalSize - 1);
-    ChunkDispatchKeyInfo access = GetChunkAccess(id, size, ChunkInputs);
+    ChunkDispatchKeyInfo access = GetChunkAccess(id, ChunkInputs);
 
-    if (access.mapIndex < 0)
+    if (access.SampleIndex < 0)
         return;
 
     March(access, TriangleBuffer, DensityMap);
