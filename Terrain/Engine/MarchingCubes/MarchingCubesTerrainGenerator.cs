@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Unity.VisualScripting;
 using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -232,9 +233,15 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private void ProcessBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output)
     {
         int batchSize = keys.Count;
-        int size = GetChunkSize();
-        int voxelCountPerChunk = size * size * size;
-        int totalVoxels = voxelCountPerChunk * batchSize;
+
+        int cubesPerAxis = CubesPerAxis;
+        int samplesPerAxis = CubesPerAxis+1;
+
+        int cubesPerChunk = cubesPerAxis * cubesPerAxis * cubesPerAxis;
+        int samplesPerChunk = samplesPerAxis * samplesPerAxis * samplesPerAxis;
+
+        int cubesSize = cubesPerAxis * batchSize;
+        int samplesSize = samplesPerAxis * batchSize;
 
         if (batchSize == 0)
             return;
@@ -256,7 +263,8 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.SetBuffer(genKernal, "DensityMap", DensityBuffer);
 
         // NOTE: thread group dims assume [numthreads(8,8,8)] and X packs chunkIndex*XWithinChunk
-        MarchingShader.Dispatch(genKernal, Mathf.CeilToInt(batchSize * size / 4f), Mathf.CeilToInt(size / 4f), Mathf.CeilToInt(size / 4f));
+        int genGroupSize = Mathf.CeilToInt(samplesPerAxis / 4f);
+        MarchingShader.Dispatch(genKernal, batchSize * genGroupSize, genGroupSize, genGroupSize);
 
         // Marching cubes
         MarchingShader.SetBuffer(marchKernal, "Biomes", BiomeBuffer);
@@ -264,7 +272,9 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         MarchingShader.SetBuffer(marchKernal, "ChunkInputs", GenerateChunkInputBuffer);
         MarchingShader.SetBuffer(marchKernal, "DensityMap", DensityBuffer);
         MarchingShader.SetBuffer(marchKernal, "TriangleBuffer", triangleBuffer);
-        MarchingShader.Dispatch(marchKernal, batchSize * 4, 4, 4);
+
+        int marchGroupSize = Mathf.CeilToInt(cubesPerAxis / 4f);
+        MarchingShader.Dispatch(marchKernal, batchSize * marchGroupSize, marchGroupSize, marchGroupSize);
 
         // Build indirect args from append count
         MarchingShader.SetBuffer(argsKernal, "TriangleBuffer", triangleBuffer);
@@ -294,10 +304,10 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         this.MarchingShader.SetConstantBuffer("PlanetDensityOptions", PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
 
         // Scalar field big enough for 128 chunks at current chunk size (rough over-alloc)
-        int size = GetChunkSize();
-        int voxelCountPerChunk = size * size * size;
-        int maxTotalVoxels = voxelCountPerChunk * GenerateCap;
-        DensityBuffer = new ComputeBuffer(maxTotalVoxels, sizeof(float));
+        int samples = CubesPerAxis + 1;
+        int sampleCountPerChunk = samples * samples * samples;
+        int maxTotalSamples = sampleCountPerChunk * GenerateCap;
+        DensityBuffer = new ComputeBuffer(maxTotalSamples, sizeof(float));
 
         // Per-kernel inputs + mask output
         SurfaceChunkInputBuffer = new ComputeBuffer(SurfaceCap, Marshal.SizeOf<ChunkDispatchKey>());
@@ -367,9 +377,9 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     /// <returns></returns>
     private ComputeBuffer CreateTriangleBuffer()
     {
-        int n = GetChunkSize()+1;
-        int voxelCountPerChunk = n * n * n;
-        int totalVoxels = (voxelCountPerChunk * n);
+        int n = CubesPerAxis;
+        int voxelCountPerChunk = (n) * (n) * (n);
+        int totalVoxels = (voxelCountPerChunk * (n + 10));
 
         var newBuff = new ComputeBuffer(totalVoxels, Marshal.SizeOf<ChunkTriangleData>(), ComputeBufferType.Append);
 
@@ -397,8 +407,5 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         return buf;
     }
 
-    private int GetChunkSize()
-    {
-        return densityOptions.CubesPerAxis + 1;
-    }
+    public int CubesPerAxis => densityOptions.CubesPerAxis;
 }

@@ -26,13 +26,27 @@ ChunkDispatchKeyInfo GetChunkAccess(uint3 id, StructuredBuffer<ChunkDispatchKey>
 {
     ChunkDispatchKeyInfo r;
 
-    // Get number of chunks in this batch
-    uint keyCount, strideBytes;
-    keys.GetDimensions(keyCount, strideBytes);
+    uint keyCount, stride;
+    keys.GetDimensions(keyCount, stride);
+
+    if (id.x >= keyCount * CubesPerAxis || id.y >= CubesPerAxis || id.z >= CubesPerAxis)
+    {
+        r.KeyIndex = -1;
+        return r;
+    }
 
     // Map X → (KeyIndex, localX)
     r.KeyIndex = (int) (id.x / CubesPerAxis);
     r.LocalVoxelCoord = int3((int) (id.x - r.KeyIndex * CubesPerAxis), (int) id.y, (int) id.z);
+    
+    // A second guard check.
+    if (r.LocalVoxelCoord.x >= CubesPerAxis ||
+        r.LocalVoxelCoord.y >= CubesPerAxis ||
+        r.LocalVoxelCoord.z >= CubesPerAxis)
+    {
+        r.KeyIndex = -1;
+        return r;
+    }
 
     // Fetch key and compute world position
     ChunkDispatchKey key = keys[r.KeyIndex];

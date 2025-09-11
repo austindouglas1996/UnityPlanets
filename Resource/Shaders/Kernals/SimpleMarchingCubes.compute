@@ -112,10 +112,9 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
 void RunMarchingCubes(uint3 id : SV_DispatchThreadID)
 {
     ChunkDispatchKeyInfo access = GetChunkAccess(id, ChunkInputs);
-
-    if (access.SampleIndex < 0)
+    if (access.KeyIndex < 0) 
         return;
-
+    
     March(access, TriangleBuffer, DensityMap);
 }
 
