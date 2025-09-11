@@ -69,8 +69,10 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void Update()
     {
+        ConsoleTimer.Start("RenderRouter");
         lod0.Update();
         main.Update();
+        ConsoleTimer.Stop("RenderRouter");
     }
 
     /// <summary>

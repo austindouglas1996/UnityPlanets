@@ -20,13 +20,13 @@ uint SampleBiomeIndex(float3 worldPos)
     return FindBiomeIndex(h, t, m, f);
 }
 
-uint GetTriangleBiomePacked(ChunkTriangleData triData)
+uint GetTriangleBiomePacked(ChunkTriangleData triData, int lodIndex)
 {
     uint a = SampleBiomeIndex(triData.a);
     uint b = SampleBiomeIndex(triData.b);
     uint c = SampleBiomeIndex(triData.c);
 
-    return PackBiomeIndices(a, b, c);
+    return PackBiomeIndices(a, b, c, lodIndex);
 }
 
 #endif

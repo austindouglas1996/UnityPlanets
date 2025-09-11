@@ -15,6 +15,8 @@ public abstract class VariantBaseMono<TConfig> : MonoBehaviour, IChunkServices w
 
     protected virtual void Awake()
     {
+        //Application.targetFrameRate = 244;
+
         chunkLayout = GetComponent<ChunkLayoutMono>();
         chunkRenderer = GetComponent<ChunkRendererMono>();
 
@@ -32,6 +34,11 @@ public abstract class VariantBaseMono<TConfig> : MonoBehaviour, IChunkServices w
 
         generator.UpdateOptions();
         chunkRenderer.RefreshChunks();
+    }
+
+    protected virtual void Update()
+    {
+        ConsoleTimer.WriteToConsole();
     }
 
     // Abstracts to be implemented by derived classes

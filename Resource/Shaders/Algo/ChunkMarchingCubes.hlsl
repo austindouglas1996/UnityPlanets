@@ -56,7 +56,7 @@ void March(
         tri.a = worldA;
         tri.b = worldB;
         tri.c = worldC; 
-        tri.Biome = GetTriangleBiomePacked(tri);
+        tri.Biome = GetTriangleBiomePacked(tri, key.chunk.LodIndex);
         
         TriangleBuffer.Append(tri);
     }

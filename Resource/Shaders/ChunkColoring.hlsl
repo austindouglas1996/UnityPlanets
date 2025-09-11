@@ -88,7 +88,7 @@ float4 GetVertexColor(ChunkTriangleData tri, uint vertex, uint overlay)
         case 0:
             return GetTerrainColor(wp, vertex, tri.Biome);
         case 1:
-            //return GetColorLOD(tri.LodKey);
+            return GetColorLOD(UnpackLOD(tri.Biome));
         case 2:
             return ReverseQuantize013(UnpackBiome(tri.Biome, vertex).BiomeHeight);
         case 3:

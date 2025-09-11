@@ -159,14 +159,15 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
 
         // Clamp player position to chunk AABB
         float px = Mathf.Clamp(player.x, worldMin.x, worldMax.x);
+        float py = Mathf.Clamp(player.y, worldMin.y, worldMax.y);
         float pz = Mathf.Clamp(player.z, worldMin.z, worldMax.z);
 
         float dx = Mathf.Abs(player.x - px);
+        float dy = Mathf.Abs(player.y - py);
         float dz = Mathf.Abs(player.z - pz);
 
-        // Convert distance to LOD0 chunk units
-        float maxDist = Mathf.Max(dx, dz);
-        int ring = Mathf.CeilToInt(maxDist / chunkSize);
+        float dist = Mathf.Sqrt(dx * dx + dy * dy + dz * dz);
+        int ring = Mathf.CeilToInt(dist / chunkSize);
 
         return DesiredLodFromRings(ring);
     }

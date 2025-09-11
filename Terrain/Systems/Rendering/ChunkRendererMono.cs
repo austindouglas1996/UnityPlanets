@@ -35,12 +35,14 @@ public class ChunkRendererMono : MonoBehaviour
     private void Update()
     {
         if (!isInitialized) return;
-        this.chunkServices.Generator.Update();
 
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        lodTree.Update(); 
-        sw.Stop();
-        UnityEngine.Debug.Log($"lodTree.Update() took {sw.Elapsed.TotalMilliseconds:F2} ms");
+        ConsoleTimer.Start("ChunkGenerator");
+        this.chunkServices.Generator.Update();
+        ConsoleTimer.Stop("ChunkGenerator");
+
+        ConsoleTimer.Start("LODTree");
+        lodTree.Update();
+        ConsoleTimer.Stop("LODTree");
     }
 
     /// <summary>

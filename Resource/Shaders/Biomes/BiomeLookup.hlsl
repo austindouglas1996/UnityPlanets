@@ -103,9 +103,9 @@ uint FindBiomeIndex(uint height, uint temperature, uint humidity, uint foliage)
 // PackBiomeIndices()
 // Combines 3 biome indices (one per vertex) into a single uint to save space.
 // Used in ChunkTriangleData to reduce memory usage per triangle, which adds up fast at scale.
-uint PackBiomeIndices(uint a, uint b, uint c)
+uint PackBiomeIndices(uint a, uint b, uint c, int lod)
 {
-    return (a & 0xFF) | ((b & 0xFF) << 8) | ((c & 0xFF) << 16);
+    return (a & 0xFF) | ((b & 0xFF) << 8) | ((c & 0xFF) << 16) | ((lod & 0x7) << 24);
 }
 
 // UnpackBiomeIndex()
@@ -122,6 +122,13 @@ uint UnpackBiomeIndex(uint packed, int vertex)
 ChunkBiomeData UnpackBiome(uint packed, int vertex)
 {
     return Biomes[UnpackBiomeIndex(packed, vertex)];
+}
+
+// UnpackLOD
+// A fun way to include LOD.
+int UnpackLOD(uint packed)
+{
+    return (int) ((packed >> 24) & 0x7);
 }
 
 #endif
