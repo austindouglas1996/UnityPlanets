@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// Unity-facing host for chunk rendering:
@@ -76,6 +77,17 @@ public class ChunkRendererMono : MonoBehaviour
     {
         if (ShowTerrain)
             processor.Draw();
+    }
+
+
+    void OnEnable()
+    {
+        RenderPipelineManager.endCameraRendering += EndCameraRendering;
+    }
+
+    void EndCameraRendering(ScriptableRenderContext ctx, Camera cam)
+    {
+        processor.Draw();
     }
 
     /// <summary>

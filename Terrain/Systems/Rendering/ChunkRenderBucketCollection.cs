@@ -42,6 +42,8 @@ public class ChunkRenderBucketCollection : IDisposable
         this.isLod0 = isLod0;
     }
 
+    public int KeysCount => keys.Count;
+
     /// <summary>
     /// Add a key to the collection. No-op if it already exists.
     /// Prefers refilling a previously-full bucket before touching the tail or creating a new one.

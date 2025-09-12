@@ -1,13 +1,44 @@
+using System;
 using UnityEngine;
 using UnityEngine.Scripting;
 
-[Preserve]
+[Serializable]
+public class TerrainBaseConfiguration : BaseChunkConfiguration
+{
+}
+
+public class TerrainBaseGenerator : BaseChunkGenerator
+{
+    public TerrainBaseGenerator(ChunkRendererMono renderer, IChunkServices services, Material chunkMat)
+        : base(services.Configuration)
+    {
+        this.generator = new MarchingCubesTerrainGenerator(services, renderer.MarchingCubes, chunkMat);
+    }
+
+    public override ITerrainGenerator Generator
+    {
+        get { return generator; }
+    }
+    private MarchingCubesTerrainGenerator generator;
+}
+
+public class TerrainBaseLayout : BaseChunkLayout
+{
+    public TerrainBaseLayout(TerrainBaseConfiguration configuration)
+        : base(configuration)
+    {
+    }
+}
+
 [RequireComponent(typeof(ChunkLayoutMono))]
 [RequireComponent(typeof(ChunkRendererMono))]
-public abstract class VariantBaseMono<TConfig> : MonoBehaviour, IChunkServices where TConfig : IChunkConfiguration
+public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
 {
     [Tooltip("Configuration for how chunks behave.")]
-    public TConfig ChunkConfiguration;
+    public TerrainBaseConfiguration ChunkConfiguration;
+
+    [SerializeField]
+    public Material ShaderA;
 
     protected ChunkLayoutMono chunkLayout;
     protected ChunkRendererMono chunkRenderer;
@@ -22,8 +53,8 @@ public abstract class VariantBaseMono<TConfig> : MonoBehaviour, IChunkServices w
         chunkLayout = GetComponent<ChunkLayoutMono>();
         chunkRenderer = GetComponent<ChunkRendererMono>();
 
-        generator = CreateGenerator();
-        layout = CreateLayout();
+        generator = new TerrainBaseGenerator(chunkRenderer, this, ShaderA);
+        layout = new TerrainBaseLayout(ChunkConfiguration);
 
         chunkLayout.Initialize(layout);
         chunkRenderer.Initialize(this);
@@ -38,25 +69,6 @@ public abstract class VariantBaseMono<TConfig> : MonoBehaviour, IChunkServices w
         chunkRenderer.RefreshChunks();
     }
 
-    protected virtual void Update()
-    {
-        ConsoleTimer.WriteToConsole();
-    }
-
-    [RuntimeInitializeOnLoadMethod]
-    static void InitLogging()
-    {
-        Application.logMessageReceived += (condition, stackTrace, type) =>
-        {
-            System.Console.WriteLine(condition);
-        };
-    }
-
-    // Abstracts to be implemented by derived classes
-    protected abstract IChunkGenerator CreateGenerator();
-    protected abstract IChunkLayout CreateLayout();
-
-    // IChunkServices implementation
     IChunkConfiguration IChunkServices.Configuration => ChunkConfiguration;
     IChunkLayout IChunkServices.Layout => layout;
     IChunkGenerator IChunkServices.Generator => generator;

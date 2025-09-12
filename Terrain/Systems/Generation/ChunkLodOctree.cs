@@ -192,6 +192,11 @@ public class ChunkLodOctree
     }
 
     /// <summary>
+    /// The total amount of nodes.
+    /// </summary>
+    public int Count => Nodes.Count;
+
+    /// <summary>
     /// Add a new root node into the LOD system. After adding the root the system will automatically manage
     /// the chunk and its children. The root coordinates should be sized to fit a <see cref="RootLOD"/> size.
     /// </summary>

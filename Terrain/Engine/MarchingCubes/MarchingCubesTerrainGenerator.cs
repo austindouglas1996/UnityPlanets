@@ -63,14 +63,18 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     /// <param name="chunkServices"></param>
     /// <param name="generateShader"></param>
     /// <param name="marchingShader"></param>
-    public MarchingCubesTerrainGenerator(IChunkServices chunkServices, ComputeShader marchingShader)
+    public MarchingCubesTerrainGenerator(IChunkServices chunkServices, ComputeShader marchingShader, Material chunkMat)
     {
         this.chunkServices = chunkServices;
         MarchingShader = marchingShader;
 
-        this.chunkMaterial = new Material(Shader.Find("Custom/URP_CustomLitGPU"));
+        this.chunkMaterial = chunkMat;
 
         this.InitBuffer();
+
+        Debug.Log("Shader: " + marchingShader);
+        Debug.Log("Compute: " + marchingShader);
+        Debug.Log("Material null? " + (this.chunkMaterial == null));
     }
 
     /// <summary>
