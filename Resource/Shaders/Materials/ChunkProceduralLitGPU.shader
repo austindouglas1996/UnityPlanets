@@ -1,11 +1,10 @@
-Shader "Custom/URP_CustomLitGPU"
+Shader "Custom/ChunkProceduralLitGPU"
 {
     Properties
     {
         _BaseColor("Base Color", Color) = (1, 1, 1, 1)
         _UseVertexColor("Use Vertex Color", Float) = 1
 
-        // New texture controls
         _CustomBaseMap("Base Texture", 2D) = "white" {}
         _UseBaseMap("Use Base Texture (0..1)", Range(0,1)) = 1
         _TextureTint("Texture Tint", Color) = (1,1,1,1)
@@ -17,12 +16,11 @@ Shader "Custom/URP_CustomLitGPU"
     {
         Tags
         {
-            "RenderPipeline" = "UniversalRenderPipeline"
+            "RenderPipeline" = "UniversalPipeline"
             "RenderType"     = "Opaque"
-            "Queue"          = "Geometry"
+            "Queue"="Transparent+2"
         }
 
-        // Main lit pass
         Pass
         {
             Name "ForwardLit"
@@ -38,38 +36,54 @@ Shader "Custom/URP_CustomLitGPU"
             #pragma fragment frag
             #pragma target 4.5
 
+            // Main directional light + cascades
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
-            #pragma multi_compile _ _ADDITIONAL_LIGHTS
-            #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX
-            #pragma multi_compile _ _SHADOWS_SOFT
-            #pragma multi_compile_fog
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
+
+            // Additional lights (vertex or per-pixel) + their shadows
+            #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
+
+            // Shadow filtering
+            #pragma multi_compile_fragment _ _SHADOWS_SOFT
+
+            // Mixed lighting modes (baked + realtime)
+            #pragma multi_compile_fragment _ _MIXED_LIGHTING_SUBTRACTIVE
+
+            // Fog
+#           pragma multi_compile_fog
+
+            // Instancing (if you want SRP batcher)
+            #pragma multi_compile_instancing
+            #pragma instancing_options renderinglayer
+
 
             #include "../ChunkFunctions.hlsl"
             #include "../ChunkColoring.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Fog.hlsl"
 
             StructuredBuffer<ChunkTriangleData> _TriangleBuffer;
 
-            float4 _BaseColor;
-            float _UseVertexColor;
-            float4x4 PlanetRotation;
-            int Overlay;
+            float  _UseVertexColor;
+            int    Overlay;
 
             TEXTURE2D(_CustomBaseMap);
             SAMPLER(sampler_CustomBaseMap);
+            float4 _BaseColor;
             float  _UseBaseMap;
             float4 _TextureTint;
             float  _TexScale;
             float  _TriplanarSharpness;
 
             struct Attributes { uint vertexID : SV_VertexID; };
-            struct Varyings
-            {
+            struct Varyings {
                 float4 positionCS : SV_POSITION;
                 float3 positionWS : TEXCOORD0;
                 float3 normalWS   : TEXCOORD1;
+                float4 tangentWS  : TEXCOORD2;
                 float4 color      : COLOR;
             };
 
@@ -80,14 +94,16 @@ Shader "Custom/URP_CustomLitGPU"
                 uint subIndex = IN.vertexID % 3;
                 ChunkTriangleData tri = _TriangleBuffer[triIndex];
 
-                float3 pos = (subIndex == 0) ? tri.a :
-                             (subIndex == 1) ? tri.b : tri.c;
-                pos = mul(PlanetRotation, float4(pos, 1.0)).xyz;
+                float3 pos = (subIndex == 0) ? tri.a : (subIndex == 1) ? tri.b : tri.c;
+                float3 normal = normalize(cross(tri.b - tri.a, tri.c - tri.a));
+                float3 up = abs(normal.y) < 0.999 ? float3(0,1,0) : float3(1,0,0);
 
-                OUT.positionWS = pos;
-                OUT.normalWS   = normalize(cross(tri.b - tri.a, tri.c - tri.a));
-                OUT.color      = GetVertexColor(tri, subIndex, Overlay);
                 OUT.positionCS = TransformWorldToHClip(pos);
+                OUT.positionWS = pos;
+                OUT.normalWS   = normal;
+                OUT.tangentWS = float4(normalize(cross(up, normal)), 1.0);
+                OUT.color      = GetVertexColor(tri, subIndex, Overlay);
+
                 return OUT;
             }
 
@@ -132,6 +148,11 @@ Shader "Custom/URP_CustomLitGPU"
                 inputData.vertexLighting  = float3(0,0,0);
                 inputData.bakedGI         = SampleSH(inputData.normalWS);
 
+                float3 n = normalize(IN.normalWS);
+                float3 t = normalize(IN.tangentWS.xyz);
+                float3 b = cross(n, t) * IN.tangentWS.w;
+                inputData.tangentToWorld = float3x3(t, b, n);
+
                 float3 texColor     = SampleBaseMapTriplanar(IN.positionWS, inputData.normalWS).rgb;
                 float3 baseColorLin = FromSRGB(_BaseColor.rgb);
                 float3 baseOrTex    = lerp(baseColorLin, texColor, saturate(_UseBaseMap));
@@ -155,4 +176,6 @@ Shader "Custom/URP_CustomLitGPU"
             ENDHLSL
         }
     }
+
+    Fallback Off
 }

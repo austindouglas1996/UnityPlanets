@@ -37,9 +37,6 @@ public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
     [Tooltip("Configuration for how chunks behave.")]
     public TerrainBaseConfiguration ChunkConfiguration;
 
-    [SerializeField]
-    public Material ShaderA;
-
     protected ChunkLayoutMono chunkLayout;
     protected ChunkRendererMono chunkRenderer;
 
@@ -53,7 +50,9 @@ public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
         chunkLayout = GetComponent<ChunkLayoutMono>();
         chunkRenderer = GetComponent<ChunkRendererMono>();
 
-        generator = new TerrainBaseGenerator(chunkRenderer, this, ShaderA);
+        Material newMat = new Material(Shader.Find("Custom/ChunkProceduralLitGPU"));
+
+        generator = new TerrainBaseGenerator(chunkRenderer, this, newMat);
         layout = new TerrainBaseLayout(ChunkConfiguration);
 
         chunkLayout.Initialize(layout);

@@ -71,10 +71,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         this.chunkMaterial = chunkMat;
 
         this.InitBuffer();
-
-        Debug.Log("Shader: " + marchingShader);
-        Debug.Log("Compute: " + marchingShader);
-        Debug.Log("Material null? " + (this.chunkMaterial == null));
     }
 
     /// <summary>

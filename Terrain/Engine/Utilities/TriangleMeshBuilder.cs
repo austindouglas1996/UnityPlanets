@@ -15,8 +15,6 @@ public static class TriangleMeshBuilder
         var verts = new Vector3[vCount];
         var indices = new int[vCount];
 
-        Debug.Log($"Verts{verts.Count()}");
-
         for (int i = 0, v = 0; i < tris.Count; i++)
         {
             var t = tris[i];

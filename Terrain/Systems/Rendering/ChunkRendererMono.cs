@@ -79,17 +79,6 @@ public class ChunkRendererMono : MonoBehaviour
             processor.Draw();
     }
 
-
-    void OnEnable()
-    {
-        RenderPipelineManager.endCameraRendering += EndCameraRendering;
-    }
-
-    void EndCameraRendering(ScriptableRenderContext ctx, Camera cam)
-    {
-        processor.Draw();
-    }
-
     /// <summary>
     /// Dispose of the generator resources.
     /// </summary>
