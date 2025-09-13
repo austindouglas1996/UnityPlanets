@@ -122,6 +122,9 @@ public struct TerrainDensityOptions
     [Tooltip("Global height scale for this layer after normalization.")]
     public float ContinentAmp;
 
+    [Tooltip("Gives each continent (on land) with its own freqency to reduce copies")]
+    public float ContinentAmpFreq;
+
     [Tooltip("The amount of Octaves to be used in FBM (Increases details at cost of processing)"), Range(1, 12)]
     public uint ContinentOctaves;
 

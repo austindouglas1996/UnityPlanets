@@ -45,6 +45,9 @@ cbuffer TerrainDensityOptions
     // Global height scale for this layer after normalization.
     float ContinentAmp;
     
+    // Gives each continent its own amp frequency.
+    float ContinentAmpFreq;
+    
     // The amount of Octaves to be used for continents.
     uint ContinentOctaves;
     

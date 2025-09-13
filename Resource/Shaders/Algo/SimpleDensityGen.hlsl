@@ -61,23 +61,47 @@ float SampleContinentMask(float3 samplePos3D, float3 world)
 // Samples the height and features of the terrain based on world position.
 float SampleBaseHeight(float3 world, int lod)
 {
+    // Position to feed into FBM functions. Handles coordinate transforms
+    // for different terrain types (planet, flat terrain, caves).
     float3 samplePos3D = GetSamplePos3D(world);
 
+    // Land mask in [0..1]: 0 = ocean, 0.5 = shore, 1 = inland.
     float landMask = SampleContinentMask(samplePos3D, world);
+    
+    // Continents.
 
-    float3 detailPos = (samplePos3D + DetailOffset) * DetailFreq;
-    float detailNoise = fbm3D(detailPos, ContinentOctaves);
+    // Low-frequency noise controls local amplitude variation.
+    // Use a reduced frequency so it decorrelates from ContinentFreq.
+    float continentAmpNoise = N01(fbm3D(samplePos3D * (ContinentAmpFreq * 0.1), 3));
+    float continentAmpLocal = continentAmpNoise * ContinentAmp;
+    
+    // Signed height field for landmasses.
+    float continentHeightNoise = fbm3D(samplePos3D * ContinentFreq, 4);
+    float baseHeight = landMask * continentHeightNoise * continentAmpLocal;
 
+    // Blend: inland rises with noise, ocean falls below sea level.
+    baseHeight = lerp(-continentAmpLocal, baseHeight, landMask);
+  
+    // Flatten jagged spikes by applying a smoothing mask.
+    // (This will remove the constant large bumps perlin likes to make)
     float3 flatPos = (samplePos3D + FlatMaskOffset) * FlatMaskFreq;
     float flatNoise = pow(saturate(1.0 - N01(fbm3D(flatPos, 3))), FlatMaskAmp);
 
-    float rawHeight =
-    landMask * ContinentHeight +
-    landMask * (detailNoise * DetailAmp) * flatNoise - GetOceanContribution(landMask);
+    // Small-scale detail (bumps, ripples).
+    // (This adds some bumps back and makes them a bit more noisy)
+    float3 detailPos = (samplePos3D + DetailOffset) * DetailFreq;
+    float detailNoise = fbm3D(detailPos, ContinentOctaves);
+    float detail = landMask * (detailNoise * DetailAmp) * flatNoise;
 
+    // Combine the above noise values.
+    float rawHeight = baseHeight + detail - GetOceanContribution(landMask);
+
+    // Sanitize the output so we do not get NAN.
+    // (Note this will only happen if something went very bad in the generation
+    // but also if it happens the function will just quit. Where zero we will see
+    // the generation has stopped working)
     return Sanitize(rawHeight * ContinentAmp);
 }
-
 
 // Climate #1. Height: 0 = ocean, 1 = land, 0.5 = shore.
 float SampleHeight(float3 world)
