@@ -6,7 +6,7 @@ using UnityEngine;
 /// so multiple terrain generators can reuse it.
 /// </summary>
 [CreateAssetMenu(menuName = "Terrain/Biome Library", fileName = "BiomeLibrary")]
-public class BiomeLibrary : ScriptableObject
+public class BiomeLibraryAsset : ScriptableObject
 {
     [SerializeField] private List<Biome> biomes = new();
     public IReadOnlyList<Biome> Biomes => biomes;

@@ -17,10 +17,10 @@ public class BaseChunkConfiguration : IChunkConfiguration
     public PlanetDensityOptions PlanetOptions => planetMapOptions;
 
 
-    [SerializeField] private BiomeLibrary biomeLibrary;
-    public BiomeLibrary BiomeLibrary => biomeLibrary;
+    [SerializeField] private BiomeLibraryAsset biomeLibrary;
+    public BiomeLibraryAsset BiomeLibrary => biomeLibrary;
 
 
-    [SerializeField] private LODThresholds lodThresholds = new();
-    public LODThresholds LODThresholds => lodThresholds;
+    [SerializeField] private ChunkLODThresholdAsset lodThresholds;
+    public ChunkLODThresholdAsset LODThresholds => lodThresholds;
 }

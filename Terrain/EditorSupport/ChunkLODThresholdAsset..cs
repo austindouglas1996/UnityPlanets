@@ -5,8 +5,8 @@ using UnityEngine;
 /// Each LOD has a count value (how many "rings" of chunks it spans).
 /// <see cref="ToArray"/> converts them into accumulated ring distances.
 /// </summary>
-[System.Serializable]
-public class LODThresholds
+[CreateAssetMenu(menuName = "Terrain/Level Of Detail (LOD)", fileName = "LODLevel")]
+public class ChunkLODThresholdAsset : ScriptableObject
 {
     [Tooltip("LOD0 — up close: player feet, terrain sculpting, grass")]
     public int LOD0 = 2;

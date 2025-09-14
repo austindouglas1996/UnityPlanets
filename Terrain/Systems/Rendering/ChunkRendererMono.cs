@@ -22,7 +22,7 @@ public class ChunkRendererMono : MonoBehaviour
     [Header("Generation")]
     [Tooltip("Initial range for LOD4 chunk loading.")]
     [SerializeField]
-    private ChunkRenderRange initialRootRange = new ChunkRenderRange(-8, 8, 0, 2, -8, 8);
+    private ChunkRenderDistance RootRange = new ChunkRenderDistance();
 
     private IChunkServices chunkServices;
     private ChunkGenerationProcessor processor;
@@ -108,7 +108,7 @@ public class ChunkRendererMono : MonoBehaviour
         if (!isInitialized)
             return;
 
-        if (initialRootRange == null)
+        if (RootRange == null)
         {
             Debug.LogError("Initial Root Range is null.");
             throw new System.ArgumentException("Chunk initial loading range is not set.");
@@ -118,9 +118,10 @@ public class ChunkRendererMono : MonoBehaviour
         lodTree = new ChunkLodOctree(this.chunkServices, this.processor);
 
         // Create root nodes.
-        for (int dx = initialRootRange.X.Min; dx < initialRootRange.X.Max; dx++)
-            for (int dy = initialRootRange.Y.Min; dy < initialRootRange.Y.Max; dy++)
-                for (int dz = initialRootRange.Z.Min; dz < initialRootRange.Z.Max; dz++)
+        Vector3Int span = RootRange.Span;
+        for (int dx = -RootRange.X; dx <= RootRange.X; dx++)
+            for (int dy = -RootRange.Down; dy <= RootRange.Up; dy++)
+                for (int dz = -RootRange.Z; dz <= RootRange.Z; dz++)
                     lodTree.AddRoot(new Vector3Int(dx, dy, dz));
     }
 }
