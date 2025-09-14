@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// A collection of chunk keys to help with distributing render data.
@@ -159,11 +160,27 @@ public class ChunkRenderBucket : IDisposable
         var rd = RenderData;
         if (rd == null || rd.Triangle == null || rd.Args == null) return;
 
-        vertexMat.SetBuffer("_TriangleBuffer", RenderData.Triangle);
-        vertexMat.SetPass(0);
+        // create a command buffer
+        var cmd = new CommandBuffer { name = "TerrainIndirectDraw" };
 
-        Graphics.DrawProceduralIndirectNow(MeshTopology.Triangles, RenderData.Args, 0);
+        // bind buffers
+        vertexMat.SetBuffer("_TriangleBuffer", rd.Triangle);
+
+        // enqueue indirect procedural draw
+        cmd.DrawProceduralIndirect(
+            Matrix4x4.identity,
+            vertexMat,
+            0,                           // submesh / pass index
+            MeshTopology.Triangles,
+            rd.Args,
+            0
+        );
+
+        // execute immediately and release
+        Graphics.ExecuteCommandBuffer(cmd);
+        cmd.Release();
     }
+
 
     /// <summary>
     /// Mark this bucket as dirty to request a regeneration. Optionally force the update to happen now.

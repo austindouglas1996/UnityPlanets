@@ -17,19 +17,14 @@ Shader "Custom/ChunkProceduralLitGPU"
         Tags
         {
             "RenderPipeline" = "UniversalPipeline"
-            "RenderType"     = "Opaque"
-            "Queue"="Transparent+2"
+            "RenderType"     = "Opague"
+            "Queue"          = "Transparent+2"
         }
 
         Pass
         {
             Name "ForwardLit"
             Tags { "LightMode" = "UniversalForward" }
-
-            ZWrite On
-            ZTest LEqual
-            Cull Back
-            Blend One Zero
 
             HLSLPROGRAM
             #pragma vertex vert
