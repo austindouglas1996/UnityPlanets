@@ -1,15 +1,4 @@
-using System;
 using UnityEngine;
-
-/// <summary>
-/// Base config for terrain chunks. 
-/// Empty for now, but lets us extend <see cref="BaseChunkConfiguration"/> 
-/// with terrain-specific options later.
-/// </summary>
-[Serializable]
-public class TerrainBaseConfiguration : BaseChunkConfiguration
-{
-}
 
 /// <summary>
 /// Unity-facing entry point for terrain generation.
@@ -27,7 +16,7 @@ public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
     [SerializeField] public Material ChunkMaterial;
 
     [Tooltip("Configuration for how chunks behave.")]
-    public TerrainBaseConfiguration ChunkConfiguration;
+    public BaseChunkConfiguration ChunkConfiguration;
 
     protected ChunkLayoutMono chunkLayout;
     protected ChunkRendererMono chunkRenderer;
