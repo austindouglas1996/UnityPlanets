@@ -213,7 +213,7 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     protected virtual void GenerateCore(List<ChunkKey> items, Action<ChunkRenderBatch> onDone)
     {
-        chunkGenerator.DispatchGeneration(items, onDone);
+        chunkGenerator.DispatchGeneration(items, onDone, this.renderData);
     }
 
     /// <summary>
@@ -229,9 +229,6 @@ public class ChunkRenderBucket : IDisposable
         {
             GenerateCore(items, (ChunkRenderBatch output) =>
             {
-                RenderData?.Dispose();
-                RenderData = null;
-
                 RenderData = output;
 
                 this.IsDirty = false;

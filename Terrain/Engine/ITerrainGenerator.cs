@@ -30,7 +30,7 @@ public interface ITerrainGenerator : IDisposable
     /// </summary>
     /// <param name="keys">Non-empty list of chunk keys to build.</param>
     /// <returns>A <see cref="ChunkRenderBatch"/> the caller must Dispose when done.</returns>
-    void GenerateBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output);
+    void GenerateBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null);
 
     /// <summary>
     /// Used to help with generators that may schedule jobs.

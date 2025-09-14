@@ -76,7 +76,9 @@ public class ChunkRendererMono : MonoBehaviour
     void OnRenderObject()
     {
         if (ShowTerrain)
+        {
             processor.Draw();
+        }
     }
 
     /// <summary>

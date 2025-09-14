@@ -33,9 +33,9 @@ public abstract class BaseChunkGenerator : BaseChunkCore, IChunkGenerator
     /// </summary>
     /// <param name="keys">Non-empty list of chunk keys to build.</param>
     /// <returns>A <see cref="ChunkRenderBatch"/> ready to render, or throws if empty.</returns>
-    public virtual void DispatchGeneration(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output)
+    public virtual void DispatchGeneration(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null)
     {
-        this.Generator.GenerateBatch(keys, output);
+        this.Generator.GenerateBatch(keys, output, existingBatch);
     }
 
     /// <summary>

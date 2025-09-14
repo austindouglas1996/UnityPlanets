@@ -20,6 +20,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     {
         public IReadOnlyList<ChunkKey> Keys;
         public Action<ChunkRenderBatch> Output;
+        public ChunkRenderBatch ExistingBatch;
     }
 
     private IChunkServices chunkServices;
@@ -55,7 +56,6 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private List<ComputeBuffer> TriangleBuffers = new List<ComputeBuffer>();
 
     private List<TerrainJob> Jobs = new();
-    private List<TerrainJob> EdgeJobs = new();
 
     /// <summary>
     /// Initialize a new instance of the <see cref="MarchingCubesTerrainGenerator"/> class.
@@ -101,7 +101,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         {
             if (this.Jobs.Count == 0) break;
 
-            ProcessBatch(Jobs[0].Keys, Jobs[0].Output); Jobs.RemoveAt(0);
+            ProcessBatch(Jobs[0].Keys, Jobs[0].Output, Jobs[0].ExistingBatch); Jobs.RemoveAt(0);
         }
     }
 
@@ -139,19 +139,9 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     /// Full marching-cubes path. Builds density for the batch, runs MC, returns triangle + args buffers.
     /// This job will be queued and ran in a further update to reduce GPU pressure.
     /// </summary>
-    public void GenerateBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output)
+    public void GenerateBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null)
     {
-        this.Jobs.Add(new TerrainJob() { Keys = keys, Output = output });
-    }
-
-    /// <summary>
-    /// Full marching-cubes path. Builds density for the batch along with any
-    /// respective neighbors so we can stitch them together, runs MC, returns triangle + args buffers.
-    /// This job will be queued and ran in a further update to reduce GPU pressure.
-    /// </summary>
-    public void GenerateEdgeBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output)
-    {
-        this.EdgeJobs.Add(new TerrainJob() { Keys = keys, Output = output });
+        this.Jobs.Add(new TerrainJob() { Keys = keys, Output = output, ExistingBatch = existingBatch });
     }
 
     /// <summary>
@@ -228,7 +218,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     /// <summary>
     /// Full marching-cubes path. Builds density for the batch, runs MC, returns triangle + args buffers.
     /// </summary>
-    private void ProcessBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output)
+    private void ProcessBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null)
     {
         int batchSize = keys.Count;
 
@@ -247,9 +237,21 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         // Fill the reusable input list + upload to the per-kernel input buffer.
         FillGenerateChunkInputs(keys);
 
-        // Per-result buffers (owned by the returned batch; caller disposes)
-        ComputeBuffer triangleBuffer = GetOrCreateBuffer();
-        ComputeBuffer argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
+        ComputeBuffer triangleBuffer;
+        ComputeBuffer argsBuffer;
+
+        if (existingBatch == null)
+        {        
+            // Per-result buffers (owned by the returned batch; caller disposes)
+            triangleBuffer = GetOrCreateBuffer();
+            argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
+        }
+        else
+        {
+            triangleBuffer = existingBatch.Triangle;
+            argsBuffer = existingBatch.Args;
+        }
+
         triangleBuffer.SetCounterValue(0);
 
         int genKernal = MarchingShader.FindKernel("GenerateDensityMap");
