@@ -1,5 +1,7 @@
 using System;
 using UnityEngine;
+using UnityEngine.Rendering;
+using static Unity.Burst.Intrinsics.X86.Avx;
 
 /// <summary>
 /// Thin “lane switch” over two <see cref="ChunkRenderBucketCollection"/>s:
@@ -17,6 +19,8 @@ public class ChunkRenderRouter : IDisposable
     private ChunkRenderBucketCollection main;
     private IChunkGenerator chunkGenerator;
 
+    private CommandBuffer commandBuffer;
+
     /// <summary>
     /// Build two lanes with their own capacities/thresholds.
     /// </summary>
@@ -30,6 +34,9 @@ public class ChunkRenderRouter : IDisposable
         this.chunkGenerator = chunkGenerator;
         lod0 = new ChunkRenderBucketCollection(chunkGenerator, true, lod0Cap, lod0Thres);
         main = new ChunkRenderBucketCollection(chunkGenerator, false, mainCap, mainThres);
+
+        this.commandBuffer = new CommandBuffer();
+        this.commandBuffer.name = "ChunkTerrainInDirect";
     }
 
     /// <summary>
@@ -79,8 +86,12 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void Draw()
     {
-        lod0.Draw(this.chunkGenerator.GetMaterial);
-        main.Draw(this.chunkGenerator.GetMaterial);
+        this.commandBuffer.Clear();
+
+        lod0.Draw(this.commandBuffer, this.chunkGenerator.GetMaterial);
+        main.Draw(this.commandBuffer, this.chunkGenerator.GetMaterial);
+
+        Graphics.ExecuteCommandBuffer(this.commandBuffer);
     }
 
     /// <summary>
@@ -91,6 +102,7 @@ public class ChunkRenderRouter : IDisposable
     {
         lod0.Dispose();
         main.Dispose();
+        this.commandBuffer.Dispose();
     }
 
     /// <summary>

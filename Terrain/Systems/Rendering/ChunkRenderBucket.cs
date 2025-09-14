@@ -35,6 +35,9 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     private int RemainingTicksToUpdate = 5;
 
+    /// <summary>
+    /// The generator used to dispatch generation requests.
+    /// </summary>
     private IChunkGenerator chunkGenerator;
 
     /// <summary>
@@ -161,32 +164,24 @@ public class ChunkRenderBucket : IDisposable
     /// Have the bucket draw the render data which includes the elements from this bucket.
     /// </summary>
     /// <param name="vertexMat"></param>
-    public void Draw(Material vertexMat)
+    public void Draw(CommandBuffer cdb, Material vertexMat)
     {
         if (items.Count == 0) return;
 
         var rd = RenderData;
         if (rd == null || rd.Triangle == null || rd.Args == null) return;
 
-        // create a command buffer
-        var cmd = new CommandBuffer { name = "TerrainIndirectDraw" };
-
-        // bind buffers
-        vertexMat.SetBuffer("_TriangleBuffer", rd.Triangle);
+        var mpb = new MaterialPropertyBlock();
+        mpb.SetBuffer("_TriangleBuffer", rd.Triangle);
 
         // enqueue indirect procedural draw
-        cmd.DrawProceduralIndirect(
+        cdb.DrawProceduralIndirect(
             Matrix4x4.identity,
             vertexMat,
-            0,                           // submesh / pass index
+            0,          
             MeshTopology.Triangles,
             rd.Args,
-            0
-        );
-
-        // execute immediately and release
-        Graphics.ExecuteCommandBuffer(cmd);
-        cmd.Release();
+            0, mpb);
     }
 
     /// <summary>

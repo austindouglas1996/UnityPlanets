@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// A collection container for <see cref="ChunkRenderBucket"/> that can grow as needed
@@ -134,10 +135,10 @@ public class ChunkRenderBucketCollection : IDisposable
     /// Draw the buckets render data.
     /// </summary>
     /// <param name="material"></param>
-    public void Draw(Material material)
+    public void Draw(CommandBuffer cdb, Material material)
     {
         for (int i = 0; i < buckets.Count; i++)
-            buckets[i].Draw(material);
+            buckets[i].Draw(cdb, material);
     }
 
     /// <summary>
