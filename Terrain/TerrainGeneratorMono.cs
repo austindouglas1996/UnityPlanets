@@ -12,10 +12,14 @@ public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
     [Tooltip("Shader used for generation.")]
     [SerializeField] public ComputeShader MarchingCubes;
 
-    [Tooltip("Material used.")]
+    /// <summary>
+    /// This material is marked here because if not, Unity release (in some cases) will not include the
+    /// material shader which is extremely frusturating.
+    /// </summary>
+    [Tooltip("Special material used for chunks.")]
     [SerializeField] public Material ChunkMaterial;
 
-    [Tooltip("Configuration for how chunks behave.")]
+    [Tooltip("Configuration for terrain generation.")]
     public BaseChunkConfiguration ChunkConfiguration;
 
     protected ChunkLayoutMono chunkLayout;

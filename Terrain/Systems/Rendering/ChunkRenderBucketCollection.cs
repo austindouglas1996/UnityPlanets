@@ -42,6 +42,9 @@ public class ChunkRenderBucketCollection : IDisposable
         this.isLod0 = isLod0;
     }
 
+    /// <summary>
+    /// Returns the amount of entries within this collection.
+    /// </summary>
     public int KeysCount => keys.Count;
 
     /// <summary>

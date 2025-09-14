@@ -19,7 +19,15 @@ public class ChunkRenderBucket : IDisposable
     private int rebuildThreshold = 0;
     private int removedCount = 0;
 
+    /// <summary>
+    /// Tells whether this bucket should request itself to be re-generated.
+    /// </summary>
     private bool IsDirty = false;
+
+    /// <summary>
+    /// Helper so we don't accidently requeue a generation request if the job is taking longer
+    /// than expected. This can happen in larger generations.
+    /// </summary>
     private bool GenerateInProgress = false;
 
     /// <summary>
