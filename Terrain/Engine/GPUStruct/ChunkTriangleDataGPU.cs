@@ -3,11 +3,11 @@ using Unity.Mathematics;
 using UnityEngine;
 
 /// <summary>
-/// Triangle output from marching cubes with baked vertex colors.
-/// Each chunk spits out a bunch of these for rendering or collision.
+/// Struct that matches GPU memory layout for HLSL. 
+/// Used only for compute/StructuredBuffer work.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
-public struct ChunkTriangleData
+public struct ChunkTriangleDataGPU
 {
     public Vector3 a;
     public Vector3 b;

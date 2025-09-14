@@ -1,13 +1,15 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// Helper functions for building meshes and GO (Game Object)'s with a set of triangles.
+/// Quick helpers for turning triangle data into a Unity mesh or GameObject.
 /// </summary>
 public static class TriangleMeshBuilder
 {
-    public static Mesh BuildMesh(IReadOnlyList<ChunkTriangleData> tris)
+    /// <summary>
+    /// Build a Unity <see cref="Mesh"/> from a list of triangle data.
+    /// </summary>
+    public static Mesh BuildMesh(IReadOnlyList<ChunkTriangleDataGPU> tris)
     {
         if (tris == null || tris.Count == 0) return null;
 
@@ -45,6 +47,10 @@ public static class TriangleMeshBuilder
         return mesh;
     }
 
+    /// <summary>
+    /// Make a GameObject with the mesh and a collider. 
+    /// (Renderer left out, but easy to add back if needed.)
+    /// </summary>
     public static GameObject CreateGOMeshWithCollider(Mesh mesh)
     {
         GameObject go = new GameObject();

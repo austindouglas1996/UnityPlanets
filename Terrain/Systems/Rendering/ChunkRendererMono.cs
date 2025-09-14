@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Drawing;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -17,9 +18,6 @@ public class ChunkRendererMono : MonoBehaviour
     [Header("Debug")]
     [SerializeField] public bool ShowTerrain = true;
     [HideInInspector] private bool isInitialized = false;
-
-    [Header("Shaders")]
-    [SerializeField] public ComputeShader MarchingCubes;
 
     [Header("Generation")]
     [Tooltip("Initial range for LOD4 chunk loading.")]
@@ -42,18 +40,7 @@ public class ChunkRendererMono : MonoBehaviour
     }
 
     /// <summary>
-    /// IMPORTANT:
-    /// IMPORTANT: DO NOT FORGET
-    /// IMPORTANT:
-    /// IMPORTANT:
-    /// IMPORTANT: LateUpdate must be used when rendering chunks.
-    /// IMPORTANT:
-    /// IMPORTANT:
-    /// IMPORTANT:
-    /// IMPORTANT: DO NOT FORGET
-    /// IMPORTANT:
-    /// IMPORTANT:
-    /// IMPORTANT:
+    /// Ran after the initial update function.
     /// </summary>
     private void LateUpdate()
     {
@@ -134,17 +121,6 @@ public class ChunkRendererMono : MonoBehaviour
         for (int dx = initialRootRange.X.Min; dx < initialRootRange.X.Max; dx++)
             for (int dy = initialRootRange.Y.Min; dy < initialRootRange.Y.Max; dy++)
                 for (int dz = initialRootRange.Z.Min; dz < initialRootRange.Z.Max; dz++)
-                    CreateRoot(new Vector3Int(dx, dy, dz), 4);
-    }
-
-    /// <summary>
-    /// Create a new root tree and add to the collection.
-    /// </summary>
-    /// <param name="coord"></param>
-    /// <param name="lod"></param>
-    /// <param name="offset"></param>
-    private void CreateRoot(Vector3Int coord, int lodIndex)
-    {
-        lodTree.AddRoot(coord);
+                    lodTree.AddRoot(new Vector3Int(dx, dy, dz));
     }
 }

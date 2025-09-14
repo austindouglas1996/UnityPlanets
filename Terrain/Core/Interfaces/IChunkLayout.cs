@@ -1,8 +1,4 @@
 using UnityEngine;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading;
-using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Defines the layout and visibility logic for chunks in the terrain system.
@@ -10,11 +6,6 @@ using System.Runtime.CompilerServices;
 /// </summary>
 public interface IChunkLayout
 {
-    /// <summary>
-    /// Gets or sets the follower.
-    /// </summary>
-    Transform Follower { get; set; }
-
     /// <summary>
     /// Gets or sets the world position of the follower in a thread-safe way.
     /// </summary>

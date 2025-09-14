@@ -181,7 +181,6 @@ public class ChunkRenderBucket : IDisposable
         cmd.Release();
     }
 
-
     /// <summary>
     /// Mark this bucket as dirty to request a regeneration. Optionally force the update to happen now.
     /// </summary>

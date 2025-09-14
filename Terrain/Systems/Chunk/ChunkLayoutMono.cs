@@ -32,7 +32,8 @@ public class ChunkLayoutMono : MonoBehaviour
             return;
 
         // This makes it so it is safe in a different thread as you cannot
-        // access Transform in a different thread, there is just a very small delay.
+        // access Transform outside the main thread, there is just a very small delay on position though.
+        // NOTE some time later: This 'delay' is one frame, almost completely unnoticed.
         this.layout.FollowerWorldPosition = this.Follower.position;
     }
 
@@ -46,7 +47,6 @@ public class ChunkLayoutMono : MonoBehaviour
     public void Initialize(IChunkLayout layout)
     {
         this.layout = layout;
-        this.layout.Follower = this.Follower;
         this.layout.FollowerWorldPosition = this.Follower.position;
 
         this.IsInitialized = true;

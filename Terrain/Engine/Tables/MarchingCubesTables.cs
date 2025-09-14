@@ -2,6 +2,12 @@ using System.Runtime.InteropServices;
 using Unity.Mathematics;
 using UnityEngine;
 
+/// <summary>
+/// Static lookup tables and helpers for marching cubes.
+/// Holds corner offsets, edge connections, tri tables, etc.
+/// Also has methods to pack these arrays into <see cref="ComputeBuffer"/> 
+/// so they can be used in GPU code.
+/// </summary>
 public static class MarchingCubesTables
 {
     /// <summary>
@@ -288,6 +294,10 @@ public static class MarchingCubesTables
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
         };
 
+    /// <summary>
+    /// Packs <see cref="CornerOffsets"/> into a <see cref="ComputeBuffer"/>.
+    /// </summary>
+    /// <returns></returns>
     public static ComputeBuffer CornerOffsetsBuffer()
     {
         int count = CornerOffsets.Length; // 8
@@ -296,6 +306,10 @@ public static class MarchingCubesTables
         return buffer;
     }
 
+    /// <summary>
+    /// Packs <see cref="EdgeConnections"/> into a <see cref="ComputeBuffer"/>.
+    /// </summary>
+    /// <returns></returns>
     public static ComputeBuffer EdgeConnectionsBuffer()
     {
         int2[] edgeConnections = new int2[12];
@@ -310,7 +324,10 @@ public static class MarchingCubesTables
         return buffer;
     }
 
-
+    /// <summary>
+    /// Packs <see cref="TriangleTable"/> into a <see cref="ComputeBuffer"/>.
+    /// </summary>
+    /// <returns></returns>
     public static ComputeBuffer TriangleTableBuffer()
     {
         int count = 16 * 256;

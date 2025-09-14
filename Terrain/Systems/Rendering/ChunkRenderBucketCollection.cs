@@ -197,6 +197,7 @@ public class ChunkRenderBucketCollection : IDisposable
 
         buckets.Add(newBucket);
 
+        // We currently only generate collisions for LOD0 chunks.
         if (isLod0)
         {
             newBucket.OnGenerate += NewColl_OnGenerate;
@@ -214,7 +215,7 @@ public class ChunkRenderBucketCollection : IDisposable
     private void NewColl_OnGenerate(object sender, EventArgs e)
     {
         ChunkRenderBucket bucket = (ChunkRenderBucket)sender;
-        ChunkRenderBatch.ReadTrianglesAsync(bucket.RenderData, (ChunkTriangleData[] tri) =>
+        ChunkRenderBatch.ReadTrianglesAsync(bucket.RenderData, (ChunkTriangleDataGPU[] tri) =>
         {
             var mesh = TriangleMeshBuilder.BuildMesh(tri);
             var newGo = TriangleMeshBuilder.CreateGOMeshWithCollider(mesh);

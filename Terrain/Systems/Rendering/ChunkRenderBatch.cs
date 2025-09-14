@@ -64,7 +64,7 @@ public class ChunkRenderBatch : IDisposable
     /// </summary>
     /// <param name="set">Batch whose triangle buffer will be read.</param>
     /// <param name="onDone">Callback with the CPU-side triangle array (may be empty).</param>
-    public static void ReadTrianglesAsync(ChunkRenderBatch set, System.Action<ChunkTriangleData[]> onDone)
+    public static void ReadTrianglesAsync(ChunkRenderBatch set, System.Action<ChunkTriangleDataGPU[]> onDone)
     {
         if (set.isDisposed)
         {
@@ -72,15 +72,15 @@ public class ChunkRenderBatch : IDisposable
         }
 
         uint triCount = GetAppendCount(set.Triangle);
-        if (triCount == 0) { onDone(System.Array.Empty<ChunkTriangleData>()); return; }
+        if (triCount == 0) { onDone(System.Array.Empty<ChunkTriangleDataGPU>()); return; }
 
-        int stride = Marshal.SizeOf<ChunkTriangleData>();
+        int stride = Marshal.SizeOf<ChunkTriangleDataGPU>();
         int size = (int)(triCount * stride);
 
         AsyncGPUReadback.Request(set.Triangle, size, 0, req =>
         {
-            if (req.hasError) { onDone(System.Array.Empty<ChunkTriangleData>()); return; }
-            onDone(req.GetData<ChunkTriangleData>().ToArray());
+            if (req.hasError) { onDone(System.Array.Empty<ChunkTriangleDataGPU>()); return; }
+            onDone(req.GetData<ChunkTriangleDataGPU>().ToArray());
         });
     }
 

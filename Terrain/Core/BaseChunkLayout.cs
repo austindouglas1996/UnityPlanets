@@ -5,7 +5,7 @@ using UnityEngine;
 /// A generic instance of <see cref="IChunkLayout"/> that fits most scenarios when creating a chunk layout
 /// to help with reducing code reuse.
 /// </summary>
-public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
+public class BaseChunkLayout : BaseChunkCore, IChunkLayout
 {
     /// <summary>
     /// The set of LOD thresholds for chunk rendering.
@@ -21,11 +21,6 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
     {
         this.LODRings = this.Configuration.LODThresholds.ToArray();
     }
-
-    /// <summary>
-    /// Gets or sets the follower in the world.
-    /// </summary>
-    public Transform Follower { get; set; }
 
     /// <summary>
     /// Gets or sets the follower world position to be thread safe.
@@ -44,6 +39,7 @@ public abstract class BaseChunkLayout : BaseChunkCore, IChunkLayout
     /// <summary>
     /// Gets the chunk coordinates of the follower.
     /// </summary>
+    /// <see cref="FollowerWorldPosition"/>
     public Vector3Int FollowerCoordinates
     {
         get { return followerCoordinates; }

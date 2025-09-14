@@ -1,5 +1,10 @@
 using UnityEngine;
 
+/// <summary>
+/// LOD ring settings for chunk generation.
+/// Each LOD has a count value (how many "rings" of chunks it spans).
+/// <see cref="ToArray"/> converts them into accumulated ring distances.
+/// </summary>
 [System.Serializable]
 public class LODThresholds
 {
@@ -18,6 +23,10 @@ public class LODThresholds
     [Tooltip("LOD4 — horizon terrain")]
     public int LOD4 = 2;
 
+    /// <summary>
+    /// Build an array of accumulated ring distances based on LOD0.
+    /// Example: with all counts = 2, returns [2, 6, 14, 30, 62].
+    /// </summary>
     public int[] ToArray()
     {
         int[] counts = { LOD0, LOD1, LOD2, LOD3, LOD4 };

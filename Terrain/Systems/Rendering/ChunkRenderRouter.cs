@@ -9,7 +9,7 @@ using UnityEngine;
 /// </summary>
 /// <remarks>
 /// - Not thread-safe; call from the main Unity thread.
-/// - LOD0 physics/collider hookups should live in your MonoBehaviour; this just routes keys.
+/// - LOD0 physics/collider hookups lives in the MonoBehaviour; this just routes keys.
 /// </remarks>
 public class ChunkRenderRouter : IDisposable
 {

@@ -1,39 +1,28 @@
 using System;
 using UnityEngine;
-using UnityEngine.Scripting;
 
+/// <summary>
+/// Base config for terrain chunks. 
+/// Empty for now, but lets us extend <see cref="BaseChunkConfiguration"/> 
+/// with terrain-specific options later.
+/// </summary>
 [Serializable]
 public class TerrainBaseConfiguration : BaseChunkConfiguration
 {
 }
 
-public class TerrainBaseGenerator : BaseChunkGenerator
-{
-    public TerrainBaseGenerator(ChunkRendererMono renderer, IChunkServices services, Material chunkMat)
-        : base(services.Configuration)
-    {
-        this.generator = new MarchingCubesTerrainGenerator(services, renderer.MarchingCubes, chunkMat);
-    }
-
-    public override ITerrainGenerator Generator
-    {
-        get { return generator; }
-    }
-    private MarchingCubesTerrainGenerator generator;
-}
-
-public class TerrainBaseLayout : BaseChunkLayout
-{
-    public TerrainBaseLayout(TerrainBaseConfiguration configuration)
-        : base(configuration)
-    {
-    }
-}
-
+/// <summary>
+/// Unity-facing entry point for terrain generation.
+/// Ties together chunk layout, rendering, and a chosen generator (default: marching cubes).
+/// Attach this to a GameObject with <see cref="ChunkLayoutMono"/> and <see cref="ChunkRendererMono"/>.
+/// </summary>
 [RequireComponent(typeof(ChunkLayoutMono))]
 [RequireComponent(typeof(ChunkRendererMono))]
 public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
 {
+    [Tooltip("Shader used for generation.")]
+    [SerializeField] public ComputeShader MarchingCubes;
+
     [Tooltip("Material used.")]
     [SerializeField] public Material ChunkMaterial;
 
@@ -46,20 +35,25 @@ public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
     protected IChunkGenerator generator;
     protected IChunkLayout layout;
 
+    /// <summary>
+    /// Set up layout and renderer, and pick the generator backend.
+    /// </summary>
     protected virtual void Awake()
     {
-        //Application.targetFrameRate = 244;
-
         chunkLayout = GetComponent<ChunkLayoutMono>();
         chunkRenderer = GetComponent<ChunkRendererMono>();
 
-        generator = new TerrainBaseGenerator(chunkRenderer, this, ChunkMaterial);
-        layout = new TerrainBaseLayout(ChunkConfiguration);
+        generator = new MarchingCubesChunkGenerator(this, MarchingCubes, ChunkMaterial);
+        layout = new BaseChunkLayout(ChunkConfiguration);
 
         chunkLayout.Initialize(layout);
         chunkRenderer.Initialize(this);
     }
 
+    /// <summary>
+    /// Called when values change in the inspector.
+    /// Pushes updated options into the generator and refreshes chunks.
+    /// </summary>
     protected virtual void OnValidate()
     {
         if (!Application.isPlaying || generator == null)

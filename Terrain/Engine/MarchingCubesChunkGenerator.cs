@@ -9,7 +9,7 @@ using UnityEngine.Rendering;
 /// My marching-cubes generator. Feeds compute with chunk inputs, spits out a draw-ready batch.
 /// Reuses a couple of lists to keep GC quiet. No GameObjects here, just GPU buffers.
 /// </summary>
-public class MarchingCubesTerrainGenerator : ITerrainGenerator
+public class MarchingCubesChunkGenerator : IChunkGenerator
 {
     // Hard caps I tune for my buckets. 1024 = surface mask scan, 128 = per-batch gen.
     private const int SurfaceCap = 1024;
@@ -48,8 +48,8 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private int BiomesCount = 0;
 
     // Reused staging lists -> no per-dispatch GC. Capacity matches caps above.
-    private List<ChunkDispatchKey> InputSurface = new(SurfaceCap);
-    private List<ChunkDispatchKey> InputGenerate = new(GenerateCap);
+    private List<ChunkDispatchKeyGPU> InputSurface = new(SurfaceCap);
+    private List<ChunkDispatchKeyGPU> InputGenerate = new(GenerateCap);
 
     // A bunch of buffers to help with GC problems.
     // (Before keeping a collection of buffers there was a very small, but very noticeable stutter on large collections)
@@ -58,12 +58,12 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private List<TerrainJob> Jobs = new();
 
     /// <summary>
-    /// Initialize a new instance of the <see cref="MarchingCubesTerrainGenerator"/> class.
+    /// Initialize a new instance of the <see cref="MarchingCubesChunkGenerator"/> class.
     /// </summary>
     /// <param name="chunkServices"></param>
     /// <param name="generateShader"></param>
     /// <param name="marchingShader"></param>
-    public MarchingCubesTerrainGenerator(IChunkServices chunkServices, ComputeShader marchingShader, Material chunkMat)
+    public MarchingCubesChunkGenerator(IChunkServices chunkServices, ComputeShader marchingShader, Material chunkMat)
     {
         this.chunkServices = chunkServices;
         MarchingShader = marchingShader;
@@ -139,7 +139,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     /// Full marching-cubes path. Builds density for the batch, runs MC, returns triangle + args buffers.
     /// This job will be queued and ran in a further update to reduce GPU pressure.
     /// </summary>
-    public void GenerateBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null)
+    public void DispatchGeneration(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null)
     {
         this.Jobs.Add(new TerrainJob() { Keys = keys, Output = output, ExistingBatch = existingBatch });
     }
@@ -147,7 +147,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     /// <summary>
     /// Quick-and-dirty mask pass to cull empty chunks before we spend time meshing them.
     /// </summary>
-    public void GetSurfaceMaskChecks(IReadOnlyList<ChunkGenerationJob> keys, Action<uint[]> output)
+    public void DispatchSurfaceChecks(IReadOnlyList<ChunkGenerationJob> keys, Action<uint[]> output)
     {
         int batchSize = keys.Count;
 
@@ -183,10 +183,10 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         var biomes = chunkServices.Configuration.Biomes.ToList();
         BiomesCount = biomes.Count;
 
-        var biomeData = new ChunkBiomeData[biomes.Count];
+        var biomeData = new ChunkBiomeGPU[biomes.Count];
         for (int i = 0; i < biomes.Count; i++)
         {
-            biomeData[i] = new ChunkBiomeData
+            biomeData[i] = new ChunkBiomeGPU
             {
                 Height = (uint)biomes[i].Height,
                 Temperature = (uint)biomes[i].Temperature,
@@ -291,7 +291,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
     private void InitBuffer()
     {
         // Small table (I start with 5; UpdateOptions writes actual count)
-        BiomeBuffer = new ComputeBuffer(chunkServices.Configuration.Biomes.Count, Marshal.SizeOf<ChunkBiomeData>());
+        BiomeBuffer = new ComputeBuffer(chunkServices.Configuration.Biomes.Count, Marshal.SizeOf<ChunkBiomeGPU>());
 
         // Single struct (Structured buffer of length 1)
         DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<TerrainDensityOptions>(), ComputeBufferType.Constant);
@@ -310,8 +310,8 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         DensityBuffer = new ComputeBuffer(maxTotalSamples, sizeof(float));
 
         // Per-kernel inputs + mask output
-        SurfaceChunkInputBuffer = new ComputeBuffer(SurfaceCap, Marshal.SizeOf<ChunkDispatchKey>());
-        GenerateChunkInputBuffer = new ComputeBuffer(GenerateCap, Marshal.SizeOf<ChunkDispatchKey>());
+        SurfaceChunkInputBuffer = new ComputeBuffer(SurfaceCap, Marshal.SizeOf<ChunkDispatchKeyGPU>());
+        GenerateChunkInputBuffer = new ComputeBuffer(GenerateCap, Marshal.SizeOf<ChunkDispatchKeyGPU>());
         SurfaceMaskBuffer = new ComputeBuffer(SurfaceCap, sizeof(uint));
 
         // Set static buffers
@@ -337,7 +337,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         for (int i = 0; i < n; i++)
         {
             var ctx = keys[i];
-            InputSurface.Add(new ChunkDispatchKey
+            InputSurface.Add(new ChunkDispatchKeyGPU
             {
                 CoordPos = ctx.Key.Coordinates,
                 LodIndex = ctx.Key.LODIndex
@@ -359,7 +359,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         for (int i = 0; i < n; i++)
         {
             var ctx = keys[i];
-            InputGenerate.Add(new ChunkDispatchKey
+            InputGenerate.Add(new ChunkDispatchKeyGPU
             {
                 CoordPos = ctx.Coordinates,
                 LodIndex = ctx.LODIndex
@@ -379,7 +379,7 @@ public class MarchingCubesTerrainGenerator : ITerrainGenerator
         int voxelCountPerChunk = (n) * (n) * (n);
         int totalVoxels = (voxelCountPerChunk * (n + 10));
 
-        var newBuff = new ComputeBuffer(totalVoxels, Marshal.SizeOf<ChunkTriangleData>(), ComputeBufferType.Append);
+        var newBuff = new ComputeBuffer(totalVoxels, Marshal.SizeOf<ChunkTriangleDataGPU>(), ComputeBufferType.Append);
 
         return newBuff;
     }
