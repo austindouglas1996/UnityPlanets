@@ -180,7 +180,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         PlanetOptionsBuffer.SetData(new[] { this.chunkServices.Configuration.PlanetOptions });
 
         // Rebuild biome table (small) and upload.
-        var biomes = chunkServices.Configuration.Biomes.ToList();
+        var biomes = chunkServices.Configuration.BiomeLibrary.Biomes.ToList();
         BiomesCount = biomes.Count;
 
         var biomeData = new ChunkBiomeGPU[biomes.Count];
@@ -291,7 +291,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private void InitBuffer()
     {
         // Small table (I start with 5; UpdateOptions writes actual count)
-        BiomeBuffer = new ComputeBuffer(chunkServices.Configuration.Biomes.Count, Marshal.SizeOf<ChunkBiomeGPU>());
+        BiomeBuffer = new ComputeBuffer(chunkServices.Configuration.BiomeLibrary.Biomes.Count, Marshal.SizeOf<ChunkBiomeGPU>());
 
         // Single struct (Structured buffer of length 1)
         DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<TerrainDensityOptions>(), ComputeBufferType.Constant);

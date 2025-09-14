@@ -24,7 +24,7 @@ public interface IChunkConfiguration
     /// <summary>
     /// Biomes to use when generating chunks.
     /// </summary>
-    List<Biome> Biomes { get; }
+    BiomeLibrary BiomeLibrary { get; }
 
     /// <summary>
     /// Used for LOD thresholds on chunks for rendering.
