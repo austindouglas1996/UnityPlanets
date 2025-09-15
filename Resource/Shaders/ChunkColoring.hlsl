@@ -5,6 +5,37 @@
 #include "Biomes/BiomeLookup.hlsl"
 #include "Lib/PerlinNoise.hlsl"
 
+float4 GetColorForDirection(float3 worldPos)
+{
+    float angle = atan2(worldPos.z, worldPos.x);
+    if (angle < 0)
+        angle += 2.0 * 3.14159265; // wrap into [0, 2π)
+    
+    int region = (int) floor(angle / (3.14159265 / 4.0));
+
+    switch (region)
+    {
+        case 0:
+            return float4(1, 0, 0, 1); // East - Red
+        case 1:
+            return float4(1, 0, 1, 1); // NE - Magenta
+        case 2:
+            return float4(0, 0, 1, 1); // North - Blue
+        case 3:
+            return float4(0, 1, 1, 1); // NW - Cyan
+        case 4:
+            return float4(0, 1, 0, 1); // West - Green
+        case 5:
+            return float4(0.5, 0.25, 0, 1); // SW - Brownish
+        case 6:
+            return float4(1, 1, 0, 1); // South - Yellow
+        case 7:
+            return float4(1, 0.5, 0, 1); // SE - Orange
+        default:
+            return float4(1, 1, 1, 1); // Fallback white
+    }
+}
+
 // A special function for returning the LOD color.
 float4 GetColorLOD(uint lod)
 {
@@ -97,6 +128,8 @@ float4 GetVertexColor(ChunkTriangleData tri, uint vertex, uint overlay)
             return ReverseQuantize013(UnpackBiome(tri.Biome, vertex).BiomeHumidty);
         case 5:
             return ReverseQuantize013(UnpackBiome(tri.Biome, vertex).BiomeFoliage);
+        case 6:
+            return GetColorForDirection(wp);
     }
     
     return float4(255, 0, 238, 1);

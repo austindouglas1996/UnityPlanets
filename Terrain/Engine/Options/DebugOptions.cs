@@ -11,7 +11,8 @@ public enum ChunkOverlay
     Temperature = 3,
     Humidity = 4,
     Foliage = 5,
-    Debug = 6
+    Direction = 6,
+    Debug = 7
 }
 
 [Serializable]

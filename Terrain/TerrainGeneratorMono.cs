@@ -56,6 +56,14 @@ public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
         chunkRenderer.RefreshChunks();
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    protected virtual void Update()
+    {
+        ConsoleTimer.WriteToConsole();
+    }
+
     IChunkConfiguration IChunkServices.Configuration => ChunkConfiguration;
     IChunkLayout IChunkServices.Layout => layout;
     IChunkGenerator IChunkServices.Generator => generator;

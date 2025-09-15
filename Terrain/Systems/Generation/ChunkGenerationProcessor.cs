@@ -46,7 +46,7 @@ public class ChunkGenerationProcessor : IDisposable
     public ChunkGenerationProcessor(IChunkServices services)
     {
         this.chunkServices = services;
-        this.layerRenderer = new ChunkRenderRouter(services.Generator, 128, 2, GenerationJobs, 2);
+        this.layerRenderer = new ChunkRenderRouter(services, services.Generator, 128, 2, GenerationJobs, 2);
     }
 
     /// <summary>
