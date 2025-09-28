@@ -16,6 +16,11 @@ public class ChunkRenderBatch : IDisposable
     public ComputeBuffer Triangle;
 
     /// <summary>
+    /// Append buffer containing generated detail data for triangles.
+    /// </summary>
+    public ComputeBuffer Details;
+
+    /// <summary>
     /// Indirect draw arguments buffer (ComputeBufferType.IndirectArguments).
     /// </summary>
     public ComputeBuffer Args;
@@ -33,12 +38,13 @@ public class ChunkRenderBatch : IDisposable
     /// <param name="keys">Chunk keys included in this batch (for bounds computation).</param>
     /// <param name="services">Layout/services used to convert chunk keys to world space.</param>
     /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="Args"/> is null.</exception>
-    public ChunkRenderBatch(ComputeBuffer Triangle, ComputeBuffer Args, IReadOnlyList<ChunkKey> keys, IChunkServices services)
+    public ChunkRenderBatch(ComputeBuffer Triangle, ComputeBuffer Details, ComputeBuffer Args, IReadOnlyList<ChunkKey> keys, IChunkServices services)
     {
         if (Args == null)
             throw new System.ArgumentNullException("args");
 
         this.Triangle = Triangle;
+        this.Details = Details;
         this.Args = Args;
     }
 
@@ -53,9 +59,11 @@ public class ChunkRenderBatch : IDisposable
 
         if (Args != null) Args.Dispose();
         if (Triangle != null) Triangle.Dispose();
+        if (Details != null) Details.Dispose();
 
         Args = null;
         Triangle = null;
+        Details = null;
     }
 
     /// <summary>
@@ -64,7 +72,7 @@ public class ChunkRenderBatch : IDisposable
     /// </summary>
     /// <param name="set">Batch whose triangle buffer will be read.</param>
     /// <param name="onDone">Callback with the CPU-side triangle array (may be empty).</param>
-    public static void ReadTrianglesAsync(ChunkRenderBatch set, System.Action<ChunkTriangleDataGPU[]> onDone)
+    public static void ReadTrianglesAsync(ChunkRenderBatch set, System.Action<TriangleDataGPU[]> onDone)
     {
         if (set.isDisposed)
         {
@@ -72,15 +80,15 @@ public class ChunkRenderBatch : IDisposable
         }
 
         uint triCount = GetAppendCount(set.Triangle);
-        if (triCount == 0) { onDone(System.Array.Empty<ChunkTriangleDataGPU>()); return; }
+        if (triCount == 0) { onDone(System.Array.Empty<TriangleDataGPU>()); return; }
 
-        int stride = Marshal.SizeOf<ChunkTriangleDataGPU>();
+        int stride = Marshal.SizeOf<TriangleDataGPU>();
         int size = (int)(triCount * stride);
 
         AsyncGPUReadback.Request(set.Triangle, size, 0, req =>
         {
-            if (req.hasError) { onDone(System.Array.Empty<ChunkTriangleDataGPU>()); return; }
-            onDone(req.GetData<ChunkTriangleDataGPU>().ToArray());
+            if (req.hasError) { onDone(System.Array.Empty<TriangleDataGPU>()); return; }
+            onDone(req.GetData<TriangleDataGPU>().ToArray());
         });
     }
 

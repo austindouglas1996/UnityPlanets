@@ -142,6 +142,8 @@ float fbm1D(float x, int octaves)
 {
     float f = 0.0;
     float w = 0.5;
+    
+    [loop]
     for (int i = 0; i < octaves; i++)
     {
         f += w * noise1D(x);
@@ -155,6 +157,8 @@ float fbm2D(float2 coord, int octaves)
 {
     float f = 0.0;
     float w = 0.5;
+    
+    [loop]
     for (int i = 0; i < octaves; i++)
     {
         f += w * noise2D(coord.x, coord.y);
@@ -173,6 +177,8 @@ float fbm3D(float3 coord, int octaves)
 {
     float f = 0.0;
     float w = 0.5;
+    
+    [loop]
     for (int i = 0; i < octaves; i++)
     {
         f += w * noise3D(coord.x, coord.y, coord.z);

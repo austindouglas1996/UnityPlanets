@@ -108,7 +108,7 @@ float4 GetTerrainColor(float3 wp, uint vertex, uint packedBiome)
 }
 
 // Retrieves the color for a set vertex based on overlay.
-float4 GetVertexColor(ChunkTriangleData tri, uint vertex, uint overlay)
+float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint overlay)
 {
     float3 wp = vertex == 0 ? tri.a : 
                 vertex == 1 ? tri.b : 
@@ -117,17 +117,17 @@ float4 GetVertexColor(ChunkTriangleData tri, uint vertex, uint overlay)
     switch (overlay)
     {
         case 0:
-            return GetTerrainColor(wp, vertex, tri.Biome);
+            return GetTerrainColor(wp, vertex, data.Biome);
         case 1:
-            return GetColorLOD(UnpackLOD(tri.Biome));
+            return GetColorLOD(UnpackLOD(data.Biome));
         case 2:
-            return ReverseQuantize013(UnpackBiome(tri.Biome, vertex).BiomeHeight);
+            return ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeHeight, 3);
         case 3:
-            return ReverseQuantize014(UnpackBiome(tri.Biome, vertex).BiomeTemperature);
+            return ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeTemperature, 4);
         case 4:
-            return ReverseQuantize013(UnpackBiome(tri.Biome, vertex).BiomeHumidty);
+            return ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeHumidty, 3);
         case 5:
-            return ReverseQuantize013(UnpackBiome(tri.Biome, vertex).BiomeFoliage);
+            return ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeFoliage, 3);
         case 6:
             return GetColorForDirection(wp);
     }

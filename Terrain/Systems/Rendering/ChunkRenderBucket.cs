@@ -173,6 +173,7 @@ public class ChunkRenderBucket : IDisposable
 
         var mpb = new MaterialPropertyBlock();
         mpb.SetBuffer("_TriangleBuffer", rd.Triangle);
+        mpb.SetBuffer("_TriangleDetailsBuffer", rd.Details);
 
         // enqueue indirect procedural draw
         cdb.DrawProceduralIndirect(

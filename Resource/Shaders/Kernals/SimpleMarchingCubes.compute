@@ -1,6 +1,10 @@
-﻿#pragma kernel GenerateDensityMap
+﻿#pragma only_renderers d3d11
+#pragma target 5.0
+
+#pragma kernel GenerateDensityMap
 #pragma kernel GenerateSurfaceMask
 #pragma kernel RunMarchingCubes
+#pragma kernel RunDetailsPass
 #pragma kernel PrepareDrawArgs
 
 #include "../ChunkFunctions.hlsl"
@@ -8,6 +12,7 @@
 #include "../Includes/TriangleTable.hlsl"
 #include "../Algo/ChunkMarchingCubes.hlsl"
 #include "../Algo/SimpleDensityGen.hlsl"
+#include "../Biomes/BiomeSampler.hlsl"
 
 /* Inputs */
 StructuredBuffer<ChunkDispatchKey> ChunkInputs;
@@ -15,7 +20,16 @@ RWStructuredBuffer<float> DensityMap;
 
 /* Outputs */
 RWStructuredBuffer<uint> SurfaceMask;
-AppendStructuredBuffer<ChunkTriangleData> TriangleBuffer;
+
+/* March Kernel */
+AppendStructuredBuffer<TriangleData> TriangleBuffer;
+AppendStructuredBuffer<ChunkDetailData> InitialDetailBuffer;
+
+/* Detail Kernel */
+StructuredBuffer<TriangleData> DetailTriangles;
+RWStructuredBuffer<ChunkDetailData> DetailBuffer;
+
+/* Args Kernel */
 RWStructuredBuffer<uint> ArgsBuffer;
 
 // Shared flags so any thread can “trip” the result in GetSurfaceData.
@@ -25,12 +39,11 @@ groupshared uint gHasBelow;
 [numthreads(4, 4, 4)]
 void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
 {
-    ChunkDispatchKeyInfo info = GetChunkAccess(id, GetSamplesPerChunk3(), ChunkInputs);
+    ChunkDispatchKeyInfo info = GetChunkAccessSamples(id, ChunkInputs);
     if (info.SampleIndex < 0)
         return;
     
-    float3 worldPos = info.WorldPos;
-    DensityMap[info.SampleIndex] = GenerateNoiseValue(worldPos, info.chunk.LodIndex);
+    DensityMap[info.SampleIndex] = GenerateNoiseValue(info.WorldPos, info.chunk.LodIndex);
 }
 
 // One group per chunk, 4x4x4 = 64 threads per group
@@ -111,11 +124,27 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
 [numthreads(4, 4, 4)]
 void RunMarchingCubes(uint3 id : SV_DispatchThreadID)
 {
-    ChunkDispatchKeyInfo access = GetChunkAccess(id, ChunkInputs);
+    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, ChunkInputs);
     if (access.KeyIndex < 0) 
         return;
     
     March(access, TriangleBuffer, DensityMap);
+}
+
+[numthreads(64, 1, 1)]
+void RunDetailsPass(uint3 id : SV_DispatchThreadID)
+{
+    uint idx = id.x;
+
+    if (idx >= ArgsBuffer[0])
+        return;
+
+    TriangleData tri = DetailTriangles[idx];
+    ChunkDetailData d = (ChunkDetailData)0;
+    
+    d.Biome = GetTriangleBiomePacked(tri, 6);
+
+    DetailBuffer[idx] = d;
 }
 
 // PrepareIndirectDrawArgs

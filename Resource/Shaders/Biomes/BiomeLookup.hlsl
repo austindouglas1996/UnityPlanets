@@ -6,48 +6,6 @@
 StructuredBuffer<ChunkBiomeData> Biomes;
 int _BiomesCount;
 
-static uint Quantize013(float value)
-{
-    value = saturate(value);
-    if (value < 1.0f / 3.0f)
-        return 0;
-    if (value < 2.0f / 3.0f)
-        return 1;
-    return 2;
-}
-
-static uint Quantize014(float value)
-{
-    value = saturate(value);
-    if (value < 0.25f)
-        return 0;
-    if (value < 0.50f)
-        return 1;
-    if (value < 0.75f)
-        return 2;
-    return 3;
-}
-
-static float ReverseQuantize013(uint value)
-{
-    if (value == 0)
-        return 1.0f / 6.0f; // 0.167
-    if (value == 1)
-        return 0.5f; // 0.5
-    return 5.0f / 6.0f; // 0.833
-}
-
-static float ReverseQuantize014(uint value)
-{
-    if (value == 0)
-        return 0.125f;
-    if (value == 1)
-        return 0.375f;
-    if (value == 2)
-        return 0.625f;
-    return 0.875f;
-}
-
 // FindBiomeIndex()
 // Takes the set of parameters and determines the first biome that meets the
 // qualificiations. If there is a collision using these settings the 4th option,

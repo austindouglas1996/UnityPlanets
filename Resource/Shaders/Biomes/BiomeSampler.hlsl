@@ -12,15 +12,15 @@ uint SampleBiomeIndex(float3 worldPos)
     float mVal = SampleHumidity(worldPos, hVal, tVal);
     float fVal = SampleFoliage(worldPos, hVal, tVal, mVal);
 
-    uint h = Quantize013(hVal);
-    uint t = Quantize014(tVal);
-    uint m = Quantize013(mVal); 
-    uint f = Quantize013(fVal);
+    uint h = QuantizeN(hVal,3);
+    uint t = QuantizeN(tVal,4);
+    uint m = QuantizeN(mVal,3); 
+    uint f = QuantizeN(fVal,3);
 
     return FindBiomeIndex(h, t, m, f);
 }
 
-uint GetTriangleBiomePacked(ChunkTriangleData triData, int lodIndex)
+uint GetTriangleBiomePacked(TriangleData triData, int lodIndex)
 {
     uint a = SampleBiomeIndex(triData.a);
     uint b = SampleBiomeIndex(triData.b);

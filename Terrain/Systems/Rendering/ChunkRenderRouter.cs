@@ -167,10 +167,7 @@ public class ChunkRenderRouter : IDisposable
         {
             // NOTE: Region must be normalized.
             float dot = Vector3.Dot(camForward, bucket.Region);
-            if (dot > 0f)
-            {
-                bucket.Collection.Draw(this.commandBuffer, this.chunkGenerator.GetMaterial);
-            }
+            bucket.Collection.Draw(this.commandBuffer, this.chunkGenerator.GetMaterial);
         }
 
         Graphics.ExecuteCommandBuffer(this.commandBuffer);

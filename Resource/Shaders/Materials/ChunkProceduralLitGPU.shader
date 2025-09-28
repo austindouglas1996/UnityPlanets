@@ -60,7 +60,8 @@ Shader "Custom/ChunkProceduralLitGPU"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Fog.hlsl"
 
-            StructuredBuffer<ChunkTriangleData> _TriangleBuffer;
+            StructuredBuffer<TriangleData> _TriangleBuffer;
+            StructuredBuffer<ChunkDetailData> _TriangleDetailsBuffer;
 
             float  _UseVertexColor;
             int    Overlay;
@@ -87,17 +88,18 @@ Shader "Custom/ChunkProceduralLitGPU"
                 Varyings OUT;
                 uint triIndex = IN.vertexID / 3;
                 uint subIndex = IN.vertexID % 3;
-                ChunkTriangleData tri = _TriangleBuffer[triIndex];
+                TriangleData tri = _TriangleBuffer[triIndex];
+                ChunkDetailData data = _TriangleDetailsBuffer[triIndex];
 
                 float3 pos = (subIndex == 0) ? tri.a : (subIndex == 1) ? tri.b : tri.c;
-                float3 normal = normalize(cross(tri.b - tri.a, tri.c - tri.a));
+                float3 normal = tri.Normal;
                 float3 up = abs(normal.y) < 0.999 ? float3(0,1,0) : float3(1,0,0);
 
                 OUT.positionCS = TransformWorldToHClip(pos);
                 OUT.positionWS = pos;
                 OUT.normalWS   = normal;
                 OUT.tangentWS = float4(normalize(cross(up, normal)), 1.0);
-                OUT.color      = GetVertexColor(tri, subIndex, Overlay);
+                OUT.color      = GetVertexColor(tri, data, subIndex, Overlay);
 
                 return OUT;
             }
@@ -140,13 +142,8 @@ Shader "Custom/ChunkProceduralLitGPU"
                 inputData.viewDirectionWS = GetWorldSpaceViewDir(IN.positionWS);
                 inputData.shadowCoord     = TransformWorldToShadowCoord(IN.positionWS);
                 inputData.fogCoord        = ComputeFogFactor(IN.positionCS.z);
-                inputData.vertexLighting  = float3(0,0,0);
+                inputData.vertexLighting  = float3(0,0,1);
                 inputData.bakedGI         = SampleSH(inputData.normalWS);
-
-                float3 n = normalize(IN.normalWS);
-                float3 t = normalize(IN.tangentWS.xyz);
-                float3 b = cross(n, t) * IN.tangentWS.w;
-                inputData.tangentToWorld = float3x3(t, b, n);
 
                 float3 texColor     = SampleBaseMapTriplanar(IN.positionWS, inputData.normalWS).rgb;
                 float3 baseColorLin = FromSRGB(_BaseColor.rgb);
@@ -162,10 +159,11 @@ Shader "Custom/ChunkProceduralLitGPU"
                 surfaceData.smoothness  = 0.1;
                 surfaceData.occlusion   = 1.0;
                 surfaceData.emission    = 0.0;
-                surfaceData.normalTS    = float3(0,0,1);
+                surfaceData.normalTS = float3(0,0,1);
 
                 float4 color = UniversalFragmentPBR(inputData, surfaceData);
                 color.rgb    = MixFog(color.rgb, inputData.fogCoord);
+
                 return color;
             }
             ENDHLSL

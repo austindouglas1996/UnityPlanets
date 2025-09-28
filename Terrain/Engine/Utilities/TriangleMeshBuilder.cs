@@ -9,7 +9,7 @@ public static class TriangleMeshBuilder
     /// <summary>
     /// Build a Unity <see cref="Mesh"/> from a list of triangle data.
     /// </summary>
-    public static Mesh BuildMesh(IReadOnlyList<ChunkTriangleDataGPU> tris)
+    public static Mesh BuildMesh(IReadOnlyList<TriangleDataGPU> tris)
     {
         if (tris == null || tris.Count == 0) return null;
 

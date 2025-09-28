@@ -43,12 +43,23 @@ struct ChunkDispatchKeyInfo
 // Triangle data generated during marching.
 // Holds 3 vertex positions (world space), the LOD they came from,
 // and the biome is attached to the triangle packed into a 8 bytes
-struct ChunkTriangleData
+struct TriangleData
 {
     float3 a;
     float3 b;
     float3 c;
+    float3 Normal;
+    uint KeyIndex;
+};
+
+// ChunkDetailData
+// A simple data struct to hold references to data per triangle
+// this way they can be filled out in another buffer as I ran
+// into issues with trying to calculate normals in the March kernel.
+struct ChunkDetailData
+{
     uint Biome;
+    uint Foliage;
 };
 
 // Biome data table entry.

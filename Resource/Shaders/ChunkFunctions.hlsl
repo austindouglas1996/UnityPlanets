@@ -4,12 +4,25 @@
 #include "ChunkCommon.hlsl"
 
 // Computes the flat index into the density map for a voxel within a chunk batch
-int GetVoxelSampleIndex(int3 pos, int KeyIndex, int3 sampleSize)
+int GetVoxelSampleIndexRaw(int3 pos, int KeyIndex, int3 totalSampleSize)
 {
-    int voxelCountPerChunk = sampleSize.x * sampleSize.y * sampleSize.z;
-    int localIndex = pos.x + pos.y * sampleSize.x + pos.z * sampleSize.x * sampleSize.y;
+    int voxelCountPerChunk = totalSampleSize.x * totalSampleSize.y * totalSampleSize.z;
+    int localIndex = pos.x 
+                    + pos.y * totalSampleSize.x 
+                    + pos.z * totalSampleSize.x * totalSampleSize.y;
+    
     return KeyIndex * voxelCountPerChunk + localIndex;
 }
+
+// Computes the flat index into the density map for a voxel within a chunk batch
+int GetVoxelSampleIndex(int3 pos, int KeyIndex, int3 totalSampleSize)
+{
+    // Apply border offset so (0,0,0) maps to (Border,Border,Border)
+    pos += int3(BorderSamplesPerAxis, BorderSamplesPerAxis, BorderSamplesPerAxis);
+    
+    return GetVoxelSampleIndexRaw(pos, KeyIndex, totalSampleSize);
+}
+
 
 // GetChunkAccess()
 // Maps a dispatch thread ID (id) into:
@@ -22,7 +35,7 @@ int GetVoxelSampleIndex(int3 pos, int KeyIndex, int3 sampleSize)
 //   id     : Dispatch thread ID (x, y, z) from the compute shader
 //   sampleSize.x, sampleSize.y, sampleSize.z : Chunk dimensions in voxels (per axis)
 //   keys   : Structured buffer of all active chunks to process
-ChunkDispatchKeyInfo GetChunkAccess(uint3 id, StructuredBuffer<ChunkDispatchKey> keys)
+ChunkDispatchKeyInfo GetChunkAccessCubes(uint3 id, StructuredBuffer<ChunkDispatchKey> keys)
 {
     ChunkDispatchKeyInfo r;
 
@@ -67,9 +80,11 @@ ChunkDispatchKeyInfo GetChunkAccess(uint3 id, StructuredBuffer<ChunkDispatchKey>
 //   id     : Dispatch thread ID (x, y, z) from the compute shader
 //   sampleSize.x, sampleSize.y, sampleSize.z : Chunk dimensions in voxels (per axis)
 //   keys   : Structured buffer of all active chunks to process
-ChunkDispatchKeyInfo GetChunkAccess(uint3 id, int3 sampleSize, StructuredBuffer<ChunkDispatchKey> keys)
+ChunkDispatchKeyInfo GetChunkAccessSamples(uint3 id, StructuredBuffer<ChunkDispatchKey> keys)
 {
     ChunkDispatchKeyInfo r;
+    
+    int3 sampleSize = GetSamplesPerChunk3();
 
     // Get number of chunks in this batch
     uint keyCount, strideBytes;
@@ -90,11 +105,12 @@ ChunkDispatchKeyInfo GetChunkAccess(uint3 id, int3 sampleSize, StructuredBuffer<
     r.LocalVoxelCoord = int3((int) (id.x - (uint) (r.KeyIndex * sampleSize.x)), (int) id.y, (int) id.z);
 
     // Flat index into the packed voxel buffer
-    r.SampleIndex = GetVoxelSampleIndex(r.LocalVoxelCoord, r.KeyIndex, sampleSize);
+    r.SampleIndex = GetVoxelSampleIndexRaw(r.LocalVoxelCoord, r.KeyIndex, sampleSize);
 
     // Fetch key and compute world position
     ChunkDispatchKey key = keys[r.KeyIndex];
     r.chunk = key;
+
     r.WorldPos = ToWorld(key.CoordPos, key.LodIndex) + float3(r.LocalVoxelCoord) * GetCubeSizeStep(r.chunk.LodIndex);
 
     return r;

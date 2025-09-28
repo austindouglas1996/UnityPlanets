@@ -18,8 +18,9 @@ int GetSamplesPerAxis()
 // Vector form of samples (used for buffer allocation / indexing)
 int3 GetSamplesPerChunk3()
 {
-    int sampleSize = GetSamplesPerAxis();
-    return int3(sampleSize, sampleSize, sampleSize);
+    int sampleSize = GetSamplesPerAxis(); // Core Cubes+1
+    int totalSample = sampleSize + (2 * BorderSamplesPerAxis);
+    return int3(totalSample, totalSample, totalSample);
 }
 
 // Number of cubes per axis at this LOD

@@ -5,6 +5,7 @@
 #include "../ChunkFunctions.hlsl"
 
 // Convert world pos to noise domain (flat or planet mode)
+[noinline]
 float3 GetSamplePos3D(float3 world)
 {
     float3 samplePos3D;
@@ -28,12 +29,14 @@ float3 GetSamplePos3D(float3 world)
 }
 
 // Return the ocean contribution used on lands.
+[noinline]
 float GetOceanContribution(float landMask)
 {
     return (1.0 - landMask) * OceanDepth;
 }
 
 // For planets apply an extra bit of flavor for latitude.
+[noinline]
 float ApplyLatitudeFalloff(float3 world, float base)
 {
     float latitude = abs(normalize(world - PlanetCenter).y);
@@ -41,6 +44,7 @@ float ApplyLatitudeFalloff(float3 world, float base)
 }
 
 // Return the sample for the continent space.
+[noinline]
 float SampleContinentMask(float3 samplePos3D, float3 world)
 {
     if (SeaLevelBias == -4)
@@ -59,6 +63,7 @@ float SampleContinentMask(float3 samplePos3D, float3 world)
 }
 
 // Samples the height and features of the terrain based on world position.
+[noinline]
 float SampleBaseHeight(float3 world, int lod)
 {
     // Position to feed into FBM functions. Handles coordinate transforms
@@ -104,12 +109,14 @@ float SampleBaseHeight(float3 world, int lod)
 }
 
 // Climate #1. Height: 0 = ocean, 1 = land, 0.5 = shore.
+[noinline]
 float SampleHeight(float3 world)
 {
     return SampleContinentMask(GetSamplePos3D(world), world);
 }
 
 // Climate #2. Humidity: distance from ocean + bias + noise.
+[noinline]
 float SampleHumidity(float3 world, float height01, float temperature01)
 {
     // Oceans are humid, land is dry
@@ -127,6 +134,7 @@ float SampleHumidity(float3 world, float height01, float temperature01)
 }
 
 // Climate #3. Temperature: land/ocean + bias + latitude + noise.
+[noinline]
 float SampleTemperature(float3 world, float height01)
 {
     float tempNoise = N01(fbm3D(world * 0.0025, 8)); // Coarse variation
@@ -150,6 +158,7 @@ float SampleTemperature(float3 world, float height01)
 }
 
 // Climate #4. Foliage: temp × humidity × noise. Final tiebreaker for biome selection.
+[noinline]
 float SampleFoliage(float3 world, float height01, float temperature01, float humidity01)
 {
     // Use height01 as inverse landmask again (0 = ocean, 1 = inland)
@@ -170,8 +179,8 @@ float SampleFoliage(float3 world, float height01, float temperature01, float hum
     return saturate(foliage);
 }
 
-
 // Generate a noise value based on the world position and LOD level.
+[noinline]
 float GenerateNoiseValue(float3 world, int lod)
 {
     float baseNoise;

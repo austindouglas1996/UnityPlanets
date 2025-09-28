@@ -13,7 +13,10 @@
 cbuffer TerrainDensityOptions
 { 
     // Logical voxel width of a chunk (before LOD).
-    int CubesPerAxis;
+    uint CubesPerAxis;
+    
+    // Additional voxel width in density generation.
+    uint BorderSamplesPerAxis;
 
     // Noise seed. Use this to derive offsets so worlds are stable per seed.
     int Seed;

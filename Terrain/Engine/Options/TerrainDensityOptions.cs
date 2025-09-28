@@ -87,6 +87,9 @@ public struct TerrainDensityOptions
     [Tooltip("Logical voxel width of a chunk (before LOD).")]
     public int CubesPerAxis;
 
+    [Tooltip("Additional voxel width given for sampling for edge smoothness.")]
+    public int BorderSamplesPerAxis;
+
     [Tooltip("The noise seed, use this to get a different set of generation")]
     public int Seed;
 
