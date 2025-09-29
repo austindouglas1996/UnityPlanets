@@ -134,6 +134,7 @@ public class ChunkRenderBucket : IDisposable
     {
         this.items.Clear();
         this.index.Clear();
+        this.Dispose();
     }
 
     /// <summary>
@@ -169,7 +170,7 @@ public class ChunkRenderBucket : IDisposable
         if (items.Count == 0) return;
 
         var rd = RenderData;
-        if (rd == null || rd.Triangle == null || rd.Args == null) return;
+        if (rd == null || rd.IsDisposed || rd.Triangle == null || rd.Args == null) return;
 
         var mpb = new MaterialPropertyBlock();
         mpb.SetBuffer("_TriangleBuffer", rd.Triangle);

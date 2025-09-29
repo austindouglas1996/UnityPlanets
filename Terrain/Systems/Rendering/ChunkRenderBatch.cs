@@ -49,6 +49,11 @@ public class ChunkRenderBatch : IDisposable
     }
 
     /// <summary>
+    /// Returns whether this batch has been destroyed.
+    /// </summary>
+    public bool IsDisposed => isDisposed;
+
+    /// <summary>
     /// Release GPU buffers owned by this batch.
     /// Idempotent; safe to call during teardown. Do not dispose while a readback is in flight.
     /// </summary>

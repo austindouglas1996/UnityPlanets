@@ -160,6 +160,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         // Kick the mask kernel
         MarchingShader.SetBuffer(kernalId, "ChunkInputs", SurfaceChunkInputBuffer);
         MarchingShader.SetBuffer(kernalId, "SurfaceMask", SurfaceMaskBuffer);
+
         MarchingShader.Dispatch(kernalId, batchSize, 1, 1);
 
         var req = AsyncGPUReadback.Request(SurfaceMaskBuffer, r =>
