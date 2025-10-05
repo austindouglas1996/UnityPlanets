@@ -16,8 +16,6 @@ public class ChunkRenderBucket : IDisposable
     private readonly Dictionary<ChunkKey, int> index;
 
     private int capacity = 0;
-    private int rebuildThreshold = 0;
-    private int removedCount = 0;
 
     /// <summary>
     /// Tells whether this bucket should request itself to be re-generated.
@@ -46,13 +44,12 @@ public class ChunkRenderBucket : IDisposable
     /// <param name="capacity"></param>
     /// <param name="rebuildThreshhold"></param>
     /// <param name="chunkGenerator"></param>
-    public ChunkRenderBucket(int capacity, int rebuildThreshhold, IChunkGenerator chunkGenerator)
+    public ChunkRenderBucket(int capacity, IChunkGenerator chunkGenerator)
     {
         this.items = new(capacity);
         this.index = new(capacity);
 
         this.capacity = capacity;
-        this.rebuildThreshold = 1;
 
         this.chunkGenerator = chunkGenerator;
     }
@@ -118,11 +115,7 @@ public class ChunkRenderBucket : IDisposable
         index[swap] = i;
         index.Remove(key);
 
-        removedCount++;
-        if (removedCount >= rebuildThreshold)
-        {
-            this.MarkAsDirty(false);
-        }
+        this.MarkAsDirty(false);
 
         return true;
     }
@@ -237,9 +230,6 @@ public class ChunkRenderBucket : IDisposable
 
                 this.IsDirty = false;
                 this.GenerateInProgress = false;
-
-                // Reset this back to zero.
-                removedCount = 0;
 
                 // Something went wrong to reach this.
                 if (this.RenderData == null)

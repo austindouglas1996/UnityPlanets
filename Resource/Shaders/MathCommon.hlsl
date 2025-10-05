@@ -1,7 +1,6 @@
 #ifndef MATHCOMMON
 #define MATHCOMMON
 
-
 // --------------------------------------------
 // Notes:
 //   - Constants should be `static const` so the compiler inlines them directly

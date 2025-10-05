@@ -8,8 +8,6 @@
 #pragma kernel PrepareDrawArgs
 
 #include "../ChunkFunctions.hlsl"
-#include "../Lib/PerlinNoise.hlsl"
-#include "../Includes/TriangleTable.hlsl"
 #include "../Algo/ChunkMarchingCubes.hlsl"
 #include "../Algo/SimpleDensityGen.hlsl"
 #include "../Biomes/BiomeSampler.hlsl"

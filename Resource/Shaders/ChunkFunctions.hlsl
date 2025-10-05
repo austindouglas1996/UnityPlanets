@@ -18,8 +18,7 @@ int GetVoxelSampleIndexRaw(int3 pos, int KeyIndex, int3 totalSampleSize)
 int GetVoxelSampleIndex(int3 pos, int KeyIndex, int3 totalSampleSize)
 {
     // Apply border offset so (0,0,0) maps to (Border,Border,Border)
-    pos += int3(BorderSamplesPerAxis, BorderSamplesPerAxis, BorderSamplesPerAxis);
-    
+    pos += int3(BorderSamplesPerAxis, BorderSamplesPerAxis, BorderSamplesPerAxis); 
     return GetVoxelSampleIndexRaw(pos, KeyIndex, totalSampleSize);
 }
 

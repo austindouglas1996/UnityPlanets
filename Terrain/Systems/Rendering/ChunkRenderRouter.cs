@@ -72,15 +72,15 @@ public class ChunkRenderRouter : IDisposable
     /// <param name="mainThres">Removals before a non-LOD0 bucket regenerates.</param>
     /// <param name="lod0Cap">Max items per LOD0 bucket (keep this small: 24–32 is nice).</param>
     /// <param name="lod0Thres">Removals before an LOD0 bucket regenerates.</param>
-    public ChunkRenderRouter(IChunkServices services, IChunkGenerator chunkGenerator, int mainCap, int mainThres, int lod0Cap, int lod0Thres)
+    public ChunkRenderRouter(IChunkServices services, IChunkGenerator chunkGenerator, int mainCap, int lod0Cap)
     {
         this.chunkServices = services;
         this.chunkGenerator = chunkGenerator;
-        lod0 = new ChunkRenderBucketCollection(chunkGenerator, true, lod0Cap, lod0Thres);
+        lod0 = new ChunkRenderBucketCollection(chunkGenerator, true, lod0Cap);
 
         foreach (var sector in SectorDirs)
         {
-            var bucket = new ChunkRenderBucketCollection(chunkGenerator, false, mainCap, mainThres);
+            var bucket = new ChunkRenderBucketCollection(chunkGenerator, false, mainCap);
             this.mainBuckets.Add(new BucketCollectionEntry(sector.normalized, bucket));
         }
 
