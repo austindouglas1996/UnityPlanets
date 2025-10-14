@@ -56,21 +56,12 @@ public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
         chunkRenderer.RefreshChunks();
     }
 
-    [SerializeField] public bool dumb;
-
     /// <summary>
     /// 
     /// </summary>
     protected virtual void Update()
     {
         ConsoleTimer.WriteToConsole();
-
-        if (dumb)
-        {
-            generator.UpdateOptions();
-            chunkRenderer.RefreshChunks();
-            dumb = false;
-        }
     }
 
     IChunkConfiguration IChunkServices.Configuration => ChunkConfiguration;

@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 
 /// <summary>
 /// Contains config data for how chunks are sized, typed, and generated.

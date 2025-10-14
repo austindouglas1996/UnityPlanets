@@ -15,6 +15,9 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     private readonly Dictionary<ChunkKey, int> index;
 
+    /// <summary>
+    /// The allowed amount of elements in this bucket.
+    /// </summary>
     private int capacity = 0;
 
     /// <summary>

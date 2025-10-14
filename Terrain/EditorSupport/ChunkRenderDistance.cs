@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// Defines how many chunks to render around the player.
-/// X/Z are symmetric (+-), Y can be asymmetric.
+/// X/Z are symmetric (+-).
 /// </summary>
 [Serializable]
 public class ChunkRenderDistance

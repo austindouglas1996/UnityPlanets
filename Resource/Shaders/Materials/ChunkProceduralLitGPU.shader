@@ -168,6 +168,7 @@ Shader "Custom/ChunkProceduralLitGPU"
             }
             ENDHLSL
         }
+
     }
 
     Fallback Off
