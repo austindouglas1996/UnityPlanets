@@ -20,6 +20,7 @@ RWStructuredBuffer<float> DensityMap;
 RWStructuredBuffer<uint> SurfaceMask;
 
 /* March Kernel */
+uint ThreadCount;
 AppendStructuredBuffer<TriangleData> TriangleBuffer;
 AppendStructuredBuffer<ChunkDetailData> InitialDetailBuffer;
 
