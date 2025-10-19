@@ -397,7 +397,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     {
         int n = CubesPerAxis;
         int voxelCountPerChunk = (n) * (n) * (n);
-        int totalVoxels = (voxelCountPerChunk * (n + 10));
+        int totalVoxels = (voxelCountPerChunk * 5 * 5);
 
         var newBuff = new ComputeBuffer(totalVoxels, Marshal.SizeOf<TriangleDataGPU>(), ComputeBufferType.Append);
 
@@ -408,7 +408,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     {
         int n = CubesPerAxis;
         int voxelCountPerChunk = (n) * (n) * (n);
-        int totalVoxels = (voxelCountPerChunk * (n + 10));
+        int totalVoxels = (voxelCountPerChunk * 5 * 5);
 
         var newBuff = new ComputeBuffer(totalVoxels, Marshal.SizeOf<ChunkDetailDataGPU>(), ComputeBufferType.Append | ComputeBufferType.Structured);
 

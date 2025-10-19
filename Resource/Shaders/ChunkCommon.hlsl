@@ -52,10 +52,13 @@ float3 ToWorld(int3 coordinates, int lodIndex)
 int3 ToCoordinates(float3 worldPos)
 {
     int CubesPerAxis = GetCubesPerAxis(0);
+    float inv = rcp((float) CubesPerAxis);
+
     return int3(
-        (int) floor(worldPos.x / CubesPerAxis),
-        (int) floor(worldPos.y / CubesPerAxis),
-        (int) floor(worldPos.z / CubesPerAxis));
+        (int) floor(worldPos.x * inv),
+        (int) floor(worldPos.y * inv),
+        (int) floor(worldPos.z * inv));
 }
+
 
 #endif
