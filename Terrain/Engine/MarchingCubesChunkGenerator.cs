@@ -52,9 +52,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private List<ChunkDispatchKeyGPU> InputSurface = new(SurfaceCap);
     private List<ChunkDispatchKeyGPU> InputGenerate = new(GenerateCap);
 
-    private ChunkBufferStore TriangleBuffers;
-    private ChunkBufferStore DetailBuffers;
-
     // Kernel ID's.
     private int surfaceKernel;
     private int genKernel;
@@ -131,9 +128,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         chunkMaterial = null;
         InputSurface.Clear();
         InputGenerate.Clear();
-
-        TriangleBuffers.ReleaseAll();
-        DetailBuffers.ReleaseAll();
 
         Jobs.Clear();
     }
@@ -239,17 +233,16 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         // Fill the reusable input list + upload to the per-kernel input buffer.
         FillGenerateChunkInputs(keys);
 
-        ComputeBuffer triangleBuffer;
-        ComputeBuffer detailBuffer;
-        ComputeBuffer argsBuffer;
+        ComputeBuffer triangleBuffer = existingBatch?.Triangle;
+        ComputeBuffer detailBuffer = existingBatch?.Details;
+        ComputeBuffer argsBuffer = existingBatch?.Args;
 
         if (existingBatch == null)
+        {
+            triangleBuffer = new ComputeBuffer(60000, Marshal.SizeOf<TriangleDataGPU>(), ComputeBufferType.Append);
+            detailBuffer = new ComputeBuffer(60000, Marshal.SizeOf<ChunkDetailDataGPU>(), ComputeBufferType.Append | ComputeBufferType.Structured);
             argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
-        else
-            argsBuffer = existingBatch.Args;
-
-        triangleBuffer = TriangleBuffers.CheckOrGetBuffer(existingBatch?.Triangle, batchSize);
-        detailBuffer = DetailBuffers.CheckOrGetBuffer(existingBatch?.Details, batchSize);
+        }
 
         triangleBuffer.SetCounterValue(0);
         detailBuffer.SetCounterValue(0);
@@ -317,9 +310,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
 
         this.MarchingShader.SetConstantBuffer("TerrainDensityOptions", DensityOptionsBuffer, 0, Marshal.SizeOf<TerrainDensityOptions>());
         this.MarchingShader.SetConstantBuffer("PlanetDensityOptions", PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
-
-        TriangleBuffers = new ChunkBufferStore(Marshal.SizeOf<TriangleDataGPU>(), ComputeBufferType.Append);
-        DetailBuffers = new ChunkBufferStore(Marshal.SizeOf<ChunkDetailDataGPU>(), ComputeBufferType.Append | ComputeBufferType.Structured);
 
         // Scalar field big enough for 128 chunks at current chunk size (rough over-alloc)
         int samples = CubesPerAxis + 1 + (2 * BorderSamples);

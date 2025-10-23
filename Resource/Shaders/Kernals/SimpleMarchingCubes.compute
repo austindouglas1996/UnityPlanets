@@ -161,5 +161,5 @@ void PrepareDrawArgs(uint3 id : SV_DispatchThreadID)
     ArgsBuffer[1] = 1; // instance count
     ArgsBuffer[2] = 0; // start vertex
     ArgsBuffer[3] = 0; // start instance
-    ArgsBuffer[4] = 0; // padding (if needed)
+    ArgsBuffer[4] = 0; // padding (this is bidirectional)
 }
