@@ -11,6 +11,7 @@ public class ChunkGenerationProcessor : IDisposable
 {
     private const int SurfaceJobs = 1028;
     private const int GenerationJobs = 64;
+    private const int Generation0Jobs = 16;
 
     private readonly List<ChunkGenerationJob> tmpSurfaceJobs = new(SurfaceJobs);
     private readonly List<ChunkGenerationJob> tmpGenerationJobs = new(GenerationJobs);
@@ -46,7 +47,7 @@ public class ChunkGenerationProcessor : IDisposable
     public ChunkGenerationProcessor(IChunkServices services)
     {
         this.chunkServices = services;
-        this.layerRenderer = new ChunkRenderRouter(services, services.Generator, 128, GenerationJobs);
+        this.layerRenderer = new ChunkRenderRouter(services, services.Generator, GenerationJobs, Generation0Jobs);
     }
 
     /// <summary>

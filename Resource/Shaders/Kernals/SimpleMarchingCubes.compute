@@ -146,6 +146,8 @@ void RunDetailsPass(uint3 id : SV_DispatchThreadID)
     DetailBuffer[idx] = d;
 }
 
+RWByteAddressBuffer CountBuffer;
+
 // PrepareIndirectDrawArgs
 // Small kernel to finalize DrawMeshInstancedIndirect args after triangle
 // generation. Multiplies triangle count by 3 to get vertex count and sets
@@ -155,11 +157,7 @@ void RunDetailsPass(uint3 id : SV_DispatchThreadID)
 [numthreads(1, 1, 1)]
 void PrepareDrawArgs(uint3 id : SV_DispatchThreadID)
 {
-    uint triCount;
-    uint stride; // Dummy
-    TriangleBuffer.GetDimensions(triCount, stride); // query append counter
-
-    ArgsBuffer[0] = triCount * 3; // vertex count
+    ArgsBuffer[0] = CountBuffer.Load(0) * 3; // vertex count
     ArgsBuffer[1] = 1; // instance count
     ArgsBuffer[2] = 0; // start vertex
     ArgsBuffer[3] = 0; // start instance

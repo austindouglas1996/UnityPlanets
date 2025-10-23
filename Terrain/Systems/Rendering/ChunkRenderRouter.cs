@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -17,48 +16,9 @@ using UnityEngine.Rendering;
 public class ChunkRenderRouter : IDisposable
 {
     /// <summary>
-    /// The offsets for each sector we will use for culling.
-    /// </summary>
-    private static readonly Vector3[] SectorDirs = new[]
-    {
-        new Vector3( 1, 0,  0), // East
-        new Vector3( 1, 0,  1), // NE
-        new Vector3( 0, 0,  1), // North
-        new Vector3(-1, 0,  1), // NW
-        new Vector3(-1, 0,  0), // West
-        new Vector3(-1, 0, -1), // SW
-        new Vector3( 0, 0, -1), // South
-        new Vector3( 1, 0, -1)  // SE
-    };
-
-    /// <summary>
-    /// Represents a simple entry for handling large amounts of buckets
-    /// with simple culling.
-    /// </summary>
-    private class BucketCollectionEntry
-    {
-        public BucketCollectionEntry(Vector3 regionCode, ChunkRenderBucketCollection coll)
-        {
-            this.Region = regionCode;
-            this.Collection = coll;
-        }
-
-        // NOTE: Region must be normalized.
-        public Vector3 Region;
-        public ChunkRenderBucketCollection Collection;
-    }
-
-    /// <summary>
-    /// LOD0 is given a special collection that is different from the others.
-    /// This is important because the player will always (hopefully?) be near
-    /// the LOD0 chunks and rendering them is important.
-    /// </summary>
-    private ChunkRenderBucketCollection lod0;
-
-    /// <summary>
     /// A collection of main buckets used throughout generation.
     /// </summary>
-    private List<BucketCollectionEntry> mainBuckets = new();
+    private List<ChunkRenderBucketCollection> mainBuckets = new();
 
     private IChunkServices chunkServices;
     private IChunkGenerator chunkGenerator;
@@ -76,13 +36,12 @@ public class ChunkRenderRouter : IDisposable
     {
         this.chunkServices = services;
         this.chunkGenerator = chunkGenerator;
-        lod0 = new ChunkRenderBucketCollection(chunkGenerator, true, lod0Cap);
 
-        foreach (var sector in SectorDirs)
-        {
-            var bucket = new ChunkRenderBucketCollection(chunkGenerator, false, mainCap);
-            this.mainBuckets.Add(new BucketCollectionEntry(sector.normalized, bucket));
-        }
+        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, true, lod0Cap));
+        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
+        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
+        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
+        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
 
         this.commandBuffer = new CommandBuffer();
         this.commandBuffer.name = "ChunkTerrainInDirect";
@@ -94,12 +53,7 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void Add(ChunkGenerationJob job)
     {
-        if (job.Key.LODIndex == 0)
-            lod0.Add(job.Key);
-        else
-        {
-            mainBuckets[GetRegionIndex(job.Key.Coordinates)].Collection.Add(job.Key);
-        }
+        mainBuckets[job.Key.LODIndex].Add(job.Key);
     }
 
     /// <summary>
@@ -108,12 +62,7 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public bool Remove(ChunkKey key)
     {
-        if (key.LODIndex == 0)
-            return lod0.Remove(key);
-        else
-        {
-            mainBuckets[GetRegionIndex(key.Coordinates)].Collection.Remove(key);
-        }
+        mainBuckets[key.LODIndex].Remove(key);
 
         return false;
     }
@@ -123,11 +72,9 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void Clear()
     {
-        lod0.Clear();
-
         foreach (var bucket in mainBuckets)
         {
-            bucket.Collection.Clear();
+            bucket.Clear();
         }
     }
 
@@ -136,11 +83,9 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void Update()
     {
-        lod0.Update();
-
         foreach (var bucket in mainBuckets)
         {
-            bucket.Collection.Update();
+            bucket.Update();
         }
     }
 
@@ -152,22 +97,9 @@ public class ChunkRenderRouter : IDisposable
     {
         this.commandBuffer.Clear();
 
-        lod0.Draw(this.commandBuffer, this.chunkGenerator.GetMaterial);
-
-        // We use frustum culling so buckets (Sectors) that are not visible on the
-        // camera does not queue to be rendered. This is a really cheap way of doing
-        // this and really efficent at what it does. 
-        //
-        // Maybe later we should extract this sector system to be used elsehwere hmm.
-        Plane[] planes = GeometryUtility.CalculateFrustumPlanes(Camera.main);
-
-        Vector3 camForward = Camera.main.transform.forward.normalized;
-
         foreach (var bucket in mainBuckets)
         {
-            // NOTE: Region must be normalized.
-            float dot = Vector3.Dot(camForward, bucket.Region);
-            bucket.Collection.Draw(this.commandBuffer, this.chunkGenerator.GetMaterial);
+            bucket.Draw(this.commandBuffer, this.chunkGenerator.GetMaterial);
         }
 
         Graphics.ExecuteCommandBuffer(this.commandBuffer);
@@ -179,11 +111,9 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void Dispose()
     {
-        lod0.Dispose();
-
         foreach (var bucket in mainBuckets)
         {
-            bucket.Collection.Clear();
+            bucket.Clear();
         }
 
         this.commandBuffer.Dispose();
@@ -195,31 +125,9 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void MarkAsDirty(bool force)
     {
-        lod0.MarkAsDirty(force);
-
         foreach (var bucket in mainBuckets)
         {
-            bucket.Collection.MarkAsDirty(force);
+            bucket.MarkAsDirty(force);
         }
-    }
-
-    /// <summary>
-    /// Returns the region index of a given chunk coordinate so it goes into the correct bucket.
-    /// </summary>
-    /// <param name="coord"></param>
-    /// <returns></returns>
-    private static int GetRegionIndex(Vector3Int coord)
-    {
-        // Flatten to XZ plane
-        Vector2 pos = new Vector2(coord.x, coord.z).normalized;
-
-        // atan2 gives angle in radians
-        float angle = Mathf.Atan2(pos.y, pos.x);
-        if (angle < 0) angle += 2 * Mathf.PI;
-
-        // 8 slices of 45 each
-        int sector = Mathf.FloorToInt(angle / (Mathf.PI / 4f));
-
-        return sector;
     }
 }
