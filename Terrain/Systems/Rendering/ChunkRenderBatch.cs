@@ -10,6 +10,9 @@ using UnityEngine.Rendering;
 /// </summary>
 public class ChunkRenderBatch : IDisposable
 {
+    /// <summary>
+    /// We use a buffer here so we don't allocate one each time.
+    /// </summary>
     private static ComputeBuffer countBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
 
     /// <summary>
@@ -79,7 +82,7 @@ public class ChunkRenderBatch : IDisposable
     /// </summary>
     /// <param name="set">Batch whose triangle buffer will be read.</param>
     /// <param name="onDone">Callback with the CPU-side triangle array (may be empty).</param>
-    public static void ReadTrianglesAsync(ChunkRenderBatch set, System.Action<TriangleDataGPU[]> onDone)
+    public static void ReadTrianglesAsync(ChunkRenderBatch set, Action<TriangleDataGPU[]> onDone)
     {
         if (set.isDisposed)
         {
@@ -105,22 +108,10 @@ public class ChunkRenderBatch : IDisposable
             {
                 if (rTris.hasError) { onDone(Array.Empty<TriangleDataGPU>()); return; }
 
-                // Copy to managed array once (avoid .ToArray() allocations if you cache)
+                // Copy to managed array once.
                 var tris = rTris.GetData<TriangleDataGPU>().ToArray();
                 onDone(tris);
             });
         });
-    }
-
-    /// <summary>
-    /// Return the number of appended elements in an AppendStructuredBuffer via CopyCount.
-    /// </summary>
-    private static uint GetAppendCount(ComputeBuffer append)
-    {
-        using var raw = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
-        ComputeBuffer.CopyCount(append, raw, 0);
-        var u = new uint[1];
-        raw.GetData(u);
-        return u[0];
     }
 }
