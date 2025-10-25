@@ -159,8 +159,10 @@ public struct TerrainDensityOptions
     public float FlatMaskFreq; 
 
     [Tooltip("Higher -> stronger flattening in masked zones.")]
-    public float FlatMaskAmp; 
+    public float FlatMaskAmp;
 
+    [Header("Coloring")]
+    public float ColorSampleRadius;
 
     [Header("Domain Offsets")]
     [Tooltip("XYZ offset for generation. A simple way to control the position as generation happens at 0,0,0.")]

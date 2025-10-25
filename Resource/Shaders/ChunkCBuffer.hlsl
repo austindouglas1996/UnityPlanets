@@ -75,6 +75,9 @@ cbuffer TerrainDensityOptions
     // Higher -> stronger flattening in masked zones.
     float FlatMaskAmp;
     
+    // Radius for color sampling.
+    float ColorSampleRadius;
+    
     // XYZ offset for the entire generation.
     float3 PositionOffset;
 

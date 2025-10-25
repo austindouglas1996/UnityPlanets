@@ -109,12 +109,14 @@ float4 GetBiomeBlend(ChunkBiomeData biome, float3 wp)
 
 float3 GetBiomeBlended(float3 wp)
 {
+    float scale = ColorSampleRadius;
+    
     const float3 offsets[8] =
     {
-        float3(10, 0, 0), float3(-10, 0, 0),
-        float3(0, 0, 10), float3(0, 0, -10),
-        float3(10, 0, 10), float3(-10, 0, 10),
-        float3(10, 0, -10), float3(-10, 0, -10)
+        float3(scale, 0, 0), float3(-scale, 0, 0),
+        float3(0, 0, scale), float3(0, 0, -scale),
+        float3(scale, 0, scale), float3(-scale, 0, scale),
+        float3(scale, 0, -scale), float3(-scale, 0, -scale)
     };
 
     float3 accum = 0;
