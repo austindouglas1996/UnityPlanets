@@ -11,6 +11,7 @@
 #include "../Algo/ChunkMarchingCubes.hlsl"
 #include "../Algo/SimpleDensityGen.hlsl"
 #include "../Biomes/BiomeSampler.hlsl"
+#include "../ChunkColoring.hlsl"
 
 /* Inputs */
 StructuredBuffer<ChunkDispatchKey> ChunkInputs;
@@ -142,6 +143,9 @@ void RunDetailsPass(uint3 id : SV_DispatchThreadID)
     ChunkDetailData d = (ChunkDetailData)0;
     
     d.Biome = GetTriangleBiomePacked(tri, 6);
+    d.ColorA = GetBiomeBlended(tri.a);
+    d.ColorB = GetBiomeBlended(tri.b);
+    d.ColorC = GetBiomeBlended(tri.c);
 
     DetailBuffer[idx] = d;
 }

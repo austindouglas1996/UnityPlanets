@@ -1,4 +1,4 @@
-#ifndef BIOMELOOKUP
+﻿#ifndef BIOMELOOKUP
 #define BIOMELOOKUP
 
 #include "../ChunkFunctions.hlsl"

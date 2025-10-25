@@ -92,6 +92,7 @@ Shader "Custom/ChunkProceduralLitGPU"
                 ChunkDetailData data = _TriangleDetailsBuffer[triIndex];
 
                 float3 pos = (subIndex == 0) ? tri.a : (subIndex == 1) ? tri.b : tri.c;
+                float3 col = (subIndex == 0) ? data.ColorA : (subIndex == 1) ? data.ColorB : data.ColorC;
                 float3 normal = tri.Normal;
                 float3 up = abs(normal.y) < 0.999 ? float3(0,1,0) : float3(1,0,0);
 
@@ -99,7 +100,7 @@ Shader "Custom/ChunkProceduralLitGPU"
                 OUT.positionWS = pos;
                 OUT.normalWS   = normal;
                 OUT.tangentWS = float4(normalize(cross(up, normal)), 1.0);
-                OUT.color      = GetVertexColor(tri, data, subIndex, Overlay);
+                OUT.color      = float4(col, 1);
 
                 return OUT;
             }

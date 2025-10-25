@@ -3,6 +3,7 @@
 
 #include "ChunkFunctions.hlsl"
 #include "Biomes/BiomeLookup.hlsl"
+#include "Biomes/BiomeSampler.hlsl"
 #include "Lib/PerlinNoise.hlsl"
 
 float4 GetColorForDirection(float3 worldPos)
@@ -97,6 +98,29 @@ float4 GetBiomeBlend(ChunkBiomeData biome, float3 wp)
     return float4(lerp(c0, c1, t), 1.0);
 }
 
+float3 GetBiomeBlended(float3 wp)
+{
+    const float3 offsets[8] =
+    {
+        float3(10, 0, 0), float3(-10, 0, 0),
+        float3(0, 0, 10), float3(0, 0, -10),
+        float3(10, 0, 10), float3(-10, 0, 10),
+        float3(10, 0, -10), float3(-10, 0, -10)
+    };
+
+    float3 accum = 0;
+    for (int i = 0; i < 8; i++)
+    {
+        uint bi = SampleBiomeIndex(wp + offsets[i]);
+        accum += GetBiomeBlend(Biomes[bi], wp + offsets[i]).rgb;
+    }
+
+    uint biC = SampleBiomeIndex(wp);
+    float3 center = GetBiomeBlend(Biomes[biC], wp).rgb;
+    accum += center;
+    return float3(accum / 9.0);
+}
+
 // Retrieves the set color to use for a biome on a vertex.
 float4 GetTerrainColor(float3 wp, uint vertex, uint packedBiome)
 {
@@ -117,7 +141,7 @@ float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint 
     switch (overlay)
     {
         case 0:
-            return GetTerrainColor(wp, vertex, data.Biome);
+            return float4(1, 1, 1, 1);
         case 1:
             return GetColorLOD(UnpackLOD(data.Biome));
         case 2:
