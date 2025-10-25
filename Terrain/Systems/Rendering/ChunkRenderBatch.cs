@@ -10,6 +10,8 @@ using UnityEngine.Rendering;
 /// </summary>
 public class ChunkRenderBatch : IDisposable
 {
+    private static ComputeBuffer countBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
+
     /// <summary>
     /// Append buffer containing generated triangles (ComputeBufferType.Append).
     /// </summary>
@@ -84,16 +86,29 @@ public class ChunkRenderBatch : IDisposable
             throw new System.InvalidOperationException("Set has been disposed of.");
         }
 
-        uint triCount = GetAppendCount(set.Triangle);
-        if (triCount == 0) { onDone(System.Array.Empty<TriangleDataGPU>()); return; }
+        // Copy append count to a tiny GPU buffer
+        ComputeBuffer.CopyCount(set.Triangle, countBuffer, 0);
 
-        int stride = Marshal.SizeOf<TriangleDataGPU>();
-        int size = (int)(triCount * stride);
-
-        AsyncGPUReadback.Request(set.Triangle, size, 0, req =>
+        // Read count asynchronously
+        AsyncGPUReadback.Request(countBuffer, rCount =>
         {
-            if (req.hasError) { onDone(System.Array.Empty<TriangleDataGPU>()); return; }
-            onDone(req.GetData<TriangleDataGPU>().ToArray());
+            if (rCount.hasError) { onDone(Array.Empty<TriangleDataGPU>()); return; }
+
+            uint triCount = rCount.GetData<uint>()[0];
+            if (triCount == 0) { onDone(Array.Empty<TriangleDataGPU>()); return; }
+
+            int stride = Marshal.SizeOf<TriangleDataGPU>();
+            int size = (int)(triCount * stride);
+
+            // Now read triangles asynchronously too
+            AsyncGPUReadback.Request(set.Triangle, size, 0, rTris =>
+            {
+                if (rTris.hasError) { onDone(Array.Empty<TriangleDataGPU>()); return; }
+
+                // Copy to managed array once (avoid .ToArray() allocations if you cache)
+                var tris = rTris.GetData<TriangleDataGPU>().ToArray();
+                onDone(tris);
+            });
         });
     }
 

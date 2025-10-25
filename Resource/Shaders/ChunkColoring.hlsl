@@ -51,8 +51,17 @@ float4 GetColorLOD(uint lod)
         case 3:
             return float4(0.0, 1.0, 0.0, 1.0); // Green
         case 4:
-            return float4(0.5, 0.8, 1.0, 1.0); // Light blue (snowy look)
+            return float4(0.5, 0.8, 1.0, 1.0); // Light blue (snowy)
+        case 5:
+            return float4(0.6, 0.0, 0.8, 1.0); // Purple
+        case 6:
+            return float4(1.0, 1.0, 0.0, 1.0); // Yellow
+        case 7:
+            return float4(0.0, 1.0, 1.0, 1.0); // Cyan
+        case 8:
+            return float4(1.0, 0.0, 1.0, 1.0); // Magenta
     }
+
 
     // Default/fallback
     return float4(1.0, 1.0, 1.0, 1.0);
@@ -141,7 +150,8 @@ float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint 
     switch (overlay)
     {
         case 0:
-            return float4(1, 1, 1, 1);
+            float3 col = (vertex == 0) ? data.ColorA : (vertex == 1) ? data.ColorB : data.ColorC;
+            return float4(col, 1);
         case 1:
             return GetColorLOD(UnpackLOD(data.Biome));
         case 2:

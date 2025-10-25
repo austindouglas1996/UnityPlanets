@@ -108,6 +108,7 @@ void March(ChunkDispatchKeyInfo key, AppendStructuredBuffer<TriangleData> Triang
         tri.c = worldC;
         tri.Normal = normal;
         tri.KeyIndex = key.KeyIndex;
+        tri.LodIndex = key.chunk.LodIndex;
         
         TriangleBuffer.Append(tri);
     }

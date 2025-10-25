@@ -42,6 +42,8 @@ public class ChunkRenderRouter : IDisposable
         mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
         mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
         mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
+        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
+        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
 
         this.commandBuffer = new CommandBuffer();
         this.commandBuffer.name = "ChunkTerrainInDirect";

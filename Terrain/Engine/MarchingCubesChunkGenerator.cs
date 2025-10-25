@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 using static UnityEditor.Experimental.GraphView.Port;
@@ -13,9 +14,8 @@ using static UnityEditor.Experimental.GraphView.Port;
 public class MarchingCubesChunkGenerator : IChunkGenerator
 {
     // Hard caps I tune for my buckets. 1024 = surface mask scan, 128 = per-batch gen.
-    private const int SurfaceCap = 1024;
-    private const int GenerateCap = 128;
-    private const int JobsPerTick = 6;
+    private const int SurfaceCap = 512;
+    private const int GenerateCap = 64;
 
     private struct TerrainJob
     {
@@ -37,6 +37,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private ComputeBuffer DensityOptionsBuffer;    // StructuredBuffer<DensityMapOptions> (1 element)
     private ComputeBuffer PlanetOptionsBuffer;     // StructuredBuffer<PlanetDensityOptions> (1 element)
     private ComputeBuffer SurfaceMaskBuffer;       // RWStructuredBuffer<uint> (results for mask pass)
+    private ComputeBuffer countBuffer;
 
     // Annoying triangle tables.
     private ComputeBuffer CornerOffsetsBuffer = MarchingCubesTables.CornerOffsetsBuffer();
@@ -51,6 +52,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     // Reused staging lists -> no per-dispatch GC. Capacity matches caps above.
     private List<ChunkDispatchKeyGPU> InputSurface = new(SurfaceCap);
     private List<ChunkDispatchKeyGPU> InputGenerate = new(GenerateCap);
+    private uint[] surfaceMaskCache = new uint[SurfaceCap];
 
     // Kernel ID's.
     private int surfaceKernel;
@@ -98,13 +100,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     {
         if (this.Jobs.Count == 0) return;
 
-        // Two normal jobs.
-        for (int i = 0; i < JobsPerTick; i++)
-        {
-            if (this.Jobs.Count == 0) break;
-
-            ProcessBatch(Jobs[0].Keys, Jobs[0].Output, Jobs[0].ExistingBatch); Jobs.RemoveAt(0);
-        }
+        ProcessBatch(Jobs[0].Keys, Jobs[0].Output, Jobs[0].ExistingBatch); Jobs.RemoveAt(0);
     }
 
     /// <summary>
@@ -120,6 +116,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         DensityOptionsBuffer.Dispose();
         PlanetOptionsBuffer.Dispose();
         SurfaceMaskBuffer.Dispose();
+        countBuffer.Dispose();
 
         CornerOffsetsBuffer.Dispose();
         EdgeConnectionsBuffer.Dispose();
@@ -157,12 +154,28 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
 
         MarchingShader.Dispatch(surfaceKernel, batchSize, 1, 1);
 
-        var req = AsyncGPUReadback.Request(SurfaceMaskBuffer, r =>
+        AsyncGPUReadback.Request(SurfaceMaskBuffer, r =>
         {
-            if (!r.hasError)
+            if (r.hasError) return;
+
+            var src = r.GetData<uint>();
+            int count = Mathf.Min(src.Length, surfaceMaskCache.Length);
+
+            // Copy into the existing array (no new allocations)
+            src.Slice(0, count).CopyTo(surfaceMaskCache);
+
+            // Now process or invoke the callback on a background thread
+            System.Threading.ThreadPool.QueueUserWorkItem(_ =>
             {
-                output.Invoke(r.GetData<uint>().ToArray());
-            }
+                try
+                {
+                    output?.Invoke(surfaceMaskCache);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                }
+            });
         });
     }
 
@@ -264,7 +277,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         int marchGroupSize = Mathf.CeilToInt(cubesPerAxis / 4f);
         MarchingShader.Dispatch(marchKernel, batchSize * marchGroupSize, marchGroupSize, marchGroupSize);
 
-        ComputeBuffer countBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
         ComputeBuffer.CopyCount(triangleBuffer, countBuffer, 0);
 
         // Build indirect args from append count
@@ -279,15 +291,17 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         MarchingShader.SetBuffer(detailKernel, "DetailTriangles", triangleBuffer);
         MarchingShader.SetBuffer(detailKernel, "DetailBuffer", detailBuffer);
 
+    
         int maxTriangles = (cubesPerAxis * cubesPerAxis * cubesPerAxis * 5 * batchSize);
         int groupsX = Mathf.CeilToInt(maxTriangles / 64f);
         MarchingShader.Dispatch(detailKernel, groupsX, 1,1);
 
+        /*
         uint[] args = new uint[5];
         argsBuffer.GetData(args);
         uint triCount = args[0] / 3;
         Debug.Log($"LOD{keys[0].LODIndex} - Chunks {batchSize} - Triangles written: {triCount}, triangle capacity of buffer {triangleBuffer.count}");
-
+        */
 
         // Hand back a draw-ready batch (triangles + args + bounds computed from keys)
         output.Invoke(new ChunkRenderBatch(triangleBuffer, detailBuffer, argsBuffer, keys, this.chunkServices));
@@ -321,6 +335,8 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         SurfaceChunkInputBuffer = new ComputeBuffer(SurfaceCap, Marshal.SizeOf<ChunkDispatchKeyGPU>());
         GenerateChunkInputBuffer = new ComputeBuffer(GenerateCap, Marshal.SizeOf<ChunkDispatchKeyGPU>());
         SurfaceMaskBuffer = new ComputeBuffer(SurfaceCap, sizeof(uint));
+
+        countBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
 
         genKernel = MarchingShader.FindKernel("GenerateDensityMap");
         marchKernel = MarchingShader.FindKernel("RunMarchingCubes");

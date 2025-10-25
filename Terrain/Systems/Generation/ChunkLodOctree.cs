@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 /// <summary>
@@ -159,7 +160,7 @@ public class ChunkLodOctree
     /// RootLOD is the coarsest level (biggest chunks).
     /// Personal note: this is inverted from what you'd expect ("higher" means *less* detail).
     /// </summary>
-    private const int RootLOD = 4;
+    private const int RootLOD = 6;
 
     /// <summary>
     /// Max number of nodes updated per Unity frame.
@@ -338,41 +339,7 @@ public class ChunkLodOctree
     /// <param name="parentIndex"></param>
     private void TryCreateSingleNode(ChunkKey key, int parentIndex = -1)
     {
-        this.processor.RequestSurfaceCheck(key, (bool hasSurface) =>
-        {
-            ChunkLodTreeNode parent = null;
-
-            if (parentIndex != -1)
-            {
-                parent = Nodes[parentIndex];
-                parent.ChildrenChecked++;
-
-                if (parent.ChildrenChecked == 8)
-                {
-                    parent.FinishTransition();
-                    processor.RemoveChunk(parent.Key);
-                }
-            }
-
-            if (hasSurface)
-            {
-                int index = AllocSingleBlock();
-                ChunkLodTreeNode node = Nodes[index];
-
-                node.Key = key;
-                node.IsAlive = true;
-                node.ParentIndex = parentIndex;
-
-                if (parentIndex != -1 && parent != null)
-                {
-                    parent.Children.Add(index);
-                }
-
-                // Add to entry.
-                Nodes[index] = node;
-                IndexByKey.TryAdd(node.Key, index);
-            }
-        });
+        this.processor.RequestSurfaceCheck(key, OnSurfaceCheckCompleted, parentIndex);
     }
 
     /// <summary>
@@ -385,35 +352,91 @@ public class ChunkLodOctree
     private void RequestGeneration(ChunkLodTreeNode node)
     {
         node.Phase = ContentPhase.Loading;
-        this.processor.RequestChunkGeneration(node.Key, (bool success) =>
+        this.processor.RequestChunkGeneration(node.Key, OnRequestGenerationCompleted);
+    }
+
+    /// <summary>
+    /// Handle the execution of the surface check for a given node.
+    /// </summary>
+    /// <param name="key"></param>
+    /// <param name="parentIndex"></param>
+    /// <param name="hasSurface"></param>
+    private void OnSurfaceCheckCompleted(ChunkKey key, int parentIndex, bool hasSurface)
+    {
+        ChunkLodTreeNode parent = null;
+
+        if (parentIndex != -1)
+        {
+            parent = Nodes[parentIndex];
+            parent.ChildrenChecked++;
+
+            if (parent.ChildrenChecked == 8)
+            {
+                parent.FinishTransition();
+                processor.RemoveChunk(parent.Key);
+            }
+        }
+
+        if (hasSurface)
+        {
+            int index = AllocSingleBlock();
+            ChunkLodTreeNode node = Nodes[index];
+
+            node.Key = key;
+            node.IsAlive = true;
+            node.ParentIndex = parentIndex;
+
+            if (parentIndex != -1 && parent != null)
+            {
+                parent.Children.Add(index);
+            }
+
+            // Add to entry.
+            Nodes[index] = node;
+            IndexByKey.TryAdd(node.Key, index);
+        }
+    }
+
+    /// <summary>
+    /// Handle the execution of the generation job for
+    /// </summary>
+    /// <param name="node"></param>
+    /// <param name="success"></param>
+    /// <exception cref="System.ArgumentException"></exception>
+    private void OnRequestGenerationCompleted(ChunkKey key, int parentIndex, bool success)
+    {
+        int nodeIndex = -1;
+        if (!IndexByKey.TryGetValue(key, out nodeIndex))
+            return;
+
+        ChunkLodTreeNode node = Nodes[nodeIndex];
+
+        if (success)
+        {
+            node.Phase = ContentPhase.Ready;
+        }
+        else
+        {
+            throw new System.ArgumentException("Chunk generation failed.");
+        }
+
+        // Was this a merge request?
+        if (node.Transition == Transition.Merge)
         {
             if (success)
             {
-                node.Phase = ContentPhase.Ready;
-            }
-            else
-            {
-                throw new System.ArgumentException("Chunk generation failed.");
-            }
-
-            // Was this a merge request?
-            if (node.Transition == Transition.Merge)
-            {
-                if (success)
+                // The children can be safely removed now.
+                foreach (var child in node.Children)
                 {
-                    // The children can be safely removed now.
-                    foreach (var child in node.Children)
-                    {
-                        FreeSingleBlock(child);
-                    }
-
-                    node.Children.Clear();
-                    node.ChildrenChecked = 0;
+                    FreeSingleBlock(child);
                 }
 
-                node.FinishTransition();
+                node.Children.Clear();
+                node.ChildrenChecked = 0;
             }
-        });
+
+            node.FinishTransition();
+        }
     }
 
     /// <summary>

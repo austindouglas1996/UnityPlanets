@@ -23,13 +23,19 @@ public class ChunkLODThresholdAsset : ScriptableObject
     [Tooltip("LOD4 — horizon terrain")]
     public int LOD4 = 2;
 
+    [Tooltip("LOD5 — far horizon terrain")]
+    public int LOD5 = 2;
+
+    [Tooltip("LOD5 — very far horizon terrain")]
+    public int LOD6 = 2;
+
     /// <summary>
     /// Build an array of accumulated ring distances based on LOD0.
     /// Example: with all counts = 2, returns [2, 6, 14, 30, 62].
     /// </summary>
     public int[] ToArray()
     {
-        int[] counts = { LOD0, LOD1, LOD2, LOD3, LOD4 };
+        int[] counts = { LOD0, LOD1, LOD2, LOD3, LOD4, LOD5, LOD6};
         int[] rings = new int[counts.Length];
         int acc = 0;
 

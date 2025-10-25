@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System;
+using UnityEngine;
 
 /// <summary>
 /// Coordinates the asynchronous-like generation and modification of terrain chunks.
@@ -9,7 +10,7 @@ using System;
 /// </summary>
 public class ChunkGenerationProcessor : IDisposable
 {
-    private const int SurfaceJobs = 1028;
+    private const int SurfaceJobs = 512;
     private const int GenerationJobs = 64;
     private const int Generation0Jobs = 16;
 
@@ -54,14 +55,14 @@ public class ChunkGenerationProcessor : IDisposable
     /// Queues a chunk to be checked for surface data before full generation.
     /// The provided callback will be invoked once the check completes.
     /// </summary>
-    public void RequestSurfaceCheck(ChunkKey key, Action<bool> onDone) =>
-        surfaceBatcher.Add(new ChunkGenerationJob(key, onDone));
+    public void RequestSurfaceCheck(ChunkKey key, Action<ChunkKey, int, bool> onDone, int parentIndex = -1) =>
+        surfaceBatcher.Add(new ChunkGenerationJob(key, onDone, parentIndex));
 
     /// <summary>
     /// Queues a chunk for full generation.
     /// The provided callback will be invoked once generation is complete.
     /// </summary>
-    public void RequestChunkGeneration(ChunkKey key, Action<bool> onDone)
+    public void RequestChunkGeneration(ChunkKey key, Action<ChunkKey, int, bool> onDone)
     {
         var job = new ChunkGenerationJob(key, onDone);
         generationBatcher.Add(job);
@@ -147,7 +148,9 @@ public class ChunkGenerationProcessor : IDisposable
             return;
         SurfaceBusy = true;
 
-        int n = surfaceBatcher.TryBatch(1024, tmpSurfaceJobs);
+        Debug.Log($"SurfaceJobs: {surfaceBatcher.Count}");
+
+        int n = surfaceBatcher.TryBatch(SurfaceJobs, tmpSurfaceJobs);
         if (n == 0) return;
 
         chunkServices.Generator.DispatchSurfaceChecks(tmpSurfaceJobs, (uint[] surfaceResults) =>
@@ -155,7 +158,7 @@ public class ChunkGenerationProcessor : IDisposable
             for (int i = 0; i < n; i++)
             {
                 bool hasSurface = surfaceResults[i] == 1;
-                tmpSurfaceJobs[i].OnDone(hasSurface);
+                tmpSurfaceJobs[i].OnDone(tmpSurfaceJobs[i].Key, tmpSurfaceJobs[i].ParentIndex, hasSurface);
             }
 
             SurfaceBusy = false;
@@ -174,7 +177,7 @@ public class ChunkGenerationProcessor : IDisposable
 
         foreach (var job in tmpGenerationJobs)
         {
-            job.OnDone(true);
+            job.OnDone(job.Key, job.ParentIndex, true);
             layerRenderer.Add(job);
         }
     }

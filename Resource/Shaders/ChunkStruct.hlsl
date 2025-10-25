@@ -49,6 +49,7 @@ struct TriangleData
     float3 b;
     float3 c;
     float3 Normal;
+    uint LodIndex;
     uint KeyIndex;
 };
 
