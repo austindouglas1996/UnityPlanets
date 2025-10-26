@@ -25,7 +25,7 @@ float3 GetNormal(uint keyIndex, int3 localVoxelCoord, int3 sampleSize, RWStructu
 
 void March(ChunkDispatchKeyInfo key, AppendStructuredBuffer<TriangleData> TriangleBuffer, RWStructuredBuffer<float> DensityMap)
 {
-    int cubeIndex = 0;
+    uint cubeIndex = 0;
     float corner[8];
     float3 cornerPos[8];
     
@@ -36,7 +36,7 @@ void March(ChunkDispatchKeyInfo key, AppendStructuredBuffer<TriangleData> Triang
     [loop]
     for (int i = 0; i < 8; i++)
     {
-        int3 pos = key.LocalVoxelCoord + GetCornerOffset(i);
+        uint3 pos = key.LocalVoxelCoord + GetCornerOffset(i);
         corner[i] = DensityMap[GetVoxelSampleIndexRaw(pos, key.KeyIndex, sample3)];
         cornerPos[i] = float3(pos) * step + world;
         
@@ -90,13 +90,12 @@ void March(ChunkDispatchKeyInfo key, AppendStructuredBuffer<TriangleData> Triang
         int2 edge1 = GetEdgeConnection(b);
         int2 edge2 = GetEdgeConnection(c);
         
-        float inv0 = rcp(corner[edge0.x] - corner[edge0.y]);
-        float inv1 = rcp(corner[edge1.x] - corner[edge1.y]);
-        float inv2 = rcp(corner[edge2.x] - corner[edge2.y]);
-        
-        float t0 = (corner[edge0.x] - ISOLevel) * inv0;
-        float t1 = (corner[edge1.x] - ISOLevel) * inv1;
-        float t2 = (corner[edge2.x] - ISOLevel) * inv2;
+        // If you like a more minecraft look make RCP its own dedicated variable.
+        // I was doing that for quite some time, I liked the look but for some
+        // reason bringing them together makes smooth terrain :o
+        float t0 = (corner[edge0.x] - ISOLevel) * rcp(corner[edge0.x] - corner[edge0.y]);
+        float t1 = (corner[edge1.x] - ISOLevel) * rcp(corner[edge1.x] - corner[edge1.y]);
+        float t2 = (corner[edge2.x] - ISOLevel) * rcp(corner[edge2.x] - corner[edge2.y]);
         
         float3 worldA = lerp(cornerPos[edge0.x], cornerPos[edge0.y],t0);
         float3 worldB = lerp(cornerPos[edge1.x], cornerPos[edge1.y],t1);
