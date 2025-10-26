@@ -10,7 +10,7 @@
 #define TYPE_CAVE    2
 
 // Samples = Cubes + 1
-int GetSamplesPerAxis()
+uint GetSamplesPerAxis()
 {
     return CubesPerAxis + 1;
 }
@@ -24,26 +24,26 @@ int3 GetSamplesPerChunk3()
 }
 
 // Number of cubes per axis at this LOD
-int GetCubesPerAxis(int lodIndex)
+int GetCubesPerAxis(uint lodIndex)
 {
     return CubesPerAxis << lodIndex;
 }
 
 // Vector form of cubes per axis
-int3 GetCubesPerChunk3(int lodIndex)
+int3 GetCubesPerChunk3(uint lodIndex)
 {
     int cubes = GetCubesPerAxis(lodIndex);
     return int3(cubes,cubes,cubes);
 }
 
 // The step size of each cube based on LOD level.
-int GetCubeSizeStep(int lodIndex)
+int GetCubeSizeStep(uint lodIndex)
 {
     return 1 << lodIndex;
 }
 
 // Convert chunk coordinates to world space (with LOD)
-float3 ToWorld(int3 coordinates, int lodIndex)
+float3 ToWorld(int3 coordinates, uint lodIndex)
 {
     return coordinates * GetCubesPerAxis(lodIndex);
 }
