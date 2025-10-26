@@ -160,11 +160,11 @@ Shader "Custom/ChunkProceduralLitGPU"
                 float4 color = UniversalFragmentPBR(inputData, surfaceData);
                 color.rgb    = MixFog(color.rgb, inputData.fogCoord);
 
-                return color;
+                //return color;
 
                 // We keep forgetting this, but there is an issue with coloring. 
                 // set this to return finalColor if you want to see color in the build.
-                //return float4(finalColor,1);
+                return float4(finalColor,1);
             }
             ENDHLSL
         }

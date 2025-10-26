@@ -231,6 +231,7 @@ public class ChunkRenderBucketCollection : IDisposable
     /// <remarks>This is not thread safe. Must be called from main thread.</remarks>
     private void NewColl_OnGenerate(object sender, EventArgs e)
     {
+        return;
         ChunkRenderBucket bucket = (ChunkRenderBucket)sender;
         ChunkRenderBatch.ReadTrianglesAsync(bucket.RenderData, (TriangleDataGPU[] tri) =>
         {

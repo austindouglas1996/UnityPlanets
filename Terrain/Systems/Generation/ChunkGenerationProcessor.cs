@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 /// <summary>
 /// Coordinates the asynchronous-like generation and modification of terrain chunks.
@@ -45,10 +47,21 @@ public class ChunkGenerationProcessor : IDisposable
     /// Creates a new generation processor.
     /// Initializes the GPU render region manager and sets up default material parameters.
     /// </summary>
-    public ChunkGenerationProcessor(IChunkServices services)
+    public ChunkGenerationProcessor(IChunkServices services, ChunkRenderFeature renderFeature)
     {
         this.chunkServices = services;
+
         this.layerRenderer = new ChunkRenderRouter(services, services.Generator, GenerationJobs, Generation0Jobs);
+
+        if (renderFeature != null)
+        {
+            renderFeature.Router = layerRenderer;
+            renderFeature.Create(); // rebuild the pass with new router
+        }
+        else
+        {
+            Debug.LogWarning("ChunkRenderFeature not assigned in the inspector. The terrain will not render.");
+        }
     }
 
     /// <summary>
@@ -84,12 +97,6 @@ public class ChunkGenerationProcessor : IDisposable
     {
         this.layerRenderer.Clear();
     }
-
-    /// <summary>
-    /// Issues draw calls for any currently active render regions.
-    /// Should be called from the main rendering loop.
-    /// </summary>
-    public void Draw() => layerRenderer.Draw();
 
     /// <summary>
     /// Processes queued surface and generation jobs in small batches,

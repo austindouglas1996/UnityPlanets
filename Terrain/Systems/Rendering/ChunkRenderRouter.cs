@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using UnityEngine;
 using UnityEngine.Rendering;
 
 /// <summary>
@@ -18,11 +17,10 @@ public class ChunkRenderRouter : IDisposable
     /// <summary>
     /// A collection of main buckets used throughout generation.
     /// </summary>
-    private List<ChunkRenderBucketCollection> mainBuckets = new();
+    private List<ChunkRenderBucketCollection> lodBuckets = new();
 
     private IChunkServices chunkServices;
     private IChunkGenerator chunkGenerator;
-    private CommandBuffer commandBuffer;
 
     /// <summary>
     /// Build two lanes with their own capacities/thresholds.
@@ -37,16 +35,15 @@ public class ChunkRenderRouter : IDisposable
         this.chunkServices = services;
         this.chunkGenerator = chunkGenerator;
 
-        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, true, lod0Cap));
-        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-        mainBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-
-        this.commandBuffer = new CommandBuffer();
-        this.commandBuffer.name = "ChunkTerrainInDirect";
+        // This is still in testing. Add/remove a new collection as LODs increase
+        // currently only LOD0 is allowed collision as its CPU intensive.
+        lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, true, lod0Cap));
+        lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
+        lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
+        lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
+        lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
+        lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
+        lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
     }
 
     /// <summary>
@@ -55,7 +52,7 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void Add(ChunkGenerationJob job)
     {
-        mainBuckets[job.Key.LODIndex].Add(job.Key);
+        lodBuckets[job.Key.LODIndex].Add(job.Key);
     }
 
     /// <summary>
@@ -64,7 +61,7 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public bool Remove(ChunkKey key)
     {
-        return mainBuckets[key.LODIndex].Remove(key);
+        return lodBuckets[key.LODIndex].Remove(key);
     }
 
     /// <summary>
@@ -72,7 +69,7 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void Clear()
     {
-        foreach (var bucket in mainBuckets)
+        foreach (var bucket in lodBuckets)
         {
             bucket.Clear();
         }
@@ -85,7 +82,7 @@ public class ChunkRenderRouter : IDisposable
     {
         ConsoleTimer.Start("ChunkRouter.Update");
 
-        foreach (var bucket in mainBuckets)
+        foreach (var bucket in lodBuckets)
         {
             bucket.Update();
         }
@@ -94,40 +91,23 @@ public class ChunkRenderRouter : IDisposable
     }
 
     /// <summary>
-    /// Draw both lanes. Caller should have already done <c>mat.SetPass(0)</c> once this frame.
-    /// Buckets will bind their buffers and issue <c>DrawProceduralIndirect</c>.
-    /// </summary>
-    public void Draw()
-    {
-        ConsoleTimer.Start("ChunkRouter.Draw");
-
-        this.commandBuffer.Clear();
-
-        foreach (var bucket in mainBuckets)
-        {
-            bucket.Draw(this.commandBuffer, this.chunkGenerator.GetMaterial);
-        }
-
-        Graphics.ExecuteCommandBufferAsync(this.commandBuffer, ComputeQueueType.Default);
-
-
-        ConsoleTimer.Stop("ChunkRouter.Draw");
-    }
-
-    /// <summary>
     /// Dispose both lanes and release GPU memory.
     /// Safe to call during teardown.
     /// </summary>
     public void Dispose()
     {
-        if (commandBuffer != null)
-        {
-            commandBuffer.Release();
-            commandBuffer = null;
-        }
-
-        foreach (var bucket in mainBuckets)
+        foreach (var bucket in lodBuckets)
             bucket.Dispose();
+    }
+
+    /// <summary>
+    /// Fille the <see cref="CommandBuffer"/> with our buckets chunks.
+    /// </summary>
+    /// <param name="cmd"></param>
+    public void FillCommandBuffer(CommandBuffer cmd)
+    {
+        foreach (var bucket in lodBuckets)
+            bucket.Draw(cmd, chunkGenerator.GetMaterial);
     }
 
     /// <summary>
@@ -136,7 +116,7 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void MarkAsDirty(bool force)
     {
-        foreach (var bucket in mainBuckets)
+        foreach (var bucket in lodBuckets)
         {
             bucket.MarkAsDirty(force);
         }

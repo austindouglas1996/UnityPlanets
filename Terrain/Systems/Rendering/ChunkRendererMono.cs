@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// Unity-facing host for chunk rendering:
@@ -12,6 +13,10 @@ using UnityEngine;
 /// </summary>
 public class ChunkRendererMono : MonoBehaviour
 {
+    [Header("Rendering")]
+    [Tooltip("Assign the ChunkRenderFeature from your URP Renderer asset.")]
+    [SerializeField] private ChunkRenderFeature renderFeature;
+
     [Header("Debug")]
     [SerializeField] public bool ShowTerrain = true;
     [HideInInspector] private bool isInitialized = false;
@@ -47,20 +52,6 @@ public class ChunkRendererMono : MonoBehaviour
     }
 
     /// <summary>
-    /// Draw the GPU objects.
-    /// </summary>
-    void OnRenderObject()
-    {
-        // Hmm this is broken for me?
-        //if (Camera.current != Camera.main) return;
-
-        if (ShowTerrain)
-        {
-            processor.Draw();
-        }
-    }
-
-    /// <summary>
     /// Dispose of the generator resources.
     /// </summary>
     private void OnDestroy()
@@ -77,7 +68,7 @@ public class ChunkRendererMono : MonoBehaviour
     public void Initialize(IChunkServices services)
     {
         this.chunkServices = services;
-        this.processor = new ChunkGenerationProcessor(this.chunkServices);
+        this.processor = new ChunkGenerationProcessor(this.chunkServices, this.renderFeature);
 
         isInitialized = true;
 
