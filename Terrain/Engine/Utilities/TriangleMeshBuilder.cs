@@ -7,6 +7,16 @@ using UnityEngine;
 public static class TriangleMeshBuilder
 {
     /// <summary>
+    /// This should never be a problem, but just in case.
+    /// </summary>
+    private const int MaxPoolSize = 32;
+
+    /// <summary>
+    /// A static list to help with GC issues.
+    /// </summary>
+    private static readonly Queue<GameObject> colliderPool = new();
+
+    /// <summary>
     /// Build a Unity <see cref="Mesh"/> from a list of triangle data.
     /// </summary>
     public static Mesh BuildMesh(IReadOnlyList<TriangleDataGPU> tris)
@@ -41,35 +51,65 @@ public static class TriangleMeshBuilder
                 : UnityEngine.Rendering.IndexFormat.UInt16
         };
 
-        mesh.SetVertices(verts);
+        mesh.SetVertices(verts,0, vCount);
         mesh.SetTriangles(indices, 0, true);
         mesh.RecalculateBounds();
         return mesh;
     }
 
     /// <summary>
-    /// Make a GameObject with the mesh and a collider. 
-    /// (Renderer left out, but easy to add back if needed.)
+    /// Create or reuse an existing game object made for the purpose of a collision object. The
+    /// object will contain nothing but a mesh filter an a collider.
     /// </summary>
-    public static GameObject CreateGOMeshWithCollider(Mesh mesh)
+    /// <param name="mesh"></param>
+    /// <param name="existingGo">Using an existing GO will go around an available pool and reuse the object directly.</param>
+    /// <returns></returns>
+    public static GameObject CreateOrReuseCollider(Mesh mesh, GameObject existingGo)
     {
-        GameObject go = new GameObject();
+        if (mesh == null) return null;
 
-        MeshFilter filter = go.AddComponent<MeshFilter>();
+        GameObject go = existingGo;
+
+        if (go == null && colliderPool.Count > 0)
+        {
+            go = colliderPool.Dequeue();
+            go.SetActive(true);
+        }
+        else if (go == null)
+        {
+            go = new GameObject("ChunkCollider");
+            go.AddComponent<MeshFilter>();
+
+            var coll = go.AddComponent<MeshCollider>(); 
+            coll.cookingOptions =
+                MeshColliderCookingOptions.EnableMeshCleaning |
+                MeshColliderCookingOptions.WeldColocatedVertices;
+        }
+
+        var filter = go.GetComponent<MeshFilter>();
+        var collider = go.GetComponent<MeshCollider>();
+
         filter.sharedMesh = mesh;
-
-        /* We may need this later.
-        var renderer = go.AddComponent<MeshRenderer>();
-        var debugMat = new Material(Shader.Find("Standard"));
-        debugMat.color = UnityEngine.Random.ColorHSV(0f, 1f, 0.8f, 1f, 0.8f, 1f, 0.5f, 0.5f);
-        renderer.sharedMaterial = debugMat;
-        */
-
-        MeshCollider collider = go.AddComponent<MeshCollider>();
         collider.sharedMesh = mesh;
-        collider.cookingOptions = MeshColliderCookingOptions.EnableMeshCleaning |
-                              MeshColliderCookingOptions.WeldColocatedVertices;
 
         return go;
+    }
+
+    /// <summary>
+    /// Give up an existing GO to be used for other objects.
+    /// </summary>
+    /// <param name="go"></param>
+    public static void RecycleCollider(GameObject go)
+    {
+        if (go == null) return;
+        if (colliderPool.Count > MaxPoolSize)
+        {
+            UnityEngine.Object.Destroy(go);
+            return;
+        }
+
+
+        go.SetActive(false);
+        colliderPool.Enqueue(go);
     }
 }

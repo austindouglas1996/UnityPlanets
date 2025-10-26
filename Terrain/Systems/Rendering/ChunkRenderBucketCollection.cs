@@ -164,7 +164,7 @@ public class ChunkRenderBucketCollection : IDisposable
 
         foreach (var go in colliders.Values)
         {
-            UnityEngine.Object.Destroy(go);
+            TriangleMeshBuilder.RecycleCollider(go);
         }
 
         colliders.Clear();
@@ -231,21 +231,18 @@ public class ChunkRenderBucketCollection : IDisposable
     /// <remarks>This is not thread safe. Must be called from main thread.</remarks>
     private void NewColl_OnGenerate(object sender, EventArgs e)
     {
-        return;
         ChunkRenderBucket bucket = (ChunkRenderBucket)sender;
         ChunkRenderBatch.ReadTrianglesAsync(bucket.RenderData, (TriangleDataGPU[] tri) =>
         {
-            var mesh = TriangleMeshBuilder.BuildMesh(tri);
-            var newGo = TriangleMeshBuilder.CreateGOMeshWithCollider(mesh);
-            GameObject oldGo = null;
+            GameObject existingGo = null;
 
             if (colliders.ContainsKey(bucket))
-                oldGo = colliders[bucket];
+                existingGo = colliders[bucket];
+
+            var mesh = TriangleMeshBuilder.BuildMesh(tri);
+            var newGo = TriangleMeshBuilder.CreateOrReuseCollider(mesh, existingGo);
 
             colliders[bucket] = newGo;
-
-            if (oldGo != null)
-                UnityEngine.Object.Destroy(oldGo);
         });
     }
 }
