@@ -182,6 +182,6 @@ public class BaseChunkLayout : BaseChunkCore, IChunkLayout
                 return i;
         }
 
-        return LODRings.Count() - 1;
+        return LODRings.Length - 1;
     }
 }

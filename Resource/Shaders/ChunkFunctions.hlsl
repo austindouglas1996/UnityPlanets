@@ -7,9 +7,8 @@
 int GetVoxelSampleIndexRaw(int3 pos, int KeyIndex, int3 totalSampleSize)
 {
     int voxelCountPerChunk = totalSampleSize.x * totalSampleSize.y * totalSampleSize.z;
-    int localIndex = pos.x 
-                    + pos.y * totalSampleSize.x 
-                    + pos.z * totalSampleSize.x * totalSampleSize.y;
+    int localIndex = mad(pos.z, totalSampleSize.x * totalSampleSize.y,
+                     mad(pos.y, totalSampleSize.x, pos.x));
     
     return KeyIndex * voxelCountPerChunk + localIndex;
 }
@@ -48,7 +47,8 @@ ChunkDispatchKeyInfo GetChunkAccessCubes(uint3 id, StructuredBuffer<ChunkDispatc
     }
 
     // Map X → (KeyIndex, localX)
-    r.KeyIndex = (int) (id.x / CubesPerAxis);
+    float invCubesPerAxis = 1.0 / CubesPerAxis;
+    r.KeyIndex = (int) (id.x * invCubesPerAxis);
     r.LocalVoxelCoord = int3((int) (id.x - r.KeyIndex * CubesPerAxis), (int) id.y, (int) id.z);
     
     // A second guard check.
@@ -100,8 +100,9 @@ ChunkDispatchKeyInfo GetChunkAccessSamples(uint3 id, StructuredBuffer<ChunkDispa
     }
 
     // Map X → (KeyIndex, localX)
-    r.KeyIndex = (int) (id.x / (uint) sampleSize.x);
-    r.LocalVoxelCoord = int3((int) (id.x - (uint) (r.KeyIndex * sampleSize.x)), (int) id.y, (int) id.z);
+    float invCubesPerAxis = 1.0 / (float) sampleSize.x;
+    r.KeyIndex = (int) floor(id.x * invCubesPerAxis);
+    r.LocalVoxelCoord = uint3((int) (id.x - (uint) (r.KeyIndex * sampleSize.x)), (int) id.y, (int) id.z);
 
     // Flat index into the packed voxel buffer
     r.SampleIndex = GetVoxelSampleIndexRaw(r.LocalVoxelCoord, r.KeyIndex, sampleSize);

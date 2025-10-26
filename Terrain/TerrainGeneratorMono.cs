@@ -38,6 +38,13 @@ public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
         generator = new MarchingCubesChunkGenerator(this, MarchingCubes, ChunkMaterial);
         layout = new BaseChunkLayout(ChunkConfiguration);
 
+        if (MarchingCubes == null)
+            Debug.LogError("ComputeShader not assigned.");
+        if (ChunkMaterial == null)
+            Debug.LogError("ChunkMaterial not assigned.");
+        if (ChunkConfiguration == null)
+            Debug.LogError("ChunkConfiguration not assigned.");
+
         chunkLayout.Initialize(layout);
         chunkRenderer.Initialize(this);
     }

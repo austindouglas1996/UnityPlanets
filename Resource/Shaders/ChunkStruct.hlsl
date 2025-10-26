@@ -1,7 +1,6 @@
 #ifndef CHUNK_COMMON_STRUCT_INCLUDED
 #define CHUNK_COMMON_STRUCT_INCLUDED
 
-
 // Must stay in sync with the C# side struct of each if using a structured buffer:
 //   - Field order
 //   - Data type sizes/alignment

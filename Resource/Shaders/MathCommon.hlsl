@@ -1,4 +1,4 @@
-#ifndef MATHCOMMON
+﻿#ifndef MATHCOMMON
 #define MATHCOMMON
 
 // --------------------------------------------
@@ -7,7 +7,7 @@
 //     instead of wasting a register or uniform slot.
 //
 //   - Small math helpers (`sqr`, `N01`, etc.) should be `inline` so they get
-//     expanded at compile-time, no call overhead. (HLSL doesn�t actually do
+//     expanded at compile-time, no call overhead. (HLSL doesn’t actually do
 //     real function calls, it just inlines unless you force `[noinline]`).
 //
 //   - Keep `[noinline]` only for big functions you want to keep out of the

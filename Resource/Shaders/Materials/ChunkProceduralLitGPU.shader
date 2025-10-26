@@ -88,6 +88,9 @@ Shader "Custom/ChunkProceduralLitGPU"
                 ChunkDetailData data = _TriangleDetailsBuffer[triIndex];
 
                 float3 pos = (subIndex == 0) ? tri.a : (subIndex == 1) ? tri.b : tri.c;
+                // Do you like triangles and savings? 
+                // you can use a simple normalize to make some simple normals.
+                //normalize(cross(tri.b - tri.a, tri.c - tri.a));
                 float3 normal = tri.Normal;
                 float3 up = abs(normal.y) < 0.999 ? float3(0,1,0) : float3(1,0,0);
 
@@ -160,11 +163,11 @@ Shader "Custom/ChunkProceduralLitGPU"
                 float4 color = UniversalFragmentPBR(inputData, surfaceData);
                 color.rgb    = MixFog(color.rgb, inputData.fogCoord);
 
-                //return color;
+                return color;
 
                 // We keep forgetting this, but there is an issue with coloring. 
                 // set this to return finalColor if you want to see color in the build.
-                return float4(finalColor,1);
+                //return float4(finalColor,1);
             }
             ENDHLSL
         }

@@ -94,6 +94,7 @@ public class ChunkGenerationProcessor : IDisposable
     /// </summary>
     public void RemoveAll()
     {
+        this.removalQueue.Clear();
         this.layerRenderer.Clear();
     }
 
