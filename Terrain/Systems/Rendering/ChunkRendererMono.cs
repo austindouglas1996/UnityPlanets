@@ -1,7 +1,4 @@
-using System.Collections.Generic;
-using System.Drawing;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 /// <summary>
 /// Unity-facing host for chunk rendering:
@@ -50,18 +47,13 @@ public class ChunkRendererMono : MonoBehaviour
     }
 
     /// <summary>
-    /// On cancellation, cancel all jobs and destroy components.
-    /// </summary>
-    private void OnDisable()
-    {
-        this.processor.Dispose();
-    }
-
-    /// <summary>
     /// Draw the GPU objects.
     /// </summary>
     void OnRenderObject()
     {
+        // Hmm this is broken for me?
+        //if (Camera.current != Camera.main) return;
+
         if (ShowTerrain)
         {
             processor.Draw();
@@ -73,6 +65,7 @@ public class ChunkRendererMono : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        this.processor.Dispose();
         this.chunkServices.Generator.Dispose();
     }
 

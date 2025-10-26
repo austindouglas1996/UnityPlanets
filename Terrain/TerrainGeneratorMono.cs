@@ -3,7 +3,6 @@ using UnityEngine;
 /// <summary>
 /// Unity-facing entry point for terrain generation.
 /// Ties together chunk layout, rendering, and a chosen generator (default: marching cubes).
-/// Attach this to a GameObject with <see cref="ChunkLayoutMono"/> and <see cref="ChunkRendererMono"/>.
 /// </summary>
 [RequireComponent(typeof(ChunkLayoutMono))]
 [RequireComponent(typeof(ChunkRendererMono))]
@@ -43,7 +42,6 @@ public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
         chunkRenderer.Initialize(this);
     }
 
-
     /// <summary>
     /// Called when values change in the inspector.
     /// Pushes updated options into the generator and refreshes chunks.
@@ -58,7 +56,7 @@ public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
     }
 
     /// <summary>
-    /// 
+    /// Updated used for updating generator content.
     /// </summary>
     protected virtual void Update()
     {

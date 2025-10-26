@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
-using static UnityEditor.Experimental.GraphView.Port;
 
 /// <summary>
 /// My marching-cubes generator. Feeds compute with chunk inputs, spits out a draw-ready batch.
@@ -100,7 +99,11 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     {
         if (this.Jobs.Count == 0) return;
 
+        ConsoleTimer.Start("MC.Gen");
+
         ProcessBatch(Jobs[0].Keys, Jobs[0].Output, Jobs[0].ExistingBatch); Jobs.RemoveAt(0);
+
+        ConsoleTimer.Stop("MC.Gen");
     }
 
     /// <summary>
@@ -143,6 +146,9 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     /// </summary>
     public void DispatchSurfaceChecks(IReadOnlyList<ChunkGenerationJob> keys, Action<uint[]> output)
     {
+
+        ConsoleTimer.Start("MC.Surface");
+
         int batchSize = keys.Count;
 
         // Refill list + upload
@@ -177,6 +183,8 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
                 }
             });
         });
+
+        ConsoleTimer.Stop("MC.Surface");
     }
 
     /// <summary>

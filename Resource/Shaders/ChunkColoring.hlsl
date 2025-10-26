@@ -142,33 +142,43 @@ float4 GetTerrainColor(float3 wp, uint vertex, uint packedBiome)
     return GetBiomeBlend(biome, wp);
 }
 
-// Retrieves the color for a set vertex based on overlay.
 float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint overlay)
 {
-    float3 wp = vertex == 0 ? tri.a : 
-                vertex == 1 ? tri.b : 
-                              tri.c;
-   
+    float3 wp = (vertex == 0) ? tri.a :
+                (vertex == 1) ? tri.b :
+                                tri.c;
+
+    float4 result = float4(255, 0, 238, 1); // default
+
     switch (overlay)
     {
         case 0:
-            float3 col = (vertex == 0) ? data.ColorA : (vertex == 1) ? data.ColorB : data.ColorC;
-            return float4(col, 1);
+            result = float4((vertex == 0) ? data.ColorA :
+                            (vertex == 1) ? data.ColorB :
+                                            data.ColorC, 1);
+            break;
         case 1:
-            return GetColorLOD(UnpackLOD(data.Biome));
+            result = GetColorLOD(UnpackLOD(data.Biome));
+            break;
         case 2:
-            return ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeHeight, 3);
+            result = ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeHeight, 3);
+            break;
         case 3:
-            return ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeTemperature, 4);
+            result = ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeTemperature, 4);
+            break;
         case 4:
-            return ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeHumidty, 3);
+            result = ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeHumidty, 3);
+            break;
         case 5:
-            return ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeFoliage, 3);
+            result = ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeFoliage, 3);
+            break;
         case 6:
-            return GetColorForDirection(wp);
+            result = GetColorForDirection(wp);
+            break;
     }
-    
-    return float4(255, 0, 238, 1);
+
+    return result;
 }
+
 
 #endif

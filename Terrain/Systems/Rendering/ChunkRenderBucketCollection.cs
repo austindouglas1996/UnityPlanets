@@ -10,6 +10,9 @@ using UnityEngine.Rendering;
 /// </summary>
 public class ChunkRenderBucketCollection : IDisposable
 {
+    /// <summary>
+    /// Buckets assigned with this collection.
+    /// </summary>
     private List<ChunkRenderBucket> buckets = new();
 
     /// <summary>
@@ -23,9 +26,21 @@ public class ChunkRenderBucketCollection : IDisposable
     private readonly Dictionary<ChunkKey, ChunkRenderBucket> keys = new();
     private readonly Dictionary<ChunkRenderBucket, GameObject> colliders = new();
 
+    /// <summary>
+    /// The max amount of entries per bucket. Keeping this amount low, but not too low is important
+    /// as every time an item is removed/added to a bucket it is resent back for generation.
+    /// </summary>
     private int capacity = 128;
-    private bool isLod0 = false;
 
+    /// <summary>
+    /// Should the children buckets in this collection have colliders created for them. 
+    /// *** THIS IS VERY CPU INTENSE - ONLY DO THIS IS ON CHUNKS PLAYER WALKS ON ***
+    /// </summary>
+    private bool GenerateCollider = false;
+
+    /// <summary>
+    /// An instance of the generator used for generation jobs.
+    /// </summary>
     private IChunkGenerator chunkGenerator;
 
     /// <summary>
@@ -38,7 +53,7 @@ public class ChunkRenderBucketCollection : IDisposable
     {
         this.chunkGenerator = chunkGenerator;
         this.capacity = capacity;
-        this.isLod0 = isLod0;
+        this.GenerateCollider = isLod0;
     }
 
     /// <summary>
@@ -200,7 +215,7 @@ public class ChunkRenderBucketCollection : IDisposable
         buckets.Add(newBucket);
 
         // We currently only generate collisions for LOD0 chunks.
-        if (isLod0)
+        if (GenerateCollider)
         {
             newBucket.OnGenerate += NewColl_OnGenerate;
         }

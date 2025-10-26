@@ -97,6 +97,11 @@ public class ChunkRenderBatch : IDisposable
         {
             if (rCount.hasError) { onDone(Array.Empty<TriangleDataGPU>()); return; }
 
+            /*
+             * This is quite the mess for just trying to get a copy of the triangle data,
+             * but while working on a stuttering issue I kept having random frames that were doing
+             * a GPU operation and then an immediate garbage collection which stopped after changing this.
+             */
             uint triCount = rCount.GetData<uint>()[0];
             if (triCount == 0) { onDone(Array.Empty<TriangleDataGPU>()); return; }
 

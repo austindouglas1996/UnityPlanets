@@ -3,7 +3,6 @@ Shader "Custom/ChunkProceduralLitGPU"
     Properties
     {
         _BaseColor("Base Color", Color) = (1, 1, 1, 1)
-        _UseVertexColor("Use Vertex Color", Float) = 1
 
         _CustomBaseMap("Base Texture", 2D) = "white" {}
         _UseBaseMap("Use Base Texture (0..1)", Range(0,1)) = 1
@@ -17,7 +16,7 @@ Shader "Custom/ChunkProceduralLitGPU"
         Tags
         {
             "RenderPipeline" = "UniversalPipeline"
-            "RenderType"     = "Opague"
+            "RenderType"     = "Opaque"
             "Queue"          = "Transparent+2"
         }
 
@@ -52,18 +51,15 @@ Shader "Custom/ChunkProceduralLitGPU"
             #pragma multi_compile_instancing
             #pragma instancing_options renderinglayer
 
-
             #include "../ChunkFunctions.hlsl"
             #include "../ChunkColoring.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Fog.hlsl"
 
             StructuredBuffer<TriangleData> _TriangleBuffer;
             StructuredBuffer<ChunkDetailData> _TriangleDetailsBuffer;
 
-            float  _UseVertexColor;
             int    Overlay;
 
             TEXTURE2D(_CustomBaseMap);
@@ -92,7 +88,6 @@ Shader "Custom/ChunkProceduralLitGPU"
                 ChunkDetailData data = _TriangleDetailsBuffer[triIndex];
 
                 float3 pos = (subIndex == 0) ? tri.a : (subIndex == 1) ? tri.b : tri.c;
-                float3 col = GetVertexColor(tri,data,subIndex,Overlay);
                 float3 normal = tri.Normal;
                 float3 up = abs(normal.y) < 0.999 ? float3(0,1,0) : float3(1,0,0);
 
@@ -100,7 +95,7 @@ Shader "Custom/ChunkProceduralLitGPU"
                 OUT.positionWS = pos;
                 OUT.normalWS   = normal;
                 OUT.tangentWS = float4(normalize(cross(up, normal)), 1.0);
-                OUT.color      = float4(col, 1);
+                OUT.color      = GetVertexColor(tri,data,subIndex,Overlay);
 
                 return OUT;
             }
@@ -151,7 +146,7 @@ Shader "Custom/ChunkProceduralLitGPU"
                 float3 baseOrTex    = lerp(baseColorLin, texColor, saturate(_UseBaseMap));
 
                 float3 vertexColorLin = FromSRGB(IN.color.rgb);
-                float3 finalColor     = lerp(baseOrTex, vertexColorLin, saturate(_UseVertexColor));
+                float3 finalColor     = lerp(baseOrTex, vertexColorLin, 1);
 
                 SurfaceData surfaceData = (SurfaceData)0;
                 surfaceData.albedo      = finalColor;
@@ -166,10 +161,13 @@ Shader "Custom/ChunkProceduralLitGPU"
                 color.rgb    = MixFog(color.rgb, inputData.fogCoord);
 
                 return color;
+
+                // We keep forgetting this, but there is an issue with coloring. 
+                // set this to return finalColor if you want to see color in the build.
+                //return float4(finalColor,1);
             }
             ENDHLSL
         }
-
     }
 
     Fallback Off

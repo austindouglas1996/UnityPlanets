@@ -1,24 +1,10 @@
 #ifndef CHUNK_COMMON_STRUCT_INCLUDED
 #define CHUNK_COMMON_STRUCT_INCLUDED
 
-//  __      ________ _______     __  _____ __  __ _____   ____  _____ _______       _   _ _______ 
-//  \ \    / /  ____|  __ \ \   / / |_   _|  \/  |  __ \ / __ \|  __ \__   __|/\   | \ | |__   __|
-//   \ \  / /| |__  | |__) \ \_/ /    | | | \  / | |__) | |  | | |__) | | |  /  \  |  \| |  | |   
-//    \ \/ / |  __| |  _  / \   /     | | | |\/| |  ___/| |  | |  _  /  | | / /\ \ | . ` |  | |   
-//     \  /  | |____| | \ \  | |     _| |_| |  | | |    | |__| | | \ \  | |/ ____ \| |\  |  | |   
-//      \/   |______|_|  \_\ |_|    |_____|_|  |_|_|     \____/|_|  \_\ |_/_/    \_\_| \_|  |_|   
-//
-// Must stay in sync with the C# side struct of each if using a structured buffer.:
+
+// Must stay in sync with the C# side struct of each if using a structured buffer:
 //   - Field order
 //   - Data type sizes/alignment
-//
-//   _____  ______ __  __ ______ __  __ ____  ______ _____  
-// |  __ \|  ____|  \/  |  ____|  \/  |  _ \|  ____|  __ \ 
-// | |__) | |__  | \  / | |__  | \  / | |_) | |__  | |__) |
-// |  _  /|  __| | |\/| |  __| | |\/| |  _ <|  __| |  _  / 
-// | | \ \| |____| |  | | |____| |  | | |_) | |____| | \ \ 
-// |_|  \_\ _____|_|  |_|_____|_|  |_|____/|_____|_| |  \_\
-
 // Key that identifies a chunk for dispatch.
 // CoordPos = logical world-space position of the chunk
 // LodIndex = step size based on current LOD
@@ -35,7 +21,7 @@ struct ChunkDispatchKeyInfo
 {
     uint KeyIndex;
     uint SampleIndex;
-    int3 LocalVoxelCoord;
+    uint3 LocalVoxelCoord;
     float3 WorldPos;
     ChunkDispatchKey chunk;
 };

@@ -8,6 +8,9 @@ using UnityEngine.Rendering;
 /// </summary>
 public class ChunkRenderBucket : IDisposable
 {
+    /// <summary>
+    /// The collection of items used in this bucket.
+    /// </summary>
     private readonly List<ChunkKey> items;
 
     /// <summary>
@@ -40,6 +43,11 @@ public class ChunkRenderBucket : IDisposable
     /// The generator used to dispatch generation requests.
     /// </summary>
     private IChunkGenerator chunkGenerator;
+
+    /// <summary>
+    /// The material block used for generation.
+    /// </summary>
+    private MaterialPropertyBlock mpb = new();
 
     /// <summary>
     /// Initializes a new instance of <see cref="ChunkRenderBucket"/>.
@@ -145,6 +153,9 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     public void Update()
     {
+        // In some cases as we are getting new data we want to delay the update
+        // this way we dont regenerate this bucket just for it go through another
+        // immediate update.
         if (RemainingTicksToUpdate > 0)
         {
             RemainingTicksToUpdate--;
@@ -167,10 +178,6 @@ public class ChunkRenderBucket : IDisposable
 
         var rd = RenderData;
         if (rd == null || rd.IsDisposed || rd.Triangle == null || rd.Args == null) return;
-
-        var mpb = new MaterialPropertyBlock();
-        mpb.SetBuffer("_TriangleBuffer", rd.Triangle);
-        mpb.SetBuffer("_TriangleDetailsBuffer", rd.Details);
 
         // enqueue indirect procedural draw
         cdb.DrawProceduralIndirect(
@@ -221,25 +228,32 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     private void Generate()
     {
-        if (GenerateInProgress)
+        if (GenerateInProgress || this.items.Count == 0)
             return;
         GenerateInProgress = true;
 
-        if (this.items.Count != 0)
-        {
-            GenerateCore(items, (ChunkRenderBatch output) =>
-            {
-                RenderData = output;
+        GenerateCore(items, OnGenerateCompleted);
+    }
 
-                this.IsDirty = false;
-                this.GenerateInProgress = false;
+    /// <summary>
+    /// Handle execution for <see cref="Generate"/>. 
+    /// </summary>
+    /// <remarks>This was changed from a lambda as I track down a stuttering issue and GC issues.</remarks>
+    /// <param name="output"></param>
+    private void OnGenerateCompleted(ChunkRenderBatch output)
+    {
+        RenderData = output;
 
-                // Something went wrong to reach this.
-                if (this.RenderData == null)
-                    return;
+        // Something went wrong to reach this.
+        if (this.RenderData == null)
+            return;
 
-                OnGenerate?.Invoke(this, EventArgs.Empty);
-            });
-        }
+        OnGenerate?.Invoke(this, EventArgs.Empty);
+
+        mpb.SetBuffer("_TriangleBuffer", RenderData.Triangle);
+        mpb.SetBuffer("_TriangleDetailsBuffer", RenderData.Details);
+
+        this.IsDirty = false;
+        this.GenerateInProgress = false;
     }
 }

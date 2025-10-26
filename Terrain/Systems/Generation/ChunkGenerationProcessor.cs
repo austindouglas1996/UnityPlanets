@@ -100,9 +100,13 @@ public class ChunkGenerationProcessor : IDisposable
     {
         this.layerRenderer.Update();
 
+        ConsoleTimer.Start("ChunkProcessor");
+
         UpdateSurface();
         UpdateGeneration();
         UpdateRemoval();
+
+        ConsoleTimer.Stop("ChunkProcessor");
     }
 
     /// <summary>
@@ -147,8 +151,6 @@ public class ChunkGenerationProcessor : IDisposable
         if (SurfaceBusy) 
             return;
         SurfaceBusy = true;
-
-        Debug.Log($"SurfaceJobs: {surfaceBatcher.Count}");
 
         int n = surfaceBatcher.TryBatch(SurfaceJobs, tmpSurfaceJobs);
         if (n == 0) return;

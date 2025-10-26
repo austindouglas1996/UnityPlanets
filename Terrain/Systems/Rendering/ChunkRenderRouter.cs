@@ -64,9 +64,7 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public bool Remove(ChunkKey key)
     {
-        mainBuckets[key.LODIndex].Remove(key);
-
-        return false;
+        return mainBuckets[key.LODIndex].Remove(key);
     }
 
     /// <summary>
@@ -85,10 +83,14 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void Update()
     {
+        ConsoleTimer.Start("ChunkRouter.Update");
+
         foreach (var bucket in mainBuckets)
         {
             bucket.Update();
         }
+
+        ConsoleTimer.Stop("ChunkRouter.Update");
     }
 
     /// <summary>
@@ -97,6 +99,8 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void Draw()
     {
+        ConsoleTimer.Start("ChunkRouter.Draw");
+
         this.commandBuffer.Clear();
 
         foreach (var bucket in mainBuckets)
@@ -104,7 +108,10 @@ public class ChunkRenderRouter : IDisposable
             bucket.Draw(this.commandBuffer, this.chunkGenerator.GetMaterial);
         }
 
-        Graphics.ExecuteCommandBuffer(this.commandBuffer);
+        Graphics.ExecuteCommandBufferAsync(this.commandBuffer, ComputeQueueType.Default);
+
+
+        ConsoleTimer.Stop("ChunkRouter.Draw");
     }
 
     /// <summary>
@@ -113,12 +120,14 @@ public class ChunkRenderRouter : IDisposable
     /// </summary>
     public void Dispose()
     {
-        foreach (var bucket in mainBuckets)
+        if (commandBuffer != null)
         {
-            bucket.Clear();
+            commandBuffer.Release();
+            commandBuffer = null;
         }
 
-        this.commandBuffer.Dispose();
+        foreach (var bucket in mainBuckets)
+            bucket.Dispose();
     }
 
     /// <summary>

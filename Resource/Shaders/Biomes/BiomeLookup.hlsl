@@ -4,7 +4,7 @@
 #include "../ChunkFunctions.hlsl"
 
 StructuredBuffer<ChunkBiomeData> Biomes;
-int _BiomesCount;
+uint _BiomesCount;
 
 // FindBiomeIndex()
 // Takes the set of parameters and determines the first biome that meets the
@@ -16,12 +16,12 @@ uint FindBiomeIndex(uint height, uint temperature, uint humidity, uint foliage)
     uint count = 0;
 
     // First filter: height + temperature
-    for (uint i = 0; i < _BiomesCount; i++)
+    for (uint m = 0; m < _BiomesCount; m++)
     {
-        ChunkBiomeData b = Biomes[i];
+        ChunkBiomeData b = Biomes[m];
         if (b.BiomeHeight == height && b.BiomeTemperature == temperature)
         {
-            matches[count++] = i;
+            matches[count++] = m;
         }
     }
 
@@ -33,11 +33,11 @@ uint FindBiomeIndex(uint height, uint temperature, uint humidity, uint foliage)
     // Second filter: humidity
     uint humidMatches[32];
     uint humidCount = 0;
-    for (uint i = 0; i < count; i++)
+    for (uint h = 0; h < count; h++)
     {
-        ChunkBiomeData b = Biomes[matches[i]];
+        ChunkBiomeData b = Biomes[matches[h]];
         if (b.BiomeHumidty == humidity)
-            humidMatches[humidCount++] = matches[i];
+            humidMatches[humidCount++] = matches[h];
     }
 
     if (humidCount == 1)

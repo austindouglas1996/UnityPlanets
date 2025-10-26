@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 /// <summary>
@@ -213,6 +212,8 @@ public class ChunkLodOctree
     /// </summary>
     public void Update()
     {
+        ConsoleTimer.Start("ChunkLODOctTree");
+
         int count = Nodes.Count;
         int processed = 0;
 
@@ -227,6 +228,8 @@ public class ChunkLodOctree
             CurrentUpdateIndex++;
             processed++;
         }
+
+        ConsoleTimer.Stop("ChunkLODOctTree");
     }
 
     /// <summary>

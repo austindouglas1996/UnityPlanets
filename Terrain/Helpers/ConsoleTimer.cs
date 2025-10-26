@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
+using TMPro;
 
 /// <summary>
 /// Quick Unity helper for timing code. 

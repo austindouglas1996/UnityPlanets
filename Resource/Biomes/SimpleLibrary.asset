@@ -80,7 +80,7 @@ MonoBehaviour:
     Dark: {r: 0.15686275, g: 0.43137255, b: 0.627451, a: 0}
     Shadow: {r: 0.11764706, g: 0.33333334, b: 0.5294118, a: 0}
   - Name: Coral Shore
-    Height: -1
+    Height: 1
     Temperature: 2
     Humidity: 2
     Foliage: 2
