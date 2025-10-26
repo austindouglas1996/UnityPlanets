@@ -4,25 +4,6 @@
 #include "../Includes/TriangleTable.hlsl"
 #include "../ChunkFunctions.hlsl"
 
-[noinline]
-float3 GetNormal(uint keyIndex, int3 localVoxelCoord, int3 sampleSize, RWStructuredBuffer<float> DensityMap)
-{
-    float x1 = GetVoxelSampleIndex(localVoxelCoord + int3(BorderSamplesPerAxis, 0, 0), keyIndex, sampleSize);
-    float x2 = GetVoxelSampleIndex(localVoxelCoord - int3(BorderSamplesPerAxis, 0, 0), keyIndex, sampleSize);
-    
-    float y1 = GetVoxelSampleIndex(localVoxelCoord + int3(0, BorderSamplesPerAxis, 0), keyIndex, sampleSize);
-    float y2 = GetVoxelSampleIndex(localVoxelCoord - int3(0, BorderSamplesPerAxis, 0), keyIndex, sampleSize);
-    
-    float z1 = GetVoxelSampleIndex(localVoxelCoord + int3(0, 0, BorderSamplesPerAxis), keyIndex, sampleSize);
-    float z2 = GetVoxelSampleIndex(localVoxelCoord - int3(0, 0, BorderSamplesPerAxis), keyIndex, sampleSize);
-    
-    float dx = DensityMap[x1] - DensityMap[x2];
-    float dy = DensityMap[y1] - DensityMap[y2];
-    float dz = DensityMap[z1] - DensityMap[z2];
-    
-    return normalize(float3(dx, dy, dz));
-}
-
 void March(ChunkDispatchKeyInfo key, AppendStructuredBuffer<TriangleData> TriangleBuffer, RWStructuredBuffer<float> DensityMap)
 {
     uint cubeIndex = 0;
@@ -73,9 +54,34 @@ void March(ChunkDispatchKeyInfo key, AppendStructuredBuffer<TriangleData> Triang
     float3 normal = normalize(cross(worldB - worldA, worldC - worldA));
     */
     
-    // We wait to grab the normal here until after we know there is surface.
-    float3 normal = GetNormal(key.KeyIndex, key.LocalVoxelCoord, sample3, DensityMap);
+    /*
     
+    ChatGPT helped me with this fuckery. In my previous instance I was making calls to the DensityMap
+    itself. Using this below float increased performance by quite a bit, and the lighting looks so much better.
+    
+    What we're doing is taking the opposite face of the cube and sum them up.
+    X - (1-0), (3-2), (5-4), (7-6)
+    Y - (2-0), (3-1), (6-4), (7-5)
+    Z - (4-0), (5-1), (6-2), (7-3)
+    
+        y
+        |
+        4 ---- 5
+        /|     /|
+        0 ---- 1|
+        | 6 --|- 7 ---> x
+        |/    |/
+        2 ----3
+        /
+        z
+
+    Approximate central difference from cube corners */
+    float3 grad = float3(
+        corner[1] - corner[0] + corner[3] - corner[2] + corner[5] - corner[4] + corner[7] - corner[6],
+        corner[2] - corner[0] + corner[3] - corner[1] + corner[6] - corner[4] + corner[7] - corner[5],
+        corner[4] - corner[0] + corner[5] - corner[1] + corner[6] - corner[2] + corner[7] - corner[3]);
+    float3 normal = normalize(grad);
+
     [loop]
     for (int i = 0; i < 16; i += 3)
     {
