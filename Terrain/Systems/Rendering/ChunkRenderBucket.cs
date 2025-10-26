@@ -161,7 +161,7 @@ public class ChunkRenderBucket : IDisposable
             return;
         }
 
-        if (IsDirty & !this.GenerateInProgress)
+        if (IsDirty && !this.GenerateInProgress)
         {
             this.Generate();
         }
@@ -245,7 +245,11 @@ public class ChunkRenderBucket : IDisposable
 
         // Something went wrong to reach this.
         if (this.RenderData == null)
+        {
+            this.IsDirty = false;
+            this.GenerateInProgress = false;
             return;
+        }
 
         OnGenerate?.Invoke(this, EventArgs.Empty);
 

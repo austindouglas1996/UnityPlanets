@@ -49,13 +49,7 @@ public class ChunkGenerationBatcher
     /// </summary>
     public bool Remove(ChunkKey key)
     {
-        if (jobs.TryGetValue(key, out var job))
-        {
-            jobs.Remove(key);
-            return true;
-        }
-
-        return false;
+        return jobs.Remove(key);
     }
 
     /// <summary>

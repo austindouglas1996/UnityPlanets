@@ -74,6 +74,7 @@ public class ChunkRenderBatch : IDisposable
         Args = null;
         Triangle = null;
         Details = null;
+        countBuffer.Dispose();
     }
 
     /// <summary>

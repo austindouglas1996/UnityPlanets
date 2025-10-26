@@ -13,14 +13,11 @@ using UnityEngine.Rendering.Universal;
 public class ChunkGenerationProcessor : IDisposable
 {
     private const int SurfaceJobs = 512;
-    private const int GenerationJobs = 64;
+    private const int GenerationJobs = 64; 
     private const int Generation0Jobs = 16;
 
     private readonly List<ChunkGenerationJob> tmpSurfaceJobs = new(SurfaceJobs);
-    private readonly List<ChunkGenerationJob> tmpGenerationJobs = new(GenerationJobs);
-
     private readonly ChunkGenerationBatcher surfaceBatcher = new();
-    private readonly ChunkGenerationBatcher generationBatcher = new();
 
     /// <summary>
     /// A simple queue to help with items that need to be removed.
@@ -78,7 +75,9 @@ public class ChunkGenerationProcessor : IDisposable
     public void RequestChunkGeneration(ChunkKey key, Action<ChunkKey, int, bool> onDone)
     {
         var job = new ChunkGenerationJob(key, onDone);
-        generationBatcher.Add(job);
+
+        layerRenderer.Add(job);
+        job.OnDone(job.Key, job.ParentIndex, true);
     }
 
     /// <summary>
@@ -87,7 +86,7 @@ public class ChunkGenerationProcessor : IDisposable
     /// </summary>
     public void RemoveChunk(ChunkKey key)
     {
-        this.removalQueue.Add(new (key, 15));
+        this.removalQueue.Add(new (key, 10));
     }
 
     /// <summary>
@@ -110,7 +109,6 @@ public class ChunkGenerationProcessor : IDisposable
         ConsoleTimer.Start("ChunkProcessor");
 
         UpdateSurface();
-        UpdateGeneration();
         UpdateRemoval();
 
         ConsoleTimer.Stop("ChunkProcessor");
@@ -136,7 +134,6 @@ public class ChunkGenerationProcessor : IDisposable
             if (framesLeft < 0)
             {
                 surfaceBatcher.Remove(key);
-                generationBatcher.Remove(key);
                 layerRenderer.Remove(key);
 
                 removalQueue.RemoveAt(i);
@@ -172,22 +169,5 @@ public class ChunkGenerationProcessor : IDisposable
 
             SurfaceBusy = false;
         });
-    }
-
-    /// <summary>
-    /// Processes a batch of chunk generation jobs.
-    /// </summary>
-    private void UpdateGeneration()
-    {
-        if (!generationBatcher.HasPending) return;
-
-        int n = generationBatcher.TryBatch(GenerationJobs, tmpGenerationJobs);
-        if (n == 0) return;
-
-        foreach (var job in tmpGenerationJobs)
-        {
-            job.OnDone(job.Key, job.ParentIndex, true);
-            layerRenderer.Add(job);
-        }
     }
 }
