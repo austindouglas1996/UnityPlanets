@@ -6,12 +6,11 @@
 #include "Biomes/BiomeSampler.hlsl"
 #include "Lib/PerlinNoise.hlsl"
 
+static const float INV_9 = 1.0 / 9.0;
+
 float4 GetColorForDirection(float3 worldPos)
 {
-    float angle = atan2(worldPos.z, worldPos.x);
-    if (angle < 0)
-        angle += 2.0 * 3.14159265; // wrap into [0, 2π)
-    
+    float angle = fmod(atan2(worldPos.z, worldPos.x) + TAU, TAU);
     int region = (int) floor(angle / (3.14159265 / 4.0));
 
     switch (region)
@@ -129,7 +128,7 @@ float3 GetBiomeBlended(float3 wp)
     uint biC = SampleBiomeIndex(wp);
     float3 center = GetBiomeBlend(Biomes[biC], wp).rgb;
     accum += center;
-    return float3(accum / 9.0);
+    return float3(accum * INV_9);
 }
 
 // Retrieves the set color to use for a biome on a vertex.

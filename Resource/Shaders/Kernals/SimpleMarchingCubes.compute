@@ -16,14 +16,13 @@
 /* Inputs */
 StructuredBuffer<ChunkDispatchKey> ChunkInputs;
 RWStructuredBuffer<float> DensityMap;
+RWByteAddressBuffer CountBuffer;
 
 /* Outputs */
 RWStructuredBuffer<uint> SurfaceMask;
 
 /* March Kernel */
-uint ThreadCount;
 AppendStructuredBuffer<TriangleData> TriangleBuffer;
-AppendStructuredBuffer<ChunkDetailData> InitialDetailBuffer;
 
 /* Detail Kernel */
 StructuredBuffer<TriangleData> DetailTriangles;
@@ -69,26 +68,17 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
 
     // Partition the 3D region across 4x4x4 threads
     // Each thread processes a strided subset.
-    for (int x = tid.x; x < baseSize; x += 4)
+    const uint done = gHasAbove & gHasBelow;
+    for (uint x = tid.x; x < baseSize && !done; x += 4)
     {
-        // Early exit: if another thread already proved mixed signs, stop
-        if (gHasAbove & gHasBelow)
-            break;
-
         const float wx = origin.x + x * step;
 
-        for (int y = tid.y; y < baseSize; y += 4)
+        for (uint y = tid.y; y < baseSize && !done; y += 4)
         {
-            if (gHasAbove & gHasBelow)
-                break;
-
             const float wy = origin.y + y * step;
 
-            for (int z = tid.z; z < baseSize; z += 4)
+            for (uint z = tid.z; z < baseSize && !done; z += 4)
             {
-                if (gHasAbove & gHasBelow)
-                    break;
-
                 const float wz = origin.z + z * step;
 
                 // Uniform branch on subvariant is fine; compiler will keep it outside inner loop
@@ -98,10 +88,6 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
                 // (bool → uint: (v >= iso) ? 1 : 0)
                 InterlockedOr(gHasAbove, (uint) (v >= iso));
                 InterlockedOr(gHasBelow, (uint) (v < iso));
-
-                // Optional super-early exit: if this thread discovered both, hint others
-                if ((gHasAbove & gHasBelow) != 0)
-                    break;
             }
         }
     }
@@ -136,7 +122,9 @@ void RunDetailsPass(uint3 id : SV_DispatchThreadID)
 {
     uint idx = id.x;
 
-    if (idx >= ArgsBuffer[0])
+    uint vertexCount = ArgsBuffer[0];
+    uint triCount = vertexCount / 3;
+    if (idx >= triCount)
         return;
 
     TriangleData tri = DetailTriangles[idx];
@@ -149,8 +137,6 @@ void RunDetailsPass(uint3 id : SV_DispatchThreadID)
 
     DetailBuffer[idx] = d;
 }
-
-RWByteAddressBuffer CountBuffer;
 
 // PrepareIndirectDrawArgs
 // Small kernel to finalize DrawMeshInstancedIndirect args after triangle

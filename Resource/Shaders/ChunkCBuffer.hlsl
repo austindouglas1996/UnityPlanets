@@ -132,6 +132,8 @@ float GetHumidityBias()
             return 0.15f;
         case 4:
             return 0.30f;
+        default:
+            return 0.0f;
     }
 }
 

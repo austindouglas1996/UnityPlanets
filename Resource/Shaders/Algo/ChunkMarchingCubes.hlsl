@@ -15,7 +15,7 @@ void March(ChunkDispatchKeyInfo key, AppendStructuredBuffer<TriangleData> Triang
     int3 sample3 = GetSamplesPerChunk3();
     
     [loop]
-    for (int i = 0; i < 8; i++)
+    for (uint i = 0; i < 8; i++)
     {
         uint3 pos = key.LocalVoxelCoord + GetCornerOffset(i);
         corner[i] = DensityMap[GetVoxelSampleIndexRaw(pos, key.KeyIndex, sample3)];
