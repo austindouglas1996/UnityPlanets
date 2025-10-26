@@ -138,7 +138,6 @@ public class ChunkRenderBucket : IDisposable
     {
         this.items.Clear();
         this.index.Clear();
-        this.Dispose();
     }
 
     /// <summary>
