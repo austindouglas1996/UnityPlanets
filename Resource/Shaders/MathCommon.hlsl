@@ -59,4 +59,16 @@ inline float ReverseQuantizeN(uint index, uint bins)
     return (index + 0.5f) / bins;
 }
 
+uint PackFloat3(float3 c)
+{
+    uint3 i = (uint3) round(saturate(c) * 255.0);
+    return (i.x << 16) | (i.y << 8) | i.z;
+}
+
+float3 UnpackFloat3(uint p)
+{
+    return float3((p >> 16) & 255, (p >> 8) & 255, p & 255) / 255.0;
+}
+
+
 #endif

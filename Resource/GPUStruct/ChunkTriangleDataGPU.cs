@@ -21,7 +21,7 @@ public struct ChunkDetailDataGPU
 {
     public uint Biome;
     public uint Foliage;
-    public Vector3 a;
-    public Vector3 b;
-    public Vector3 c;
+    public uint a;
+    public uint b;
+    public uint c;
 }

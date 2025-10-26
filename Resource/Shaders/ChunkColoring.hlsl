@@ -153,9 +153,9 @@ float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint 
     switch (overlay)
     {
         case 0:
-            result = float4((vertex == 0) ? data.ColorA :
-                            (vertex == 1) ? data.ColorB :
-                                            data.ColorC, 1);
+            result = float4((vertex == 0) ? float4(UnpackFloat3(data.ColorA), 1) :
+                            (vertex == 1) ? float4(UnpackFloat3(data.ColorB), 1) :
+                                            float4(UnpackFloat3(data.ColorC), 1));
             break;
         case 1:
             result = GetColorLOD(UnpackLOD(data.Biome));
