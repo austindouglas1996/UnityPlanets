@@ -248,9 +248,10 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     private void Generate()
     {
-        if (GenerateInProgress || this.IsEmpty)
-            return;
+        if (GenerateInProgress || this.IsEmpty) return;
         GenerateInProgress = true;
+
+        var moves = CompactBeforeGenerate();
 
         this.tempItems.Clear();
         foreach (var entry in this.items)
@@ -260,6 +261,43 @@ public class ChunkRenderBucket : IDisposable
         }
 
         GenerateCore(tempItems, OnGenerateCompleted);
+    }
+
+    private Dictionary<int, ChunkKey> CompactBeforeGenerate()
+    {
+        var moved = new Dictionary<int, ChunkKey>();
+
+        if (AvailableSlots.Count == 0)
+            return moved;
+
+        while (AvailableSlots.Count > 0)
+        {
+            int vacant = AvailableSlots.Dequeue();
+
+            // Stop if vacancy is already beyond current end
+            if (vacant >= items.Count - 1)
+                continue;
+
+            // Pull last valid chunk
+            int lastIndex = items.Count - 1;
+            var lastVal = items[lastIndex];
+            if (!lastVal.HasValue)
+            {
+                // skip trailing nulls
+                items.RemoveAt(lastIndex);
+                continue;
+            }
+
+            // Move last chunk down
+            items[vacant] = lastVal;
+            index[lastVal.Value] = vacant;
+            moved[vacant] = lastVal.Value;
+
+            // Trim tail
+            items.RemoveAt(lastIndex);
+        }
+
+        return moved;
     }
 
     /// <summary>
