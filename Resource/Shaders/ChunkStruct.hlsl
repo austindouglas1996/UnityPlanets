@@ -9,6 +9,7 @@
 // LodIndex = step size based on current LOD
 struct ChunkDispatchKey
 {
+    uint GlobalIndex;
     float3 CoordPos;
     uint LodIndex;
 };
@@ -18,6 +19,7 @@ struct ChunkDispatchKey
 // world position, and the original chunk key.
 struct ChunkDispatchKeyInfo
 {
+    uint GlobalIndex;
     uint KeyIndex;
     uint SampleIndex;
     uint3 LocalVoxelCoord;

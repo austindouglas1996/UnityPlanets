@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -11,12 +13,18 @@ public class ChunkRenderBucket : IDisposable
     /// <summary>
     /// The collection of items used in this bucket.
     /// </summary>
-    private readonly List<ChunkKey> items;
+    private List<ChunkKey?> items;
+    private List<ChunkKey> tempItems;
 
     /// <summary>
     /// Side index so Contains/Remove are O(1). No linear scans.
     /// </summary>
     private readonly Dictionary<ChunkKey, int> index;
+
+    /// <summary>
+    /// A collection of available slots.
+    /// </summary>
+    private Queue<int> AvailableSlots;
 
     /// <summary>
     /// The allowed amount of elements in this bucket.
@@ -57,10 +65,12 @@ public class ChunkRenderBucket : IDisposable
     /// <param name="chunkGenerator"></param>
     public ChunkRenderBucket(int capacity, IChunkGenerator chunkGenerator)
     {
-        this.items = new(capacity);
+        this.items = new List<ChunkKey?>(capacity);
+        this.tempItems = new List<ChunkKey>(capacity);
         this.index = new(capacity);
 
         this.capacity = capacity;
+        this.AvailableSlots = new Queue<int>();
 
         this.chunkGenerator = chunkGenerator;
     }
@@ -83,12 +93,12 @@ public class ChunkRenderBucket : IDisposable
     /// <summary>
     /// Has this bucket reached maximum capacity.
     /// </summary>
-    public virtual bool IsFull => items.Count == capacity;
+    public virtual bool IsFull => index.Count >= capacity;
 
     /// <summary>
     /// Has this bucket no items?
     /// </summary>
-    public bool IsEmpty => items.Count == 0;
+    public bool IsEmpty => index.Count == 0;
 
     /// <summary>
     /// Fast append. If we add anything, mark dirty so we rebuild soon.
@@ -97,10 +107,21 @@ public class ChunkRenderBucket : IDisposable
     /// <returns>True if added successfully.</returns>
     public bool TryAdd(ChunkKey key)
     {
-        if (index.ContainsKey(key) || items.Count >= capacity) return false;
+        if (index.ContainsKey(key) || IsFull) return false;
 
-        index[key] = items.Count;
-        items.Add(key);
+        int pos;
+        if (this.AvailableSlots.Count != 0)
+        {
+            pos = this.AvailableSlots.Dequeue();
+            items[pos] = key;
+        }
+        else
+        {
+            pos = items.Count;
+            items.Add(key);
+        }
+
+        index[key] = pos;
 
         this.MarkAsDirty(false);
 
@@ -117,14 +138,12 @@ public class ChunkRenderBucket : IDisposable
     {
         if (!index.TryGetValue(key, out int i)) return false;
 
-        int last = items.Count - 1;
-        var swap = items[last];
-
-        items[i] = swap;
-        items.RemoveAt(last);
-
-        index[swap] = i;
+        // Remove.
+        items[i] = null;
         index.Remove(key);
+
+        // Add slot.
+        AvailableSlots.Enqueue(i);
 
         this.MarkAsDirty(false);
 
@@ -138,6 +157,8 @@ public class ChunkRenderBucket : IDisposable
     {
         this.items.Clear();
         this.index.Clear();
+        this.tempItems.Clear();
+        this.AvailableSlots.Clear();
     }
 
     /// <summary>
@@ -173,7 +194,7 @@ public class ChunkRenderBucket : IDisposable
     /// <param name="vertexMat"></param>
     public void Draw(CommandBuffer cdb, Material vertexMat)
     {
-        if (items.Count == 0) return;
+        if (IsEmpty) return;
 
         var rd = RenderData;
         if (rd == null || rd.IsDisposed || rd.Triangle == null || rd.Args == null) return;
@@ -227,11 +248,18 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     private void Generate()
     {
-        if (GenerateInProgress || this.items.Count == 0)
+        if (GenerateInProgress || this.IsEmpty)
             return;
         GenerateInProgress = true;
 
-        GenerateCore(items, OnGenerateCompleted);
+        this.tempItems.Clear();
+        foreach (var entry in this.items)
+        {
+            if (entry.HasValue)
+                tempItems.Add(entry.Value);
+        }
+
+        GenerateCore(tempItems, OnGenerateCompleted);
     }
 
     /// <summary>

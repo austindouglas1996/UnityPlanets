@@ -53,6 +53,7 @@ ChunkDispatchKeyInfo GetChunkAccessCubes(uint3 id, StructuredBuffer<ChunkDispatc
     
     // Fetch key and compute world position
     ChunkDispatchKey key = keys[r.KeyIndex];
+    r.GlobalIndex = key.GlobalIndex;
     r.chunk = key;
     r.WorldPos = ToWorld(key.CoordPos, key.LodIndex) + 
                  float3(r.LocalVoxelCoord) * GetCubeSizeStep(r.chunk.LodIndex);
@@ -93,6 +94,7 @@ ChunkDispatchKeyInfo GetChunkAccessSamples(uint3 id, StructuredBuffer<ChunkDispa
     r.SampleIndex = GetVoxelSampleIndexRaw(r.LocalVoxelCoord, r.KeyIndex, sampleSize);
 
     ChunkDispatchKey key = keys[r.KeyIndex];
+    r.GlobalIndex = key.GlobalIndex;
     r.chunk = key;
     r.WorldPos = ToWorld(key.CoordPos, key.LodIndex) + float3(r.LocalVoxelCoord) * GetCubeSizeStep(r.chunk.LodIndex);
 

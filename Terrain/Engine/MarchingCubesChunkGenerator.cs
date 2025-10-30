@@ -398,6 +398,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
             var ctx = keys[i];
             InputGenerate.Add(new ChunkDispatchKeyGPU
             {
+                GlobalIndex = (uint)i,
                 CoordPos = ctx.Coordinates,
                 LodIndex = ctx.LODIndex
             });
