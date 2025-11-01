@@ -29,7 +29,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private ComputeShader MarchingShader;
 
     // Shared GPU state
-    private ComputeBuffer DensityBuffer;           // RWStructuredBuffer<float>  (voxel scalar field)
     private ComputeBuffer SurfaceChunkInputBuffer; // StructuredBuffer<ChunkInput> for mask pass
     private ComputeBuffer GenerateChunkInputBuffer;// StructuredBuffer<ChunkInput> for full gen
     private ComputeBuffer BiomeBuffer;             // StructuredBuffer<BiomeData> (small table)
@@ -112,7 +111,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     /// <exception cref="System.NotImplementedException"></exception>
     public void Dispose()
     {
-        DensityBuffer.Dispose();
         SurfaceChunkInputBuffer.Dispose();
         GenerateChunkInputBuffer.Dispose();
         BiomeBuffer.Dispose();
@@ -257,12 +255,14 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         ComputeBuffer triangleBuffer = existingBatch?.Triangle;
         ComputeBuffer detailBuffer = existingBatch?.Details;
         ComputeBuffer argsBuffer = existingBatch?.Args;
+        ComputeBuffer densityBuffer = existingBatch?.DensityMap;
 
         if (existingBatch == null)
         {
             triangleBuffer = new ComputeBuffer(60000, Marshal.SizeOf<TriangleDataGPU>(), ComputeBufferType.Append);
             detailBuffer = new ComputeBuffer(60000, Marshal.SizeOf<ChunkDetailDataGPU>(), ComputeBufferType.Append | ComputeBufferType.Structured);
             argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
+            densityBuffer = CreateDensityBuffer();
         }
 
         triangleBuffer.SetCounterValue(0);
@@ -270,7 +270,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
 
         // Generate density
         MarchingShader.SetBuffer(genKernel, "ChunkInputs", GenerateChunkInputBuffer);
-        MarchingShader.SetBuffer(genKernel, "DensityMap", DensityBuffer);
+        MarchingShader.SetBuffer(genKernel, "DensityMap", densityBuffer);
 
         // NOTE: thread group dims assume [numthreads(4,4,4)] and X packs chunkIndex*XWithinChunk
         int genGroupSize = Mathf.CeilToInt(samplesPerAxis / 4f);
@@ -278,7 +278,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
 
         // Marching cubes
         MarchingShader.SetBuffer(marchKernel, "ChunkInputs", GenerateChunkInputBuffer);
-        MarchingShader.SetBuffer(marchKernel, "DensityMap", DensityBuffer);
+        MarchingShader.SetBuffer(marchKernel, "DensityMap", densityBuffer);
         MarchingShader.SetBuffer(marchKernel, "InitialDetailBuffer", detailBuffer);
         MarchingShader.SetBuffer(marchKernel, "TriangleBuffer", triangleBuffer);
 
@@ -312,7 +312,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         */
 
         // Hand back a draw-ready batch (triangles + args + bounds computed from keys)
-        output.Invoke(new ChunkRenderBatch(triangleBuffer, detailBuffer, argsBuffer, keys, this.chunkServices));
+        output.Invoke(new ChunkRenderBatch(triangleBuffer, detailBuffer, densityBuffer, argsBuffer, keys, this.chunkServices));
     }
 
     /// <summary>
@@ -332,12 +332,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
 
         this.MarchingShader.SetConstantBuffer("TerrainDensityOptions", DensityOptionsBuffer, 0, Marshal.SizeOf<TerrainDensityOptions>());
         this.MarchingShader.SetConstantBuffer("PlanetDensityOptions", PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
-
-        // Scalar field big enough for 128 chunks at current chunk size (rough over-alloc)
-        int samples = CubesPerAxis + 1 + (2 * BorderSamples);
-        int sampleCountPerChunk = samples * samples * samples;
-        int maxTotalSamples = sampleCountPerChunk * GenerateCap;
-        DensityBuffer = new ComputeBuffer(maxTotalSamples, sizeof(float));
 
         // Per-kernel inputs + mask output
         SurfaceChunkInputBuffer = new ComputeBuffer(SurfaceCap, Marshal.SizeOf<ChunkDispatchKeyGPU>());
@@ -405,6 +399,15 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         }
 
         GenerateChunkInputBuffer.SetData(InputGenerate, 0, 0, n);
+    }
+
+    private ComputeBuffer CreateDensityBuffer()
+    {
+        // Scalar field big enough for 128 chunks at current chunk size (rough over-alloc)
+        int samples = CubesPerAxis + 1 + (2 * BorderSamples);
+        int sampleCountPerChunk = samples * samples * samples;
+        int maxTotalSamples = sampleCountPerChunk * GenerateCap;
+        return new ComputeBuffer(maxTotalSamples, sizeof(float));
     }
 
     public int CubesPerAxis => densityOptions.CubesPerAxis;

@@ -21,6 +21,11 @@ public class ChunkRenderBatch : IDisposable
     public ComputeBuffer Triangle;
 
     /// <summary>
+    /// The density map used for the render batch.
+    /// </summary>
+    public ComputeBuffer DensityMap;
+
+    /// <summary>
     /// Append buffer containing generated detail data for triangles.
     /// </summary>
     public ComputeBuffer Details;
@@ -43,13 +48,14 @@ public class ChunkRenderBatch : IDisposable
     /// <param name="keys">Chunk keys included in this batch (for bounds computation).</param>
     /// <param name="services">Layout/services used to convert chunk keys to world space.</param>
     /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="Args"/> is null.</exception>
-    public ChunkRenderBatch(ComputeBuffer Triangle, ComputeBuffer Details, ComputeBuffer Args, IReadOnlyList<ChunkKey> keys, IChunkServices services)
+    public ChunkRenderBatch(ComputeBuffer Triangle, ComputeBuffer Details, ComputeBuffer densityMap, ComputeBuffer Args, IReadOnlyList<ChunkKey> keys, IChunkServices services)
     {
         if (Args == null)
             throw new System.ArgumentNullException("args");
 
         this.Triangle = Triangle;
         this.Details = Details;
+        this.DensityMap = densityMap;
         this.Args = Args;
     }
 
@@ -70,10 +76,12 @@ public class ChunkRenderBatch : IDisposable
         if (Args != null) Args.Dispose();
         if (Triangle != null) Triangle.Dispose();
         if (Details != null) Details.Dispose();
+        if (DensityMap != null) DensityMap.Dispose();
 
         Args = null;
         Triangle = null;
         Details = null;
+        DensityMap = null;
         countBuffer.Dispose();
     }
 

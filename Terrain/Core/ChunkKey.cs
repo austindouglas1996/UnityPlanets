@@ -1,4 +1,5 @@
 using System;
+using Unity.Mathematics;
 using UnityEngine;
 
 /// <summary>
@@ -33,6 +34,11 @@ public readonly struct ChunkKey : IEquatable<ChunkKey>
         Coordinates = coords;
         LODIndex = lod;
     }
+
+    /// <summary>
+    /// An invalid key reference.
+    /// </summary>
+    public static readonly ChunkKey Invalid = new ChunkKey(new Vector3Int(int.MaxValue, int.MaxValue, int.MaxValue), -1);
 
     /// <summary>
     /// Checks if another ChunkKey matches this one

@@ -1,7 +1,5 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -13,8 +11,7 @@ public class ChunkRenderBucket : IDisposable
     /// <summary>
     /// The collection of items used in this bucket.
     /// </summary>
-    private List<ChunkKey?> items;
-    private List<ChunkKey> tempItems;
+    private ChunkKey?[] items;
 
     /// <summary>
     /// Side index so Contains/Remove are O(1). No linear scans.
@@ -22,9 +19,19 @@ public class ChunkRenderBucket : IDisposable
     private readonly Dictionary<ChunkKey, int> index;
 
     /// <summary>
-    /// A collection of available slots.
+    /// A list of available spots.
     /// </summary>
     private Queue<int> AvailableSlots;
+
+    /// <summary>
+    /// A list of modified positions since the last generation.
+    /// </summary>
+    private readonly Dictionary<int, ChunkKey?> modifications;
+
+    /// <summary>
+    /// The last index used.
+    /// </summary>
+    private int lastIndex;
 
     /// <summary>
     /// The allowed amount of elements in this bucket.
@@ -65,12 +72,12 @@ public class ChunkRenderBucket : IDisposable
     /// <param name="chunkGenerator"></param>
     public ChunkRenderBucket(int capacity, IChunkGenerator chunkGenerator)
     {
-        this.items = new List<ChunkKey?>(capacity);
-        this.tempItems = new List<ChunkKey>(capacity);
+        this.items = new ChunkKey?[capacity];
         this.index = new(capacity);
 
         this.capacity = capacity;
-        this.AvailableSlots = new Queue<int>();
+        this.AvailableSlots = new Queue<int>(capacity);
+        this.modifications = new(capacity);
 
         this.chunkGenerator = chunkGenerator;
     }
@@ -114,11 +121,13 @@ public class ChunkRenderBucket : IDisposable
         {
             pos = this.AvailableSlots.Dequeue();
             items[pos] = key;
+            modifications[pos] = key;
         }
         else
         {
-            pos = items.Count;
-            items.Add(key);
+            pos = lastIndex;
+            items[lastIndex] = key;
+            lastIndex++;
         }
 
         index[key] = pos;
@@ -136,15 +145,18 @@ public class ChunkRenderBucket : IDisposable
     /// <returns></returns>
     public bool TryRemove(ChunkKey key)
     {
-        if (!index.TryGetValue(key, out int i)) return false;
+        if (!index.TryGetValue(key, out int i))
+            return false;
 
-        // Remove.
+        if (i == lastIndex -1)
+        {
+            lastIndex--;
+        }
+
         items[i] = null;
         index.Remove(key);
-
-        // Add slot.
+        modifications[i] = null;
         AvailableSlots.Enqueue(i);
-
         this.MarkAsDirty(false);
 
         return true;
@@ -155,9 +167,8 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     public void Clear()
     {
-        this.items.Clear();
+        this.items = null;
         this.index.Clear();
-        this.tempItems.Clear();
         this.AvailableSlots.Clear();
     }
 
@@ -238,9 +249,40 @@ public class ChunkRenderBucket : IDisposable
     /// <summary>
     /// Core logic that actually performs generation. Override in subclasses.
     /// </summary>
-    protected virtual void GenerateCore(List<ChunkKey> items, Action<ChunkRenderBatch> onDone)
+    protected virtual void GenerateCore(ChunkKey?[] items, Dictionary<int, ChunkKey?> modifications, Action<ChunkRenderBatch> onDone)
     {
-        chunkGenerator.DispatchGeneration(items, onDone, this.renderData);
+        chunkGenerator.DispatchGeneration(items, modifications, onDone, this.renderData);
+    }
+
+    /// <summary>
+    /// A pregeneration sort function to sort the collection before sending to dispatch.
+    /// </summary>
+    protected virtual void PreGenerateSort()
+    {
+        int last = lastIndex - 1;
+
+        while (AvailableSlots.Count > 0)
+        {
+            int i = AvailableSlots.Dequeue();
+            if (i >= last)
+            {
+                continue;
+            }
+
+            ChunkKey lastItem = items[last].Value;
+
+            // Modify the modification.
+            modifications[i] = lastItem;
+
+            // Move last item into hole.
+            items[i] = lastItem;
+            index[lastItem] = i;
+
+            // Clear tail
+            items[last] = null;
+            last--;
+            lastIndex--;
+        }
     }
 
     /// <summary>
@@ -251,53 +293,10 @@ public class ChunkRenderBucket : IDisposable
         if (GenerateInProgress || this.IsEmpty) return;
         GenerateInProgress = true;
 
-        var moves = CompactBeforeGenerate();
+        PreGenerateSort();
+        GenerateCore(items, modifications, OnGenerateCompleted);
 
-        this.tempItems.Clear();
-        foreach (var entry in this.items)
-        {
-            if (entry.HasValue)
-                tempItems.Add(entry.Value);
-        }
-
-        GenerateCore(tempItems, OnGenerateCompleted);
-    }
-
-    private Dictionary<int, ChunkKey> CompactBeforeGenerate()
-    {
-        var moved = new Dictionary<int, ChunkKey>();
-
-        if (AvailableSlots.Count == 0)
-            return moved;
-
-        while (AvailableSlots.Count > 0)
-        {
-            int vacant = AvailableSlots.Dequeue();
-
-            // Stop if vacancy is already beyond current end
-            if (vacant >= items.Count - 1)
-                continue;
-
-            // Pull last valid chunk
-            int lastIndex = items.Count - 1;
-            var lastVal = items[lastIndex];
-            if (!lastVal.HasValue)
-            {
-                // skip trailing nulls
-                items.RemoveAt(lastIndex);
-                continue;
-            }
-
-            // Move last chunk down
-            items[vacant] = lastVal;
-            index[lastVal.Value] = vacant;
-            moved[vacant] = lastVal.Value;
-
-            // Trim tail
-            items.RemoveAt(lastIndex);
-        }
-
-        return moved;
+        this.modifications.Clear();
     }
 
     /// <summary>
