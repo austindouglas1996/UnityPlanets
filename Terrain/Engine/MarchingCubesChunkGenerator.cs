@@ -16,13 +16,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private const int SurfaceCap = 512;
     private const int GenerateCap = 64;
 
-    private struct TerrainJob
-    {
-        public IReadOnlyList<ChunkKey> Keys;
-        public Action<ChunkRenderBatch> Output;
-        public ChunkRenderBatch ExistingBatch;
-    }
-
     private IChunkServices chunkServices;
 
     // Shaders doing the real work
@@ -59,8 +52,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private int detailKernel;
     private int argsKernel;
 
-    private List<TerrainJob> Jobs = new();
-
     /// <summary>
     /// Initialize a new instance of the <see cref="MarchingCubesChunkGenerator"/> class.
     /// </summary>
@@ -91,18 +82,9 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         private set { chunkMaterial = value; }
     }
 
-    /// <summary>
-    /// Process multiple jobs from the queue to generate chunks.
-    /// </summary>
     public void Update()
     {
-        if (this.Jobs.Count == 0) return;
 
-        ConsoleTimer.Start("MC.Gen");
-
-        ProcessBatch(Jobs[0].Keys, Jobs[0].Output, Jobs[0].ExistingBatch); Jobs.RemoveAt(0);
-
-        ConsoleTimer.Stop("MC.Gen");
     }
 
     /// <summary>
@@ -126,17 +108,15 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         chunkMaterial = null;
         InputSurface.Clear();
         InputGenerate.Clear();
-
-        Jobs.Clear();
     }
 
     /// <summary>
     /// Full marching-cubes path. Builds density for the batch, runs MC, returns triangle + args buffers.
     /// This job will be queued and ran in a further update to reduce GPU pressure.
     /// </summary>
-    public void DispatchGeneration(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null)
+    public void DispatchGeneration(ChunkKey?[] keys, int keyCount, Dictionary<int, ChunkKey?> modifications, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null)
     {
-        this.Jobs.Add(new TerrainJob() { Keys = keys, Output = output, ExistingBatch = existingBatch });
+        ProcessBatch(keys, keyCount, modifications, output, existingBatch);
     }
 
     /// <summary>
@@ -233,9 +213,9 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     /// <summary>
     /// Full marching-cubes path. Builds density for the batch, runs MC, returns triangle + args buffers.
     /// </summary>
-    private void ProcessBatch(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null)
+    private void ProcessBatch(ChunkKey?[] keys, int keyCount, Dictionary<int,ChunkKey?> mods, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null)
     {
-        int batchSize = keys.Count;
+        int batchSize = keyCount;
 
         int cubesPerAxis = CubesPerAxis;
         int samplesPerAxis = CubesPerAxis + 1 + (2 * BorderSamples);
@@ -250,7 +230,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
             return;
 
         // Fill the reusable input list + upload to the per-kernel input buffer.
-        FillGenerateChunkInputs(keys);
+        FillGenerateChunkInputs(keys, keyCount);
 
         ComputeBuffer triangleBuffer = existingBatch?.Triangle;
         ComputeBuffer detailBuffer = existingBatch?.Details;
@@ -312,7 +292,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         */
 
         // Hand back a draw-ready batch (triangles + args + bounds computed from keys)
-        output.Invoke(new ChunkRenderBatch(triangleBuffer, detailBuffer, densityBuffer, argsBuffer, keys, this.chunkServices));
+        output.Invoke(new ChunkRenderBatch(triangleBuffer, detailBuffer, densityBuffer, argsBuffer, this.chunkServices));
     }
 
     /// <summary>
@@ -382,14 +362,13 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     /// <summary>
     /// Refill the reusable generate-input list and upload. Same deal as surface path.
     /// </summary>
-    private void FillGenerateChunkInputs(IReadOnlyList<ChunkKey> keys)
+    private void FillGenerateChunkInputs(ChunkKey?[] keys, int n)
     {
-        int n = keys.Count;
         InputGenerate.Clear();
 
         for (int i = 0; i < n; i++)
         {
-            var ctx = keys[i];
+            var ctx = keys[i].Value;
             InputGenerate.Add(new ChunkDispatchKeyGPU
             {
                 GlobalIndex = (uint)i,

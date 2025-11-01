@@ -48,7 +48,7 @@ public class ChunkRenderBatch : IDisposable
     /// <param name="keys">Chunk keys included in this batch (for bounds computation).</param>
     /// <param name="services">Layout/services used to convert chunk keys to world space.</param>
     /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="Args"/> is null.</exception>
-    public ChunkRenderBatch(ComputeBuffer Triangle, ComputeBuffer Details, ComputeBuffer densityMap, ComputeBuffer Args, IReadOnlyList<ChunkKey> keys, IChunkServices services)
+    public ChunkRenderBatch(ComputeBuffer Triangle, ComputeBuffer Details, ComputeBuffer densityMap, ComputeBuffer Args, IChunkServices services)
     {
         if (Args == null)
             throw new System.ArgumentNullException("args");

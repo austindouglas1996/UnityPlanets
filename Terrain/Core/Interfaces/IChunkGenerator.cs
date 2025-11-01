@@ -21,7 +21,7 @@ public interface IChunkGenerator : IDisposable
     /// </summary>
     /// <param name="keys">List of chunk keys to generate.</param>
     /// <returns>GPU data set for the generated chunks.</returns>
-    void DispatchGeneration(IReadOnlyList<ChunkKey> keys, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null);
+    void DispatchGeneration(ChunkKey?[] keys, int count, Dictionary<int, ChunkKey?> modifications, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null);
 
     /// <summary>
     /// Used for generators that operate on a schedule.

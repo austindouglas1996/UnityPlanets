@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -31,7 +32,7 @@ public class ChunkRenderBucket : IDisposable
     /// <summary>
     /// The last index used.
     /// </summary>
-    private int lastIndex;
+    private int nextIndex;
 
     /// <summary>
     /// The allowed amount of elements in this bucket.
@@ -52,7 +53,7 @@ public class ChunkRenderBucket : IDisposable
     /// <summary>
     /// Give a small delay on tickets to update this way we get as many updates as possible.
     /// </summary>
-    private int RemainingTicksToUpdate = 5;
+    private int RemainingTicksToUpdate = 25;
 
     /// <summary>
     /// The generator used to dispatch generation requests.
@@ -117,23 +118,31 @@ public class ChunkRenderBucket : IDisposable
         if (index.ContainsKey(key) || IsFull) return false;
 
         int pos;
-        if (this.AvailableSlots.Count != 0)
+        if (AvailableSlots.Count != 0)
         {
-            pos = this.AvailableSlots.Dequeue();
-            items[pos] = key;
-            modifications[pos] = key;
+            int hole = AvailableSlots.Dequeue();
+
+            // Stale hole if it’s at/after the frontier. append instead
+            if (hole >= nextIndex)
+            {
+                pos = nextIndex;
+                nextIndex++;
+            }
+            else
+            {
+                pos = hole;
+            }
         }
         else
         {
-            pos = lastIndex;
-            items[lastIndex] = key;
-            lastIndex++;
+            pos = nextIndex;
+            nextIndex++;
         }
 
+        items[pos] = key;
         index[key] = pos;
-
-        this.MarkAsDirty(false);
-
+        modifications[pos] = key;
+        MarkAsDirty(false);
         return true;
     }
 
@@ -143,20 +152,29 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     /// <param name="key"></param>
     /// <returns></returns>
-    public bool TryRemove(ChunkKey key)
+    public bool TryRemove(ChunkKey key, bool b = false)
     {
         if (!index.TryGetValue(key, out int i))
             return false;
 
-        if (i == lastIndex -1)
+        index.Remove(key);
+        items[i] = null;
+
+        if (!b)
+            modifications[i] = null;
+
+        if (i == nextIndex -1)
         {
-            lastIndex--;
+            nextIndex--;
+            while (nextIndex > 0 && items[nextIndex - 1] == null)
+                nextIndex--;
+        }
+        else
+        {
+            if (!b)
+                AvailableSlots.Enqueue(i);
         }
 
-        items[i] = null;
-        index.Remove(key);
-        modifications[i] = null;
-        AvailableSlots.Enqueue(i);
         this.MarkAsDirty(false);
 
         return true;
@@ -231,7 +249,7 @@ public class ChunkRenderBucket : IDisposable
         if (forceNow || this.IsFull)
             this.RemainingTicksToUpdate = 0;
         else
-            this.RemainingTicksToUpdate = 5;
+            this.RemainingTicksToUpdate = 25;
     }
 
     /// <summary>
@@ -251,7 +269,7 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     protected virtual void GenerateCore(ChunkKey?[] items, Dictionary<int, ChunkKey?> modifications, Action<ChunkRenderBatch> onDone)
     {
-        chunkGenerator.DispatchGeneration(items, modifications, onDone, this.renderData);
+        chunkGenerator.DispatchGeneration(items, nextIndex, modifications, onDone, this.renderData);
     }
 
     /// <summary>
@@ -259,29 +277,11 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     protected virtual void PreGenerateSort()
     {
-        int last = lastIndex - 1;
-
-        while (AvailableSlots.Count > 0)
+        while (AvailableSlots.Count > 0 && nextIndex -1 >= 0)
         {
-            int i = AvailableSlots.Dequeue();
-            if (i >= last)
-            {
-                continue;
-            }
-
-            ChunkKey lastItem = items[last].Value;
-
-            // Modify the modification.
-            modifications[i] = lastItem;
-
-            // Move last item into hole.
-            items[i] = lastItem;
-            index[lastItem] = i;
-
-            // Clear tail
-            items[last] = null;
-            last--;
-            lastIndex--;
+            var item = items[nextIndex - 1].Value;
+            TryRemove(item, true);
+            TryAdd(item);
         }
     }
 
