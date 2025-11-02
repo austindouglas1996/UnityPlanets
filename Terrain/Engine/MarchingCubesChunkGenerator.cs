@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Unity.Collections;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -229,9 +230,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         if (batchSize == 0)
             return;
 
-        // Fill the reusable input list + upload to the per-kernel input buffer.
-        FillGenerateChunkInputs(keys, keyCount);
-
         ComputeBuffer triangleBuffer = existingBatch?.Triangle;
         ComputeBuffer detailBuffer = existingBatch?.Details;
         ComputeBuffer argsBuffer = existingBatch?.Args;
@@ -248,13 +246,22 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         triangleBuffer.SetCounterValue(0);
         detailBuffer.SetCounterValue(0);
 
-        // Generate density
-        MarchingShader.SetBuffer(genKernel, "ChunkInputs", GenerateChunkInputBuffer);
-        MarchingShader.SetBuffer(genKernel, "DensityMap", densityBuffer);
+        // Fill total input.
+        FillGenerateChunkInputs(keys, keyCount);
 
-        // NOTE: thread group dims assume [numthreads(4,4,4)] and X packs chunkIndex*XWithinChunk
-        int genGroupSize = Mathf.CeilToInt(samplesPerAxis / 4f);
-        MarchingShader.Dispatch(genKernel, batchSize * genGroupSize, genGroupSize, genGroupSize);
+        MarchingShader.SetBuffer(genKernel, "DensityMap", densityBuffer);
+        MarchingShader.SetBuffer(genKernel, "ChunkInputs", GenerateChunkInputBuffer);
+
+        List<(int, int)> ranges = GroupContiguous(mods);
+        foreach (var (start, end) in ranges)
+        {
+            // Generate density
+            MarchingShader.SetInt("Offset", start);
+
+            // NOTE: thread group dims assume [numthreads(4,4,4)] and X packs chunkIndex*XWithinChunk
+            int genGroupSize = Mathf.CeilToInt(samplesPerAxis / 4f);
+            MarchingShader.Dispatch(genKernel, (end - start + 1) * genGroupSize, genGroupSize, genGroupSize);
+        }
 
         // Marching cubes
         MarchingShader.SetBuffer(marchKernel, "ChunkInputs", GenerateChunkInputBuffer);
@@ -269,7 +276,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
 
         // Build indirect args from append count
         MarchingShader.SetBuffer(argsKernel, "CountBuffer", countBuffer);
-        MarchingShader.SetBuffer(argsKernel, "TriangleBuffer", triangleBuffer);
         MarchingShader.SetBuffer(argsKernel, "ArgsBuffer", argsBuffer);
         MarchingShader.Dispatch(argsKernel, 1, 1, 1);
 
@@ -387,6 +393,43 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         int sampleCountPerChunk = samples * samples * samples;
         int maxTotalSamples = sampleCountPerChunk * GenerateCap;
         return new ComputeBuffer(maxTotalSamples, sizeof(float));
+    }
+
+    /// <summary>
+    /// Groups modification indices into contiguous ranges for efficient job dispatch.
+    /// </summary>
+    public static List<(int start, int end)> GroupContiguous(Dictionary<int, ChunkKey?> mods)
+    {
+        if (mods.Count == 0)
+            return new List<(int, int)>();
+
+        var sorted = mods.Keys.OrderBy(i => i);
+        List<(int start, int end)> groups = new();
+        int rangeStart = -1, prev = -1;
+
+        foreach (int idx in sorted)
+        {
+            if (rangeStart == -1)
+            {
+                rangeStart = prev = idx;
+                continue;
+            }
+
+            if (idx == prev + 1)
+            {
+                // contiguous, extend current range
+                prev = idx;
+            }
+            else
+            {
+                // gap detected.
+                groups.Add((rangeStart, prev));
+                rangeStart = prev = idx;
+            }
+        }
+
+        groups.Add((rangeStart, prev));
+        return groups;
     }
 
     public int CubesPerAxis => densityOptions.CubesPerAxis;

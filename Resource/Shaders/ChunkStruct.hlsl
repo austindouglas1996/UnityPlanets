@@ -19,7 +19,6 @@ struct ChunkDispatchKey
 // world position, and the original chunk key.
 struct ChunkDispatchKeyInfo
 {
-    uint GlobalIndex;
     uint KeyIndex;
     uint SampleIndex;
     uint3 LocalVoxelCoord;

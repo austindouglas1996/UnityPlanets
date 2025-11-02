@@ -32,7 +32,7 @@ int GetVoxelSampleIndex(int3 pos, int KeyIndex, int3 totalSampleSize)
 //   id     : Dispatch thread ID (x, y, z) from the compute shader
 //   sampleSize.x, sampleSize.y, sampleSize.z : Chunk dimensions in voxels (per axis)
 //   keys   : Structured buffer of all active chunks to process
-ChunkDispatchKeyInfo GetChunkAccessCubes(uint3 id, StructuredBuffer<ChunkDispatchKey> keys)
+ChunkDispatchKeyInfo GetChunkAccessCubes(uint3 id, uint offset, StructuredBuffer<ChunkDispatchKey> keys)
 {
     ChunkDispatchKeyInfo r;
 
@@ -48,12 +48,11 @@ ChunkDispatchKeyInfo GetChunkAccessCubes(uint3 id, StructuredBuffer<ChunkDispatc
 
     // Map X → (KeyIndex, localX)
     float invCubesPerAxis = 1.0 / CubesPerAxis;
-    r.KeyIndex = (id.x * invCubesPerAxis);
+    r.KeyIndex = (id.x * invCubesPerAxis) + offset;
     r.LocalVoxelCoord = uint3(id.x - r.KeyIndex * CubesPerAxis, id.y, id.z);
     
     // Fetch key and compute world position
     ChunkDispatchKey key = keys[r.KeyIndex];
-    r.GlobalIndex = key.GlobalIndex;
     r.chunk = key;
     r.WorldPos = ToWorld(key.CoordPos, key.LodIndex) + 
                  float3(r.LocalVoxelCoord) * GetCubeSizeStep(r.chunk.LodIndex);
@@ -72,7 +71,7 @@ ChunkDispatchKeyInfo GetChunkAccessCubes(uint3 id, StructuredBuffer<ChunkDispatc
 //   id     : Dispatch thread ID (x, y, z) from the compute shader
 //   sampleSize.x, sampleSize.y, sampleSize.z : Chunk dimensions in voxels (per axis)
 //   keys   : Structured buffer of all active chunks to process
-ChunkDispatchKeyInfo GetChunkAccessSamples(uint3 id, StructuredBuffer<ChunkDispatchKey> keys)
+ChunkDispatchKeyInfo GetChunkAccessSamples(uint3 id, uint offset, StructuredBuffer<ChunkDispatchKey> keys)
 {
     ChunkDispatchKeyInfo r;
 
@@ -80,26 +79,37 @@ ChunkDispatchKeyInfo GetChunkAccessSamples(uint3 id, StructuredBuffer<ChunkDispa
     uint keyCount, strideBytes;
     keys.GetDimensions(keyCount, strideBytes);
 
-    uint logicalX = keyCount * sampleSize.x;
-    if (id.x >= logicalX || id.y >= sampleSize.y || id.z >= sampleSize.z)
+    // Compute chunk within this dispatch
+    uint chunkLocal = id.x / sampleSize.x;
+    uint localX = id.x % sampleSize.x;
+
+    // Apply global offset for key lookup
+    r.KeyIndex = chunkLocal + offset;
+
+    // Safety check that is for some reason breaks if not here.
+    // 11/2 - I don't remember why I added this, but if this is missing
+    // chunks dont render correctly which seems like we are overdispatching.
+    if (r.KeyIndex >= keyCount || id.y >= sampleSize.y || id.z >= sampleSize.z)
     {
         r.SampleIndex = -1;
         return r;
     }
 
-    float invCubesPerAxis = 1.0 / sampleSize.x;
-    r.KeyIndex = (uint) floor(id.x * invCubesPerAxis);
-    r.LocalVoxelCoord = uint3(id.x - r.KeyIndex * sampleSize.x, id.y, id.z);
+    // local coordinates stay within 0..sampleSize.x-1
+    r.LocalVoxelCoord = uint3(localX, id.y, id.z);
 
+    // This points to the exact position in the map.
     r.SampleIndex = GetVoxelSampleIndexRaw(r.LocalVoxelCoord, r.KeyIndex, sampleSize);
 
+    // Set key data
     ChunkDispatchKey key = keys[r.KeyIndex];
-    r.GlobalIndex = key.GlobalIndex;
     r.chunk = key;
-    r.WorldPos = ToWorld(key.CoordPos, key.LodIndex) + float3(r.LocalVoxelCoord) * GetCubeSizeStep(r.chunk.LodIndex);
+    r.WorldPos = ToWorld(key.CoordPos, key.LodIndex)
+               + float3(r.LocalVoxelCoord) * GetCubeSizeStep(r.chunk.LodIndex);
 
     return r;
 }
+
 
 
 #endif
