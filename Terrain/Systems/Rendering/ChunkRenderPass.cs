@@ -1,3 +1,4 @@
+using System;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.Universal;
@@ -7,9 +8,9 @@ using UnityEngine.Rendering.Universal;
 /// Injected into URP after transparents so it lines up with shaders using queue ~3000.
 /// Works under both legacy and RenderGraph pipelines.
 /// </summary>
-public class ChunkRenderPass : ScriptableRenderPass
+public class ChunkRenderPass : ScriptableRenderPass, IDisposable
 {
-    private readonly ChunkRenderRouter router;
+    private ChunkRenderRouter router;
 
     /// <summary>
     /// Sets the router reference and when this pass should run.
@@ -18,6 +19,14 @@ public class ChunkRenderPass : ScriptableRenderPass
     {
         this.router = router;
         renderPassEvent = RenderPassEvent.AfterRenderingTransparents;
+    }
+
+    public void Dispose()
+    {
+        if (router != null)
+        {
+            router = null;
+        }
     }
 
     /// <summary>

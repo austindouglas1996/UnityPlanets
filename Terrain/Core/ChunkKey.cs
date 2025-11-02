@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -56,8 +57,19 @@ public readonly struct ChunkKey : IEquatable<ChunkKey>
     /// <summary>
     /// Generates a unique hash so this key works in dictionaries/sets.
     /// </summary>
-    public override int GetHashCode() =>
-        HashCode.Combine(Coordinates, LODIndex);
+    /// <remarks>While trying to resolve memory issues in <see cref="ChunkRenderBucket"/> with large item amounts
+    /// 400k elements. I found this https://stackoverflow.com/questions/263400/what-is-the-best-algorithm-for-overriding-gethashcode/263416#263416
+    /// it made no change.</remarks>
+    public override int GetHashCode()
+    {
+        unchecked
+        {
+            int h = Coordinates.x * 73856093
+                  ^ Coordinates.y * 19349663
+                  ^ Coordinates.z * 83492791;
+            return (h ^ (LODIndex * 486187739));
+        }
+    }
 
     /// <summary>
     /// Human-readable string version (good for debugging/logs).

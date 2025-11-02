@@ -98,6 +98,8 @@ public class ChunkRenderRouter : IDisposable
     {
         foreach (var bucket in lodBuckets)
             bucket.Dispose();
+
+        lodBuckets = null;
     }
 
     /// <summary>
@@ -106,6 +108,8 @@ public class ChunkRenderRouter : IDisposable
     /// <param name="cmd"></param>
     public void FillCommandBuffer(CommandBuffer cmd)
     {
+        if (lodBuckets == null) return;
+
         foreach (var bucket in lodBuckets)
             bucket.Draw(cmd, chunkGenerator.GetMaterial);
     }

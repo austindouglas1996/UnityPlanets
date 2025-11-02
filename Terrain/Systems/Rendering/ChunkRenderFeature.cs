@@ -31,4 +31,10 @@ public class ChunkRenderFeature : ScriptableRendererFeature
         if (Router != null && pass != null)
             renderer.EnqueuePass(pass);
     }
+
+    protected override void Dispose(bool disposing)
+    {
+        pass.Dispose();
+        base.Dispose(disposing);
+    }
 }
