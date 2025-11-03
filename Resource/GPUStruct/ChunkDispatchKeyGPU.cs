@@ -8,6 +8,7 @@ using UnityEngine;
 [StructLayout(LayoutKind.Sequential)]
 public struct ChunkDispatchKeyGPU
 {
+    public uint GlobalIndex;
     public Vector3 CoordPos;
     public int LodIndex;
 }

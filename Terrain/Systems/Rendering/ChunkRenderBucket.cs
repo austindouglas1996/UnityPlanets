@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -11,12 +12,27 @@ public class ChunkRenderBucket : IDisposable
     /// <summary>
     /// The collection of items used in this bucket.
     /// </summary>
-    private readonly List<ChunkKey> items;
+    private ChunkKey?[] items;
 
     /// <summary>
     /// Side index so Contains/Remove are O(1). No linear scans.
     /// </summary>
     private readonly Dictionary<ChunkKey, int> index;
+
+    /// <summary>
+    /// A list of available spots.
+    /// </summary>
+    private Queue<int> AvailableSlots;
+
+    /// <summary>
+    /// A list of modified positions since the last generation.
+    /// </summary>
+    private readonly Dictionary<int, ChunkKey?> modifications;
+
+    /// <summary>
+    /// The last index used.
+    /// </summary>
+    private int nextIndex;
 
     /// <summary>
     /// The allowed amount of elements in this bucket.
@@ -37,7 +53,7 @@ public class ChunkRenderBucket : IDisposable
     /// <summary>
     /// Give a small delay on tickets to update this way we get as many updates as possible.
     /// </summary>
-    private int RemainingTicksToUpdate = 5;
+    private int RemainingTicksToUpdate = 15;
 
     /// <summary>
     /// The generator used to dispatch generation requests.
@@ -57,10 +73,13 @@ public class ChunkRenderBucket : IDisposable
     /// <param name="chunkGenerator"></param>
     public ChunkRenderBucket(int capacity, IChunkGenerator chunkGenerator)
     {
-        this.items = new(capacity);
+        this.capacity = capacity;
+
+        this.items = new ChunkKey?[capacity];
         this.index = new(capacity);
 
-        this.capacity = capacity;
+        this.AvailableSlots = new Queue<int>(capacity);
+        this.modifications = new(capacity);
 
         this.chunkGenerator = chunkGenerator;
     }
@@ -83,27 +102,49 @@ public class ChunkRenderBucket : IDisposable
     /// <summary>
     /// Has this bucket reached maximum capacity.
     /// </summary>
-    public virtual bool IsFull => items.Count == capacity;
+    public virtual bool IsFull => index.Count >= capacity;
 
     /// <summary>
     /// Has this bucket no items?
     /// </summary>
-    public bool IsEmpty => items.Count == 0;
+    public bool IsEmpty => index.Count == 0;
 
     /// <summary>
     /// Fast append. If we add anything, mark dirty so we rebuild soon.
     /// </summary>
     /// <param name="key"></param>
     /// <returns>True if added successfully.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryAdd(ChunkKey key)
     {
-        if (index.ContainsKey(key) || items.Count >= capacity) return false;
+        if (index.ContainsKey(key) || IsFull) return false;
 
-        index[key] = items.Count;
-        items.Add(key);
+        int pos;
+        if (AvailableSlots.Count != 0)
+        {
+            int hole = AvailableSlots.Dequeue();
 
-        this.MarkAsDirty(false);
+            // Stale hole if it’s at/after the frontier. append instead
+            if (hole >= nextIndex)
+            {
+                pos = nextIndex;
+                nextIndex++;
+            }
+            else
+            {
+                pos = hole;
+            }
+        }
+        else
+        {
+            pos = nextIndex;
+            nextIndex++;
+        }
 
+        items[pos] = key;
+        index[key] = pos;
+        modifications[pos] = key;
+        MarkAsDirty(false);
         return true;
     }
 
@@ -113,18 +154,45 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     /// <param name="key"></param>
     /// <returns></returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryRemove(ChunkKey key)
     {
-        if (!index.TryGetValue(key, out int i)) return false;
+        return TryRemoveInternal(key);
+    }
 
-        int last = items.Count - 1;
-        var swap = items[last];
+    /// <summary>
+    /// O(1) remove via swap-back. Order does NOT matter here.
+    /// If we remove "enough", flip dirty so we rebuild next chance we get.
+    /// </summary>
+    /// <param name="key"></param>
+    /// <param name="ignoreQueue"></param>
+    /// <returns></returns>
+    private bool TryRemoveInternal(ChunkKey key, bool ignoreQueue = false)
+    {
+        if (!index.TryGetValue(key, out int i))
+            return false;
 
-        items[i] = swap;
-        items.RemoveAt(last);
-
-        index[swap] = i;
         index.Remove(key);
+        items[i] = null;
+
+        // If ignoreQueu is true we are doing some house cleaning
+        // and do not want 
+        if (!ignoreQueue)
+            modifications[i] = null;
+
+        if (i == nextIndex - 1)
+        {
+            nextIndex--;
+            while (nextIndex > 0 && items[nextIndex - 1] == null)
+                nextIndex--;
+        }
+        else
+        {
+            // If this function is being called internally in side this class.
+            // we may want to avoid adding it to the queue as we are doing a cleanup.
+            if (!ignoreQueue)
+                AvailableSlots.Enqueue(i);
+        }
 
         this.MarkAsDirty(false);
 
@@ -136,8 +204,11 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     public void Clear()
     {
-        this.items.Clear();
+        Array.Clear(items, 0, nextIndex);
+        nextIndex = 0;
+
         this.index.Clear();
+        this.AvailableSlots.Clear();
     }
 
     /// <summary>
@@ -152,6 +223,8 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     public void Update()
     {
+        if (!IsDirty) return;
+
         // In some cases as we are getting new data we want to delay the update
         // this way we dont regenerate this bucket just for it go through another
         // immediate update.
@@ -163,7 +236,7 @@ public class ChunkRenderBucket : IDisposable
 
         if (IsDirty && !this.GenerateInProgress)
         {
-            this.Generate();
+            this.DispatchGeneration();
         }
     }
 
@@ -173,7 +246,7 @@ public class ChunkRenderBucket : IDisposable
     /// <param name="vertexMat"></param>
     public void Draw(CommandBuffer cdb, Material vertexMat)
     {
-        if (items.Count == 0) return;
+        if (IsEmpty) return;
 
         var rd = RenderData;
         if (rd == null || rd.IsDisposed || rd.Triangle == null || rd.Args == null) return;
@@ -189,20 +262,6 @@ public class ChunkRenderBucket : IDisposable
     }
 
     /// <summary>
-    /// Mark this bucket as dirty to request a regeneration. Optionally force the update to happen now.
-    /// </summary>
-    /// <param name="forceNow">The update will happen right away and not consider its options.</param>
-    public void MarkAsDirty(bool forceNow)
-    {
-        this.IsDirty = true;
-
-        if (forceNow || this.IsFull)
-            this.RemainingTicksToUpdate = 0;
-        else
-            this.RemainingTicksToUpdate = 5;
-    }
-
-    /// <summary>
     /// Dispose of the renderData and release memory.
     /// </summary>
     public void Dispose()
@@ -215,23 +274,38 @@ public class ChunkRenderBucket : IDisposable
     }
 
     /// <summary>
-    /// Core logic that actually performs generation. Override in subclasses.
+    /// Mark this bucket as dirty to request a regeneration. Optionally force the update to happen now.
     /// </summary>
-    protected virtual void GenerateCore(List<ChunkKey> items, Action<ChunkRenderBatch> onDone)
+    /// <param name="forceNow">The update will happen right away and not consider its options.</param>
+    public void MarkAsDirty(bool forceNow)
     {
-        chunkGenerator.DispatchGeneration(items, onDone, this.renderData);
+        this.IsDirty = true;
+
+        if (forceNow)
+            this.RemainingTicksToUpdate = 0;
+        else
+            this.RemainingTicksToUpdate = 25;
     }
 
     /// <summary>
-    /// Call ths bucket with the included elements to be generated.
+    /// A pregeneration sort function to sort the collection before sending to dispatch.
     /// </summary>
-    private void Generate()
+    protected virtual void PreDispatchGeneration()
     {
-        if (GenerateInProgress || this.items.Count == 0)
-            return;
-        GenerateInProgress = true;
+        while (AvailableSlots.Count > 0 && nextIndex - 1 >= 0)
+        {
+            var item = items[nextIndex - 1].Value;
+            TryRemoveInternal(item, true);
+            TryAdd(item);
+        }
+    }
 
-        GenerateCore(items, OnGenerateCompleted);
+    /// <summary>
+    /// Call the <see cref="IChunkGenerator"/> dispatch function to deploy this batch for generation.
+    /// </summary>
+    protected virtual void OnDispatchGeneration()
+    {
+        chunkGenerator.DispatchGeneration(items, nextIndex, modifications, OnDispatchGenerationCompleted, this.renderData);
     }
 
     /// <summary>
@@ -239,7 +313,7 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     /// <remarks>This was changed from a lambda as I track down a stuttering issue and GC issues.</remarks>
     /// <param name="output"></param>
-    private void OnGenerateCompleted(ChunkRenderBatch output)
+    protected virtual void OnDispatchGenerationCompleted(ChunkRenderBatch output)
     {
         RenderData = output;
 
@@ -258,5 +332,19 @@ public class ChunkRenderBucket : IDisposable
 
         this.IsDirty = false;
         this.GenerateInProgress = false;
+    }
+
+    /// <summary>
+    /// Call ths bucket with the included elements to be generated.
+    /// </summary>
+    private void DispatchGeneration()
+    {
+        if (GenerateInProgress || this.IsEmpty) return;
+        GenerateInProgress = true;
+
+        PreDispatchGeneration();
+        OnDispatchGeneration();
+
+        this.modifications.Clear();
     }
 }

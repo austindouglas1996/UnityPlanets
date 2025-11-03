@@ -13,6 +13,8 @@
 #include "../Biomes/BiomeSampler.hlsl"
 #include "../ChunkColoring.hlsl"
 
+uint Offset;
+
 /* Inputs */
 StructuredBuffer<ChunkDispatchKey> ChunkInputs;
 RWStructuredBuffer<float> DensityMap;
@@ -38,7 +40,7 @@ groupshared uint gHasBelow;
 [numthreads(4, 4, 4)]
 void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
 {
-    ChunkDispatchKeyInfo info = GetChunkAccessSamples(id, ChunkInputs);
+    ChunkDispatchKeyInfo info = GetChunkAccessSamples(id, Offset, ChunkInputs);
     if (info.SampleIndex < 0)
         return;
     
@@ -110,7 +112,7 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
 [numthreads(4, 4, 4)]
 void RunMarchingCubes(uint3 id : SV_DispatchThreadID)
 {
-    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, ChunkInputs);
+    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, 0, ChunkInputs);
     if (access.KeyIndex < 0) 
         return;
     

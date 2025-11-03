@@ -159,8 +159,11 @@ public class ChunkRenderBucketCollection : IDisposable
     /// </summary>
     public void Dispose()
     {
-        for (int i = 0; i < buckets.Count; i++)
-            buckets[i].Dispose();
+        if (buckets != null)
+        {
+            for (int i = 0; i < buckets.Count; i++)
+                buckets[i].Dispose();
+        }
 
         foreach (var go in colliders.Values)
         {

@@ -9,6 +9,7 @@
 // LodIndex = step size based on current LOD
 struct ChunkDispatchKey
 {
+    uint GlobalIndex;
     float3 CoordPos;
     uint LodIndex;
 };
