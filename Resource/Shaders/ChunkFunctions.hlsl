@@ -39,17 +39,24 @@ ChunkDispatchKeyInfo GetChunkAccessCubes(uint3 id, uint offset, StructuredBuffer
     uint keyCount, stride;
     keys.GetDimensions(keyCount, stride);
 
-    uint logicalX = keyCount * CubesPerAxis;
-    if (id.x >= logicalX || id.y >= CubesPerAxis || id.z >= CubesPerAxis)
+    // Compute chunk within this dispatch
+    uint chunkLocal = id.x / CubesPerAxis;
+    uint localX = id.x % CubesPerAxis;
+
+    // Apply global offset for key lookup
+    r.KeyIndex = chunkLocal + offset;
+
+    // Safety check that is for some reason breaks if not here.
+    // 11/2 - I don't remember why I added this, but if this is missing
+    // chunks dont render correctly which seems like we are overdispatching.
+    if (r.KeyIndex >= keyCount || id.y >= CubesPerAxis || id.z >= CubesPerAxis)
     {
-        r.KeyIndex = -1;
+        r.SampleIndex = -1;
         return r;
     }
 
-    // Map X → (KeyIndex, localX)
-    float invCubesPerAxis = 1.0 / CubesPerAxis;
-    r.KeyIndex = (id.x * invCubesPerAxis) + offset;
-    r.LocalVoxelCoord = uint3(id.x - r.KeyIndex * CubesPerAxis, id.y, id.z);
+    // local coordinates stay within 0..sampleSize.x-1
+    r.LocalVoxelCoord = uint3(localX, id.y, id.z);
     
     // Fetch key and compute world position
     ChunkDispatchKey key = keys[r.KeyIndex];
