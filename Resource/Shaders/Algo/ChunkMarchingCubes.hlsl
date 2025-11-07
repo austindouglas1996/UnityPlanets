@@ -4,6 +4,43 @@
 #include "../Includes/TriangleTable.hlsl"
 #include "../ChunkFunctions.hlsl"
 
+
+void CountTriangles(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCount, RWStructuredBuffer<float> DensityMap)
+{
+    uint cubeIndex = 0;
+    int3 sample3 = GetSamplesPerChunk3();
+    
+    [loop]
+    for (uint i = 0; i < 8; i++)
+    {
+        uint3 pos = key.LocalVoxelCoord + GetCornerOffset(i);
+        float corner = DensityMap[GetVoxelSampleIndexRaw(pos, key.KeyIndex, sample3)];
+        
+        if (corner > ISOLevel)
+            cubeIndex |= (1u << i);
+    }
+
+    if (cubeIndex == 0 || cubeIndex == 255)
+        return;
+    
+    uint localCount = 0;
+    
+    [loop]
+    for (int i = 0; i < 16; i += 3)
+    {
+        int a = GetTriangleEdgeIndex(cubeIndex, i + 0);
+        int b = GetTriangleEdgeIndex(cubeIndex, i + 1);
+        int c = GetTriangleEdgeIndex(cubeIndex, i + 2);
+
+        if (a == -1 || b == -1 || c == -1)
+            break;
+        
+        localCount++;
+    }
+    
+    InterlockedAdd(chunkCount[key.KeyIndex], localCount);
+}
+
 void March(ChunkDispatchKeyInfo key, AppendStructuredBuffer<TriangleData> TriangleBuffer, RWStructuredBuffer<float> DensityMap)
 {
     uint cubeIndex = 0;

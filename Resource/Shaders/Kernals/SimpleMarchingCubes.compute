@@ -3,6 +3,7 @@
 
 #pragma kernel GenerateDensityMap
 #pragma kernel GenerateSurfaceMask
+#pragma kernel RunMarchingCubesPrePass
 #pragma kernel RunMarchingCubes
 #pragma kernel RunDetailsPass
 #pragma kernel PrepareDrawArgs
@@ -24,6 +25,7 @@ RWByteAddressBuffer CountBuffer;
 RWStructuredBuffer<uint> SurfaceMask;
 
 /* March Kernel */
+RWStructuredBuffer<uint> TriangleCount;
 AppendStructuredBuffer<TriangleData> TriangleBuffer;
 
 /* Detail Kernel */
@@ -101,6 +103,16 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
     {
         SurfaceMask[groupId.x] = (gHasAbove & gHasBelow) ? 1u : 0u;
     }
+}
+
+[numthreads(4, 4, 4)]
+void RunMarchingCubesPrePass(uint3 id : SV_DispatchThreadID)
+{
+    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, 0, ChunkInputs);
+    if (access.KeyIndex < 0) 
+        return;
+    
+    CountTriangles(access, TriangleCount, DensityMap);
 }
 
 // MarchingCubesPass

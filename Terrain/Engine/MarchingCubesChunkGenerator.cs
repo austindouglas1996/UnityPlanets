@@ -30,6 +30,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private ComputeBuffer PlanetOptionsBuffer;     // StructuredBuffer<PlanetDensityOptions> (1 element)
     private ComputeBuffer SurfaceMaskBuffer;       // RWStructuredBuffer<uint> (results for mask pass)
     private ComputeBuffer countBuffer;
+    private ComputeBuffer TriangleCountBuffer;
 
     // Annoying triangle tables.
     private ComputeBuffer CornerOffsetsBuffer = MarchingCubesTables.CornerOffsetsBuffer();
@@ -46,9 +47,12 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private List<ChunkDispatchKeyGPU> InputGenerate = new(GenerateCap);
     private uint[] surfaceMaskCache = new uint[SurfaceCap];
 
+    uint[] zeroCounts = new uint[128];
+
     // Kernel ID's.
     private int surfaceKernel;
     private int genKernel;
+    private int preMarchKernel;
     private int marchKernel;
     private int detailKernel;
     private int argsKernel;
@@ -263,13 +267,39 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
             MarchingShader.Dispatch(genKernel, (end - start + 1) * genGroupSize, genGroupSize, genGroupSize);
         }
 
+        int marchGroupSize = Mathf.CeilToInt(cubesPerAxis / 4f);
+
+        TriangleCountBuffer.SetData(zeroCounts);
+
+        // Pre-marching.
+        MarchingShader.SetBuffer(preMarchKernel, "ChunkInputs", GenerateChunkInputBuffer);
+        MarchingShader.SetBuffer(preMarchKernel, "DensityMap", densityBuffer);
+        MarchingShader.SetBuffer(preMarchKernel, "TriangleCount", TriangleCountBuffer);
+        MarchingShader.Dispatch(preMarchKernel, batchSize * marchGroupSize, marchGroupSize, marchGroupSize);
+
+        AsyncGPUReadback.Request(TriangleCountBuffer, (req) =>
+        {
+            if (req.hasError)
+            {
+                Debug.LogError("TriangleCountBuffer readback failed.");
+                return;
+            }
+
+            var data = req.GetData<uint>();
+            ulong totalCount = 0;
+
+            for (int i = 0; i < data.Length; i++)
+                totalCount += data[i];
+
+            Debug.Log($"Total triangles: {totalCount}");
+        });
+
         // Marching cubes
         MarchingShader.SetBuffer(marchKernel, "ChunkInputs", GenerateChunkInputBuffer);
         MarchingShader.SetBuffer(marchKernel, "DensityMap", densityBuffer);
         MarchingShader.SetBuffer(marchKernel, "InitialDetailBuffer", detailBuffer);
         MarchingShader.SetBuffer(marchKernel, "TriangleBuffer", triangleBuffer);
 
-        int marchGroupSize = Mathf.CeilToInt(cubesPerAxis / 4f);
         MarchingShader.Dispatch(marchKernel, batchSize * marchGroupSize, marchGroupSize, marchGroupSize);
 
         ComputeBuffer.CopyCount(triangleBuffer, countBuffer, 0);
@@ -325,14 +355,20 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         SurfaceMaskBuffer = new ComputeBuffer(SurfaceCap, sizeof(uint));
 
         countBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
+        TriangleCountBuffer = new ComputeBuffer(128, sizeof(uint));
 
         genKernel = MarchingShader.FindKernel("GenerateDensityMap");
+        preMarchKernel = MarchingShader.FindKernel("RunMarchingCubesPrePass");
         marchKernel = MarchingShader.FindKernel("RunMarchingCubes");
         detailKernel = MarchingShader.FindKernel("RunDetailsPass");
         argsKernel = MarchingShader.FindKernel("PrepareDrawArgs");
         surfaceKernel = MarchingShader.FindKernel("GenerateSurfaceMask");
 
         // Set static buffers
+        MarchingShader.SetBuffer(preMarchKernel, "CornerOffsetsBuffer", CornerOffsetsBuffer);
+        MarchingShader.SetBuffer(preMarchKernel, "EdgeConnectionsBuffer", EdgeConnectionsBuffer);
+        MarchingShader.SetBuffer(preMarchKernel, "TriangleTableBuffer", TriangleTableBuffer);
+
         MarchingShader.SetBuffer(marchKernel, "CornerOffsetsBuffer", CornerOffsetsBuffer);
         MarchingShader.SetBuffer(marchKernel, "EdgeConnectionsBuffer", EdgeConnectionsBuffer);
         MarchingShader.SetBuffer(marchKernel, "TriangleTableBuffer", TriangleTableBuffer);
