@@ -431,8 +431,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
             });
 
             baseIndex += triCount[i];
-
-            Debug.Log($"Triangles: {triCount[i]}, Start {baseIndex}");
         }
 
         GenerateChunkInputBuffer.SetData(InputGenerate, 0, 0, n);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -48,7 +49,7 @@ public class ChunkRenderBucket : IDisposable
     /// Helper so we don't accidently requeue a generation request if the job is taking longer
     /// than expected. This can happen in larger generations.
     /// </summary>
-    private bool GenerateInProgress = false;
+    public bool GenerateInProgress = false;
 
     /// <summary>
     /// Give a small delay on tickets to update this way we get as many updates as possible.
@@ -305,7 +306,8 @@ public class ChunkRenderBucket : IDisposable
     /// </summary>
     protected virtual void OnDispatchGeneration()
     {
-        chunkGenerator.DispatchGeneration(items, nextIndex, modifications, OnDispatchGenerationCompleted, this.renderData);
+        Debug.LogWarning("We are doing .ToArray() which makes a copy of the list. Fix it.");
+        chunkGenerator.DispatchGeneration(items.ToArray(), nextIndex, modifications, OnDispatchGenerationCompleted, this.renderData);
     }
 
     /// <summary>
