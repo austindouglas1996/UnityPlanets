@@ -30,7 +30,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private ComputeBuffer PlanetOptionsBuffer;     // StructuredBuffer<PlanetDensityOptions> (1 element)
     private ComputeBuffer SurfaceMaskBuffer;       // RWStructuredBuffer<uint> (results for mask pass)
     private ComputeBuffer countBuffer;
-    private ComputeBuffer TriangleCountBuffer;
+    //private ComputeBuffer TriangleCountBuffer;
 
     // Annoying triangle tables.
     private ComputeBuffer CornerOffsetsBuffer = MarchingCubesTables.CornerOffsetsBuffer();
@@ -47,7 +47,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private List<ChunkDispatchKeyGPU> InputGenerate = new(GenerateCap);
     private uint[] surfaceMaskCache = new uint[SurfaceCap];
 
-    uint[] zeroCounts = new uint[128];
+    uint[] zeroCounts = new uint[GenerateCap];
 
     // Kernel ID's.
     private int surfaceKernel;
@@ -241,13 +241,12 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
 
         if (existingBatch == null)
         {
-            triangleBuffer = new ComputeBuffer(60000, Marshal.SizeOf<TriangleDataGPU>(), ComputeBufferType.Append);
+            triangleBuffer = new ComputeBuffer(60000, Marshal.SizeOf<TriangleDataGPU>());
             detailBuffer = new ComputeBuffer(60000, Marshal.SizeOf<ChunkDetailDataGPU>(), ComputeBufferType.Append | ComputeBufferType.Structured);
             argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
             densityBuffer = CreateDensityBuffer();
         }
 
-        triangleBuffer.SetCounterValue(0);
         detailBuffer.SetCounterValue(0);
 
         // Fill total input.
@@ -269,6 +268,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
 
         int marchGroupSize = Mathf.CeilToInt(cubesPerAxis / 4f);
 
+        var TriangleCountBuffer = new ComputeBuffer(GenerateCap, sizeof(uint));
         TriangleCountBuffer.SetData(zeroCounts);
 
         // Pre-marching.
@@ -285,50 +285,43 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
                 return;
             }
 
-            var data = req.GetData<uint>();
-            ulong totalCount = 0;
+            // Fill with the new modified data.
+            var triCount = req.GetData<uint>();
+            int triangles = FillGenerateChunkInputs(keys, keyCount, triCount);
 
-            for (int i = 0; i < data.Length; i++)
-                totalCount += data[i];
+            // Marching cubes
+            MarchingShader.SetBuffer(marchKernel, "ChunkInputs", GenerateChunkInputBuffer);
+            MarchingShader.SetBuffer(marchKernel, "DensityMap", densityBuffer);
+            MarchingShader.SetBuffer(marchKernel, "InitialDetailBuffer", detailBuffer);
+            MarchingShader.SetBuffer(marchKernel, "TriangleBuffer", triangleBuffer);
+            MarchingShader.SetBuffer(marchKernel, "TriangleCount", TriangleCountBuffer);
 
-            Debug.Log($"Total triangles: {totalCount}");
+            MarchingShader.Dispatch(marchKernel, batchSize * marchGroupSize, marchGroupSize, marchGroupSize);
+
+            // Build indirect args from append count
+            MarchingShader.SetInt("Triangles", triangles);
+            MarchingShader.SetBuffer(argsKernel, "ArgsBuffer", argsBuffer);
+            MarchingShader.Dispatch(argsKernel, 1, 1, 1);
+
+            MarchingShader.SetBuffer(detailKernel, "Biomes", BiomeBuffer);
+            MarchingShader.SetInt("_BiomesCount", BiomesCount);
+            MarchingShader.SetBuffer(detailKernel, "ArgsBuffer", argsBuffer);
+            MarchingShader.SetBuffer(detailKernel, "DetailTriangles", triangleBuffer);
+            MarchingShader.SetBuffer(detailKernel, "DetailBuffer", detailBuffer);
+
+            int groupsX = Mathf.CeilToInt(triangles / 64f);
+            MarchingShader.Dispatch(detailKernel, groupsX, 1, 1);
+
+            /*
+                uint[] args = new uint[5];
+                argsBuffer.GetData(args);
+                uint triCount = args[0] / 3;
+                Debug.Log($"LOD{keys[0].LODIndex} - Chunks {batchSize} - Triangles written: {triCount}, triangle capacity of buffer {triangleBuffer.count}");
+            */
+
+            // Hand back a draw-ready batch (triangles + args + bounds computed from keys)
+            output.Invoke(new ChunkRenderBatch(triangleBuffer, triangles, detailBuffer, densityBuffer, argsBuffer, this.chunkServices));
         });
-
-        // Marching cubes
-        MarchingShader.SetBuffer(marchKernel, "ChunkInputs", GenerateChunkInputBuffer);
-        MarchingShader.SetBuffer(marchKernel, "DensityMap", densityBuffer);
-        MarchingShader.SetBuffer(marchKernel, "InitialDetailBuffer", detailBuffer);
-        MarchingShader.SetBuffer(marchKernel, "TriangleBuffer", triangleBuffer);
-
-        MarchingShader.Dispatch(marchKernel, batchSize * marchGroupSize, marchGroupSize, marchGroupSize);
-
-        ComputeBuffer.CopyCount(triangleBuffer, countBuffer, 0);
-
-        // Build indirect args from append count
-        MarchingShader.SetBuffer(argsKernel, "CountBuffer", countBuffer);
-        MarchingShader.SetBuffer(argsKernel, "ArgsBuffer", argsBuffer);
-        MarchingShader.Dispatch(argsKernel, 1, 1, 1);
-
-        MarchingShader.SetBuffer(detailKernel, "Biomes", BiomeBuffer);
-        MarchingShader.SetInt("_BiomesCount", BiomesCount);
-        MarchingShader.SetBuffer(detailKernel, "ArgsBuffer", argsBuffer);
-        MarchingShader.SetBuffer(detailKernel, "DetailTriangles", triangleBuffer);
-        MarchingShader.SetBuffer(detailKernel, "DetailBuffer", detailBuffer);
-
-    
-        int maxTriangles = (cubesPerAxis * cubesPerAxis * cubesPerAxis * 5 * batchSize);
-        int groupsX = Mathf.CeilToInt(maxTriangles / 64f);
-        MarchingShader.Dispatch(detailKernel, groupsX, 1,1);
-
-        /*
-        uint[] args = new uint[5];
-        argsBuffer.GetData(args);
-        uint triCount = args[0] / 3;
-        Debug.Log($"LOD{keys[0].LODIndex} - Chunks {batchSize} - Triangles written: {triCount}, triangle capacity of buffer {triangleBuffer.count}");
-        */
-
-        // Hand back a draw-ready batch (triangles + args + bounds computed from keys)
-        output.Invoke(new ChunkRenderBatch(triangleBuffer, detailBuffer, densityBuffer, argsBuffer, this.chunkServices));
     }
 
     /// <summary>
@@ -355,7 +348,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         SurfaceMaskBuffer = new ComputeBuffer(SurfaceCap, sizeof(uint));
 
         countBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
-        TriangleCountBuffer = new ComputeBuffer(128, sizeof(uint));
 
         genKernel = MarchingShader.FindKernel("GenerateDensityMap");
         preMarchKernel = MarchingShader.FindKernel("RunMarchingCubesPrePass");
@@ -420,6 +412,32 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         }
 
         GenerateChunkInputBuffer.SetData(InputGenerate, 0, 0, n);
+    }
+
+    private int FillGenerateChunkInputs(ChunkKey?[] keys, int n, NativeArray<uint> triCount)
+    {
+        InputGenerate.Clear();
+        uint baseIndex = 0;
+
+        for (int i = 0; i < n; i++)
+        {
+            var ctx = keys[i].Value;
+            InputGenerate.Add(new ChunkDispatchKeyGPU
+            {
+                GlobalIndex = (uint)i,
+                CoordPos = ctx.Coordinates,
+                LodIndex = ctx.LODIndex,
+                TriangleStart = baseIndex
+            });
+
+            baseIndex += triCount[i];
+
+            Debug.Log($"Triangles: {triCount[i]}, Start {baseIndex}");
+        }
+
+        GenerateChunkInputBuffer.SetData(InputGenerate, 0, 0, n);
+
+        return (int)baseIndex;
     }
 
     private ComputeBuffer CreateDensityBuffer()
