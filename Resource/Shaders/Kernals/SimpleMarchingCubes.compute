@@ -5,6 +5,7 @@
 #pragma kernel GenerateSurfaceMask
 #pragma kernel RunMarchingCubesPrePass
 #pragma kernel RunMarchingCubes
+#pragma kernel RunRepack
 #pragma kernel RunDetailsPass
 
 #include "../ChunkFunctions.hlsl"
@@ -26,7 +27,8 @@ RWStructuredBuffer<uint> SurfaceMask;
 
 /* March Kernel */
 RWStructuredBuffer<uint> TriangleCount;
-RWStructuredBuffer<TriangleData> TriangleBuffer;
+RWStructuredBuffer<TriangleData> TriangleSourceBuffer;
+RWStructuredBuffer<TriangleData> TriangleDestBuffer;
 
 /* Detail Kernel */
 StructuredBuffer<TriangleData> DetailTriangles;
@@ -128,7 +130,23 @@ void RunMarchingCubes(uint3 id : SV_DispatchThreadID)
     if (access.KeyIndex < 0) 
         return;
     
-    March(access, TriangleCount, TriangleBuffer, DensityMap);
+    March(access, TriangleCount, TriangleSourceBuffer, DensityMap);
+}
+
+[numthreads(1, 1, 1)]
+void RunRepack(uint3 id : SV_DispatchThreadID)
+{
+    ChunkDispatchKey chunkKey = ChunkInputs[id.x];
+    
+    uint srcOffset = chunkKey.SourceOffset;
+    uint count = chunkKey.SourceCount;
+    uint dstStart = chunkKey.DestStart;
+    
+    // Copy triangles for this chunk
+    for (uint t = 0; t < count; t++)
+    {
+        TriangleDestBuffer[dstStart + t] = TriangleSourceBuffer[srcOffset + t];
+    }
 }
 
 [numthreads(64, 1, 1)]

@@ -154,7 +154,7 @@ void March(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCount, RWStru
         
         uint prev;
         InterlockedAdd(chunkCount[key.KeyIndex], (uint) -1, prev);
-        uint index = key.chunk.TriangleStart + (prev - 1);
+        uint index = key.chunk.SourceOffset + (prev - 1);
         TriangleBuffer[index] = tri;
     }
 }

@@ -12,5 +12,7 @@ public struct ChunkDispatchKeyGPU
     public Vector3 CoordPos;
     public int LodIndex;
 
-    public uint TriangleStart;
+    public uint SourceOffset;
+    public uint SourceCount;
+    public uint DestStart;
 }
