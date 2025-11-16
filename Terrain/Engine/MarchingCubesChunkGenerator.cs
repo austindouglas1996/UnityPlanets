@@ -351,7 +351,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         SurfaceMaskBuffer = new ComputeBuffer(SurfaceCap, sizeof(uint));
 
         countBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
-
         genKernel = MarchingShader.FindKernel("GenerateDensityMap");
         preMarchKernel = MarchingShader.FindKernel("RunMarchingCubesPrePass");
         marchKernel = MarchingShader.FindKernel("RunMarchingCubes");
