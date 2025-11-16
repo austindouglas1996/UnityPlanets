@@ -45,9 +45,6 @@ groupshared uint gHasBelow;
 void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
 {
     ChunkDispatchKeyInfo info = GetChunkAccessSamples(id, Offset, ChunkInputs);
-    if (info.SampleIndex < 0)
-        return;
-    
     DensityMap[info.SampleIndex] = GenerateNoiseValue(info.WorldPos, info.chunk.LodIndex);
 }
 
@@ -110,10 +107,7 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
 [numthreads(4, 4, 4)]
 void RunMarchingCubesPrePass(uint3 id : SV_DispatchThreadID)
 {
-    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, 0, ChunkInputs);
-    if (access.KeyIndex < 0) 
-        return;
-    
+    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, Offset, ChunkInputs);
     CountTriangles(access, TriangleCount, DensityMap);
 }
 
@@ -127,9 +121,6 @@ void RunMarchingCubesPrePass(uint3 id : SV_DispatchThreadID)
 void RunMarchingCubes(uint3 id : SV_DispatchThreadID)
 {
     ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, 0, ChunkInputs);
-    if (access.KeyIndex < 0) 
-        return;
-    
     March(access, TriangleCount, TriangleSourceBuffer, DensityMap);
 }
 

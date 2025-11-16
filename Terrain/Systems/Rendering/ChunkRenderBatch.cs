@@ -20,6 +20,11 @@ public class ChunkRenderBatch : IDisposable
     public ComputeBuffer TriangleDest;
 
     /// <summary>
+    /// Small buffer for controlling the counts per chunk.
+    /// </summary>
+    public ComputeBuffer TriangleCounts;
+
+    /// <summary>
     /// The amount of triangles in this collection.
     /// </summary>
     public int TriangleCount;
@@ -52,13 +57,14 @@ public class ChunkRenderBatch : IDisposable
     /// <param name="keys">Chunk keys included in this batch (for bounds computation).</param>
     /// <param name="services">Layout/services used to convert chunk keys to world space.</param>
     /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="Args"/> is null.</exception>
-    public ChunkRenderBatch(ComputeBuffer TriangleSource, ComputeBuffer TriangleDest, int triCount, ComputeBuffer Details, ComputeBuffer densityMap, ComputeBuffer Args, IChunkServices services)
+    public ChunkRenderBatch(ComputeBuffer TriangleSource, ComputeBuffer TriangleDest, ComputeBuffer triangleCounts, int triCount, ComputeBuffer Details, ComputeBuffer densityMap, ComputeBuffer Args, IChunkServices services)
     {
         if (Args == null)
             throw new System.ArgumentNullException("args");
 
         this.TriangleSource = TriangleSource;
         this.TriangleDest = TriangleDest;
+        this.TriangleCounts = triangleCounts;
         this.TriangleCount = triCount;
         this.Details = Details;
         this.DensityMap = densityMap;
@@ -82,6 +88,7 @@ public class ChunkRenderBatch : IDisposable
         if (Args != null) Args.Dispose();
         if (TriangleSource != null) TriangleSource.Dispose();
         if (TriangleDest != null) TriangleDest.Dispose();
+        if (TriangleCounts != null) TriangleCounts.Dispose();
         if (Details != null) Details.Dispose();
         if (DensityMap != null) DensityMap.Dispose();
 

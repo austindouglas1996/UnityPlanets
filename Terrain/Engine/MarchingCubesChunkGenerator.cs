@@ -218,7 +218,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     /// <summary>
     /// Full marching-cubes path. Builds density for the batch, runs MC, returns triangle + args buffers.
     /// </summary>
-    private void ProcessBatch(ChunkKey?[] keys, int keyCount, Dictionary<int,ChunkKey?> mods, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null)
+    private void ProcessBatch(ChunkKey?[] keys, int keyCount, Dictionary<int, ChunkKey?> mods, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null)
     {
         int batchSize = keyCount;
 
@@ -236,6 +236,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
 
         ComputeBuffer triangleSBuffer = existingBatch?.TriangleSource;
         ComputeBuffer triangleDBuffer = existingBatch?.TriangleDest;
+        ComputeBuffer triangleCBuffer = existingBatch?.TriangleCounts;
         ComputeBuffer detailBuffer = existingBatch?.Details;
         ComputeBuffer argsBuffer = existingBatch?.Args;
         ComputeBuffer densityBuffer = existingBatch?.DensityMap;
@@ -244,6 +245,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         {
             triangleSBuffer = new ComputeBuffer(128000, Marshal.SizeOf<TriangleDataGPU>());
             triangleDBuffer = new ComputeBuffer(60000, Marshal.SizeOf<TriangleDataGPU>());
+            triangleCBuffer = new ComputeBuffer(GenerateCap, sizeof(uint));
             detailBuffer = new ComputeBuffer(60000, Marshal.SizeOf<ChunkDetailDataGPU>(), ComputeBufferType.Append | ComputeBufferType.Structured);
             argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
             densityBuffer = CreateDensityBuffer();
@@ -254,32 +256,37 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         // Fill total input.
         FillGenerateChunkInputs(keys, keyCount);
 
+        // Density buffers.
         MarchingShader.SetBuffer(genKernel, "DensityMap", densityBuffer);
         MarchingShader.SetBuffer(genKernel, "ChunkInputs", GenerateChunkInputBuffer);
+
+        // Pre-march buffers.
+        MarchingShader.SetBuffer(preMarchKernel, "ChunkInputs", GenerateChunkInputBuffer);
+        MarchingShader.SetBuffer(preMarchKernel, "DensityMap", densityBuffer);
+        MarchingShader.SetBuffer(preMarchKernel, "TriangleCount", triangleCBuffer);
+
+        int marchGroupSize = Mathf.CeilToInt(cubesPerAxis / 4f);
+        int genGroupSize = Mathf.CeilToInt(samplesPerAxis / 4f);
 
         List<(int, int)> ranges = GroupContiguous(mods);
         foreach (var (start, end) in ranges)
         {
-            // Generate density
+            int length = (end - start + 1);
+
+            // Set the offset for the next dispatches.
             MarchingShader.SetInt("Offset", start);
 
-            // NOTE: thread group dims assume [numthreads(4,4,4)] and X packs chunkIndex*XWithinChunk
-            int genGroupSize = Mathf.CeilToInt(samplesPerAxis / 4f);
-            MarchingShader.Dispatch(genKernel, (end - start + 1) * genGroupSize, genGroupSize, genGroupSize);
+            // Generate Density.
+            MarchingShader.Dispatch(genKernel, length * genGroupSize, genGroupSize, genGroupSize);
+
+            // Clear out the modified chunk counts before the recount.
+            triangleCBuffer.SetData(zeroCounts, 0, start, length);
+
+            // Update triangle counts.
+            MarchingShader.Dispatch(preMarchKernel, length * marchGroupSize, marchGroupSize, marchGroupSize);
         }
 
-        int marchGroupSize = Mathf.CeilToInt(cubesPerAxis / 4f);
-
-        var TriangleCountBuffer = new ComputeBuffer(GenerateCap, sizeof(uint));
-        TriangleCountBuffer.SetData(zeroCounts);
-
-        // Pre-marching.
-        MarchingShader.SetBuffer(preMarchKernel, "ChunkInputs", GenerateChunkInputBuffer);
-        MarchingShader.SetBuffer(preMarchKernel, "DensityMap", densityBuffer);
-        MarchingShader.SetBuffer(preMarchKernel, "TriangleCount", TriangleCountBuffer);
-        MarchingShader.Dispatch(preMarchKernel, batchSize * marchGroupSize, marchGroupSize, marchGroupSize);
-
-        AsyncGPUReadback.Request(TriangleCountBuffer, (req) =>
+        AsyncGPUReadback.Request(triangleCBuffer, (req) =>
         {
             if (req.hasError)
             {
@@ -296,7 +303,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
             MarchingShader.SetBuffer(marchKernel, "DensityMap", densityBuffer);
             MarchingShader.SetBuffer(marchKernel, "InitialDetailBuffer", detailBuffer);
             MarchingShader.SetBuffer(marchKernel, "TriangleSourceBuffer", triangleSBuffer);
-            MarchingShader.SetBuffer(marchKernel, "TriangleCount", TriangleCountBuffer);
+            MarchingShader.SetBuffer(marchKernel, "TriangleCount", triangleCBuffer);
 
             MarchingShader.Dispatch(marchKernel, batchSize * marchGroupSize, marchGroupSize, marchGroupSize);
 
@@ -332,7 +339,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
             */
 
             // Hand back a draw-ready batch (triangles + args + bounds computed from keys)
-            output.Invoke(new ChunkRenderBatch(triangleSBuffer, triangleDBuffer, triangles, detailBuffer, densityBuffer, argsBuffer, this.chunkServices));
+            output.Invoke(new ChunkRenderBatch(triangleSBuffer, triangleDBuffer, triangleCBuffer, triangles, detailBuffer, densityBuffer, argsBuffer, this.chunkServices));
         });
     }
 
