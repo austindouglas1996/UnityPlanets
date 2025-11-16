@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Unity.Collections;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -298,10 +297,14 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
 
             MarchingShader.Dispatch(marchKernel, batchSize * marchGroupSize, marchGroupSize, marchGroupSize);
 
-            // Build indirect args from append count
-            MarchingShader.SetInt("Triangles", triangles);
-            MarchingShader.SetBuffer(argsKernel, "ArgsBuffer", argsBuffer);
-            MarchingShader.Dispatch(argsKernel, 1, 1, 1);
+            int[] args = new int[5];
+            args[0] = triangles * 3;
+            args[1] = 1;
+            args[2] = 0;
+            args[3] = 0;
+            args[4] = 0;
+
+            argsBuffer.SetData(args);
 
             MarchingShader.SetBuffer(detailKernel, "Biomes", BiomeBuffer);
             MarchingShader.SetInt("_BiomesCount", BiomesCount);
@@ -353,7 +356,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         preMarchKernel = MarchingShader.FindKernel("RunMarchingCubesPrePass");
         marchKernel = MarchingShader.FindKernel("RunMarchingCubes");
         detailKernel = MarchingShader.FindKernel("RunDetailsPass");
-        argsKernel = MarchingShader.FindKernel("PrepareDrawArgs");
         surfaceKernel = MarchingShader.FindKernel("GenerateSurfaceMask");
 
         // Set static buffers

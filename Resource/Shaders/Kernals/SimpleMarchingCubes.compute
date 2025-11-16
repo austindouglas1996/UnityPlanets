@@ -6,7 +6,6 @@
 #pragma kernel RunMarchingCubesPrePass
 #pragma kernel RunMarchingCubes
 #pragma kernel RunDetailsPass
-#pragma kernel PrepareDrawArgs
 
 #include "../ChunkFunctions.hlsl"
 #include "../Algo/ChunkMarchingCubes.hlsl"
@@ -151,20 +150,4 @@ void RunDetailsPass(uint3 id : SV_DispatchThreadID)
     d.ColorC = PackFloat3(GetBiomeBlended(tri.c));
 
     DetailBuffer[idx] = d;
-}
-
-// PrepareIndirectDrawArgs
-// Small kernel to finalize DrawMeshInstancedIndirect args after triangle
-// generation. Multiplies triangle count by 3 to get vertex count and sets
-// instance count to 1.
-// 
-// This is run after MarchingCubesPass and CopyCount to populate ArgsBuffer.
-[numthreads(1, 1, 1)]
-void PrepareDrawArgs(uint3 id : SV_DispatchThreadID)
-{
-    ArgsBuffer[0] = Triangles * 3; // vertex count
-    ArgsBuffer[1] = 1; // instance count
-    ArgsBuffer[2] = 0; // start vertex
-    ArgsBuffer[3] = 0; // start instance
-    ArgsBuffer[4] = 0; // padding (this is bidirectional)
 }

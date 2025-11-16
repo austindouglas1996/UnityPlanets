@@ -195,6 +195,7 @@ public class ChunkRenderBucketCollection : IDisposable
     /// <returns></returns>
     private ChunkRenderBucket GetOrCreateTailBucket()
     {
+        Debug.LogWarning("We are using a .Where() here. This is not ideal.");
         var availableBuckets = bucketsWithSpace.Where(r => !r.GenerateInProgress).ToList();
         if (availableBuckets.Count != 0)
         {
