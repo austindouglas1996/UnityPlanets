@@ -109,7 +109,7 @@ public class ChunkRenderBatch : IDisposable
         int size = (int)(set.TriangleCount * stride);
 
         // Now read triangles asynchronously too
-        AsyncGPUReadback.Request(set.TriangleSource, size, 0, rTris =>
+        AsyncGPUReadback.Request(set.TriangleDest, size, 0, rTris =>
         {
             if (rTris.hasError) { onDone(Array.Empty<TriangleDataGPU>()); return; }
 

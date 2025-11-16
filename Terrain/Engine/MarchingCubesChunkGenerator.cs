@@ -438,7 +438,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
                 GlobalIndex = (uint)i,
                 CoordPos = ctx.Coordinates,
                 LodIndex = ctx.LODIndex,
-                SourceOffset = (1000 * (uint)i),
+                SourceOffset = (1500 * (uint)i),
                 SourceCount = triCount[i],
                 DestStart = baseIndex
             });
