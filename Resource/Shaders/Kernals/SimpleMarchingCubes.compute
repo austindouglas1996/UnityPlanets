@@ -1,6 +1,7 @@
 ﻿#pragma only_renderers d3d11
 #pragma target 5.0
 
+#pragma kernel ClearRange
 #pragma kernel GenerateDensityMap
 #pragma kernel GenerateSurfaceMask
 #pragma kernel RunMarchingCubesPrePass
@@ -32,6 +33,11 @@ RWStructuredBuffer<uint> TriangleCursor;
 RWStructuredBuffer<TriangleData> TriangleSourceBuffer;
 RWStructuredBuffer<TriangleData> TriangleDestBuffer;
 
+/* Helper */
+RWStructuredBuffer<uint> BufferToClear;
+uint ClearStart;
+uint ClearLength;
+
 /* Detail Kernel */
 StructuredBuffer<TriangleData> DetailTriangles;
 RWStructuredBuffer<ChunkDetailData> DetailBuffer;
@@ -43,6 +49,16 @@ RWStructuredBuffer<uint> Args1Buffer;
 // Shared flags so any thread can “trip” the result in GetSurfaceData.
 groupshared uint gHasAbove;
 groupshared uint gHasBelow;
+
+[numthreads(1, 1, 1)]
+void ClearRange(uint id : SV_DispatchThreadID)
+{
+    int length = (ClearStart + ClearLength);
+    for (int i = ClearStart; i < length; i++)
+    {
+        BufferToClear[i] = 0;
+    }
+}
 
 [numthreads(4, 4, 4)]
 void GenerateDensityMap(uint3 id : SV_DispatchThreadID)

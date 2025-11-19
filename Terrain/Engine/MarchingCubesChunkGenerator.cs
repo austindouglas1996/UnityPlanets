@@ -51,6 +51,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     uint[] zeroCounts = new uint[GenerateCap];
 
     // Kernel ID's.
+    private int ClearRange;
     private int GenerateSurfaceMask;
     private int GenerateDensityMap;
     private int RunMarchingCubesPrePass;
@@ -315,7 +316,10 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
             MarchingShader.Dispatch(GenerateDensityMap, length * genGroupSize, genGroupSize, genGroupSize);
 
             // Clear out the modified chunk counts before the recount.
-            triangleCBuffer.SetData(zeroCounts, 0, start, length);
+            MarchingShader.SetInt("ClearStart", start);
+            MarchingShader.SetInt("ClearLength", length);
+            MarchingShader.SetBuffer(ClearRange, "BufferToClear", triangleCBuffer);
+            MarchingShader.Dispatch(ClearRange, 1, 1, 1);
 
             // Update triangle counts.
             MarchingShader.Dispatch(RunMarchingCubesPrePass, length * marchGroupSize, marchGroupSize, marchGroupSize);
@@ -332,7 +336,10 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
             MarchingShader.SetInt("Offset", start);
 
             // Clear out the cursor for this range.
-            triangleCursor.SetData(zeroCounts, 0, start, length);
+            MarchingShader.SetInt("ClearStart", start);
+            MarchingShader.SetInt("ClearLength", length);
+            MarchingShader.SetBuffer(ClearRange, "BufferToClear", triangleCursor);
+            MarchingShader.Dispatch(ClearRange, 1, 1, 1);
 
             // March.
             MarchingShader.Dispatch(RunMarchingCubes, length * marchGroupSize, marchGroupSize, marchGroupSize);
@@ -376,6 +383,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         SurfaceMaskBuffer = new ComputeBuffer(SurfaceCap, sizeof(uint));
 
         countBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
+        ClearRange = MarchingShader.FindKernel("ClearRange");
         GenerateDensityMap = MarchingShader.FindKernel("GenerateDensityMap");
         RunMarchingCubesPrePass = MarchingShader.FindKernel("RunMarchingCubesPrePass");
         RunMarchingCubes = MarchingShader.FindKernel("RunMarchingCubes");
