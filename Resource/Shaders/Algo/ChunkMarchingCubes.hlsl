@@ -41,7 +41,7 @@ void CountTriangles(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCoun
     InterlockedAdd(chunkCount[key.KeyIndex], localCount);
 }
 
-void March(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCount, RWStructuredBuffer<TriangleData> TriangleBuffer, RWStructuredBuffer<float> DensityMap)
+void March(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCursor, RWStructuredBuffer<TriangleData> TriangleBuffer, RWStructuredBuffer<float> DensityMap)
 {
     uint cubeIndex = 0;
     float corner[8];
@@ -152,9 +152,9 @@ void March(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCount, RWStru
         tri.KeyIndex = key.KeyIndex;
         tri.LodIndex = key.chunk.LodIndex;
         
-        uint prev;
-        InterlockedAdd(chunkCount[key.KeyIndex], (uint) -1, prev);
-        uint index = key.chunk.SourceOffset + (prev - 1);
+        uint next;
+        InterlockedAdd(chunkCursor[key.KeyIndex], 1, next);
+        uint index = key.chunk.SourceOffset + next;
         TriangleBuffer[index] = tri;
     }
 }

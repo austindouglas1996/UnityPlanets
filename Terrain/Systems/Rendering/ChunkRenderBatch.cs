@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -25,9 +26,9 @@ public class ChunkRenderBatch : IDisposable
     public ComputeBuffer TriangleCounts;
 
     /// <summary>
-    /// The amount of triangles in this collection.
+    /// Small buffer for the cursor.
     /// </summary>
-    public int TriangleCount;
+    public ComputeBuffer TriangleCursor;
 
     /// <summary>
     /// The density map used for the render batch.
@@ -57,15 +58,15 @@ public class ChunkRenderBatch : IDisposable
     /// <param name="keys">Chunk keys included in this batch (for bounds computation).</param>
     /// <param name="services">Layout/services used to convert chunk keys to world space.</param>
     /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="Args"/> is null.</exception>
-    public ChunkRenderBatch(ComputeBuffer TriangleSource, ComputeBuffer TriangleDest, ComputeBuffer triangleCounts, int triCount, ComputeBuffer Details, ComputeBuffer densityMap, ComputeBuffer Args, IChunkServices services)
+    public ChunkRenderBatch(ComputeBuffer TriangleSource, ComputeBuffer TriangleDest, ComputeBuffer triangleCounts, ComputeBuffer triangleCursor, ComputeBuffer Details, ComputeBuffer densityMap, ComputeBuffer Args, IChunkServices services)
     {
         if (Args == null)
             throw new System.ArgumentNullException("args");
 
         this.TriangleSource = TriangleSource;
         this.TriangleDest = TriangleDest;
+        this.TriangleCursor = triangleCursor;
         this.TriangleCounts = triangleCounts;
-        this.TriangleCount = triCount;
         this.Details = Details;
         this.DensityMap = densityMap;
         this.Args = Args;
@@ -89,6 +90,7 @@ public class ChunkRenderBatch : IDisposable
         if (TriangleSource != null) TriangleSource.Dispose();
         if (TriangleDest != null) TriangleDest.Dispose();
         if (TriangleCounts != null) TriangleCounts.Dispose();
+        if (TriangleCursor != null) TriangleCursor.Dispose();
         if (Details != null) Details.Dispose();
         if (DensityMap != null) DensityMap.Dispose();
 
@@ -112,17 +114,12 @@ public class ChunkRenderBatch : IDisposable
             throw new System.InvalidOperationException("Set has been disposed of.");
         }
 
-        int stride = Marshal.SizeOf<TriangleDataGPU>();
-        int size = (int)(set.TriangleCount * stride);
-
-        // Now read triangles asynchronously too
-        AsyncGPUReadback.Request(set.TriangleDest, size, 0, rTris =>
+        AsyncGPUReadback.Request(set.TriangleDest, rTris =>
         {
             if (rTris.hasError) { onDone(Array.Empty<TriangleDataGPU>()); return; }
 
-            // Copy to managed array once.
-            var tris = rTris.GetData<TriangleDataGPU>().ToArray();
-            onDone(tris);
+            var output = rTris.GetData<TriangleDataGPU>().ToArray();
+            onDone(output);
         });
     }
 }

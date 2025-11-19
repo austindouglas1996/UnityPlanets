@@ -6,6 +6,7 @@
 #pragma kernel RunMarchingCubesPrePass
 #pragma kernel RunMarchingCubes
 #pragma kernel RunRepack
+#pragma kernel RunRepackPrePass
 #pragma kernel RunDetailsPass
 
 #include "../ChunkFunctions.hlsl"
@@ -15,10 +16,10 @@
 #include "../ChunkColoring.hlsl"
 
 uint Offset;
-uint Triangles;
+uint BatchSize;
 
 /* Inputs */
-StructuredBuffer<ChunkDispatchKey> ChunkInputs;
+RWStructuredBuffer<ChunkDispatchKey> ChunkInputs;
 RWStructuredBuffer<float> DensityMap;
 
 
@@ -27,6 +28,7 @@ RWStructuredBuffer<uint> SurfaceMask;
 
 /* March Kernel */
 RWStructuredBuffer<uint> TriangleCount;
+RWStructuredBuffer<uint> TriangleCursor;
 RWStructuredBuffer<TriangleData> TriangleSourceBuffer;
 RWStructuredBuffer<TriangleData> TriangleDestBuffer;
 
@@ -36,6 +38,7 @@ RWStructuredBuffer<ChunkDetailData> DetailBuffer;
 
 /* Args Kernel */
 RWStructuredBuffer<uint> ArgsBuffer;
+RWStructuredBuffer<uint> Args1Buffer;
 
 // Shared flags so any thread can “trip” the result in GetSurfaceData.
 groupshared uint gHasAbove;
@@ -120,8 +123,41 @@ void RunMarchingCubesPrePass(uint3 id : SV_DispatchThreadID)
 [numthreads(4, 4, 4)]
 void RunMarchingCubes(uint3 id : SV_DispatchThreadID)
 {
-    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, 0, ChunkInputs);
-    March(access, TriangleCount, TriangleSourceBuffer, DensityMap);
+    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, Offset, ChunkInputs);
+    March(access, TriangleCursor, TriangleSourceBuffer, DensityMap);
+}
+
+[numthreads(1, 1, 1)]
+void RunRepackPrePass(uint id : SV_DispatchThreadID)
+{
+    uint baseIndex = 0;
+
+    for (uint i = 0; i < BatchSize; i++)
+    {
+        ChunkDispatchKey key = ChunkInputs[i];
+        uint count = TriangleCount[i];
+
+        key.SourceCount = count;
+        key.SourceOffset = 1500 * i;
+        key.DestStart = baseIndex;
+
+        // write back
+        ChunkInputs[i] = key;
+
+        baseIndex += count;
+    }
+    
+    // Set args buffer.
+    ArgsBuffer[0] = baseIndex * 3; // vertex count
+    ArgsBuffer[1] = 1; // instance count
+    ArgsBuffer[2] = 0; // start vertex
+    ArgsBuffer[3] = 0; // start instance
+    ArgsBuffer[4] = 0; // padding (this is bidirectional)
+    
+    // This is used for the next one.
+    Args1Buffer[0] = (baseIndex + 63) / 64; // Cieling.
+    Args1Buffer[1] = 1;
+    Args1Buffer[2] = 1;
 }
 
 [numthreads(1, 1, 1)]
