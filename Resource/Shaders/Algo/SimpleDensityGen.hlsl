@@ -22,7 +22,7 @@ float3 GetSamplePos3D(float3 world)
     else
     {
         // For landmass (and cave for now), just use flat XZ mapping
-        samplePos3D = float3(world.x, 0.0, world.z);
+        samplePos3D = float3(world.x, 0, world.z);
     }
     
     return samplePos3D;

@@ -349,8 +349,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
 
         // Repack.
         MarchingShader.Dispatch(RunRepack, batchSize, 1, 1);
-
-        // Details
         MarchingShader.DispatchIndirect(RunDetailsPass, dispatchArgs);
 
         // Hand back a draw-ready batch (triangles + args + bounds computed from keys)

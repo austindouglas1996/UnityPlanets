@@ -197,11 +197,6 @@ void RunDetailsPass(uint3 id : SV_DispatchThreadID)
 {
     uint idx = id.x;
 
-    uint vertexCount = ArgsBuffer[0];
-    uint triCount = vertexCount / 3;
-    if (idx >= triCount)
-        return;
-
     TriangleData tri = DetailTriangles[idx];
     ChunkDetailData d = (ChunkDetailData)0;
     
