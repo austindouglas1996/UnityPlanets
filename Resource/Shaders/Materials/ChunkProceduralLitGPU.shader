@@ -91,7 +91,7 @@ Shader "Custom/ChunkProceduralLitGPU"
                 // Do you like triangles and savings? 
                 // you can use a simple normalize to make some simple normals.
                 //normalize(cross(tri.b - tri.a, tri.c - tri.a));
-                float3 normal = tri.Normal;
+                float3 normal = (subIndex == 0) ? tri.NormalA : (subIndex == 1) ? tri.NormalB : tri.NormalC;
                 float3 up = abs(normal.y) < 0.999 ? float3(0,1,0) : float3(1,0,0);
 
                 OUT.positionCS = TransformWorldToHClip(pos);
@@ -137,7 +137,7 @@ Shader "Custom/ChunkProceduralLitGPU"
             {
                 InputData inputData = (InputData)0;
                 inputData.positionWS      = IN.positionWS;
-                inputData.normalWS        = normalize(IN.normalWS);
+                inputData.normalWS        = normalize(-IN.normalWS);
                 inputData.viewDirectionWS = GetWorldSpaceViewDir(IN.positionWS);
                 inputData.shadowCoord     = TransformWorldToShadowCoord(IN.positionWS);
                 inputData.fogCoord        = ComputeFogFactor(IN.positionCS.z);

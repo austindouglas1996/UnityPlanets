@@ -4,6 +4,23 @@
 #include "../Includes/TriangleTable.hlsl"
 #include "../ChunkFunctions.hlsl"
 
+float3 GetNormalFast(int3 p, int keyIndex, int3 sampleSize, RWStructuredBuffer<float> DensityMap)
+{
+    // Precompute strides in the flattened density buffer
+    const int strideX = 1;
+    const int strideY = sampleSize.x;
+    const int strideZ = sampleSize.x * sampleSize.y;
+
+    // Convert center sample position to flat index (handles borders)
+    int centerIndex = GetVoxelSampleIndex(p, keyIndex, sampleSize);
+
+    // Central differences
+    float dx = DensityMap[centerIndex + strideX] - DensityMap[centerIndex - strideX];
+    float dy = DensityMap[centerIndex + strideY] - DensityMap[centerIndex - strideY];
+    float dz = DensityMap[centerIndex + strideZ] - DensityMap[centerIndex - strideZ];
+
+    return float3(dx, dy, dz);
+}
 
 void CountTriangles(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCount, RWStructuredBuffer<float> DensityMap)
 {
@@ -65,27 +82,17 @@ void March(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCursor, RWStr
     if (cubeIndex == 0 || cubeIndex == 255)
         return;
     
-    /*
-    ***
-    If you want a smooth normal operation it can be done like this. I cannot tell
-    if the way I am making normals, or if smooth normals look ugly. So the normal
-    operation we use here uses the center origin which makes a flat minecraft look.
-    ***
-    
     float3 cornerNormal[8];
     
     [loop]
     for (int i = 0; i < 8; i++)
     {
         int3 pos = key.LocalVoxelCoord + GetCornerOffset(i);
-        cornerNormal[i] = GetNormal(key, pos, sample3, DensityMap);
+        cornerNormal[i] = GetNormalFast(pos, key.KeyIndex, sample3, DensityMap);
     }
     
-    you would then normalize the normals like we did with the position
-    
-    float3 normA = normalize(lerp(cornerNormal[edge0.x], cornerNormal[edge0.y], t0));
-    float3 normB = normalize(lerp(cornerNormal[edge1.x], cornerNormal[edge1.y], t1));
-    float3 normC = normalize(lerp(cornerNormal[edge2.x], cornerNormal[edge2.y], t2));
+    /*
+    ***
     
     If you want even flatter
     float3 normal = normalize(cross(worldB - worldA, worldC - worldA));
@@ -112,12 +119,13 @@ void March(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCursor, RWStr
         /
         z
 
-    Approximate central difference from cube corners */
+    Approximate central difference from cube corners 
     float3 grad = float3(
         corner[1] - corner[0] + corner[3] - corner[2] + corner[5] - corner[4] + corner[7] - corner[6],
         corner[2] - corner[0] + corner[3] - corner[1] + corner[6] - corner[4] + corner[7] - corner[5],
         corner[4] - corner[0] + corner[5] - corner[1] + corner[6] - corner[2] + corner[7] - corner[3]);
     float3 normal = normalize(grad);
+    */  
 
     [loop]
     for (int i = 0; i < 16; i += 3)
@@ -144,11 +152,17 @@ void March(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCursor, RWStr
         float3 worldB = lerp(cornerPos[edge1.x], cornerPos[edge1.y],t1);
         float3 worldC = lerp(cornerPos[edge2.x], cornerPos[edge2.y],t2);
         
+        float3 normA = normalize(lerp(cornerNormal[edge0.x], cornerNormal[edge0.y], t0));
+        float3 normB = normalize(lerp(cornerNormal[edge1.x], cornerNormal[edge1.y], t1));
+        float3 normC = normalize(lerp(cornerNormal[edge2.x], cornerNormal[edge2.y], t2));
+        
         TriangleData tri;
         tri.a = worldA;
         tri.b = worldB;
         tri.c = worldC;
-        tri.Normal = normal;
+        tri.NormalA = normA;
+        tri.NormalB = normB;
+        tri.NormalC = normC;
         tri.KeyIndex = key.KeyIndex;
         tri.LodIndex = key.chunk.LodIndex;
         

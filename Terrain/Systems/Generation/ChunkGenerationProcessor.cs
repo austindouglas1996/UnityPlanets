@@ -86,7 +86,7 @@ public class ChunkGenerationProcessor : IDisposable
     /// </summary>
     public void RemoveChunk(ChunkKey key)
     {
-        this.removalQueue.Add(new (key, 60));
+        this.removalQueue.Add(new (key, 30));
     }
 
     /// <summary>
