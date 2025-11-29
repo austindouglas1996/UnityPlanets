@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -194,14 +195,18 @@ public class ChunkRenderBucketCollection : IDisposable
     /// <returns></returns>
     private ChunkRenderBucket GetOrCreateTailBucket()
     {
-        if (bucketsWithSpace.Count != 0)
-            return bucketsWithSpace[0];
+        Debug.LogWarning("We are using a .Where() here. This is not ideal.");
+        var availableBuckets = bucketsWithSpace.Where(r => !r.GenerateInProgress).ToList();
+        if (availableBuckets.Count != 0)
+        {
+            return availableBuckets[0];
+        }
 
         if (buckets.Count == 0)
             return CreateBucket();
 
         var tail = buckets[^1];
-        if (!tail.IsFull) return tail;
+        if (!tail.IsFull && !tail.GenerateInProgress) return tail;
 
         return CreateBucket();
     }

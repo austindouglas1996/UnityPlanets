@@ -11,7 +11,9 @@ public struct TriangleDataGPU
     public Vector3 a;
     public Vector3 b;
     public Vector3 c; 
-    public Vector3 Normal;
+    public Vector3 NormalA;
+    public Vector3 NormalB;
+    public Vector3 NormalC;
     public uint LodIndex;
     public uint KeyIndex;
 }

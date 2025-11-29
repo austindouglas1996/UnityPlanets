@@ -12,6 +12,10 @@ struct ChunkDispatchKey
     uint GlobalIndex;
     float3 CoordPos;
     uint LodIndex;
+    
+    uint SourceOffset;
+    uint SourceCount;
+    uint DestStart;
 };
 
 // Returned by GetChunkAccess(). Holds everything needed
@@ -34,7 +38,9 @@ struct TriangleData
     float3 a;
     float3 b;
     float3 c;
-    float3 Normal;
+    float3 NormalA;
+    float3 NormalB;
+    float3 NormalC;
     uint LodIndex;
     uint KeyIndex;
 };

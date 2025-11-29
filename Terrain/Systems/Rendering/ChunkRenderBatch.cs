@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -11,14 +9,24 @@ using UnityEngine.Rendering;
 public class ChunkRenderBatch : IDisposable
 {
     /// <summary>
-    /// We use a buffer here so we don't allocate one each time.
-    /// </summary>
-    private static ComputeBuffer countBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
-
-    /// <summary>
     /// Append buffer containing generated triangles (ComputeBufferType.Append).
     /// </summary>
-    public ComputeBuffer Triangle;
+    public ComputeBuffer RawTriangleBuffer;
+
+    /// <summary>
+    /// Append buffer containing generated triangles in a flat list.
+    /// </summary>
+    public ComputeBuffer FlatTriangleBuffer;
+
+    /// <summary>
+    /// Small buffer for controlling the counts per chunk.
+    /// </summary>
+    public ComputeBuffer TriangleChunkCounts;
+
+    /// <summary>
+    /// Small buffer for the cursor.
+    /// </summary>
+    public ComputeBuffer TriangleWriteCursor;
 
     /// <summary>
     /// The density map used for the render batch.
@@ -43,17 +51,20 @@ public class ChunkRenderBatch : IDisposable
     /// <summary>
     /// Initialize a new <see cref="ChunkRenderBatch"/>.
     /// </summary>
-    /// <param name="Triangle">Append buffer holding the generated <see cref="Triangle"/> data.</param>
+    /// <param name="Triangle">Append buffer holding the generated <see cref="RawTriangleBuffer"/> data.</param>
     /// <param name="Args">Indirect arguments buffer (5 uints) produced after CopyCount.</param>
     /// <param name="keys">Chunk keys included in this batch (for bounds computation).</param>
     /// <param name="services">Layout/services used to convert chunk keys to world space.</param>
     /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="Args"/> is null.</exception>
-    public ChunkRenderBatch(ComputeBuffer Triangle, ComputeBuffer Details, ComputeBuffer densityMap, ComputeBuffer Args, IChunkServices services)
+    public ChunkRenderBatch(ComputeBuffer TriangleSource, ComputeBuffer TriangleDest, ComputeBuffer triangleCounts, ComputeBuffer triangleCursor, ComputeBuffer Details, ComputeBuffer densityMap, ComputeBuffer Args, IChunkServices services)
     {
         if (Args == null)
             throw new System.ArgumentNullException("args");
 
-        this.Triangle = Triangle;
+        this.RawTriangleBuffer = TriangleSource;
+        this.FlatTriangleBuffer = TriangleDest;
+        this.TriangleWriteCursor = triangleCursor;
+        this.TriangleChunkCounts = triangleCounts;
         this.Details = Details;
         this.DensityMap = densityMap;
         this.Args = Args;
@@ -74,15 +85,20 @@ public class ChunkRenderBatch : IDisposable
         this.isDisposed = true;
 
         if (Args != null) Args.Dispose();
-        if (Triangle != null) Triangle.Dispose();
+        if (RawTriangleBuffer != null) RawTriangleBuffer.Dispose();
+        if (FlatTriangleBuffer != null) FlatTriangleBuffer.Dispose();
+        if (TriangleChunkCounts != null) TriangleChunkCounts.Dispose();
+        if (TriangleWriteCursor != null) TriangleWriteCursor.Dispose();
         if (Details != null) Details.Dispose();
         if (DensityMap != null) DensityMap.Dispose();
 
         Args = null;
-        Triangle = null;
+        RawTriangleBuffer = null;
+        FlatTriangleBuffer = null;
+        TriangleChunkCounts = null;
+        TriangleWriteCursor = null;
         Details = null;
         DensityMap = null;
-        countBuffer.Dispose();
     }
 
     /// <summary>
@@ -98,34 +114,12 @@ public class ChunkRenderBatch : IDisposable
             throw new System.InvalidOperationException("Set has been disposed of.");
         }
 
-        // Copy append count to a tiny GPU buffer
-        ComputeBuffer.CopyCount(set.Triangle, countBuffer, 0);
-
-        // Read count asynchronously
-        AsyncGPUReadback.Request(countBuffer, rCount =>
+        AsyncGPUReadback.Request(set.FlatTriangleBuffer, rTris =>
         {
-            if (rCount.hasError) { onDone(Array.Empty<TriangleDataGPU>()); return; }
+            if (rTris.hasError) { onDone(Array.Empty<TriangleDataGPU>()); return; }
 
-            /*
-             * This is quite the mess for just trying to get a copy of the triangle data,
-             * but while working on a stuttering issue I kept having random frames that were doing
-             * a GPU operation and then an immediate garbage collection which stopped after changing this.
-             */
-            uint triCount = rCount.GetData<uint>()[0];
-            if (triCount == 0) { onDone(Array.Empty<TriangleDataGPU>()); return; }
-
-            int stride = Marshal.SizeOf<TriangleDataGPU>();
-            int size = (int)(triCount * stride);
-
-            // Now read triangles asynchronously too
-            AsyncGPUReadback.Request(set.Triangle, size, 0, rTris =>
-            {
-                if (rTris.hasError) { onDone(Array.Empty<TriangleDataGPU>()); return; }
-
-                // Copy to managed array once.
-                var tris = rTris.GetData<TriangleDataGPU>().ToArray();
-                onDone(tris);
-            });
+            var output = rTris.GetData<TriangleDataGPU>().ToArray();
+            onDone(output);
         });
     }
 }

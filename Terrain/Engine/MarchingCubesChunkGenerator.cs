@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Unity.Collections;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -47,11 +46,14 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private uint[] surfaceMaskCache = new uint[SurfaceCap];
 
     // Kernel ID's.
-    private int surfaceKernel;
-    private int genKernel;
-    private int marchKernel;
-    private int detailKernel;
-    private int argsKernel;
+    private int ClearRange;
+    private int GenerateSurfaceMask;
+    private int GenerateDensityMap;
+    private int RunMarchingCubesPrePass;
+    private int RunMarchingCubes;
+    private int RunRepackPrePass;
+    private int RunRepack;
+    private int RunDetailsPass;
 
     /// <summary>
     /// Initialize a new instance of the <see cref="MarchingCubesChunkGenerator"/> class.
@@ -134,10 +136,10 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         FillSurfaceChunkInputs(keys);
 
         // Kick the mask kernel
-        MarchingShader.SetBuffer(surfaceKernel, "ChunkInputs", SurfaceChunkInputBuffer);
-        MarchingShader.SetBuffer(surfaceKernel, "SurfaceMask", SurfaceMaskBuffer);
+        MarchingShader.SetBuffer(GenerateSurfaceMask, "ChunkInputs", SurfaceChunkInputBuffer);
+        MarchingShader.SetBuffer(GenerateSurfaceMask, "SurfaceMask", SurfaceMaskBuffer);
 
-        MarchingShader.Dispatch(surfaceKernel, batchSize, 1, 1);
+        MarchingShader.Dispatch(GenerateSurfaceMask, batchSize, 1, 1);
 
         AsyncGPUReadback.Request(SurfaceMaskBuffer, r =>
         {
@@ -199,6 +201,10 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
 
         BiomeBuffer.SetData(biomeData);
 
+        // Set buffer
+        MarchingShader.SetBuffer(RunDetailsPass, "Biomes", BiomeBuffer);
+        MarchingShader.SetInt("_BiomesCount", BiomesCount);
+
         // Update material.
         this.chunkMaterial.SetBuffer("Biomes", BiomeBuffer);
         this.chunkMaterial.SetInt("_BiomesCount", BiomesCount);
@@ -214,7 +220,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     /// <summary>
     /// Full marching-cubes path. Builds density for the batch, runs MC, returns triangle + args buffers.
     /// </summary>
-    private void ProcessBatch(ChunkKey?[] keys, int keyCount, Dictionary<int,ChunkKey?> mods, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null)
+    private void ProcessBatch(ChunkKey?[] keys, int keyCount, Dictionary<int, ChunkKey?> mods, Action<ChunkRenderBatch> output, ChunkRenderBatch existingBatch = null)
     {
         int batchSize = keyCount;
 
@@ -230,75 +236,113 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         if (batchSize == 0)
             return;
 
-        ComputeBuffer triangleBuffer = existingBatch?.Triangle;
+        ComputeBuffer triangleSBuffer = existingBatch?.RawTriangleBuffer;
+        ComputeBuffer triangleDBuffer = existingBatch?.FlatTriangleBuffer;
+        ComputeBuffer triangleCBuffer = existingBatch?.TriangleChunkCounts;
+        ComputeBuffer triangleCursor = existingBatch?.TriangleWriteCursor;
         ComputeBuffer detailBuffer = existingBatch?.Details;
         ComputeBuffer argsBuffer = existingBatch?.Args;
         ComputeBuffer densityBuffer = existingBatch?.DensityMap;
 
+        ComputeBuffer dispatchArgs = new ComputeBuffer(3, sizeof(uint), ComputeBufferType.IndirectArguments);
+
         if (existingBatch == null)
         {
-            triangleBuffer = new ComputeBuffer(60000, Marshal.SizeOf<TriangleDataGPU>(), ComputeBufferType.Append);
+            triangleSBuffer = new ComputeBuffer(128000, Marshal.SizeOf<TriangleDataGPU>());
+            triangleDBuffer = new ComputeBuffer(60000, Marshal.SizeOf<TriangleDataGPU>());
+            triangleCBuffer = new ComputeBuffer(GenerateCap, sizeof(uint));
+            triangleCursor = new ComputeBuffer(GenerateCap, sizeof(uint));
             detailBuffer = new ComputeBuffer(60000, Marshal.SizeOf<ChunkDetailDataGPU>(), ComputeBufferType.Append | ComputeBufferType.Structured);
             argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
             densityBuffer = CreateDensityBuffer();
         }
 
-        triangleBuffer.SetCounterValue(0);
         detailBuffer.SetCounterValue(0);
 
         // Fill total input.
         FillGenerateChunkInputs(keys, keyCount);
 
-        MarchingShader.SetBuffer(genKernel, "DensityMap", densityBuffer);
-        MarchingShader.SetBuffer(genKernel, "ChunkInputs", GenerateChunkInputBuffer);
+        // Density buffers.
+        MarchingShader.SetBuffer(GenerateDensityMap, "DensityMap", densityBuffer);
+        MarchingShader.SetBuffer(GenerateDensityMap, "ChunkInputs", GenerateChunkInputBuffer);
+
+        // Pre-march buffers.
+        MarchingShader.SetBuffer(RunMarchingCubesPrePass, "ChunkInputs", GenerateChunkInputBuffer);
+        MarchingShader.SetBuffer(RunMarchingCubesPrePass, "DensityMap", densityBuffer);
+        MarchingShader.SetBuffer(RunMarchingCubesPrePass, "TriangleCount", triangleCBuffer);
+
+        // Args buffers
+        MarchingShader.SetBuffer(RunRepackPrePass, "ChunkInputs", GenerateChunkInputBuffer);
+        MarchingShader.SetBuffer(RunRepackPrePass, "TriangleCount", triangleCBuffer);
+        MarchingShader.SetBuffer(RunRepackPrePass, "ArgsBuffer", argsBuffer);
+        MarchingShader.SetBuffer(RunRepackPrePass, "Args1Buffer", dispatchArgs);
+        MarchingShader.SetInt("BatchSize", batchSize);
+
+        // Marching buffer
+        MarchingShader.SetBuffer(RunMarchingCubes, "ChunkInputs", GenerateChunkInputBuffer);
+        MarchingShader.SetBuffer(RunMarchingCubes, "DensityMap", densityBuffer);
+        MarchingShader.SetBuffer(RunMarchingCubes, "InitialDetailBuffer", detailBuffer);
+        MarchingShader.SetBuffer(RunMarchingCubes, "TriangleSourceBuffer", triangleSBuffer);
+        MarchingShader.SetBuffer(RunMarchingCubes, "TriangleCursor", triangleCursor);
+
+        // Repack buffer.
+        MarchingShader.SetBuffer(RunRepack, "TriangleSourceBuffer", triangleSBuffer);
+        MarchingShader.SetBuffer(RunRepack, "TriangleDestBuffer", triangleDBuffer);
+        MarchingShader.SetBuffer(RunRepack, "ChunkInputs", GenerateChunkInputBuffer);
+
+        // Detail buffer
+        MarchingShader.SetBuffer(RunDetailsPass, "ArgsBuffer", argsBuffer);
+        MarchingShader.SetBuffer(RunDetailsPass, "DetailTriangles", triangleDBuffer);
+        MarchingShader.SetBuffer(RunDetailsPass, "DetailBuffer", detailBuffer);
+
+        int marchGroupSize = Mathf.CeilToInt(cubesPerAxis / 4f);
+        int genGroupSize = Mathf.CeilToInt(samplesPerAxis / 4f);
 
         List<(int, int)> ranges = GroupContiguous(mods);
         foreach (var (start, end) in ranges)
         {
-            // Generate density
+            int length = (end - start + 1);
+
+            // Set the offset for the next dispatches.
             MarchingShader.SetInt("Offset", start);
 
-            // NOTE: thread group dims assume [numthreads(4,4,4)] and X packs chunkIndex*XWithinChunk
-            int genGroupSize = Mathf.CeilToInt(samplesPerAxis / 4f);
-            MarchingShader.Dispatch(genKernel, (end - start + 1) * genGroupSize, genGroupSize, genGroupSize);
+            // Generate Density.
+            MarchingShader.Dispatch(GenerateDensityMap, length * genGroupSize, genGroupSize, genGroupSize);
+
+            // Clear out the modified chunk counts before the recount.
+            ClearDispatch(triangleCBuffer, start, length);
+
+            // Update triangle counts.
+            MarchingShader.Dispatch(RunMarchingCubesPrePass, length * marchGroupSize, marchGroupSize, marchGroupSize);
         }
 
-        // Marching cubes
-        MarchingShader.SetBuffer(marchKernel, "ChunkInputs", GenerateChunkInputBuffer);
-        MarchingShader.SetBuffer(marchKernel, "DensityMap", densityBuffer);
-        MarchingShader.SetBuffer(marchKernel, "InitialDetailBuffer", detailBuffer);
-        MarchingShader.SetBuffer(marchKernel, "TriangleBuffer", triangleBuffer);
+        // Update arguments (needed for triangles)
+        MarchingShader.Dispatch(RunRepackPrePass, 1, 1, 1);
 
-        int marchGroupSize = Mathf.CeilToInt(cubesPerAxis / 4f);
-        MarchingShader.Dispatch(marchKernel, batchSize * marchGroupSize, marchGroupSize, marchGroupSize);
+        foreach (var (start, end) in ranges)
+        {
+            int length = (end - start + 1);
 
-        ComputeBuffer.CopyCount(triangleBuffer, countBuffer, 0);
+            // Set the offset for the next dispatches.
+            MarchingShader.SetInt("Offset", start);
 
-        // Build indirect args from append count
-        MarchingShader.SetBuffer(argsKernel, "CountBuffer", countBuffer);
-        MarchingShader.SetBuffer(argsKernel, "ArgsBuffer", argsBuffer);
-        MarchingShader.Dispatch(argsKernel, 1, 1, 1);
+            // Clear out the cursor for this range.
+            ClearDispatch(triangleCursor, start, length);
 
-        MarchingShader.SetBuffer(detailKernel, "Biomes", BiomeBuffer);
-        MarchingShader.SetInt("_BiomesCount", BiomesCount);
-        MarchingShader.SetBuffer(detailKernel, "ArgsBuffer", argsBuffer);
-        MarchingShader.SetBuffer(detailKernel, "DetailTriangles", triangleBuffer);
-        MarchingShader.SetBuffer(detailKernel, "DetailBuffer", detailBuffer);
+            // March.
+            MarchingShader.Dispatch(RunMarchingCubes, length * marchGroupSize, marchGroupSize, marchGroupSize);
+        }
 
-    
-        int maxTriangles = (cubesPerAxis * cubesPerAxis * cubesPerAxis * 5 * batchSize);
-        int groupsX = Mathf.CeilToInt(maxTriangles / 64f);
-        MarchingShader.Dispatch(detailKernel, groupsX, 1,1);
+        MarchingShader.SetInt("Offset", 0);
 
-        /*
-        uint[] args = new uint[5];
-        argsBuffer.GetData(args);
-        uint triCount = args[0] / 3;
-        Debug.Log($"LOD{keys[0].LODIndex} - Chunks {batchSize} - Triangles written: {triCount}, triangle capacity of buffer {triangleBuffer.count}");
-        */
+        // Repack.
+        MarchingShader.Dispatch(RunRepack, batchSize, 1, 1);
+        MarchingShader.DispatchIndirect(RunDetailsPass, dispatchArgs);
 
         // Hand back a draw-ready batch (triangles + args + bounds computed from keys)
-        output.Invoke(new ChunkRenderBatch(triangleBuffer, detailBuffer, densityBuffer, argsBuffer, this.chunkServices));
+        output.Invoke(new ChunkRenderBatch(triangleSBuffer, triangleDBuffer, triangleCBuffer, triangleCursor, detailBuffer, densityBuffer, argsBuffer, this.chunkServices));
+
+        dispatchArgs.Dispose();
     }
 
     /// <summary>
@@ -325,20 +369,34 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         SurfaceMaskBuffer = new ComputeBuffer(SurfaceCap, sizeof(uint));
 
         countBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
-
-        genKernel = MarchingShader.FindKernel("GenerateDensityMap");
-        marchKernel = MarchingShader.FindKernel("RunMarchingCubes");
-        detailKernel = MarchingShader.FindKernel("RunDetailsPass");
-        argsKernel = MarchingShader.FindKernel("PrepareDrawArgs");
-        surfaceKernel = MarchingShader.FindKernel("GenerateSurfaceMask");
+        ClearRange = MarchingShader.FindKernel("ClearRange");
+        GenerateDensityMap = MarchingShader.FindKernel("GenerateDensityMap");
+        RunMarchingCubesPrePass = MarchingShader.FindKernel("RunMarchingCubesPrePass");
+        RunMarchingCubes = MarchingShader.FindKernel("RunMarchingCubes");
+        RunRepackPrePass = MarchingShader.FindKernel("RunRepackPrePass");
+        RunRepack = MarchingShader.FindKernel("RunRepack");
+        RunDetailsPass = MarchingShader.FindKernel("RunDetailsPass");
+        GenerateSurfaceMask = MarchingShader.FindKernel("GenerateSurfaceMask");
 
         // Set static buffers
-        MarchingShader.SetBuffer(marchKernel, "CornerOffsetsBuffer", CornerOffsetsBuffer);
-        MarchingShader.SetBuffer(marchKernel, "EdgeConnectionsBuffer", EdgeConnectionsBuffer);
-        MarchingShader.SetBuffer(marchKernel, "TriangleTableBuffer", TriangleTableBuffer);
+        MarchingShader.SetBuffer(RunMarchingCubesPrePass, "CornerOffsetsBuffer", CornerOffsetsBuffer);
+        MarchingShader.SetBuffer(RunMarchingCubesPrePass, "EdgeConnectionsBuffer", EdgeConnectionsBuffer);
+        MarchingShader.SetBuffer(RunMarchingCubesPrePass, "TriangleTableBuffer", TriangleTableBuffer);
+
+        MarchingShader.SetBuffer(RunMarchingCubes, "CornerOffsetsBuffer", CornerOffsetsBuffer);
+        MarchingShader.SetBuffer(RunMarchingCubes, "EdgeConnectionsBuffer", EdgeConnectionsBuffer);
+        MarchingShader.SetBuffer(RunMarchingCubes, "TriangleTableBuffer", TriangleTableBuffer);
 
         // Prime options/biomes on GPU
         UpdateOptions();
+    }
+
+    private void ClearDispatch(ComputeBuffer buffer, int start, int length)
+    {
+        MarchingShader.SetInt("ClearStart", start);
+        MarchingShader.SetInt("ClearLength", length);
+        MarchingShader.SetBuffer(ClearRange, "BufferToClear", buffer);
+        MarchingShader.Dispatch(ClearRange, 1, 1, 1);
     }
 
     /// <summary>

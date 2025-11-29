@@ -32,7 +32,7 @@ int GetVoxelSampleIndex(int3 pos, int KeyIndex, int3 totalSampleSize)
 //   id     : Dispatch thread ID (x, y, z) from the compute shader
 //   sampleSize.x, sampleSize.y, sampleSize.z : Chunk dimensions in voxels (per axis)
 //   keys   : Structured buffer of all active chunks to process
-ChunkDispatchKeyInfo GetChunkAccessCubes(uint3 id, uint offset, StructuredBuffer<ChunkDispatchKey> keys)
+ChunkDispatchKeyInfo GetChunkAccessCubes(uint3 id, uint offset, RWStructuredBuffer<ChunkDispatchKey> keys)
 {
     ChunkDispatchKeyInfo r;
 
@@ -78,7 +78,7 @@ ChunkDispatchKeyInfo GetChunkAccessCubes(uint3 id, uint offset, StructuredBuffer
 //   id     : Dispatch thread ID (x, y, z) from the compute shader
 //   sampleSize.x, sampleSize.y, sampleSize.z : Chunk dimensions in voxels (per axis)
 //   keys   : Structured buffer of all active chunks to process
-ChunkDispatchKeyInfo GetChunkAccessSamples(uint3 id, uint offset, StructuredBuffer<ChunkDispatchKey> keys)
+ChunkDispatchKeyInfo GetChunkAccessSamples(uint3 id, uint offset, RWStructuredBuffer<ChunkDispatchKey> keys)
 {
     ChunkDispatchKeyInfo r;
 

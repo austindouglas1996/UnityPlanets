@@ -49,6 +49,7 @@ public static class ConsoleTimer
     /// </summary>
     public static void WriteToConsole()
     {
+        return;
         if (watches.Count == 0)
         {
             return;

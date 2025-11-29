@@ -22,7 +22,7 @@ float3 GetSamplePos3D(float3 world)
     else
     {
         // For landmass (and cave for now), just use flat XZ mapping
-        samplePos3D = float3(world.x, 0.0, world.z);
+        samplePos3D = float3(world.x, 0, world.z);
     }
     
     return samplePos3D;
@@ -77,7 +77,7 @@ float SampleBaseHeight(float3 world, int lod)
 
     // Low-frequency noise controls local amplitude variation.
     // Use a reduced frequency so it decorrelates from ContinentFreq.
-    float continentAmpNoise = N01(fbm3D(samplePos3D * (ContinentAmpFreq * 0.1), 3));
+    float continentAmpNoise = N01(fbm3D(samplePos3D * (ContinentAmpFreq * 0.1), 4));
     float continentAmpLocal = continentAmpNoise * ContinentAmp;
     
     // Signed height field for landmasses.
@@ -90,7 +90,7 @@ float SampleBaseHeight(float3 world, int lod)
     // Flatten jagged spikes by applying a smoothing mask.
     // (This will remove the constant large bumps perlin likes to make)
     float3 flatPos = (samplePos3D + FlatMaskOffset) * FlatMaskFreq;
-    float flatNoise = pow(saturate(1.0 - N01(fbm3D(flatPos, 3))), FlatMaskAmp);
+    float flatNoise = pow(saturate(1.0 - N01(fbm3D(flatPos, 4))), FlatMaskAmp);
 
     // Small-scale detail (bumps, ripples).
     // (This adds some bumps back and makes them a bit more noisy)

@@ -14,7 +14,7 @@ public class ChunkGenerationProcessor : IDisposable
 {
     private const int SurfaceJobs = 512;
     private const int GenerationJobs = 64; 
-    private const int Generation0Jobs = 16;
+    private const int Generation0Jobs = 64;
 
     private readonly List<ChunkGenerationJob> tmpSurfaceJobs = new(SurfaceJobs);
     private readonly ChunkGenerationBatcher surfaceBatcher = new();
@@ -86,7 +86,7 @@ public class ChunkGenerationProcessor : IDisposable
     /// </summary>
     public void RemoveChunk(ChunkKey key)
     {
-        this.removalQueue.Add(new (key, 60));
+        this.removalQueue.Add(new (key, 30));
     }
 
     /// <summary>

@@ -1,11 +1,14 @@
 ﻿#pragma only_renderers d3d11
 #pragma target 5.0
 
+#pragma kernel ClearRange
 #pragma kernel GenerateDensityMap
 #pragma kernel GenerateSurfaceMask
+#pragma kernel RunMarchingCubesPrePass
 #pragma kernel RunMarchingCubes
+#pragma kernel RunRepack
+#pragma kernel RunRepackPrePass
 #pragma kernel RunDetailsPass
-#pragma kernel PrepareDrawArgs
 
 #include "../ChunkFunctions.hlsl"
 #include "../Algo/ChunkMarchingCubes.hlsl"
@@ -14,17 +17,26 @@
 #include "../ChunkColoring.hlsl"
 
 uint Offset;
+uint BatchSize;
 
 /* Inputs */
-StructuredBuffer<ChunkDispatchKey> ChunkInputs;
+RWStructuredBuffer<ChunkDispatchKey> ChunkInputs;
 RWStructuredBuffer<float> DensityMap;
-RWByteAddressBuffer CountBuffer;
+
 
 /* Outputs */
 RWStructuredBuffer<uint> SurfaceMask;
 
 /* March Kernel */
-AppendStructuredBuffer<TriangleData> TriangleBuffer;
+RWStructuredBuffer<uint> TriangleCount;
+RWStructuredBuffer<uint> TriangleCursor;
+RWStructuredBuffer<TriangleData> TriangleSourceBuffer;
+RWStructuredBuffer<TriangleData> TriangleDestBuffer;
+
+/* Helper */
+RWStructuredBuffer<uint> BufferToClear;
+uint ClearStart;
+uint ClearLength;
 
 /* Detail Kernel */
 StructuredBuffer<TriangleData> DetailTriangles;
@@ -32,18 +44,26 @@ RWStructuredBuffer<ChunkDetailData> DetailBuffer;
 
 /* Args Kernel */
 RWStructuredBuffer<uint> ArgsBuffer;
+RWStructuredBuffer<uint> Args1Buffer;
 
 // Shared flags so any thread can “trip” the result in GetSurfaceData.
 groupshared uint gHasAbove;
 groupshared uint gHasBelow;
 
+[numthreads(1, 1, 1)]
+void ClearRange(uint id : SV_DispatchThreadID)
+{
+    int length = (ClearStart + ClearLength);
+    for (int i = ClearStart; i < length; i++)
+    {
+        BufferToClear[i] = 0;
+    }
+}
+
 [numthreads(4, 4, 4)]
 void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
 {
     ChunkDispatchKeyInfo info = GetChunkAccessSamples(id, Offset, ChunkInputs);
-    if (info.SampleIndex < 0)
-        return;
-    
     DensityMap[info.SampleIndex] = GenerateNoiseValue(info.WorldPos, info.chunk.LodIndex);
 }
 
@@ -103,6 +123,13 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
     }
 }
 
+[numthreads(4, 4, 4)]
+void RunMarchingCubesPrePass(uint3 id : SV_DispatchThreadID)
+{
+    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, Offset, ChunkInputs);
+    CountTriangles(access, TriangleCount, DensityMap);
+}
+
 // MarchingCubesPass
 // Main meshing kernel. Reads voxel density data for a given chunk, determines
 // which edges of the cube intersect the ISO surface, and emits triangles
@@ -112,22 +139,63 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
 [numthreads(4, 4, 4)]
 void RunMarchingCubes(uint3 id : SV_DispatchThreadID)
 {
-    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, 0, ChunkInputs);
-    if (access.KeyIndex < 0) 
-        return;
+    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, Offset, ChunkInputs);
+    March(access, TriangleCursor, TriangleSourceBuffer, DensityMap);
+}
+
+[numthreads(1, 1, 1)]
+void RunRepackPrePass(uint id : SV_DispatchThreadID)
+{
+    uint baseIndex = 0;
+
+    for (uint i = 0; i < BatchSize; i++)
+    {
+        ChunkDispatchKey key = ChunkInputs[i];
+        uint count = TriangleCount[i];
+
+        key.SourceCount = count;
+        key.SourceOffset = 1500 * i;
+        key.DestStart = baseIndex;
+
+        // write back
+        ChunkInputs[i] = key;
+
+        baseIndex += count;
+    }
     
-    March(access, TriangleBuffer, DensityMap);
+    // Set args buffer.
+    ArgsBuffer[0] = baseIndex * 3; // vertex count
+    ArgsBuffer[1] = 1; // instance count
+    ArgsBuffer[2] = 0; // start vertex
+    ArgsBuffer[3] = 0; // start instance
+    ArgsBuffer[4] = 0; // padding (this is bidirectional)
+    
+    // This is used for the next one.
+    Args1Buffer[0] = (baseIndex + 63) / 64; // Cieling.
+    Args1Buffer[1] = 1;
+    Args1Buffer[2] = 1;
+}
+
+[numthreads(1, 1, 1)]
+void RunRepack(uint3 id : SV_DispatchThreadID)
+{
+    ChunkDispatchKey chunkKey = ChunkInputs[id.x];
+    
+    uint srcOffset = chunkKey.SourceOffset;
+    uint count = chunkKey.SourceCount;
+    uint dstStart = chunkKey.DestStart;
+    
+    // Copy triangles for this chunk
+    for (uint t = 0; t < count; t++)
+    {
+        TriangleDestBuffer[dstStart + t] = TriangleSourceBuffer[srcOffset + t];
+    }
 }
 
 [numthreads(64, 1, 1)]
 void RunDetailsPass(uint3 id : SV_DispatchThreadID)
 {
     uint idx = id.x;
-
-    uint vertexCount = ArgsBuffer[0];
-    uint triCount = vertexCount / 3;
-    if (idx >= triCount)
-        return;
 
     TriangleData tri = DetailTriangles[idx];
     ChunkDetailData d = (ChunkDetailData)0;
@@ -138,20 +206,4 @@ void RunDetailsPass(uint3 id : SV_DispatchThreadID)
     d.ColorC = PackFloat3(GetBiomeBlended(tri.c));
 
     DetailBuffer[idx] = d;
-}
-
-// PrepareIndirectDrawArgs
-// Small kernel to finalize DrawMeshInstancedIndirect args after triangle
-// generation. Multiplies triangle count by 3 to get vertex count and sets
-// instance count to 1.
-// 
-// This is run after MarchingCubesPass and CopyCount to populate ArgsBuffer.
-[numthreads(1, 1, 1)]
-void PrepareDrawArgs(uint3 id : SV_DispatchThreadID)
-{
-    ArgsBuffer[0] = CountBuffer.Load(0) * 3; // vertex count
-    ArgsBuffer[1] = 1; // instance count
-    ArgsBuffer[2] = 0; // start vertex
-    ArgsBuffer[3] = 0; // start instance
-    ArgsBuffer[4] = 0; // padding (this is bidirectional)
 }
