@@ -236,10 +236,10 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
         if (batchSize == 0)
             return;
 
-        ComputeBuffer triangleSBuffer = existingBatch?.TriangleSource;
-        ComputeBuffer triangleDBuffer = existingBatch?.TriangleDest;
-        ComputeBuffer triangleCBuffer = existingBatch?.TriangleCounts;
-        ComputeBuffer triangleCursor = existingBatch?.TriangleCursor;
+        ComputeBuffer triangleSBuffer = existingBatch?.RawTriangleBuffer;
+        ComputeBuffer triangleDBuffer = existingBatch?.FlatTriangleBuffer;
+        ComputeBuffer triangleCBuffer = existingBatch?.TriangleChunkCounts;
+        ComputeBuffer triangleCursor = existingBatch?.TriangleWriteCursor;
         ComputeBuffer detailBuffer = existingBatch?.Details;
         ComputeBuffer argsBuffer = existingBatch?.Args;
         ComputeBuffer densityBuffer = existingBatch?.DensityMap;

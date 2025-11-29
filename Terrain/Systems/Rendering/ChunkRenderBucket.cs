@@ -250,7 +250,7 @@ public class ChunkRenderBucket : IDisposable
         if (IsEmpty) return;
 
         var rd = RenderData;
-        if (rd == null || rd.IsDisposed || rd.TriangleSource == null || rd.Args == null) return;
+        if (rd == null || rd.IsDisposed || rd.RawTriangleBuffer == null || rd.Args == null) return;
 
         // enqueue indirect procedural draw
         cdb.DrawProceduralIndirect(
@@ -329,7 +329,7 @@ public class ChunkRenderBucket : IDisposable
 
         OnGenerate?.Invoke(this, EventArgs.Empty);
 
-        mpb.SetBuffer("_TriangleBuffer", RenderData.TriangleDest);
+        mpb.SetBuffer("_TriangleBuffer", RenderData.FlatTriangleBuffer);
         mpb.SetBuffer("_TriangleDetailsBuffer", RenderData.Details);
 
         this.IsDirty = false;
