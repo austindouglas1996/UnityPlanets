@@ -2,7 +2,6 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Runtime.InteropServices;
     using Unity.Collections;
     using UnityEngine;
@@ -181,7 +180,7 @@
             PlanetOptionsBuffer.SetData(new[] { this.chunkServices.Configuration.PlanetOptions });
 
             // Rebuild biome table (small) and upload.
-            var biomes = chunkServices.Configuration.BiomeLibrary.Biomes.ToList();
+            var biomes = chunkServices.Configuration.BiomeLibrary.Biomes;
             BiomesCount = biomes.Count;
 
             var biomeData = new ChunkBiomeGPU[biomes.Count];

@@ -3,7 +3,6 @@ namespace GingerVoxelSystem
     using UnityEngine;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Engine;
-    using GingerVoxelSystem.Helpers;
     using GingerVoxelSystem.Systems.Chunks;
     using GingerVoxelSystem.Systems.Rendering;
 
