@@ -1,11 +1,11 @@
-namespace UnityTerrainGenerator
+namespace GingerVoxelSystem
 {
     using UnityEngine;
-    using UnityTerrainGenerator.Core;
-    using UnityTerrainGenerator.Engine;
-    using UnityTerrainGenerator.Helpers;
-    using UnityTerrainGenerator.Systems.Chunks;
-    using UnityTerrainGenerator.Systems.Rendering;
+    using GingerVoxelSystem.Core;
+    using GingerVoxelSystem.Engine;
+    using GingerVoxelSystem.Helpers;
+    using GingerVoxelSystem.Systems.Chunks;
+    using GingerVoxelSystem.Systems.Rendering;
 
     /// <summary>
     /// Unity-facing entry point for terrain generation.

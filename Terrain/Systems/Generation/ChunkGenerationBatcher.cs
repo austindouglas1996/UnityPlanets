@@ -1,8 +1,8 @@
-namespace UnityTerrainGenerator.Systems.Generation
+namespace GingerVoxelSystem.Systems.Generation
 {
     using System;
     using System.Collections.Generic;
-    using UnityTerrainGenerator.Core;
+    using GingerVoxelSystem.Core;
 
     /// <summary>
     /// Queues <see cref="ChunkGenerationJob"/> instances for later processing, 

@@ -1,4 +1,4 @@
-namespace UnityTerrainGenerator.Core
+namespace GingerVoxelSystem.Core
 {
     using System;
     using UnityEngine;

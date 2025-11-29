@@ -1,4 +1,4 @@
-namespace UnityTerrainGenerator.Engine.Helpers
+namespace GingerVoxelSystem.Engine.Helpers
 {
     using System.Runtime.InteropServices;
     using Unity.Mathematics;

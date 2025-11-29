@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityTerrainGenerator.Systems.Generation;
-using UnityTerrainGenerator.Systems.Rendering;
+using GingerVoxelSystem.Systems.Generation;
+using GingerVoxelSystem.Systems.Rendering;
 
-namespace UnityTerrainGenerator.Core
+namespace GingerVoxelSystem.Core
 {
     /// <summary>
     /// Handles chunk generation, mesh building, and terrain modifications.

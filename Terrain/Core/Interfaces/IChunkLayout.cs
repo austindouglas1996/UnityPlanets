@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace UnityTerrainGenerator.Core
+namespace GingerVoxelSystem.Core
 {
     /// <summary>
     /// Defines the layout and visibility logic for chunks in the terrain system.

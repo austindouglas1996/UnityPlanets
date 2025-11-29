@@ -1,4 +1,4 @@
-﻿namespace UnityTerrainGenerator.Engine
+﻿namespace GingerVoxelSystem.Engine
 {
     using System;
     using System.Collections.Generic;
@@ -7,11 +7,11 @@
     using Unity.Collections;
     using UnityEngine;
     using UnityEngine.Rendering;
-    using UnityTerrainGenerator.Core;
-    using UnityTerrainGenerator.Engine.Helpers;
-    using UnityTerrainGenerator.Helpers;
-    using UnityTerrainGenerator.Systems.Generation;
-    using UnityTerrainGenerator.Systems.Rendering;
+    using GingerVoxelSystem.Core;
+    using GingerVoxelSystem.Engine.Helpers;
+    using GingerVoxelSystem.Helpers;
+    using GingerVoxelSystem.Systems.Generation;
+    using GingerVoxelSystem.Systems.Rendering;
 
     /// <summary>
     /// My marching-cubes generator. Feeds compute with chunk inputs, spits out a draw-ready batch.

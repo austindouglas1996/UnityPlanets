@@ -1,7 +1,7 @@
-namespace UnityTerrainGenerator.Systems.Chunks
+namespace GingerVoxelSystem.Systems.Chunks
 {
     using UnityEngine;
-    using UnityTerrainGenerator.Core;
+    using GingerVoxelSystem.Core;
 
     /// <summary>
     /// Unity-facing driver for chunk layout.

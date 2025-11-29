@@ -1,14 +1,12 @@
-﻿namespace UnityTerrainGenerator.Engine.Generation
+﻿namespace GingerVoxelSystem.Engine.Generation
 {
     using System;
     using System.Collections.Generic;
     using UnityEngine;
-    using UnityEngine.Rendering;
-    using UnityEngine.Rendering.Universal;
-    using UnityTerrainGenerator.Core;
-    using UnityTerrainGenerator.Helpers;
-    using UnityTerrainGenerator.Systems.Generation;
-    using UnityTerrainGenerator.Systems.Rendering;
+    using GingerVoxelSystem.Core;
+    using GingerVoxelSystem.Helpers;
+    using GingerVoxelSystem.Systems.Generation;
+    using GingerVoxelSystem.Systems.Rendering;
 
     /// <summary>
     /// Coordinates the asynchronous-like generation and modification of terrain chunks.

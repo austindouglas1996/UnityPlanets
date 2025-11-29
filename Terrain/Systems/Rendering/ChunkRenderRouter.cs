@@ -1,11 +1,11 @@
-﻿namespace UnityTerrainGenerator.Systems.Rendering
+﻿namespace GingerVoxelSystem.Systems.Rendering
 {
     using System;
     using System.Collections.Generic;
     using UnityEngine.Rendering;
-    using UnityTerrainGenerator.Core;
-    using UnityTerrainGenerator.Helpers;
-    using UnityTerrainGenerator.Systems.Generation;
+    using GingerVoxelSystem.Core;
+    using GingerVoxelSystem.Helpers;
+    using GingerVoxelSystem.Systems.Generation;
 
     /// <summary>
     /// Thin “lane switch” over two <see cref="ChunkRenderBucketCollection"/>s:

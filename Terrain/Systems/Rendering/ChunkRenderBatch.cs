@@ -1,9 +1,9 @@
-namespace UnityTerrainGenerator.Systems.Rendering
+namespace GingerVoxelSystem.Systems.Rendering
 {
     using System;
     using UnityEngine;
     using UnityEngine.Rendering;
-    using UnityTerrainGenerator.Core;
+    using GingerVoxelSystem.Core;
 
     /// <summary>
     /// Draw-ready container for a chunk group: triangle append buffer + indirect args + culling bounds.

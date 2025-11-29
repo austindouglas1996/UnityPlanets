@@ -1,4 +1,4 @@
-namespace UnityTerrainGenerator.Systems.Rendering
+namespace GingerVoxelSystem.Systems.Rendering
 {
     using UnityEngine.Rendering.Universal;
 

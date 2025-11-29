@@ -1,11 +1,11 @@
-namespace UnityTerrainGenerator.Systems.Rendering
+namespace GingerVoxelSystem.Systems.Rendering
 {
     using UnityEngine;
     using UnityEngine.Rendering;
-    using UnityTerrainGenerator.Core;
-    using UnityTerrainGenerator.EditorSupport;
-    using UnityTerrainGenerator.Engine.Generation;
-    using UnityTerrainGenerator.Systems.Generation;
+    using GingerVoxelSystem.Core;
+    using GingerVoxelSystem.EditorSupport;
+    using GingerVoxelSystem.Engine.Generation;
+    using GingerVoxelSystem.Systems.Generation;
 
     /// <summary>
     /// Unity-facing host for chunk rendering:

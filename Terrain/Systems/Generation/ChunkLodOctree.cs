@@ -1,10 +1,10 @@
-﻿namespace UnityTerrainGenerator.Systems.Generation
+﻿namespace GingerVoxelSystem.Systems.Generation
 {
     using System.Collections.Generic;
     using UnityEngine;
-    using UnityTerrainGenerator.Core;
-    using UnityTerrainGenerator.Engine.Generation;
-    using UnityTerrainGenerator.Helpers;
+    using GingerVoxelSystem.Core;
+    using GingerVoxelSystem.Engine.Generation;
+    using GingerVoxelSystem.Helpers;
 
     /// <summary>
     /// A chunk-based octree that manages world detail through Level of Detail (LOD).

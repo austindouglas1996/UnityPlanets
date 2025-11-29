@@ -1,9 +1,9 @@
-namespace UnityTerrainGenerator.Core
+namespace GingerVoxelSystem.Core
 {
     using System;
     using UnityEngine;
-    using UnityTerrainGenerator.EditorSupport;
-    using UnityTerrainGenerator.Engine;
+    using GingerVoxelSystem.EditorSupport;
+    using GingerVoxelSystem.Engine;
 
     [Serializable]
     public class BaseChunkConfiguration : IChunkConfiguration

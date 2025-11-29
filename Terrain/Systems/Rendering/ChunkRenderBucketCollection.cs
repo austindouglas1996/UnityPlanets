@@ -1,12 +1,12 @@
-namespace UnityTerrainGenerator.Systems.Rendering
+namespace GingerVoxelSystem.Systems.Rendering
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using UnityEngine;
     using UnityEngine.Rendering;
-    using UnityTerrainGenerator.Core;
-    using UnityTerrainGenerator.Engine.Utiltiies;
+    using GingerVoxelSystem.Core;
+    using GingerVoxelSystem.Engine.Utiltiies;
 
     /// <summary>
     /// A collection container for <see cref="ChunkRenderBucket"/> that can grow as needed

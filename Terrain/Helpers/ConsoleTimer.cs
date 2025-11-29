@@ -1,4 +1,4 @@
-namespace UnityTerrainGenerator.Helpers
+namespace GingerVoxelSystem.Helpers
 {
     using System.Collections.Generic;
     using System.Diagnostics;

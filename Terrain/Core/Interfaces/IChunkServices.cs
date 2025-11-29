@@ -1,4 +1,4 @@
-namespace UnityTerrainGenerator.Core
+namespace GingerVoxelSystem.Core
 {
     /// <summary>
     /// Runtime facade for chunk world state and generation.

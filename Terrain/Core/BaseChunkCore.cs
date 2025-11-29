@@ -1,4 +1,4 @@
-namespace UnityTerrainGenerator.Core
+namespace GingerVoxelSystem.Core
 {
     /// <summary>
     /// Base class for chunk systems.

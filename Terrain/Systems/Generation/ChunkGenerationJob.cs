@@ -1,7 +1,7 @@
-namespace UnityTerrainGenerator.Systems.Generation
+namespace GingerVoxelSystem.Systems.Generation
 {
     using System;
-    using UnityTerrainGenerator.Core;
+    using GingerVoxelSystem.Core;
 
     /// <summary>
     /// Represents a single chunk generation request, containing its unique key 

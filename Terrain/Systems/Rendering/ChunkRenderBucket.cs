@@ -1,4 +1,4 @@
-namespace UnityTerrainGenerator.Systems.Rendering
+namespace GingerVoxelSystem.Systems.Rendering
 {
     using System;
     using System.Collections.Generic;
@@ -6,7 +6,7 @@ namespace UnityTerrainGenerator.Systems.Rendering
     using System.Runtime.CompilerServices;
     using UnityEngine;
     using UnityEngine.Rendering;
-    using UnityTerrainGenerator.Core;
+    using GingerVoxelSystem.Core;
 
     /// <summary>
     /// A collection of chunk keys to help with distributing render data.

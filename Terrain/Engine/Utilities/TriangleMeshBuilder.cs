@@ -1,4 +1,4 @@
-﻿namespace UnityTerrainGenerator.Engine.Utiltiies
+﻿namespace GingerVoxelSystem.Engine.Utiltiies
 {
     using System.Collections.Generic;
     using UnityEngine;

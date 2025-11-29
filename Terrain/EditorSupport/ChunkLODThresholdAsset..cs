@@ -1,4 +1,4 @@
-namespace UnityTerrainGenerator.EditorSupport
+namespace GingerVoxelSystem.EditorSupport
 {
     using UnityEngine;
 

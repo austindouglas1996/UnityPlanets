@@ -1,7 +1,7 @@
-using UnityTerrainGenerator.EditorSupport;
-using UnityTerrainGenerator.Engine;
+using GingerVoxelSystem.EditorSupport;
+using GingerVoxelSystem.Engine;
 
-namespace UnityTerrainGenerator.Core
+namespace GingerVoxelSystem.Core
 {
     /// <summary>
     /// Contains config data for how chunks are sized, typed, and generated.
