@@ -68,7 +68,7 @@ namespace GingerVoxelSystem
         /// </summary>
         protected virtual void Update()
         {
-            ConsoleTimer.WriteToConsole();
+            //ConsoleTimer.WriteToConsole();
         }
 
         IChunkConfiguration IChunkServices.Configuration => ChunkConfiguration;

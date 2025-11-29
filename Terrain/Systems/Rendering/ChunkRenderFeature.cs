@@ -34,6 +34,10 @@ namespace GingerVoxelSystem.Systems.Rendering
                 renderer.EnqueuePass(pass);
         }
 
+        /// <summary>
+        /// Dispose of the element.
+        /// </summary>
+        /// <param name="disposing"></param>
         protected override void Dispose(bool disposing)
         {
             pass.Dispose();

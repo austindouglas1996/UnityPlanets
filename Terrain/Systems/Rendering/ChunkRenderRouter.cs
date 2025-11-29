@@ -35,20 +35,13 @@
         /// <param name="mainThres">Removals before a non-LOD0 bucket regenerates.</param>
         /// <param name="lod0Cap">Max items per LOD0 bucket (keep this small: 24–32 is nice).</param>
         /// <param name="lod0Thres">Removals before an LOD0 bucket regenerates.</param>
-        public ChunkRenderRouter(IChunkServices services, IChunkGenerator chunkGenerator, int mainCap, int lod0Cap)
+        public ChunkRenderRouter(IChunkServices services, IChunkGenerator chunkGenerator, int capPerBucket)
         {
             this.chunkServices = services;
             this.chunkGenerator = chunkGenerator;
 
-            // This is still in testing. Add/remove a new collection as LODs increase
-            // currently only LOD0 is allowed collision as its CPU intensive.
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, true, lod0Cap));
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
+            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, true, capPerBucket));
+            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, capPerBucket));
         }
 
         /// <summary>
@@ -57,7 +50,7 @@
         /// </summary>
         public void Add(ChunkGenerationJob job)
         {
-            lodBuckets[job.Key.LODIndex].Add(job.Key);
+            lodBuckets[job.Key.LODIndex == 0 ? 0 : 1].Add(job.Key);
         }
 
         /// <summary>
@@ -66,7 +59,7 @@
         /// </summary>
         public bool Remove(ChunkKey key)
         {
-            return lodBuckets[key.LODIndex].Remove(key);
+            return lodBuckets[key.LODIndex == 0 ? 0 : 1].Remove(key);
         }
 
         /// <summary>

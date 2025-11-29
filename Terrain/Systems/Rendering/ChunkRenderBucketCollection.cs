@@ -199,11 +199,11 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// <returns></returns>
         private ChunkRenderBucket GetOrCreateTailBucket()
         {
-            Debug.LogWarning("We are using a .Where() here. This is not ideal.");
-            var availableBuckets = bucketsWithSpace.Where(r => !r.GenerateInProgress).ToList();
-            if (availableBuckets.Count != 0)
+            for (int i = 0; i < bucketsWithSpace.Count; i++)
             {
-                return availableBuckets[0];
+                var bucket = bucketsWithSpace[i];
+                if (!bucket.GenerateInProgress)
+                    return bucket;
             }
 
             if (buckets.Count == 0)

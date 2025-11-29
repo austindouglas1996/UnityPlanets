@@ -16,11 +16,7 @@
     /// </summary>
     public class ChunkGenerationProcessor : IDisposable
     {
-        private const int SurfaceJobs = 512;
-        private const int GenerationJobs = 64;
-        private const int Generation0Jobs = 64;
-
-        private readonly List<ChunkGenerationJob> tmpSurfaceJobs = new(SurfaceJobs);
+        private readonly List<ChunkGenerationJob> tmpSurfaceJobs = new(ChunkEngineSettings.SurfaceJobsPerBatch);
         private readonly ChunkGenerationBatcher surfaceBatcher = new();
 
         /// <summary>
@@ -52,7 +48,7 @@
         {
             this.chunkServices = services;
 
-            this.layerRenderer = new ChunkRenderRouter(services, services.Generator, GenerationJobs, Generation0Jobs);
+            this.layerRenderer = new ChunkRenderRouter(services, services.Generator, ChunkEngineSettings.GenerationJobsPerBatch);
 
             if (renderFeature != null)
             {
@@ -61,7 +57,7 @@
             }
             else
             {
-                Debug.LogWarning("ChunkRenderFeature not assigned in the inspector. The terrain will not render.");
+                Debug.LogError("ChunkRenderFeature not assigned in the inspector. The terrain will not render.");
             }
         }
 
@@ -161,7 +157,7 @@
                 return;
             SurfaceBusy = true;
 
-            int n = surfaceBatcher.TryBatch(SurfaceJobs, tmpSurfaceJobs);
+            int n = surfaceBatcher.TryBatch(ChunkEngineSettings.SurfaceJobsPerBatch, tmpSurfaceJobs);
             if (n == 0) return;
 
             chunkServices.Generator.DispatchSurfaceChecks(tmpSurfaceJobs, (uint[] surfaceResults) =>
@@ -176,5 +172,4 @@
             });
         }
     }
-
 }

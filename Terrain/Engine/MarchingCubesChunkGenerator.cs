@@ -19,10 +19,6 @@
     /// </summary>
     public class MarchingCubesChunkGenerator : IChunkGenerator
     {
-        // Hard caps I tune for my buckets. 1024 = surface mask scan, 128 = per-batch gen.
-        private const int SurfaceCap = 512;
-        private const int GenerateCap = 64;
-
         private IChunkServices chunkServices;
 
         // Shaders doing the real work
@@ -48,9 +44,9 @@
         private int BiomesCount = 0;
 
         // Reused staging lists -> no per-dispatch GC. Capacity matches caps above.
-        private List<ChunkDispatchKeyGPU> InputSurface = new(SurfaceCap);
-        private List<ChunkDispatchKeyGPU> InputGenerate = new(GenerateCap);
-        private uint[] surfaceMaskCache = new uint[SurfaceCap];
+        private List<ChunkDispatchKeyGPU> InputSurface = new(ChunkEngineSettings.SurfaceJobsPerBatch);
+        private List<ChunkDispatchKeyGPU> InputGenerate = new(ChunkEngineSettings.GenerationJobsPerBatch);
+        private uint[] surfaceMaskCache = new uint[ChunkEngineSettings.SurfaceJobsPerBatch];
 
         // Kernel ID's.
         private int ClearRange;
@@ -254,11 +250,14 @@
 
             if (existingBatch == null)
             {
-                triangleSBuffer = new ComputeBuffer(128000, Marshal.SizeOf<TriangleDataGPU>());
-                triangleDBuffer = new ComputeBuffer(60000, Marshal.SizeOf<TriangleDataGPU>());
-                triangleCBuffer = new ComputeBuffer(GenerateCap, sizeof(uint));
-                triangleCursor = new ComputeBuffer(GenerateCap, sizeof(uint));
-                detailBuffer = new ComputeBuffer(60000, Marshal.SizeOf<ChunkDetailDataGPU>(), ComputeBufferType.Append | ComputeBufferType.Structured);
+                int maxRaw = ChunkEngineSettings.GenerationJobsPerBatch * ChunkEngineSettings.RawTrianglesPerChunk;
+                int maxSimple = ChunkEngineSettings.GenerationJobsPerBatch * ChunkEngineSettings.TrianglesPerChunkPacked;
+
+                triangleSBuffer = new ComputeBuffer(maxRaw, Marshal.SizeOf<TriangleDataGPU>());
+                triangleDBuffer = new ComputeBuffer(maxSimple, Marshal.SizeOf<TriangleDataGPU>());
+                triangleCBuffer = new ComputeBuffer(ChunkEngineSettings.GenerationJobsPerBatch, sizeof(uint));
+                triangleCursor = new ComputeBuffer(ChunkEngineSettings.GenerationJobsPerBatch, sizeof(uint));
+                detailBuffer = new ComputeBuffer(maxSimple, Marshal.SizeOf<ChunkDetailDataGPU>(), ComputeBufferType.Append | ComputeBufferType.Structured);
                 argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
                 densityBuffer = CreateDensityBuffer();
             }
@@ -370,9 +369,9 @@
             this.MarchingShader.SetConstantBuffer("PlanetDensityOptions", PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
 
             // Per-kernel inputs + mask output
-            SurfaceChunkInputBuffer = new ComputeBuffer(SurfaceCap, Marshal.SizeOf<ChunkDispatchKeyGPU>());
-            GenerateChunkInputBuffer = new ComputeBuffer(GenerateCap, Marshal.SizeOf<ChunkDispatchKeyGPU>());
-            SurfaceMaskBuffer = new ComputeBuffer(SurfaceCap, sizeof(uint));
+            SurfaceChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.SurfaceJobsPerBatch, Marshal.SizeOf<ChunkDispatchKeyGPU>());
+            GenerateChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.GenerationJobsPerBatch, Marshal.SizeOf<ChunkDispatchKeyGPU>());
+            SurfaceMaskBuffer = new ComputeBuffer(ChunkEngineSettings.SurfaceJobsPerBatch, sizeof(uint));
 
             countBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
             ClearRange = MarchingShader.FindKernel("ClearRange");
@@ -455,7 +454,7 @@
             // Scalar field big enough for 128 chunks at current chunk size (rough over-alloc)
             int samples = CubesPerAxis + 1 + (2 * BorderSamples);
             int sampleCountPerChunk = samples * samples * samples;
-            int maxTotalSamples = sampleCountPerChunk * GenerateCap;
+            int maxTotalSamples = sampleCountPerChunk * ChunkEngineSettings.GenerationJobsPerBatch;
             return new ComputeBuffer(maxTotalSamples, sizeof(float));
         }
 

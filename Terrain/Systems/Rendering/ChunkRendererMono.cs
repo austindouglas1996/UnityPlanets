@@ -1,7 +1,6 @@
 namespace GingerVoxelSystem.Systems.Rendering
 {
     using UnityEngine;
-    using UnityEngine.Rendering;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.EditorSupport;
     using GingerVoxelSystem.Engine.Generation;
@@ -24,7 +23,6 @@ namespace GingerVoxelSystem.Systems.Rendering
         [SerializeField] private ChunkRenderFeature renderFeature;
 
         [Header("Debug")]
-        [SerializeField] public bool ShowTerrain = true;
         [HideInInspector] private bool isInitialized = false;
 
         [Header("Generation")]
