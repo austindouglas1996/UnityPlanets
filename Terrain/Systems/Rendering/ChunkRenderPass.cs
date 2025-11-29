@@ -1,80 +1,84 @@
-using System;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.RenderGraphModule;
-using UnityEngine.Rendering.Universal;
-
-/// <summary>
-/// Custom render pass for terrain chunks.
-/// Injected into URP after transparents so it lines up with shaders using queue ~3000.
-/// Works under both legacy and RenderGraph pipelines.
-/// </summary>
-public class ChunkRenderPass : ScriptableRenderPass, IDisposable
+namespace UnityTerrainGenerator.Systems.Rendering
 {
-    private ChunkRenderRouter router;
+    using System;
+    using UnityEngine.Rendering;
+    using UnityEngine.Rendering.RenderGraphModule;
+    using UnityEngine.Rendering.Universal;
 
     /// <summary>
-    /// Sets the router reference and when this pass should run.
+    /// Custom render pass for terrain chunks.
+    /// Injected into URP after transparents so it lines up with shaders using queue ~3000.
+    /// Works under both legacy and RenderGraph pipelines.
     /// </summary>
-    public ChunkRenderPass(ChunkRenderRouter router)
+    public class ChunkRenderPass : ScriptableRenderPass, IDisposable
     {
-        this.router = router;
-        renderPassEvent = RenderPassEvent.AfterRenderingTransparents;
-    }
+        private ChunkRenderRouter router;
 
-    public void Dispose()
-    {
-        if (router != null)
+        /// <summary>
+        /// Sets the router reference and when this pass should run.
+        /// </summary>
+        public ChunkRenderPass(ChunkRenderRouter router)
         {
-            router = null;
+            this.router = router;
+            renderPassEvent = RenderPassEvent.AfterRenderingTransparents;
         }
-    }
 
-    /// <summary>
-    /// Legacy URP execution path.
-    /// Used when RenderGraph is disabled (Forward Renderer mode).
-    /// </summary>
-    public override void Execute(ScriptableRenderContext context, ref RenderingData data)
-    {
-        if (router == null)
-            return;
-
-        // Pull a pooled command buffer and fill it with draw calls from the router
-        var cmd = CommandBufferPool.Get("ChunkTerrain");
-        router.FillCommandBuffer(cmd);
-
-        // Submit to GPU as part of URP’s render sequence
-        context.ExecuteCommandBuffer(cmd);
-
-        // Return buffer to pool
-        CommandBufferPool.Release(cmd);
-    }
-
-    /// <summary>
-    /// RenderGraph path.
-    /// Called only if URP's RenderGraph mode is enabled.
-    /// </summary>
-    public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
-    {
-        if (router == null)
-            return;
-
-        using (var builder = renderGraph.AddRenderPass<PassData>("ChunkTerrain", out var passData))
+        public void Dispose()
         {
-            passData.Router = router;
-
-            builder.SetRenderFunc((PassData data, RenderGraphContext ctx) =>
+            if (router != null)
             {
-                // Same logic as legacy path but uses RenderGraph context command buffer
-                data.Router.FillCommandBuffer(ctx.cmd);
-            });
+                router = null;
+            }
+        }
+
+        /// <summary>
+        /// Legacy URP execution path.
+        /// Used when RenderGraph is disabled (Forward Renderer mode).
+        /// </summary>
+        public override void Execute(ScriptableRenderContext context, ref RenderingData data)
+        {
+            if (router == null)
+                return;
+
+            // Pull a pooled command buffer and fill it with draw calls from the router
+            var cmd = CommandBufferPool.Get("ChunkTerrain");
+            router.FillCommandBuffer(cmd);
+
+            // Submit to GPU as part of URP’s render sequence
+            context.ExecuteCommandBuffer(cmd);
+
+            // Return buffer to pool
+            CommandBufferPool.Release(cmd);
+        }
+
+        /// <summary>
+        /// RenderGraph path.
+        /// Called only if URP's RenderGraph mode is enabled.
+        /// </summary>
+        public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
+        {
+            if (router == null)
+                return;
+
+            using (var builder = renderGraph.AddRenderPass<PassData>("ChunkTerrain", out var passData))
+            {
+                passData.Router = router;
+
+                builder.SetRenderFunc((PassData data, RenderGraphContext ctx) =>
+                {
+                    // Same logic as legacy path but uses RenderGraph context command buffer
+                    data.Router.FillCommandBuffer(ctx.cmd);
+                });
+            }
+        }
+
+        /// <summary>
+        /// Simple container for data passed into the RenderGraph builder.
+        /// </summary>
+        private class PassData
+        {
+            public ChunkRenderRouter Router;
         }
     }
 
-    /// <summary>
-    /// Simple container for data passed into the RenderGraph builder.
-    /// </summary>
-    private class PassData
-    {
-        public ChunkRenderRouter Router;
-    }
 }

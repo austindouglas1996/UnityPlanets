@@ -1,25 +1,30 @@
-using System;
-using UnityEngine;
-
-[Serializable]
-public class BaseChunkConfiguration : IChunkConfiguration
+namespace UnityTerrainGenerator.Core
 {
-    [SerializeField] private DebugOptions debugOptions;
-    public DebugOptions DebugOptions => debugOptions;
+    using System;
+    using UnityEngine;
+    using UnityTerrainGenerator.EditorSupport;
+    using UnityTerrainGenerator.Engine;
+
+    [Serializable]
+    public class BaseChunkConfiguration : IChunkConfiguration
+    {
+        [SerializeField] private DebugOptions debugOptions;
+        public DebugOptions DebugOptions => debugOptions;
 
 
-    [SerializeField] private TerrainDensityOptions densityMapOptions;
-    public TerrainDensityOptions DensityOptions => densityMapOptions;
+        [SerializeField] private TerrainDensityOptions densityMapOptions;
+        public TerrainDensityOptions DensityOptions => densityMapOptions;
 
 
-    [SerializeField] private PlanetDensityOptions planetMapOptions;
-    public PlanetDensityOptions PlanetOptions => planetMapOptions;
+        [SerializeField] private PlanetDensityOptions planetMapOptions;
+        public PlanetDensityOptions PlanetOptions => planetMapOptions;
 
 
-    [SerializeField] private BiomeLibraryAsset biomeLibrary;
-    public BiomeLibraryAsset BiomeLibrary => biomeLibrary;
+        [SerializeField] private BiomeLibraryAsset biomeLibrary;
+        public BiomeLibraryAsset BiomeLibrary => biomeLibrary;
 
 
-    [SerializeField] private ChunkLODThresholdAsset lodThresholds;
-    public ChunkLODThresholdAsset LODThresholds => lodThresholds;
+        [SerializeField] private ChunkLODThresholdAsset lodThresholds;
+        public ChunkLODThresholdAsset LODThresholds => lodThresholds;
+    }
 }

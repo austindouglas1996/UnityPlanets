@@ -1,76 +1,84 @@
-using UnityEngine;
-
-/// <summary>
-/// Unity-facing entry point for terrain generation.
-/// Ties together chunk layout, rendering, and a chosen generator (default: marching cubes).
-/// </summary>
-[RequireComponent(typeof(ChunkLayoutMono))]
-[RequireComponent(typeof(ChunkRendererMono))]
-public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
+namespace UnityTerrainGenerator
 {
-    [Tooltip("Shader used for generation.")]
-    [SerializeField] public ComputeShader MarchingCubes;
+    using UnityEngine;
+    using UnityTerrainGenerator.Core;
+    using UnityTerrainGenerator.Engine;
+    using UnityTerrainGenerator.Helpers;
+    using UnityTerrainGenerator.Systems.Chunks;
+    using UnityTerrainGenerator.Systems.Rendering;
 
     /// <summary>
-    /// This material is marked here because if not, Unity release (in some cases) will not include the
-    /// material shader which is extremely frusturating.
+    /// Unity-facing entry point for terrain generation.
+    /// Ties together chunk layout, rendering, and a chosen generator (default: marching cubes).
     /// </summary>
-    [Tooltip("Special material used for chunks.")]
-    [SerializeField] public Material ChunkMaterial;
-
-    [Tooltip("Configuration for terrain generation.")]
-    public BaseChunkConfiguration ChunkConfiguration;
-
-    protected ChunkLayoutMono chunkLayout;
-    protected ChunkRendererMono chunkRenderer;
-
-    protected IChunkGenerator generator;
-    protected IChunkLayout layout;
-
-    /// <summary>
-    /// Set up layout and renderer, and pick the generator backend.
-    /// </summary>
-    protected virtual void Awake()
+    [RequireComponent(typeof(ChunkLayoutMono))]
+    [RequireComponent(typeof(ChunkRendererMono))]
+    public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
     {
-        chunkLayout = GetComponent<ChunkLayoutMono>();
-        chunkRenderer = GetComponent<ChunkRendererMono>();
+        [Tooltip("Shader used for generation.")]
+        [SerializeField] public ComputeShader MarchingCubes;
 
-        generator = new MarchingCubesChunkGenerator(this, MarchingCubes, ChunkMaterial);
-        layout = new BaseChunkLayout(ChunkConfiguration);
+        /// <summary>
+        /// This material is marked here because if not, Unity release (in some cases) will not include the
+        /// material shader which is extremely frusturating.
+        /// </summary>
+        [Tooltip("Special material used for chunks.")]
+        [SerializeField] public Material ChunkMaterial;
 
-        if (MarchingCubes == null)
-            Debug.LogError("ComputeShader not assigned.");
-        if (ChunkMaterial == null)
-            Debug.LogError("ChunkMaterial not assigned.");
-        if (ChunkConfiguration == null)
-            Debug.LogError("ChunkConfiguration not assigned.");
+        [Tooltip("Configuration for terrain generation.")]
+        public BaseChunkConfiguration ChunkConfiguration;
 
-        chunkLayout.Initialize(layout);
-        chunkRenderer.Initialize(this);
+        protected ChunkLayoutMono chunkLayout;
+        protected ChunkRendererMono chunkRenderer;
+
+        protected IChunkGenerator generator;
+        protected IChunkLayout layout;
+
+        /// <summary>
+        /// Set up layout and renderer, and pick the generator backend.
+        /// </summary>
+        protected virtual void Awake()
+        {
+            chunkLayout = GetComponent<ChunkLayoutMono>();
+            chunkRenderer = GetComponent<ChunkRendererMono>();
+
+            generator = new MarchingCubesChunkGenerator(this, MarchingCubes, ChunkMaterial);
+            layout = new BaseChunkLayout(ChunkConfiguration);
+
+            if (MarchingCubes == null)
+                Debug.LogError("ComputeShader not assigned.");
+            if (ChunkMaterial == null)
+                Debug.LogError("ChunkMaterial not assigned.");
+            if (ChunkConfiguration == null)
+                Debug.LogError("ChunkConfiguration not assigned.");
+
+            chunkLayout.Initialize(layout);
+            chunkRenderer.Initialize(this);
+        }
+
+        /// <summary>
+        /// Called when values change in the inspector.
+        /// Pushes updated options into the generator and refreshes chunks.
+        /// </summary>
+        protected virtual void OnValidate()
+        {
+            if (!Application.isPlaying || generator == null)
+                return;
+
+            generator.UpdateOptions();
+            chunkRenderer.RefreshChunks();
+        }
+
+        /// <summary>
+        /// Updated used for updating generator content.
+        /// </summary>
+        protected virtual void Update()
+        {
+            ConsoleTimer.WriteToConsole();
+        }
+
+        IChunkConfiguration IChunkServices.Configuration => ChunkConfiguration;
+        IChunkLayout IChunkServices.Layout => layout;
+        IChunkGenerator IChunkServices.Generator => generator;
     }
-
-    /// <summary>
-    /// Called when values change in the inspector.
-    /// Pushes updated options into the generator and refreshes chunks.
-    /// </summary>
-    protected virtual void OnValidate()
-    {
-        if (!Application.isPlaying || generator == null)
-            return;
-
-        generator.UpdateOptions();
-        chunkRenderer.RefreshChunks();
-    }
-
-    /// <summary>
-    /// Updated used for updating generator content.
-    /// </summary>
-    protected virtual void Update()
-    {
-        ConsoleTimer.WriteToConsole();
-    }
-
-    IChunkConfiguration IChunkServices.Configuration => ChunkConfiguration;
-    IChunkLayout IChunkServices.Layout => layout;
-    IChunkGenerator IChunkServices.Generator => generator;
 }

@@ -1,111 +1,118 @@
-using UnityEngine;
-using UnityEngine.Rendering;
-
-/// <summary>
-/// Unity-facing host for chunk rendering:
-/// - Ticks generator + octrees (Update)
-/// - Applies finalized job results on the main thread via the processor (LateUpdate)
-/// - Triggers drawing (OnRenderObject)
-///
-/// Architectural seam:
-///   This component owns the processor. The processor is the only thing that mutates
-///   the render router. We never call the router directly from here.
-/// </summary>
-public class ChunkRendererMono : MonoBehaviour
+namespace UnityTerrainGenerator.Systems.Rendering
 {
-    [Header("Rendering")]
-    [Tooltip("Assign the ChunkRenderFeature from your URP Renderer asset.")]
-    [SerializeField] private ChunkRenderFeature renderFeature;
-
-    [Header("Debug")]
-    [SerializeField] public bool ShowTerrain = true;
-    [HideInInspector] private bool isInitialized = false;
-
-    [Header("Generation")]
-    [Tooltip("Initial range for LOD4 chunk loading.")]
-    [SerializeField]
-    private ChunkRenderDistance RootRange = new ChunkRenderDistance();
-
-    private IChunkServices chunkServices;
-    private ChunkGenerationProcessor processor;
-    private ChunkLodOctree lodTree;
+    using UnityEngine;
+    using UnityEngine.Rendering;
+    using UnityTerrainGenerator.Core;
+    using UnityTerrainGenerator.EditorSupport;
+    using UnityTerrainGenerator.Engine.Generation;
+    using UnityTerrainGenerator.Systems.Generation;
 
     /// <summary>
-    /// Update the chunk layout and render any available chunks.
+    /// Unity-facing host for chunk rendering:
+    /// - Ticks generator + octrees (Update)
+    /// - Applies finalized job results on the main thread via the processor (LateUpdate)
+    /// - Triggers drawing (OnRenderObject)
+    ///
+    /// Architectural seam:
+    ///   This component owns the processor. The processor is the only thing that mutates
+    ///   the render router. We never call the router directly from here.
     /// </summary>
-    private void Update()
+    public class ChunkRendererMono : MonoBehaviour
     {
-        if (!isInitialized) return;
+        [Header("Rendering")]
+        [Tooltip("Assign the ChunkRenderFeature from your URP Renderer asset.")]
+        [SerializeField] private ChunkRenderFeature renderFeature;
 
-        this.chunkServices.Generator.Update();
-        lodTree.Update();
-    }
+        [Header("Debug")]
+        [SerializeField] public bool ShowTerrain = true;
+        [HideInInspector] private bool isInitialized = false;
 
-    /// <summary>
-    /// Ran after the initial update function.
-    /// </summary>
-    private void LateUpdate()
-    {
-        if (!isInitialized) return;
+        [Header("Generation")]
+        [Tooltip("Initial range for LOD4 chunk loading.")]
+        [SerializeField]
+        private ChunkRenderDistance RootRange = new ChunkRenderDistance();
 
-        processor.Update();
-    }
+        private IChunkServices chunkServices;
+        private ChunkGenerationProcessor processor;
+        private ChunkLodOctree lodTree;
 
-    /// <summary>
-    /// Dispose of the generator resources.
-    /// </summary>
-    private void OnDestroy()
-    {
-        this.processor.Dispose();
-        this.chunkServices.Generator.Dispose();
-    }
-
-    /// <summary>
-    /// Initialize the <see cref="ChunkRendererMono"/> to create initial chunks and start rendering.
-    /// </summary>
-    /// <param name="manager"></param>
-    /// <param name="services"></param>
-    public void Initialize(IChunkServices services)
-    {
-        this.chunkServices = services;
-        this.processor = new ChunkGenerationProcessor(this.chunkServices, this.renderFeature);
-
-        isInitialized = true;
-
-        this.InitializeRootChunks();
-    }
-
-    /// <summary>
-    /// Refresh chunks now.
-    /// </summary>
-    public void RefreshChunks()
-    {
-        this.processor.RemoveAll();
-        this.InitializeRootChunks();
-    }
-
-    /// <summary>
-    /// Create the initial root chunks in the world.
-    /// </summary>
-    private void InitializeRootChunks()
-    {
-        if (!isInitialized)
-            return;
-
-        if (RootRange == null)
+        /// <summary>
+        /// Update the chunk layout and render any available chunks.
+        /// </summary>
+        private void Update()
         {
-            Debug.LogError("Initial Root Range is null.");
-            throw new System.ArgumentException("Chunk initial loading range is not set.");
+            if (!isInitialized) return;
+
+            this.chunkServices.Generator.Update();
+            lodTree.Update();
         }
 
-        // Create manager.
-        lodTree = new ChunkLodOctree(this.chunkServices, this.processor);
+        /// <summary>
+        /// Ran after the initial update function.
+        /// </summary>
+        private void LateUpdate()
+        {
+            if (!isInitialized) return;
 
-        // Create root nodes.
-        Vector3Int span = RootRange.Span;
-        for (int dx = -RootRange.X; dx <= RootRange.X; dx++)
-            for (int dy = -RootRange.Down; dy <= RootRange.Up; dy++)
-                for (int dz = -RootRange.Z; dz <= RootRange.Z; dz++)
-                    lodTree.AddRoot(new Vector3Int(dx, dy, dz));
+            processor.Update();
+        }
+
+        /// <summary>
+        /// Dispose of the generator resources.
+        /// </summary>
+        private void OnDestroy()
+        {
+            this.processor.Dispose();
+            this.chunkServices.Generator.Dispose();
+        }
+
+        /// <summary>
+        /// Initialize the <see cref="ChunkRendererMono"/> to create initial chunks and start rendering.
+        /// </summary>
+        /// <param name="manager"></param>
+        /// <param name="services"></param>
+        public void Initialize(IChunkServices services)
+        {
+            this.chunkServices = services;
+            this.processor = new ChunkGenerationProcessor(this.chunkServices, this.renderFeature);
+
+            isInitialized = true;
+
+            this.InitializeRootChunks();
+        }
+
+        /// <summary>
+        /// Refresh chunks now.
+        /// </summary>
+        public void RefreshChunks()
+        {
+            this.processor.RemoveAll();
+            this.InitializeRootChunks();
+        }
+
+        /// <summary>
+        /// Create the initial root chunks in the world.
+        /// </summary>
+        private void InitializeRootChunks()
+        {
+            if (!isInitialized)
+                return;
+
+            if (RootRange == null)
+            {
+                Debug.LogError("Initial Root Range is null.");
+                throw new System.ArgumentException("Chunk initial loading range is not set.");
+            }
+
+            // Create manager.
+            lodTree = new ChunkLodOctree(this.chunkServices, this.processor);
+
+            // Create root nodes.
+            Vector3Int span = RootRange.Span;
+            for (int dx = -RootRange.X; dx <= RootRange.X; dx++)
+                for (int dy = -RootRange.Down; dy <= RootRange.Up; dy++)
+                    for (int dz = -RootRange.Z; dz <= RootRange.Z; dz++)
+                        lodTree.AddRoot(new Vector3Int(dx, dy, dz));
+        }
     }
 }

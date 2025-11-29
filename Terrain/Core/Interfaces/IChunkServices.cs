@@ -1,22 +1,25 @@
-/// <summary>
-/// Runtime facade for chunk world state and generation.
-/// Provides configuration, layout, and generation services used by
-/// rendering and non-rendering systems alike. Intentionally render-agnostic.
-/// </summary>
-public interface IChunkServices
+namespace UnityTerrainGenerator.Core
 {
     /// <summary>
-    /// Immutable settings that control chunk sizing/behavior.
+    /// Runtime facade for chunk world state and generation.
+    /// Provides configuration, layout, and generation services used by
+    /// rendering and non-rendering systems alike. Intentionally render-agnostic.
     /// </summary>
-    IChunkConfiguration Configuration { get; }
+    public interface IChunkServices
+    {
+        /// <summary>
+        /// Immutable settings that control chunk sizing/behavior.
+        /// </summary>
+        IChunkConfiguration Configuration { get; }
 
-    /// <summary>
-    /// Computes which chunks should exist and where (grid logic, follower tracking).
-    /// </summary>
-    IChunkLayout Layout { get; }
+        /// <summary>
+        /// Computes which chunks should exist and where (grid logic, follower tracking).
+        /// </summary>
+        IChunkLayout Layout { get; }
 
-    /// <summary>
-    /// Produces the data needed to build chunk meshes/fields.
-    /// </summary>
-    IChunkGenerator Generator { get; }
+        /// <summary>
+        /// Produces the data needed to build chunk meshes/fields.
+        /// </summary>
+        IChunkGenerator Generator { get; }
+    }
 }

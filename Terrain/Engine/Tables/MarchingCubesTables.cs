@@ -1,41 +1,43 @@
-using System.Runtime.InteropServices;
-using Unity.Mathematics;
-using UnityEngine;
-
-/// <summary>
-/// Static lookup tables and helpers for marching cubes.
-/// Holds corner offsets, edge connections, tri tables, etc.
-/// Also has methods to pack these arrays into <see cref="ComputeBuffer"/> 
-/// so they can be used in GPU code.
-/// </summary>
-public static class MarchingCubesTables
+namespace UnityTerrainGenerator.Engine.Helpers
 {
+    using System.Runtime.InteropServices;
+    using Unity.Mathematics;
+    using UnityEngine;
+
     /// <summary>
-    /// Internal mesh logic that someone smarter than me made.
+    /// Static lookup tables and helpers for marching cubes.
+    /// Holds corner offsets, edge connections, tri tables, etc.
+    /// Also has methods to pack these arrays into <see cref="ComputeBuffer"/> 
+    /// so they can be used in GPU code.
     /// </summary>
-    public static readonly Vector3[] CornerOffsets = new Vector3[]
+    public static class MarchingCubesTables
     {
+        /// <summary>
+        /// Internal mesh logic that someone smarter than me made.
+        /// </summary>
+        public static readonly Vector3[] CornerOffsets = new Vector3[]
+        {
         new Vector3(0, 0, 0), new Vector3(1, 0, 0),
         new Vector3(1, 0, 1), new Vector3(0, 0, 1),
         new Vector3(0, 1, 0), new Vector3(1, 1, 0),
         new Vector3(1, 1, 1), new Vector3(0, 1, 1)
-    };
+        };
 
-    /// <summary>
-    /// Internal mesh logic that someone smarter than me made.
-    /// </summary>
-    public static readonly int[,] EdgeConnections = new int[,]
-    {
+        /// <summary>
+        /// Internal mesh logic that someone smarter than me made.
+        /// </summary>
+        public static readonly int[,] EdgeConnections = new int[,]
+        {
         {0, 1}, {1, 2}, {2, 3}, {3, 0},
         {4, 5}, {5, 6}, {6, 7}, {7, 4},
         {0, 4}, {1, 5}, {2, 6}, {3, 7}
-    };
+        };
 
-    /// <summary>
-    /// Internal mesh logic that someone much smarter than me made.
-    /// </summary>
-    public static readonly int[,] TriangleTable = new int[,]
-    {
+        /// <summary>
+        /// Internal mesh logic that someone much smarter than me made.
+        /// </summary>
+        public static readonly int[,] TriangleTable = new int[,]
+        {
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {0, 1, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
@@ -292,48 +294,49 @@ public static class MarchingCubesTables
         {0, 9, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {0, 3, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
-        };
+            };
 
-    /// <summary>
-    /// Packs <see cref="CornerOffsets"/> into a <see cref="ComputeBuffer"/>.
-    /// </summary>
-    /// <returns></returns>
-    public static ComputeBuffer CornerOffsetsBuffer()
-    {
-        int count = CornerOffsets.Length; // 8
-        ComputeBuffer buffer = new ComputeBuffer(count, Marshal.SizeOf<Vector3>(), ComputeBufferType.Structured);
-        buffer.SetData(CornerOffsets);
-        return buffer;
-    }
-
-    /// <summary>
-    /// Packs <see cref="EdgeConnections"/> into a <see cref="ComputeBuffer"/>.
-    /// </summary>
-    /// <returns></returns>
-    public static ComputeBuffer EdgeConnectionsBuffer()
-    {
-        int2[] edgeConnections = new int2[12];
-
-        for (int i = 0; i < 12; i++)
+        /// <summary>
+        /// Packs <see cref="CornerOffsets"/> into a <see cref="ComputeBuffer"/>.
+        /// </summary>
+        /// <returns></returns>
+        public static ComputeBuffer CornerOffsetsBuffer()
         {
-            edgeConnections[i] = new int2(EdgeConnections[i, 0], EdgeConnections[i, 1]);
+            int count = CornerOffsets.Length; // 8
+            ComputeBuffer buffer = new ComputeBuffer(count, Marshal.SizeOf<Vector3>(), ComputeBufferType.Structured);
+            buffer.SetData(CornerOffsets);
+            return buffer;
         }
 
-        ComputeBuffer buffer = new ComputeBuffer(edgeConnections.Length, Marshal.SizeOf<int2>(), ComputeBufferType.Structured);
-        buffer.SetData(edgeConnections);
-        return buffer;
-    }
+        /// <summary>
+        /// Packs <see cref="EdgeConnections"/> into a <see cref="ComputeBuffer"/>.
+        /// </summary>
+        /// <returns></returns>
+        public static ComputeBuffer EdgeConnectionsBuffer()
+        {
+            int2[] edgeConnections = new int2[12];
 
-    /// <summary>
-    /// Packs <see cref="TriangleTable"/> into a <see cref="ComputeBuffer"/>.
-    /// </summary>
-    /// <returns></returns>
-    public static ComputeBuffer TriangleTableBuffer()
-    {
-        int count = 16 * 256;
-        ComputeBuffer triangleBuffer = new ComputeBuffer(count, sizeof(int), ComputeBufferType.Structured);
-        triangleBuffer.SetData(TriangleTable);
+            for (int i = 0; i < 12; i++)
+            {
+                edgeConnections[i] = new int2(EdgeConnections[i, 0], EdgeConnections[i, 1]);
+            }
 
-        return triangleBuffer;
+            ComputeBuffer buffer = new ComputeBuffer(edgeConnections.Length, Marshal.SizeOf<int2>(), ComputeBufferType.Structured);
+            buffer.SetData(edgeConnections);
+            return buffer;
+        }
+
+        /// <summary>
+        /// Packs <see cref="TriangleTable"/> into a <see cref="ComputeBuffer"/>.
+        /// </summary>
+        /// <returns></returns>
+        public static ComputeBuffer TriangleTableBuffer()
+        {
+            int count = 16 * 256;
+            ComputeBuffer triangleBuffer = new ComputeBuffer(count, sizeof(int), ComputeBufferType.Structured);
+            triangleBuffer.SetData(TriangleTable);
+
+            return triangleBuffer;
+        }
     }
 }
