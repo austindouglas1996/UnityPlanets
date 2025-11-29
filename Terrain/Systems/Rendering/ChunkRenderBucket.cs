@@ -2,7 +2,6 @@ namespace GingerVoxelSystem.Systems.Rendering
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Runtime.CompilerServices;
     using UnityEngine;
     using UnityEngine.Rendering;
@@ -309,8 +308,7 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// </summary>
         protected virtual void OnDispatchGeneration()
         {
-            Debug.LogWarning("We are doing .ToArray() which makes a copy of the list. Fix it.");
-            chunkGenerator.DispatchGeneration(items.ToArray(), nextIndex, modifications, OnDispatchGenerationCompleted, this.renderData);
+            chunkGenerator.DispatchGeneration(items, nextIndex, modifications, OnDispatchGenerationCompleted, this.renderData);
         }
 
         /// <summary>

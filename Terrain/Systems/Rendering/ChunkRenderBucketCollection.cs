@@ -2,7 +2,6 @@ namespace GingerVoxelSystem.Systems.Rendering
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using UnityEngine;
     using UnityEngine.Rendering;
     using GingerVoxelSystem.Core;
