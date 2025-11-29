@@ -215,7 +215,6 @@
             // Update material.
             this.chunkMaterial.SetBuffer("Biomes", BiomeBuffer);
             this.chunkMaterial.SetInt("_BiomesCount", BiomesCount);
-            this.chunkMaterial.SetInt("Overlay", (int)this.chunkServices.Configuration.DebugOptions.Overlay);
 
             this.chunkMaterial.SetFloat("_UseVertexColor", 1f);
             this.chunkMaterial.SetVector("PositionOffset", chunkServices.Configuration.DensityOptions.PositionOffset);

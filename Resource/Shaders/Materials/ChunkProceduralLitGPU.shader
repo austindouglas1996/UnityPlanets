@@ -3,6 +3,7 @@ Shader "Custom/ChunkProceduralLitGPU"
     Properties
     {
         _BaseColor("Base Color", Color) = (1, 1, 1, 1)
+        _Overlay("Overlay Mode", Int) = 0
 
         _CustomBaseMap("Base Texture", 2D) = "white" {}
         _UseBaseMap("Use Base Texture (0..1)", Range(0,1)) = 1

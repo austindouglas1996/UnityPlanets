@@ -13,23 +13,18 @@ namespace GingerVoxelSystem
     /// </summary>
     [RequireComponent(typeof(ChunkLayoutMono))]
     [RequireComponent(typeof(ChunkRendererMono))]
+    [RequireComponent(typeof(ChunkMaterialSettings))]
     public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
     {
         [Tooltip("Shader used for generation.")]
         [SerializeField] public ComputeShader MarchingCubes;
 
-        /// <summary>
-        /// This material is marked here because if not, Unity release (in some cases) will not include the
-        /// material shader which is extremely frusturating.
-        /// </summary>
-        [Tooltip("Special material used for chunks.")]
-        [SerializeField] public Material ChunkMaterial;
-
         [Tooltip("Configuration for terrain generation.")]
         public BaseChunkConfiguration ChunkConfiguration;
 
-        protected ChunkLayoutMono chunkLayout;
-        protected ChunkRendererMono chunkRenderer;
+        [SerializeField] protected ChunkLayoutMono chunkLayout;
+        [SerializeField] protected ChunkRendererMono chunkRenderer;
+        [SerializeField] protected ChunkMaterialSettings materialManager;
 
         protected IChunkGenerator generator;
         protected IChunkLayout layout;
@@ -41,14 +36,13 @@ namespace GingerVoxelSystem
         {
             chunkLayout = GetComponent<ChunkLayoutMono>();
             chunkRenderer = GetComponent<ChunkRendererMono>();
+            materialManager = GetComponent<ChunkMaterialSettings>();
 
-            generator = new MarchingCubesChunkGenerator(this, MarchingCubes, ChunkMaterial);
+            generator = new MarchingCubesChunkGenerator(this, MarchingCubes, materialManager.BaseMaterial);
             layout = new BaseChunkLayout(ChunkConfiguration);
 
             if (MarchingCubes == null)
                 Debug.LogError("ComputeShader not assigned.");
-            if (ChunkMaterial == null)
-                Debug.LogError("ChunkMaterial not assigned.");
             if (ChunkConfiguration == null)
                 Debug.LogError("ChunkConfiguration not assigned.");
 

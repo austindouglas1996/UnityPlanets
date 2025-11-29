@@ -2,7 +2,6 @@ namespace GingerVoxelSystem.Helpers
 {
     using System.Collections.Generic;
     using System.Diagnostics;
-    using TMPro;
 
     /// <summary>
     /// Quick Unity helper for timing code. 
@@ -51,7 +50,6 @@ namespace GingerVoxelSystem.Helpers
         /// </summary>
         public static void WriteToConsole()
         {
-            return;
             if (watches.Count == 0)
             {
                 return;
