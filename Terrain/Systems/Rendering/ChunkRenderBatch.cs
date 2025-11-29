@@ -1,6 +1,4 @@
 using System;
-using System.Runtime.InteropServices;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -97,6 +95,8 @@ public class ChunkRenderBatch : IDisposable
         Args = null;
         TriangleSource = null;
         TriangleDest = null;
+        TriangleCounts = null;
+        TriangleCursor = null;
         Details = null;
         DensityMap = null;
     }

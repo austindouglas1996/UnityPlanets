@@ -108,7 +108,6 @@ public static class TriangleMeshBuilder
             return;
         }
 
-
         go.SetActive(false);
         colliderPool.Enqueue(go);
     }

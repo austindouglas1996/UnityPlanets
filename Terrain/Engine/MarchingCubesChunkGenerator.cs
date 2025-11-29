@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Unity.Collections;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.UIElements;
 
 /// <summary>
 /// My marching-cubes generator. Feeds compute with chunk inputs, spits out a draw-ready batch.
@@ -31,7 +29,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private ComputeBuffer PlanetOptionsBuffer;     // StructuredBuffer<PlanetDensityOptions> (1 element)
     private ComputeBuffer SurfaceMaskBuffer;       // RWStructuredBuffer<uint> (results for mask pass)
     private ComputeBuffer countBuffer;
-    //private ComputeBuffer TriangleCountBuffer;
 
     // Annoying triangle tables.
     private ComputeBuffer CornerOffsetsBuffer = MarchingCubesTables.CornerOffsetsBuffer();
@@ -48,8 +45,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private List<ChunkDispatchKeyGPU> InputGenerate = new(GenerateCap);
     private uint[] surfaceMaskCache = new uint[SurfaceCap];
 
-    uint[] zeroCounts = new uint[GenerateCap];
-
     // Kernel ID's.
     private int ClearRange;
     private int GenerateSurfaceMask;
@@ -59,7 +54,6 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
     private int RunRepackPrePass;
     private int RunRepack;
     private int RunDetailsPass;
-    private int argsKernel;
 
     /// <summary>
     /// Initialize a new instance of the <see cref="MarchingCubesChunkGenerator"/> class.
@@ -316,10 +310,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
             MarchingShader.Dispatch(GenerateDensityMap, length * genGroupSize, genGroupSize, genGroupSize);
 
             // Clear out the modified chunk counts before the recount.
-            MarchingShader.SetInt("ClearStart", start);
-            MarchingShader.SetInt("ClearLength", length);
-            MarchingShader.SetBuffer(ClearRange, "BufferToClear", triangleCBuffer);
-            MarchingShader.Dispatch(ClearRange, 1, 1, 1);
+            ClearDispatch(triangleCBuffer, start, length);
 
             // Update triangle counts.
             MarchingShader.Dispatch(RunMarchingCubesPrePass, length * marchGroupSize, marchGroupSize, marchGroupSize);
@@ -336,10 +327,7 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
             MarchingShader.SetInt("Offset", start);
 
             // Clear out the cursor for this range.
-            MarchingShader.SetInt("ClearStart", start);
-            MarchingShader.SetInt("ClearLength", length);
-            MarchingShader.SetBuffer(ClearRange, "BufferToClear", triangleCursor);
-            MarchingShader.Dispatch(ClearRange, 1, 1, 1);
+            ClearDispatch(triangleCursor, start, length);
 
             // March.
             MarchingShader.Dispatch(RunMarchingCubes, length * marchGroupSize, marchGroupSize, marchGroupSize);
@@ -401,6 +389,14 @@ public class MarchingCubesChunkGenerator : IChunkGenerator
 
         // Prime options/biomes on GPU
         UpdateOptions();
+    }
+
+    private void ClearDispatch(ComputeBuffer buffer, int start, int length)
+    {
+        MarchingShader.SetInt("ClearStart", start);
+        MarchingShader.SetInt("ClearLength", length);
+        MarchingShader.SetBuffer(ClearRange, "BufferToClear", buffer);
+        MarchingShader.Dispatch(ClearRange, 1, 1, 1);
     }
 
     /// <summary>
