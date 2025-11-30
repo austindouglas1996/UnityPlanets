@@ -13,11 +13,6 @@ namespace GingerVoxelSystem.Core
         IChunkConfiguration Configuration { get; }
 
         /// <summary>
-        /// Computes which chunks should exist and where (grid logic, follower tracking).
-        /// </summary>
-        IChunkLayout Layout { get; }
-
-        /// <summary>
         /// Produces the data needed to build chunk meshes/fields.
         /// </summary>
         IChunkGenerator Generator { get; }

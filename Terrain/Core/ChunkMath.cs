@@ -3,56 +3,32 @@ namespace GingerVoxelSystem.Core
     using UnityEngine;
 
     /// <summary>
-    /// A generic instance of <see cref="IChunkLayout"/> that fits most scenarios when creating a chunk layout
-    /// to help with reducing code reuse.
+    /// Provides stateless helper functions for chunk coordinate math,
+    /// size calculations, bounds generation, and distance-based LOD selection.
+    /// This class contains no runtime state; it operates entirely on the
+    /// configuration supplied during construction.
     /// </summary>
-    public class BaseChunkLayout : IChunkLayout
+    public class ChunkMath
     {
         /// <summary>
         /// The set of LOD thresholds for chunk rendering.
         /// </summary>
         private int[] LODRings;
 
+        /// <summary>
+        /// Configuration data for how to handle different math functions.
+        /// </summary>
         private IChunkConfiguration Configuration;
 
         /// <summary>
-        /// Initializes a new instance of <see cref="BaseChunkLayout"/>
+        /// Initializes a new instance of <see cref="ChunkMath"/>
         /// </summary>
         /// <param name="configuration"></param>
-        public BaseChunkLayout(IChunkConfiguration configuration)
+        public ChunkMath(IChunkConfiguration configuration)
         {
             this.Configuration = configuration;
             this.LODRings = this.Configuration.LODThresholds.ToArray();
         }
-
-        /// <summary>
-        /// Gets or sets the follower world position to be thread safe.
-        /// </summary>
-        public Vector3 FollowerWorldPosition
-        {
-            get { return followerWorldPosition; }
-            set
-            {
-                followerWorldPosition = value;
-                followerCoordinates = this.ToCoordinates(FollowerWorldPosition);
-            }
-        }
-        private Vector3 followerWorldPosition;
-
-        /// <summary>
-        /// Gets the chunk coordinates of the follower.
-        /// </summary>
-        /// <see cref="FollowerWorldPosition"/>
-        public Vector3Int FollowerCoordinates
-        {
-            get { return followerCoordinates; }
-        }
-        private Vector3Int followerCoordinates;
-
-        /// <summary>
-        /// The last known follower position.
-        /// </summary>
-        public Vector3 LastFollowerPosition { get; protected set; } = new Vector3(999, 999, 999);
 
         /// <summary>
         /// Returns the chunk size for a given LOD level.
@@ -147,23 +123,21 @@ namespace GingerVoxelSystem.Core
         /// </summary>
         /// <param name="chunkCoordinates"></param>
         /// <returns></returns>
-        public int GetLODForChunk(Vector3Int coord)
+        public int GetLODForChunk(Vector3Int coord, Vector3 playerWorldPos)
         {
             int chunkSize = GetChunkSize(0);
 
             Vector3 worldMin = coord * chunkSize;
             Vector3 worldMax = worldMin + new Vector3(chunkSize, chunkSize, chunkSize);
 
-            Vector3 player = FollowerWorldPosition;
-
             // Clamp player position to chunk AABB
-            float px = Mathf.Clamp(player.x, worldMin.x, worldMax.x);
-            float py = Mathf.Clamp(player.y, worldMin.y, worldMax.y);
-            float pz = Mathf.Clamp(player.z, worldMin.z, worldMax.z);
+            float px = Mathf.Clamp(playerWorldPos.x, worldMin.x, worldMax.x);
+            float py = Mathf.Clamp(playerWorldPos.y, worldMin.y, worldMax.y);
+            float pz = Mathf.Clamp(playerWorldPos.z, worldMin.z, worldMax.z);
 
-            float dx = Mathf.Abs(player.x - px);
-            float dy = Mathf.Abs(player.y - py);
-            float dz = Mathf.Abs(player.z - pz);
+            float dx = Mathf.Abs(playerWorldPos.x - px);
+            float dy = Mathf.Abs(playerWorldPos.y - py);
+            float dz = Mathf.Abs(playerWorldPos.z - pz);
 
             float dist = Mathf.Sqrt(dx * dx + dy * dy + dz * dz);
             int ring = Mathf.CeilToInt(dist / chunkSize);

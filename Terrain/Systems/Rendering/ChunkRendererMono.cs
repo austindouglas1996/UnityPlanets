@@ -18,6 +18,9 @@ namespace GingerVoxelSystem.Systems.Rendering
     /// </summary>
     public class ChunkRendererMono : MonoBehaviour
     {
+        [Tooltip("The main character of the world. The object we should spawn chunks around.")]
+        public Transform Follower;
+
         [Header("Rendering")]
         [Tooltip("Assign the ChunkRenderFeature from your URP Renderer asset.")]
         [SerializeField] private ChunkRenderFeature renderFeature;
@@ -103,7 +106,7 @@ namespace GingerVoxelSystem.Systems.Rendering
             }
 
             // Create manager.
-            lodTree = new ChunkLodOctree(this.chunkServices, this.processor);
+            lodTree = new ChunkLodOctree(this.chunkServices.Configuration, this.Follower, this.processor);
 
             // Create root nodes.
             Vector3Int span = RootRange.Span;

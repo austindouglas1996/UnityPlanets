@@ -171,7 +171,9 @@
         /// </summary>
         private const int UpdatePerTick = 500;
 
-        private readonly IChunkServices services;
+        private readonly ChunkMath math;
+        private readonly Transform follower;
+        private readonly IChunkConfiguration configuration;
         private readonly ChunkGenerationProcessor processor;
 
         private readonly List<ChunkLodTreeNode> Nodes = new();
@@ -189,9 +191,10 @@
         /// </summary>
         /// <param name="services"></param>
         /// <param name="processor"></param>
-        public ChunkLodOctree(IChunkServices services, ChunkGenerationProcessor processor)
+        public ChunkLodOctree(IChunkConfiguration configuration, Transform follower, ChunkGenerationProcessor processor)
         {
-            this.services = services;
+            this.math = new ChunkMath(configuration);
+            this.follower = follower;
             this.processor = processor;
         }
 
@@ -290,7 +293,7 @@
             if (node.Transition != Transition.None)
                 return LodDecision.KeepLeaf;
 
-            int desired = services.Layout.GetLODForChunk(node.Key.Global);
+            int desired = math.GetLODForChunk(node.Key.Global, follower.transform.position);
 
             if (node.CanSubdivide(desired))
                 return LodDecision.Subdivide;
