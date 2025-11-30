@@ -54,14 +54,14 @@ namespace GingerVoxelSystem.EditorSupport
     }
 
     [Serializable]
-    public class Biome
+    public class BiomeAsset
     {
-        public Biome()
+        public BiomeAsset()
         {
 
         }
 
-        public Biome(string name, BiomeHeight height, BiomeTemperature temperature, BiomeHumidity humidity, BiomeFoliage foliage)
+        public BiomeAsset(string name, BiomeHeight height, BiomeTemperature temperature, BiomeHumidity humidity, BiomeFoliage foliage)
         {
             Name = name;
             Height = height;
