@@ -4,7 +4,6 @@
     using UnityEngine;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Engine.Generation;
-    using GingerVoxelSystem.Helpers;
 
     /// <summary>
     /// A chunk-based octree that manages world detail through Level of Detail (LOD).
@@ -65,7 +64,7 @@
 
             // Relationships
             public int ParentIndex = -1;
-            public List<int> Children = new List<int>();
+            public List<int> Children = new List<int>(8);
             public int ChildrenChecked = 0;
 
             // State
@@ -217,8 +216,6 @@
         /// </summary>
         public void Update()
         {
-            ConsoleTimer.Start("ChunkLODOctTree");
-
             int count = Nodes.Count;
             int processed = 0;
 
@@ -233,8 +230,6 @@
                 CurrentUpdateIndex++;
                 processed++;
             }
-
-            ConsoleTimer.Stop("ChunkLODOctTree");
         }
 
         /// <summary>

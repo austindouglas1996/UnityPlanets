@@ -4,13 +4,12 @@
     using System.Collections.Generic;
     using UnityEngine.Rendering;
     using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.Helpers;
     using GingerVoxelSystem.Systems.Generation;
 
     /// <summary>
     /// Thin “lane switch” over two <see cref="ChunkRenderBucketCollection"/>s:
     /// one for LOD0, one for everything else. I hand it <see cref="ChunkKey"/>s and
-    /// it routes them to the right pool; I call <see cref="Update"/> / <see cref="Draw(Material)"/> once.
+    /// it routes them to the right pool; I call <see cref="Update"/> / <see cref="Draw"/> once.
     /// No Unity-specific bits here except the draw material.
     /// </summary>
     /// <remarks>
@@ -24,7 +23,6 @@
         /// </summary>
         private List<ChunkRenderBucketCollection> lodBuckets = new();
 
-        private IChunkServices chunkServices;
         private IChunkGenerator chunkGenerator;
 
         /// <summary>
@@ -37,7 +35,6 @@
         /// <param name="lod0Thres">Removals before an LOD0 bucket regenerates.</param>
         public ChunkRenderRouter(IChunkServices services, IChunkGenerator chunkGenerator, int capPerBucket)
         {
-            this.chunkServices = services;
             this.chunkGenerator = chunkGenerator;
 
             lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, true, capPerBucket));
@@ -78,14 +75,10 @@
         /// </summary>
         public void Update()
         {
-            ConsoleTimer.Start("ChunkRouter.Update");
-
             foreach (var bucket in lodBuckets)
             {
                 bucket.Update();
             }
-
-            ConsoleTimer.Stop("ChunkRouter.Update");
         }
 
         /// <summary>

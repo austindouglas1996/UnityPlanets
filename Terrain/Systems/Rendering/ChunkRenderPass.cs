@@ -84,5 +84,4 @@ namespace GingerVoxelSystem.Systems.Rendering
             public ChunkRenderRouter Router;
         }
     }
-
 }

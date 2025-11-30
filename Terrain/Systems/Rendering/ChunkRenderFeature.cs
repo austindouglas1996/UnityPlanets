@@ -44,5 +44,4 @@ namespace GingerVoxelSystem.Systems.Rendering
             base.Dispose(disposing);
         }
     }
-
 }

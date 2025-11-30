@@ -4,7 +4,6 @@
     using System.Collections.Generic;
     using UnityEngine;
     using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.Helpers;
     using GingerVoxelSystem.Systems.Generation;
     using GingerVoxelSystem.Systems.Rendering;
 
@@ -107,12 +106,8 @@
         {
             this.layerRenderer.Update();
 
-            ConsoleTimer.Start("ChunkProcessor");
-
             UpdateSurface();
             UpdateRemoval();
-
-            ConsoleTimer.Stop("ChunkProcessor");
         }
 
         /// <summary>

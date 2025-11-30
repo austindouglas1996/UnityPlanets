@@ -8,9 +8,9 @@
     using UnityEngine.Rendering;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Engine.Helpers;
-    using GingerVoxelSystem.Helpers;
     using GingerVoxelSystem.Systems.Generation;
     using GingerVoxelSystem.Systems.Rendering;
+    using System.Linq;
 
     /// <summary>
     /// My marching-cubes generator. Feeds compute with chunk inputs, spits out a draw-ready batch.
@@ -129,9 +129,6 @@
         /// </summary>
         public void DispatchSurfaceChecks(IReadOnlyList<ChunkGenerationJob> keys, Action<uint[]> output)
         {
-
-            ConsoleTimer.Start("MC.Surface");
-
             int batchSize = keys.Count;
 
             // Refill list + upload
@@ -166,8 +163,6 @@
                     }
                 });
             });
-
-            ConsoleTimer.Stop("MC.Surface");
         }
 
         /// <summary>
