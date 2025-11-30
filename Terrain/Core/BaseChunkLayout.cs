@@ -6,20 +6,22 @@ namespace GingerVoxelSystem.Core
     /// A generic instance of <see cref="IChunkLayout"/> that fits most scenarios when creating a chunk layout
     /// to help with reducing code reuse.
     /// </summary>
-    public class BaseChunkLayout : BaseChunkCore, IChunkLayout
+    public class BaseChunkLayout : IChunkLayout
     {
         /// <summary>
         /// The set of LOD thresholds for chunk rendering.
         /// </summary>
         private int[] LODRings;
 
+        private IChunkConfiguration Configuration;
+
         /// <summary>
         /// Initializes a new instance of <see cref="BaseChunkLayout"/>
         /// </summary>
         /// <param name="configuration"></param>
         public BaseChunkLayout(IChunkConfiguration configuration)
-            : base(configuration)
         {
+            this.Configuration = configuration;
             this.LODRings = this.Configuration.LODThresholds.ToArray();
         }
 
