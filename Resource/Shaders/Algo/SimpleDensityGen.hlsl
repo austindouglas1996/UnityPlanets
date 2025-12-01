@@ -55,8 +55,8 @@ float SampleContinentMask(float3 samplePos3D, float3 world)
     
     float effectiveCoastWidth = min(CoastWidth, CoastWidth * (1.0 + ContinentAmp * 0.01));
 
-    float coastLo = (SeaLevel + GetSeaLevelBias() - 0.5 * effectiveCoastWidth);
-    float coastHi = (SeaLevel + GetSeaLevelBias() + 0.5 * effectiveCoastWidth);
+    float coastLo = (SeaLevel + (SeaLevelBias * 0.1) - 0.5 * effectiveCoastWidth);
+    float coastHi = (SeaLevel + (SeaLevelBias * 0.1) + 0.5 * effectiveCoastWidth);
 
     // This returns 0 near ocean, 1 inland, 0.5 at shore
     return smoothstep(coastLo, coastHi, base01);

@@ -100,42 +100,4 @@ cbuffer PlanetDensityOptions
     float4x4 Rotation;
 };
 
-
-float GetSeaLevelBias()
-{
-    switch (SeaLevelBias)
-    {
-        case -4:
-            return -0.40f; // Confirms there will be no ocean.
-        case -2:
-            return -0.05f;
-        case 0:
-            return 0.0f;
-        case 2:
-            return 0.05f;
-        case 4:
-            return 0.10f;
-        default:
-            return 0.0f;
-    }
-}
-
-float GetHumidityBias()
-{
-    switch (HumidityBias)
-    {
-        case -2:
-            return -0.05f;
-        case 0:
-            return 0.0f;
-        case 2:
-            return 0.15f;
-        case 4:
-            return 0.30f;
-        default:
-            return 0.0f;
-    }
-}
-
-
 #endif
