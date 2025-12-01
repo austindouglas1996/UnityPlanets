@@ -7,8 +7,10 @@ using GingerVoxelSystem.Systems.Rendering;
 namespace GingerVoxelSystem.Core
 {
     /// <summary>
-    /// Handles chunk generation, mesh building, and terrain modifications.
-    /// Used by the chunk manager to build and update chunks based on data and brush input.
+    /// GPU-driven pipeline for generating chunk surface data and meshes.
+    /// Provides batched compute-dispatch operations for surface checks,
+    /// density generation, and triangle extraction. 
+    /// Returns GPU-resident buffers used directly by the render path.
     /// </summary>
     public interface IChunkGenerator : IDisposable
     {
@@ -44,5 +46,4 @@ namespace GingerVoxelSystem.Core
         /// </summary>
         Material GetMaterial { get; }
     }
-
 }

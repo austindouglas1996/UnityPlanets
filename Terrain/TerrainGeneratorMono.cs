@@ -17,10 +17,10 @@ namespace GingerVoxelSystem
         [SerializeField] public ComputeShader MarchingCubes;
 
         [Tooltip("Configuration for terrain generation.")]
-        public BaseChunkConfiguration ChunkConfiguration;
+        public ChunkConfiguration ChunkConfiguration;
 
-        [SerializeField] protected ChunkRendererMono chunkRenderer;
-        [SerializeField] protected ChunkMaterialSettings materialManager;
+        protected ChunkRendererMono chunkRenderer;
+        protected ChunkMaterialSettings materialManager;
 
         protected IChunkGenerator generator;
 
