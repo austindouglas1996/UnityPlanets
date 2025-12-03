@@ -19,7 +19,12 @@ float3 GetNormalFast(int3 p, int keyIndex, int3 sampleSize, RWStructuredBuffer<f
     float dy = DensityMap[centerIndex + strideY] - DensityMap[centerIndex - strideY];
     float dz = DensityMap[centerIndex + strideZ] - DensityMap[centerIndex - strideZ];
 
-    return float3(dx, dy, dz);
+    float3 n = float3(dx, dy, dz);
+    
+    // For blobs
+    //n = normalize(round(n * 4.0) / 4.0);
+
+    return n;
 }
 
 void CountTriangles(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCount, RWStructuredBuffer<float> DensityMap)

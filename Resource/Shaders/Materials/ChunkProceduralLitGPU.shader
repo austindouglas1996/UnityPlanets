@@ -10,6 +10,10 @@ Shader "Custom/ChunkProceduralLitGPU"
         _TextureTint("Texture Tint", Color) = (1,1,1,1)
         _TexScale("Texture Tiling (world units)", Float) = 1.0
         _TriplanarSharpness("Triplanar Sharpness", Range(0.5,8)) = 2.0
+
+        _LightIntensity("Light Intensity", Float) = 1.0
+        _LightColor("Light Color", Vector) = (1, 1, 1, 1)
+        _ShadowColor("Shadow Color", Vector) = (0.55, 0.55, 0.55, 1)
     }
 
     SubShader
@@ -70,6 +74,10 @@ Shader "Custom/ChunkProceduralLitGPU"
             float4 _TextureTint;
             float  _TexScale;
             float  _TriplanarSharpness;
+
+            float _LightIntensity;
+            float4 _LightColor;
+            float4 _ShadowColor;
 
             struct Attributes { uint vertexID : SV_VertexID; };
             struct Varyings {
@@ -136,39 +144,60 @@ Shader "Custom/ChunkProceduralLitGPU"
 
             float4 frag(Varyings IN) : SV_Target
             {
-                InputData inputData = (InputData)0;
-                inputData.positionWS      = IN.positionWS;
-                inputData.normalWS        = normalize(-IN.normalWS);
-                inputData.viewDirectionWS = GetWorldSpaceViewDir(IN.positionWS);
-                inputData.shadowCoord     = TransformWorldToShadowCoord(IN.positionWS);
-                inputData.fogCoord        = ComputeFogFactor(IN.positionCS.z);
-                inputData.vertexLighting  = float3(0,0,1);
-                inputData.bakedGI         = SampleSH(inputData.normalWS);
+    // --------------------------------------
+    // Populate InputData (your original code)
+    // --------------------------------------
+    InputData inputData = (InputData)0;
+    inputData.positionWS      = IN.positionWS;
+    inputData.normalWS        = normalize(-IN.normalWS);
+    inputData.viewDirectionWS = GetWorldSpaceViewDir(IN.positionWS);
+    inputData.shadowCoord     = TransformWorldToShadowCoord(IN.positionWS);
+    inputData.fogCoord        = ComputeFogFactor(IN.positionCS.z);
+    inputData.vertexLighting  = float3(0,0,0);
+    inputData.bakedGI         = SampleSH(inputData.normalWS);
 
-                float3 texColor     = SampleBaseMapTriplanar(IN.positionWS, inputData.normalWS).rgb;
-                float3 baseColorLin = FromSRGB(_BaseColor.rgb);
-                float3 baseOrTex    = lerp(baseColorLin, texColor, saturate(_UseBaseMap));
+    // --------------------------------------
+    // Your existing albedo logic
+    // --------------------------------------
+    float3 texColor     = SampleBaseMapTriplanar(IN.positionWS, inputData.normalWS).rgb;
+    float3 baseColorLin = FromSRGB(_BaseColor.rgb);
+    float3 baseOrTex    = lerp(baseColorLin, texColor, saturate(_UseBaseMap));
 
-                float3 vertexColorLin = FromSRGB(IN.color.rgb);
-                float3 finalColor     = lerp(baseOrTex, vertexColorLin, 1);
+    float3 vertexColorLin = FromSRGB(IN.color.rgb);
+    float3 finalColor     = lerp(baseOrTex, vertexColorLin, 1.0);
 
-                SurfaceData surfaceData = (SurfaceData)0;
-                surfaceData.albedo      = finalColor;
-                surfaceData.alpha       = 1.0;
-                surfaceData.metallic    = 0.0;
-                surfaceData.smoothness  = 0.1;
-                surfaceData.occlusion   = 1.0;
-                surfaceData.emission    = 0.0;
-                surfaceData.normalTS = float3(0,0,1);
+    // --------------------------------------
+    // >>> Toon Lighting Section <<<
+    // --------------------------------------
 
-                float4 color = UniversalFragmentPBR(inputData, surfaceData);
-                color.rgb    = MixFog(color.rgb, inputData.fogCoord);
+    // 1. Light direction (URP stores main light here)
+    float3 lightDir = normalize(_MainLightPosition.xyz);
 
-                return color;
+    // 2. Lambert term
+    float NdotL = saturate(dot(inputData.normalWS, lightDir));
 
-                // We keep forgetting this, but there is an issue with coloring. 
-                // set this to return finalColor if you want to see color in the build.
-                //return float4(finalColor,1);
+    // 3. Soft toon ramp band
+    float shade = smoothstep(0.35, 0.65, NdotL);
+
+    // 4. Time-of-day / brightness control
+    float3 lightCol  = _LightColor * _LightIntensity;
+    float3 shadowCol = lerp(_ShadowColor * 0.2, _ShadowColor, _LightIntensity);
+
+    // 5. Toon blend
+    float3 litColor = lerp(shadowCol, lightCol, shade);
+
+    // 6. Apply lighting to albedo
+    float3 litFinal = finalColor * litColor;
+
+    // --------------------------------------
+    // Fog (your original fog)
+    // --------------------------------------
+    float3 fogged = MixFog(litFinal, inputData.fogCoord);
+
+    // --------------------------------------
+    // Return final color
+    // --------------------------------------
+    return float4(fogged, 1.0);
             }
             ENDHLSL
         }

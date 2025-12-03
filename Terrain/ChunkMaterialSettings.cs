@@ -26,7 +26,10 @@
         Foliage = 5,
 
         // Visualize the vertex direction vector.
-        Direction = 6
+        Direction = 6,
+
+        // The calculated normal lighting.
+        Normals = 7
     }
 
     /// <summary>

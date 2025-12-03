@@ -83,9 +83,9 @@
         /// Removes all queued and active references to a given chunk.
         /// Call this when unloading or discarding a chunk to avoid processing it unnecessarily.
         /// </summary>
-        public void RemoveChunk(ChunkKey key)
+        public void RemoveChunk(ChunkKey key, bool now = false)
         {
-            this.removalQueue.Add(new(key, 30));
+            this.removalQueue.Add(new(key, now == true ? 0 : 30));
         }
 
         /// <summary>

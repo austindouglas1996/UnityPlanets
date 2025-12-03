@@ -174,6 +174,11 @@ float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint 
         case 6:
             result = GetColorForDirection(wp);
             break;
+        case 7:
+            result = float4((vertex == 0) ? float4(tri.NormalA, 1) :
+                            (vertex == 1) ? float4(tri.NormalB, 1) :
+                                            float4(tri.NormalC, 1));
+            break;
     }
 
     return result;

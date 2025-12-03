@@ -100,7 +100,7 @@
             /// <returns></returns>
             public bool CanMerge(int desired)
             {
-                return Key.LODIndex < desired && HasChildren;
+                return Key.LODIndex <= desired && HasChildren;
             }
 
             /// <summary>
@@ -169,7 +169,7 @@
         /// Max number of nodes updated per Unity frame.
         /// This throttles Update() work to avoid spikes.
         /// </summary>
-        private const int UpdatePerTick = 500;
+        private const int UpdatePerTick = 2500;
 
         private readonly ChunkMath math;
         private readonly Transform follower;
@@ -295,10 +295,10 @@
 
             int desired = math.GetLODForChunk(node.Key.Global, follower.transform.position);
 
-            if (node.CanSubdivide(desired))
+            if (node.LODIndex != 0 && node.CanSubdivide(desired))
                 return LodDecision.Subdivide;
 
-            if (node.CanMerge(desired))
+            if (node.LODIndex != RootLOD && node.CanMerge(desired))
                 return LodDecision.Merge;
 
             return LodDecision.KeepLeaf;
