@@ -24,11 +24,15 @@ namespace GingerVoxelSystem
 
         protected IChunkGenerator generator;
 
+        public static TerrainGeneratorMono instance;
+
         /// <summary>
         /// Set up layout and renderer, and pick the generator backend.
         /// </summary>
         protected virtual void Awake()
         {
+            instance = this;
+
             chunkRenderer = GetComponent<ChunkRendererMono>();
             materialManager = GetComponent<ChunkMaterialSettings>();
 

@@ -72,7 +72,10 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// <param name="key"></param>
         public void Add(ChunkKey key)
         {
-            if (keys.ContainsKey(key)) return;
+            if (keys.ContainsKey(key))
+            {
+                throw new System.ArgumentException("ChunkRenderBucketCollection tried to add an already existing key.");
+            }
 
             var bucket = GetOrCreateTailBucket();
 
@@ -85,7 +88,7 @@ namespace GingerVoxelSystem.Systems.Rendering
             }
             else
             {
-                Debug.LogWarning("Error: Failed to add key to bucket.");
+                throw new System.ArgumentException("Failed to add key into a bucket.");
             }
         }
 

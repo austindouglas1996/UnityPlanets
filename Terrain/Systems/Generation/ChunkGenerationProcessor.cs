@@ -73,9 +73,16 @@
         /// </summary>
         public void RequestChunkGeneration(ChunkKey key, Action<ChunkKey, int, bool> onDone)
         {
+            if (key == ChunkKey.Invalid)
+            {
+                throw new System.ArgumentException("Invalid key was provided.");
+            }
+
             var job = new ChunkGenerationJob(key, onDone);
 
             layerRenderer.Add(job);
+
+            // This needs to be moved so the bucket actually calls the done when gen done ffs.
             job.OnDone(job.Key, job.ParentIndex, true);
         }
 
@@ -85,7 +92,8 @@
         /// </summary>
         public void RemoveChunk(ChunkKey key, bool now = false)
         {
-            this.removalQueue.Add(new(key, now == true ? 0 : 30));
+            layerRenderer.Remove(key);
+            surfaceBatcher.Remove(key);
         }
 
         /// <summary>
@@ -95,6 +103,7 @@
         {
             this.removalQueue.Clear();
             this.layerRenderer.Clear();
+            this.surfaceBatcher.Clear();
         }
 
         /// <summary>
@@ -107,39 +116,12 @@
             this.layerRenderer.Update();
 
             UpdateSurface();
-            UpdateRemoval();
         }
 
         /// <summary>
         /// Releases any GPU resources held by the render region manager.
         /// </summary>
         public void Dispose() => layerRenderer.Dispose();
-
-        /// <summary>
-        /// Loop thru the <see cref="removalQueue"/> and throw away old chunks.
-        /// </summary>
-        private void UpdateRemoval()
-        {
-            if (removalQueue.Count == 0) return;
-
-            for (int i = removalQueue.Count - 1; i >= 0; i--)
-            {
-                var (key, framesLeft) = removalQueue[i];
-                framesLeft--;
-
-                if (framesLeft < 0)
-                {
-                    surfaceBatcher.Remove(key);
-                    layerRenderer.Remove(key);
-
-                    removalQueue.RemoveAt(i);
-                }
-                else
-                {
-                    removalQueue[i] = (key, framesLeft);
-                }
-            }
-        }
 
         /// <summary>
         /// Processes a batch of surface-check jobs.

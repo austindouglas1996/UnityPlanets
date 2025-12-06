@@ -16,23 +16,23 @@ float4 GetColorForDirection(float3 worldPos)
     switch (region)
     {
         case 0:
-            return float4(1, 0, 0, 1); // East - Red
+            return float4(1.0, 0.0, 0.0, 1.0); // East  - Red
         case 1:
-            return float4(1, 0, 1, 1); // NE - Magenta
+            return float4(0.8, 0.0, 0.6, 1.0); // NE   - Deep Magenta
         case 2:
-            return float4(0, 0, 1, 1); // North - Blue
+            return float4(0.5, 0.0, 0.8, 1.0); // North - Purple (not blue)
         case 3:
-            return float4(0, 1, 1, 1); // NW - Cyan
+            return float4(0.8, 0.3, 0.0, 1.0); // NW   - Burnt Orange
         case 4:
-            return float4(0, 1, 0, 1); // West - Green
+            return float4(0.0, 0.7, 0.0, 1.0); // West - Dark Green
         case 5:
-            return float4(0.5, 0.25, 0, 1); // SW - Brownish
+            return float4(0.6, 0.3, 0.1, 1.0); // SW   - Dark Brown
         case 6:
-            return float4(1, 1, 0, 1); // South - Yellow
+            return float4(1.0, 0.9, 0.0, 1.0); // South - Gold
         case 7:
-            return float4(1, 0.5, 0, 1); // SE - Orange
+            return float4(1.0, 0.4, 0.2, 1.0); // SE   - Salmon/Coral
         default:
-            return float4(1, 1, 1, 1); // Fallback white
+            return float4(1.0, 1.0, 1.0, 1.0); // Fallback white
     }
 }
 
@@ -42,23 +42,23 @@ float4 GetColorLOD(uint lod)
     switch (lod)
     {
         case 0:
-            return float4(1.0, 0.0, 0.0, 1.0); // Red
+            return float4(1.0, 0.0, 0.0, 1.0); // East  - Red
         case 1:
-            return float4(1.0, 0.5, 0.0, 1.0); // Orange
+            return float4(0.8, 0.0, 0.6, 1.0); // NE   - Deep Magenta
         case 2:
-            return float4(0.0, 0.0, 1.0, 1.0); // Blue
+            return float4(0.5, 0.0, 0.8, 1.0); // North - Purple (not blue)
         case 3:
-            return float4(0.0, 1.0, 0.0, 1.0); // Green
+            return float4(0.8, 0.3, 0.0, 1.0); // NW   - Burnt Orange
         case 4:
-            return float4(0.5, 0.8, 1.0, 1.0); // Light blue (snowy)
+            return float4(0.0, 0.7, 0.0, 1.0); // West - Dark Green
         case 5:
-            return float4(0.6, 0.0, 0.8, 1.0); // Purple
+            return float4(0.6, 0.3, 0.1, 1.0); // SW   - Dark Brown
         case 6:
-            return float4(1.0, 1.0, 0.0, 1.0); // Yellow
+            return float4(1.0, 0.9, 0.0, 1.0); // South - Gold
         case 7:
-            return float4(0.0, 1.0, 1.0, 1.0); // Cyan
-        case 8:
-            return float4(1.0, 0.0, 1.0, 1.0); // Magenta
+            return float4(1.0, 0.4, 0.2, 1.0); // SE   - Salmon/Coral
+        default:
+            return float4(1.0, 1.0, 1.0, 1.0); // Fallback white
     }
 
 

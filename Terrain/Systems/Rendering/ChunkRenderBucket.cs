@@ -120,7 +120,13 @@ namespace GingerVoxelSystem.Systems.Rendering
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryAdd(ChunkKey key)
         {
-            if (index.ContainsKey(key) || IsFull) return false;
+            if (index.ContainsKey(key))
+            {
+                Debug.LogError("ChunkRenderBucket tried to add an existing key.");
+                return false;
+            }
+
+            if (IsFull) return false;
 
             int pos;
             if (AvailableSlots.Count != 0)
@@ -173,7 +179,10 @@ namespace GingerVoxelSystem.Systems.Rendering
         private bool TryRemoveInternal(ChunkKey key, bool ignoreQueue = false)
         {
             if (!index.TryGetValue(key, out int i))
+            {
+                Debug.LogWarning("ChunkRenderBucket tried to remove an invalid key.");
                 return false;
+            }
 
             index.Remove(key);
             items[i] = null;

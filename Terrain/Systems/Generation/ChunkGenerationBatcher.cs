@@ -56,6 +56,14 @@ namespace GingerVoxelSystem.Systems.Generation
         }
 
         /// <summary>
+        /// Remove all items.
+        /// </summary>
+        public void Clear()
+        {
+            this.jobs.Clear();  
+        }
+
+        /// <summary>
         /// Dequeues up to <paramref name="maxCount"/> jobs into <paramref name="dest"/>.  
         /// Keys with no corresponding job (removed earlier) are skipped.  
         /// Individual lookups are O(1), but total cost is O(N) for the number of jobs pulled.
