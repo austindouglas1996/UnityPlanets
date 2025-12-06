@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Unity.Mathematics;
 using UnityEngine;
 
 /// <summary>
@@ -23,7 +24,7 @@ public struct ChunkDetailDataGPU
 {
     public uint Biome;
     public uint Foliage;
-    public uint a;
-    public uint b;
-    public uint c;
+    public Vector4 a;
+    public Vector4 b;
+    public Vector4 c;
 }

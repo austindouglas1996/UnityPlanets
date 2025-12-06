@@ -199,9 +199,9 @@ void RunDetailsPass(uint3 id : SV_DispatchThreadID)
     ChunkDetailData d = (ChunkDetailData)0;
     
     d.Biome = GetTriangleBiomePacked(tri, tri.LodIndex);
-    d.ColorA = PackFloat3(GetBiomeBlended(tri.a));
-    d.ColorB = PackFloat3(GetBiomeBlended(tri.b));
-    d.ColorC = PackFloat3(GetBiomeBlended(tri.c));
+    d.ColorA = GetBiomeBlended(tri.a);
+    d.ColorB = GetBiomeBlended(tri.b);
+    d.ColorC = GetBiomeBlended(tri.c);
 
     DetailBuffer[id.x] = d;
 }

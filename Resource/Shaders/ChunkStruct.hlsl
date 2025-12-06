@@ -53,9 +53,9 @@ struct ChunkDetailData
 {
     uint Biome;
     uint Foliage;
-    uint ColorA;
-    uint ColorB;
-    uint ColorC;
+    float4 ColorA;
+    float4 ColorB;
+    float4 ColorC;
 };
 
 // Biome data table entry.

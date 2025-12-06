@@ -20,10 +20,7 @@ float3 GetNormalFast(int3 p, int keyIndex, int3 sampleSize, RWStructuredBuffer<f
     float dz = DensityMap[centerIndex + strideZ] - DensityMap[centerIndex - strideZ];
 
     float3 n = float3(dx, dy, dz);
-    
-    // For blobs
-    //n = normalize(round(n * 4.0) / 4.0);
-
+   
     return n;
 }
 
