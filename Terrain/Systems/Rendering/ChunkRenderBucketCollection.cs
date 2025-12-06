@@ -61,6 +61,11 @@ namespace GingerVoxelSystem.Systems.Rendering
         }
 
         /// <summary>
+        /// An event called when a bucket is removed;
+        /// </summary>
+        public event EventHandler BucketRemoved;
+
+        /// <summary>
         /// Returns the amount of entries within this collection.
         /// </summary>
         public int KeysCount => keys.Count;
@@ -70,7 +75,7 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// Prefers refilling a previously-full bucket before touching the tail or creating a new one.
         /// </summary>
         /// <param name="key"></param>
-        public void Add(ChunkKey key)
+        public ChunkRenderBucket Add(ChunkKey key)
         {
             if (keys.ContainsKey(key))
             {
@@ -90,6 +95,8 @@ namespace GingerVoxelSystem.Systems.Rendering
             {
                 throw new System.ArgumentException("Failed to add key into a bucket.");
             }
+
+            return bucket;
         }
 
         /// <summary>
@@ -113,6 +120,8 @@ namespace GingerVoxelSystem.Systems.Rendering
                         bucketsWithSpace.Remove(bucket);
 
                     this.buckets.Remove(bucket);
+
+                    this.BucketRemoved?.Invoke(bucket, EventArgs.Empty);
                 }
                 else if (!bucketsWithSpace.Contains(bucket))
                     bucketsWithSpace.Add(bucket);

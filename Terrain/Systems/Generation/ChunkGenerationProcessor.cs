@@ -81,9 +81,6 @@
             var job = new ChunkGenerationJob(key, onDone);
 
             layerRenderer.Add(job);
-
-            // This needs to be moved so the bucket actually calls the done when gen done ffs.
-            job.OnDone(job.Key, job.ParentIndex, true);
         }
 
         /// <summary>

@@ -22,6 +22,7 @@
         /// A collection of main buckets used throughout generation.
         /// </summary>
         private List<ChunkRenderBucketCollection> lodBuckets = new();
+        private readonly Dictionary<ChunkRenderBucket, List<ChunkGenerationJob>> callBacks = new();
 
         private IChunkGenerator chunkGenerator;
 
@@ -39,6 +40,9 @@
 
             lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, true, capPerBucket));
             lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, capPerBucket));
+
+            lodBuckets[0].BucketRemoved += Bucket_Removed;
+            lodBuckets[1].BucketRemoved += Bucket_Removed;
         }
 
         /// <summary>
@@ -47,7 +51,19 @@
         /// </summary>
         public void Add(ChunkGenerationJob job)
         {
-            lodBuckets[job.Key.LODIndex == 0 ? 0 : 1].Add(job.Key);
+            var bucket = lodBuckets[job.Key.LODIndex == 0 ? 0 : 1].Add(job.Key);
+
+            // Ensure list exists
+            if (!callBacks.TryGetValue(bucket, out var list))
+            {
+                list = new List<ChunkGenerationJob>();
+                callBacks[bucket] = list;
+
+                // Subscribe exactly once
+                bucket.OnGenerate += Bucket_OnGenerate;
+            }
+
+            callBacks[bucket].Add(job);
         }
 
         /// <summary>
@@ -114,6 +130,42 @@
             foreach (var bucket in lodBuckets)
             {
                 bucket.MarkAsDirty(force);
+            }
+        }
+
+        /// <summary>
+        /// Call collected <see cref="ChunkGenerationJob"/>s and set them to complete.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Bucket_OnGenerate(object sender, EventArgs e)
+        {
+            var bucket = (ChunkRenderBucket)sender;
+
+            // If bucket was removed mid-frame, ignore safely
+            if (!callBacks.TryGetValue(bucket, out var list))
+                return;
+
+            // Notify all jobs waiting on this bucket
+            foreach (var job in list)
+                job.OnDone(job.Key, job.ParentIndex, true);
+
+            list.Clear();
+        }
+
+        /// <summary>
+        /// Call when a bucket is removed we no longer need to watch for jobs.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Bucket_Removed(object sender, EventArgs e)
+        {
+            var bucket = (ChunkRenderBucket)sender;
+
+            // If we tracked callbacks for this bucket, remove them & unsubscribe
+            if (callBacks.Remove(bucket))
+            {
+                bucket.OnGenerate -= Bucket_OnGenerate;
             }
         }
     }
