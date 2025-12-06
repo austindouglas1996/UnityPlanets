@@ -56,8 +56,7 @@
             // Ensure list exists
             if (!callBacks.TryGetValue(bucket, out var list))
             {
-                list = new List<ChunkGenerationJob>();
-                callBacks[bucket] = list;
+                callBacks[bucket] = new();
 
                 // Subscribe exactly once
                 bucket.OnGenerate += Bucket_OnGenerate;
