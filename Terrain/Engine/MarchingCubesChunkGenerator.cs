@@ -205,6 +205,7 @@
             // Update material.
             this.chunkMaterial.SetBuffer("Biomes", BiomeBuffer);
             this.chunkMaterial.SetInt("_BiomesCount", BiomesCount);
+            this.chunkMaterial.SetInt("Seed", chunkServices.Configuration.DensityOptions.Seed);
 
             this.chunkMaterial.SetFloat("_UseVertexColor", 1f);
             this.chunkMaterial.SetVector("PositionOffset", chunkServices.Configuration.DensityOptions.PositionOffset);
@@ -274,7 +275,7 @@
             MarchingShader.SetBuffer(RunRepackPrePass, "ChunkInputs", GenerateChunkInputBuffer);
             MarchingShader.SetBuffer(RunRepackPrePass, "TriangleCount", triangleCBuffer);
             MarchingShader.SetBuffer(RunRepackPrePass, "ArgsBuffer", argsBuffer);
-            MarchingShader.SetBuffer(RunRepackPrePass, "Args1Buffer", dispatchArgs);
+            MarchingShader.SetBuffer(RunRepackPrePass, "DispatchArgsBuffer", dispatchArgs);
             MarchingShader.SetInt("BatchSize", batchSize);
 
             // Marching buffer

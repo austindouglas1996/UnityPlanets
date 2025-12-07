@@ -91,23 +91,22 @@ Shader "Custom/ChunkProceduralLitGPU"
             Varyings vert(Attributes IN)
             {
                 Varyings OUT;
+
                 uint triIndex = IN.vertexID / 3;
                 uint subIndex = IN.vertexID % 3;
+
                 TriangleData tri = _TriangleBuffer[triIndex];
                 ChunkDetailData data = _TriangleDetailsBuffer[triIndex];
 
                 float3 pos = (subIndex == 0) ? tri.a : (subIndex == 1) ? tri.b : tri.c;
-                // Do you like triangles and savings? 
-                // you can use a simple normalize to make some simple normals.
-                //normalize(cross(tri.b - tri.a, tri.c - tri.a));
                 float3 normal = (subIndex == 0) ? tri.NormalA : (subIndex == 1) ? tri.NormalB : tri.NormalC;
                 float3 up = abs(normal.y) < 0.999 ? float3(0,1,0) : float3(1,0,0);
-
+                
+                OUT.color      = GetVertexColor(tri,data,subIndex,Overlay);
                 OUT.positionCS = TransformWorldToHClip(pos);
                 OUT.positionWS = pos;
                 OUT.normalWS   = normal;
                 OUT.tangentWS = float4(normalize(cross(up, normal)), 1.0);
-                OUT.color      = GetVertexColor(tri,data,subIndex,Overlay);
 
                 return OUT;
             }

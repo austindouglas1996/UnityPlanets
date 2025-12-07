@@ -193,4 +193,56 @@ float fbm3D(float x, float y, float z, int octaves)
     return fbm3D(float3(x, y, z), octaves);
 }
 
+float3 hash3(int3 p)
+{
+    // Large primes ensure good spatial hashing
+    p = p * 1664525 + 1013904223;
+
+    // Mix bits
+    p ^= (p.yzx << 5);
+    p ^= (p.zxy >> 3);
+
+    // Convert to float and normalize to [0,1]
+    return frac(float3(p) * 0.0000001192092896); // 1 / 2^23
+}
+
+float worley(float3 p)
+{
+    float dist = 1e9;
+
+    int3 ip = (int3) floor(p);
+    float3 fp = frac(p);
+
+    // Check 27 neighboring cells
+    [unroll]
+    for (int xo = -1; xo <= 1; xo++)
+        for (int yo = -1; yo <= 1; yo++)
+            for (int zo = -1; zo <= 1; zo++)
+            {
+                float3 cell = float3(xo, yo, zo);
+                float3 h = hash3(ip + cell); // Random feature point
+                float3 diff = cell + h - fp;
+
+                dist = min(dist, dot(diff, diff)); // squared distance
+            }
+
+    return saturate(dist * 3.0); // scale
+}
+
+float worleyWarped(float3 p)
+{
+    // --- Apply domain warp ---
+    float warpStrength = 1.5;
+
+    float3 warp = float3(
+        fbm3D(p * 0.4, 3),
+        fbm3D(p * 0.4 + 13.7, 3),
+        fbm3D(p * 0.4 + 33.1, 3)
+    );
+
+    p += warp * warpStrength;
+
+    return worley(p);
+}
+
 #endif

@@ -2,9 +2,7 @@
 #define CHUNK_COMMON_COLORING_INCLUDED
 
 #include "ChunkFunctions.hlsl"
-#include "Biomes/BiomeLookup.hlsl"
-#include "Biomes/BiomeSampler.hlsl"
-#include "Lib/PerlinNoise.hlsl"
+#include "Biome.hlsl"
 
 static const float4 ColorsArray[8] =
 {
@@ -18,80 +16,9 @@ static const float4 ColorsArray[8] =
     float4(1, 0.4, 0.2, 1)
 };
 
-static const float3 ColorScaleOffsets[8] =
-{
-    float3(ColorSampleRadius, 0, 0), float3(-ColorSampleRadius, 0, 0),
-        float3(0, 0, ColorSampleRadius), float3(0, 0, -ColorSampleRadius),
-        float3(ColorSampleRadius, 0, ColorSampleRadius), float3(-ColorSampleRadius, 0, ColorSampleRadius),
-        float3(ColorSampleRadius, 0, -ColorSampleRadius), float3(-ColorSampleRadius, 0, -ColorSampleRadius)
-};
-
 float4 GetColorByID(uint id)
 {
     return (id < 8) ? ColorsArray[id] : float4(1, 1, 1, 1);
-}
-
-float4 GetColorByIndex(ChunkBiomeData biome, int idx)
-{
-    float4 cols[6] =
-    {
-        biome.Highlight,
-        biome.Light,
-        biome.MidLight,
-        biome.Mid,
-        biome.Dark,
-        biome.Shadow
-    };
-    return cols[idx];
-}
-
-// Retrieves the biome blend color based on a biome and world position.
-float4 GetBiomeBlend(ChunkBiomeData biome, float3 wp)
-{
-    // Spatial seed for color variation
-    const float ColorFreq = 0.0002; // Lower = larger blobs
-
-    // Use XZ world position to sample noise
-    float2 p = wp.xz * ColorFreq + Seed;
-    float n = N01(fbm3D(float3(p, 0.0), 3)); // N01 = [-1,1] → [0,1]
-
-    // Index into the 6-color palette
-    const int N = 6;
-    float idxf = n * (N - 1);
-    int i0 = (int) floor(idxf);
-    int i1 = min(i0 + 1, N - 1);
-    float t = frac(idxf);
-
-    // Interpolate between two color bands
-    float3 c0 = GetColorByIndex(biome, i0).rgb;
-    float3 c1 = GetColorByIndex(biome, i1).rgb;
-
-    return float4(lerp(c0, c1, t), 1.0);
-}
-
-float4 GetBiomeBlended(float3 wp)
-{
-    float3 accum = 0;
-    for (int i = 0; i < 8; i++)
-    {
-        uint bi = SampleBiomeIndex(wp + ColorScaleOffsets[i]);
-        accum += GetBiomeBlend(Biomes[bi], wp + ColorScaleOffsets[i]).rgb;
-    }
-
-    uint biC = SampleBiomeIndex(wp);
-    float3 center = GetBiomeBlend(Biomes[biC], wp).rgb;
-    accum += center;
-    return float4(accum * INV_9,1);
-}
-
-// Retrieves the set color to use for a biome on a vertex.
-float4 GetTerrainColor(float3 wp, uint vertex, uint packedBiome)
-{
-    // Unpack the biome index for this vertex
-    uint biomeIndex = UnpackBiomeIndex(packedBiome, vertex);
-    ChunkBiomeData biome = Biomes[biomeIndex];
-    
-    return GetBiomeBlend(biome, wp);
 }
 
 float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint overlay)
@@ -125,6 +52,9 @@ float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint 
             break;
         case 5:
             result = ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeFoliage, 3);
+            break;
+        case 6:
+            result = SampleBiomeNoiseMap(wp);
             break;
         case 7:
             result = float4((vertex == 0) ? float4(tri.NormalA, 1) :

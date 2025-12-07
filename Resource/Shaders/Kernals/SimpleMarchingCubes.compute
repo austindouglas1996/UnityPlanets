@@ -13,7 +13,7 @@
 #include "../ChunkFunctions.hlsl"
 #include "../Algo/ChunkMarchingCubes.hlsl"
 #include "../Algo/SimpleDensityGen.hlsl"
-#include "../Biomes/BiomeSampler.hlsl"
+#include "../Biome.hlsl"
 #include "../ChunkColoring.hlsl"
 
 uint Offset;
@@ -44,7 +44,7 @@ RWStructuredBuffer<ChunkDetailData> DetailBuffer;
 
 /* Args Kernel */
 RWStructuredBuffer<uint> ArgsBuffer;
-RWStructuredBuffer<uint> Args1Buffer;
+RWStructuredBuffer<uint> DispatchArgsBuffer;
 
 // Shared flags so any thread can “trip” the result in GetSurfaceData.
 groupshared uint gHasAbove;
@@ -171,9 +171,9 @@ void RunRepackPrePass(uint id : SV_DispatchThreadID)
     ArgsBuffer[4] = 0; // padding (this is bidirectional)
     
     // This is used for the next one.
-    Args1Buffer[0] = (baseIndex + 63) / 64; // Cieling.
-    Args1Buffer[1] = 1;
-    Args1Buffer[2] = 1;
+    DispatchArgsBuffer[0] = (baseIndex + 63) / 64; // Cieling.
+    DispatchArgsBuffer[1] = 1;
+    DispatchArgsBuffer[2] = 1;
 }
 
 [numthreads(64, 1, 1)]
@@ -198,10 +198,22 @@ void RunDetailsPass(uint3 id : SV_DispatchThreadID)
     TriangleData tri = DetailTriangles[id.x];
     ChunkDetailData d = (ChunkDetailData)0;
     
-    d.Biome = GetTriangleBiomePacked(tri, tri.LodIndex);
-    d.ColorA = GetBiomeBlended(tri.a);
-    d.ColorB = GetBiomeBlended(tri.b);
-    d.ColorC = GetBiomeBlended(tri.c);
+    uint a = SampleBiomeIndex(tri.a);
+    uint b = SampleBiomeIndex(tri.b);
+    uint c = SampleBiomeIndex(tri.c);
+    
+    d.Biome = PackBiomeIndices(a, b, c, tri.LodIndex);
+    
+    // Using biome blending increases the compile time
+    // of this HLSL shader to 28 seconds from 14 seconds.
+    // I don't understand why ): 
+    //d.ColorA = SampleBiomeBlended(tri.a);
+    //d.ColorB = SampleBiomeBlended(tri.b);
+    //d.ColorC = SampleBiomeBlended(tri.c);
+    
+    d.ColorA = SampleBiomeBlend(Biomes[a], tri.a);
+    d.ColorB = SampleBiomeBlend(Biomes[b], tri.b);
+    d.ColorC = SampleBiomeBlend(Biomes[c], tri.c);
 
     DetailBuffer[id.x] = d;
 }
