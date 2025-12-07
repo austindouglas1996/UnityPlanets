@@ -103,6 +103,9 @@
             // Modified chunk ranges grouped contiguously so we don't dispatch per-chunk.
             List<(int start, int end)> ranges = chunkBuffers.GroupContiguous(job.Modifications);
 
+            // Set buffer.
+            chunkBuffers.FillGenerateChunkInputs(job.Keys, job.KeysCount);
+
             // -----------------------------
             // 1) Density + ClearCount + CountTriangles
             // -----------------------------
@@ -215,6 +218,7 @@
         /// </summary>
         public void Dispose()
         {
+            this.marchingCubes.Dispose();
             this.chunkBuffers.Dispose();
         }
 

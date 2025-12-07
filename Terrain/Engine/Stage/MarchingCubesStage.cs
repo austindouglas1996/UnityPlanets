@@ -1,6 +1,7 @@
 ﻿using GingerVoxelSystem.Engine;
 using GingerVoxelSystem.Engine.Helpers;
 using GingerVoxelSystem.Systems.Rendering;
+using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
@@ -11,13 +12,17 @@ namespace Assets.Scripts.Terrain.Engine.Stage
     /// 1) PrePass: counts triangles per chunk
     /// 2) Main pass: emits actual triangle data
     /// </summary>
-    public class MarchingCubesStage
+    public class MarchingCubesStage : IDisposable
     {
         private readonly int countTrianglesKernel;
         private readonly int marchKernel;
 
         private readonly ComputeShader marchShader;
         private readonly ChunkBuffers buffers;
+
+        ComputeBuffer cornerOffsets = MarchingCubesTables.CornerOffsetsBuffer();
+        ComputeBuffer edgeConnections = MarchingCubesTables.EdgeConnectionsBuffer();
+        ComputeBuffer triangleTable = MarchingCubesTables.TriangleTableBuffer();
 
         /// <summary>
         /// Creates a new <see cref="MarchingCubesStage"/> and wires up the kernels,
@@ -45,10 +50,6 @@ namespace Assets.Scripts.Terrain.Engine.Stage
             // Static bindings: chunk metadata shared across both passes
             marchShader.SetBuffer(countTrianglesKernel, "ChunkInputs", buffers.GenerateChunkInputBuffer);
             marchShader.SetBuffer(marchKernel, "ChunkInputs", buffers.GenerateChunkInputBuffer);
-
-            var cornerOffsets = MarchingCubesTables.CornerOffsetsBuffer();
-            var edgeConnections = MarchingCubesTables.EdgeConnectionsBuffer();
-            var triangleTable = MarchingCubesTables.TriangleTableBuffer();
 
             // Marching cubes lookup tables (never change)
             marchShader.SetBuffer(countTrianglesKernel, "CornerOffsetsBuffer", cornerOffsets);
@@ -88,6 +89,13 @@ namespace Assets.Scripts.Terrain.Engine.Stage
             marchShader.SetBuffer(marchKernel, "TriangleCursor", batch.TriangleWriteCursor);
 
             marchShader.Dispatch(marchKernel, groupsX, groupsY, groupsZ);
+        }
+
+        public void Dispose()
+        {
+            cornerOffsets?.Dispose();
+            edgeConnections?.Dispose();
+            triangleTable?.Dispose();
         }
     }
 }
