@@ -106,9 +106,7 @@
             // Set buffer.
             chunkBuffers.FillGenerateChunkInputs(job.Keys, job.KeysCount);
 
-            // -----------------------------
             // 1) Density + ClearCount + CountTriangles
-            // -----------------------------
             foreach (var (start, end) in ranges)
             {
                 int length = (end - start + 1);
@@ -123,14 +121,10 @@
                 marchingCubes.DispatchTriangleCount(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
             }
 
-            // -----------------------------
             // 2) Repack prepass — builds draw args + packed offsets
-            // -----------------------------
             repack.DispatchPrePass(job.Batch, job.KeysCount);
 
-            // -----------------------------
             // 3) Clear cursor + run marching for actual triangles
-            // -----------------------------
             foreach (var (start, end) in ranges)
             {
                 int length = (end - start + 1);
@@ -185,7 +179,6 @@
             var triangleCBuffer = new ComputeBuffer(ChunkEngineSettings.GenerationJobsPerBatch, sizeof(uint));
             var triangleCursor = new ComputeBuffer(ChunkEngineSettings.GenerationJobsPerBatch, sizeof(uint));
             var detailBuffer = new ComputeBuffer(maxSimple, Marshal.SizeOf<ChunkDetailDataGPU>(), ComputeBufferType.Append | ComputeBufferType.Structured);
-            var argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
 
             // Density map allocation (scalar field) — rough over-alloc based on max jobs.
             int samples = densityOptions.CubesPerAxis + 1 + (2 * densityOptions.BorderSamplesPerAxis);
@@ -200,9 +193,7 @@
                 triangleCBuffer,
                 triangleCursor,
                 detailBuffer,
-                densityBuffer,
-                argsBuffer,
-                chunkServices
+                densityBuffer
             );
         }
 

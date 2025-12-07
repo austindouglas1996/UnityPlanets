@@ -110,7 +110,7 @@ Shader "Custom/ChunkProceduralLitGPU"
                 float  shade    = smoothstep(0.35, 0.65, NdotL);
 
                 float3 lightCol  = _LightColor.rgb * _LightIntensity;
-                float3 shadowCol = lerp(_ShadowColor.rgb * 0.2, _ShadowColor.rgb, _LightIntensity);
+                float3 shadowCol = lerp(_ShadowColor.rgb * 1.2, _ShadowColor.rgb, _LightIntensity);
 
                 float3 litColor  = lerp(shadowCol, lightCol, shade);
                 float3 litFinal  = finalColor * litColor;

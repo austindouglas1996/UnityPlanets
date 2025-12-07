@@ -24,10 +24,10 @@
         // Maximum number of raw triangles produced per chunk
         // before packing or LOD filtering is applied.
         // See <see cref="MarchingCubesChunkGenerator"/>.
-        public const int RawTrianglesPerChunk = 2000;
+        public const int RawTrianglesPerChunk = 1500;
 
         // Maximum number of triangles after packing/compression.
         // This represents the upper bound for GPU memory allocation.
-        public const int TrianglesPerChunkPacked = 1000;
+        public const int TrianglesPerChunkPacked = 750;
     }
 }
