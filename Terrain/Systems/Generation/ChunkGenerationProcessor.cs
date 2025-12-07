@@ -134,7 +134,7 @@
             int n = surfaceBatcher.TryBatch(ChunkEngineSettings.SurfaceJobsPerBatch, tmpSurfaceJobs);
             if (n == 0) return;
 
-            chunkServices.Generator.DispatchSurfaceChecks(tmpSurfaceJobs, (uint[] surfaceResults) =>
+            chunkServices.Generator.DispatchSurfaceCheck(tmpSurfaceJobs, (uint[] surfaceResults) =>
             {
                 for (int i = 0; i < n; i++)
                 {

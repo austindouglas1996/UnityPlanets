@@ -6,6 +6,7 @@ namespace GingerVoxelSystem.Systems.Rendering
     using UnityEngine;
     using UnityEngine.Rendering;
     using GingerVoxelSystem.Core;
+    using Assets.Scripts.Terrain.Engine;
 
     /// <summary>
     /// A collection of chunk keys to help with distributing render data.
@@ -317,7 +318,8 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// </summary>
         protected virtual void OnDispatchGeneration()
         {
-            chunkGenerator.DispatchGeneration(items, nextIndex, modifications, OnDispatchGenerationCompleted, this.renderData);
+            DispatchJob job = new DispatchJob(items, nextIndex, modifications, this.renderData, OnDispatchGenerationCompleted);
+            chunkGenerator.DispatchGeneration(job);
         }
 
         /// <summary>

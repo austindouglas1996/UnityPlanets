@@ -42,6 +42,11 @@ namespace GingerVoxelSystem.Systems.Rendering
         public ComputeBuffer Details;
 
         /// <summary>
+        /// One of the buffers is unique.
+        /// </summary>
+        public ComputeBuffer DispatchArgs;
+
+        /// <summary>
         /// Indirect draw arguments buffer (ComputeBufferType.IndirectArguments).
         /// </summary>
         public ComputeBuffer Args;
@@ -71,6 +76,7 @@ namespace GingerVoxelSystem.Systems.Rendering
             this.Details = Details;
             this.DensityMap = densityMap;
             this.Args = Args;
+            this.DispatchArgs = new ComputeBuffer(3, sizeof(uint), ComputeBufferType.IndirectArguments);
         }
 
         /// <summary>

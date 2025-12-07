@@ -1,10 +1,23 @@
-﻿#ifndef MC_INCLUDED
-#define MC_INCLUDED
+#pragma only_renderers d3d11
+#pragma target 5.0
 
-#include "../Includes/TriangleTable.hlsl"
+#pragma kernel RunMarchingCubesPrePass
+#pragma kernel RunMarchingCubes
+
 #include "../ChunkFunctions.hlsl"
+#include "../Includes/TriangleTable.hlsl"
 
-float3 GetNormalFast(int3 p, int keyIndex, int3 sampleSize, RWStructuredBuffer<float> DensityMap)
+/* Inputs */
+uint Offset;
+StructuredBuffer<ChunkDispatchKey> ChunkInputs;
+StructuredBuffer<float> DensityMap;
+
+/* Outputs */
+RWStructuredBuffer<uint> TriangleCount;
+RWStructuredBuffer<uint> TriangleCursor;
+RWStructuredBuffer<TriangleData> TriangleSourceBuffer;
+
+float3 GetNormalFast(int3 p, int keyIndex, int3 sampleSize)
 {
     // Precompute strides in the flattened density buffer
     const int strideX = 1;
@@ -24,7 +37,7 @@ float3 GetNormalFast(int3 p, int keyIndex, int3 sampleSize, RWStructuredBuffer<f
     return n;
 }
 
-void CountTriangles(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCount, RWStructuredBuffer<float> DensityMap)
+void CountTriangles(ChunkDispatchKeyInfo key)
 {
     uint cubeIndex = 0;
     int3 sample3 = GetSamplesPerChunk3();
@@ -57,10 +70,10 @@ void CountTriangles(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCoun
         localCount++;
     }
     
-    InterlockedAdd(chunkCount[key.KeyIndex], localCount);
+    InterlockedAdd(TriangleCount[key.KeyIndex], localCount);
 }
 
-void March(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCursor, RWStructuredBuffer<TriangleData> TriangleBuffer, RWStructuredBuffer<float> DensityMap)
+void March(ChunkDispatchKeyInfo key)
 {
     uint cubeIndex = 0;
     float corner[8];
@@ -90,7 +103,7 @@ void March(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCursor, RWStr
     for (int i = 0; i < 8; i++)
     {
         int3 pos = key.LocalVoxelCoord + GetCornerOffset(i);
-        cornerNormal[i] = GetNormalFast(pos, key.KeyIndex, sample3, DensityMap);
+        cornerNormal[i] = GetNormalFast(pos, key.KeyIndex, sample3);
     }
     
     /*
@@ -150,9 +163,9 @@ void March(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCursor, RWStr
         float t1 = (corner[edge1.x] - ISOLevel) * rcp(corner[edge1.x] - corner[edge1.y]);
         float t2 = (corner[edge2.x] - ISOLevel) * rcp(corner[edge2.x] - corner[edge2.y]);
         
-        float3 worldA = lerp(cornerPos[edge0.x], cornerPos[edge0.y],t0);
-        float3 worldB = lerp(cornerPos[edge1.x], cornerPos[edge1.y],t1);
-        float3 worldC = lerp(cornerPos[edge2.x], cornerPos[edge2.y],t2);
+        float3 worldA = lerp(cornerPos[edge0.x], cornerPos[edge0.y], t0);
+        float3 worldB = lerp(cornerPos[edge1.x], cornerPos[edge1.y], t1);
+        float3 worldC = lerp(cornerPos[edge2.x], cornerPos[edge2.y], t2);
         
         float3 normA = normalize(lerp(cornerNormal[edge0.x], cornerNormal[edge0.y], t0));
         float3 normB = normalize(lerp(cornerNormal[edge1.x], cornerNormal[edge1.y], t1));
@@ -169,9 +182,28 @@ void March(ChunkDispatchKeyInfo key, RWStructuredBuffer<uint> chunkCursor, RWStr
         tri.LodIndex = key.chunk.LodIndex;
         
         uint next;
-        InterlockedAdd(chunkCursor[key.KeyIndex], 1, next);
+        InterlockedAdd(TriangleCursor[key.KeyIndex], 1, next);
         uint index = key.chunk.SourceOffset + next;
-        TriangleBuffer[index] = tri;
+        TriangleSourceBuffer[index] = tri;
     }
 }
-#endif
+
+[numthreads(4, 4, 4)]
+void RunMarchingCubesPrePass(uint3 id : SV_DispatchThreadID)
+{
+    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, Offset, ChunkInputs);
+    CountTriangles(access);
+}
+
+// MarchingCubesPass
+// Main meshing kernel. Reads voxel density data for a given chunk, determines
+// which edges of the cube intersect the ISO surface, and emits triangles
+// according to the marching cubes lookup tables.
+// 
+// Each thread processes one cube in the chunk's voxel grid.
+[numthreads(4, 4, 4)]
+void RunMarchingCubes(uint3 id : SV_DispatchThreadID)
+{
+    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, Offset, ChunkInputs);
+    March(access);
+}

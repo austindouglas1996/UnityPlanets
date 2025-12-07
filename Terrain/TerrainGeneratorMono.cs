@@ -1,9 +1,9 @@
 namespace GingerVoxelSystem
 {
-    using UnityEngine;
+    using Assets.Scripts.Terrain.Engine;
     using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.Engine;
     using GingerVoxelSystem.Systems.Rendering;
+    using UnityEngine;
 
     /// <summary>
     /// Unity-facing entry point for terrain generation.
@@ -13,9 +13,6 @@ namespace GingerVoxelSystem
     [RequireComponent(typeof(ChunkMaterialSettings))]
     public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
     {
-        [Tooltip("Shader used for generation.")]
-        [SerializeField] public ComputeShader MarchingCubes;
-
         [Tooltip("Configuration for terrain generation.")]
         public ChunkConfiguration ChunkConfiguration;
 
@@ -36,10 +33,8 @@ namespace GingerVoxelSystem
             chunkRenderer = GetComponent<ChunkRendererMono>();
             materialManager = GetComponent<ChunkMaterialSettings>();
 
-            generator = new MarchingCubesChunkGenerator(this, MarchingCubes, materialManager.BaseMaterial);
+            generator = new MCTerrainOrchestrator(this, materialManager.BaseMaterial);
    
-            if (MarchingCubes == null)
-                Debug.LogError("ComputeShader not assigned.");
             if (ChunkConfiguration == null)
                 Debug.LogError("ChunkConfiguration not assigned.");
 
