@@ -198,7 +198,7 @@ float GenerateNoiseValue(float3 world, int lod)
         float elev = SampleBaseHeight(world, lod);
         float dist = length(world - PlanetCenter);
         
-        baseNoise = (PlanetRadius + elev) - dist;
+        baseNoise = dist - (PlanetRadius + elev);
     }
     
     return baseNoise;
