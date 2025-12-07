@@ -21,6 +21,11 @@ namespace Assets.Scripts.Terrain.Engine.Stage
         /// </summary>
         public RepackStage(ComputeShader repackShader, ChunkBuffers chunkBuffers)
         {
+            if (repackShader == null)
+            {
+                throw new System.ArgumentNullException("Repack shader is null.");
+            }
+
             this.repackShader = repackShader;
             this.chunkBuffers = chunkBuffers;
 

@@ -33,6 +33,11 @@
         /// <param name="Buffers">Shared GPU buffer container.</param>
         public DensityStage(ComputeShader densityShader, ChunkBuffers Buffers)
         {
+            if (densityShader == null)
+            {
+                throw new System.ArgumentNullException("DensityShader is null.");
+            }
+
             this.densityShader = densityShader;
             this.buffers = Buffers;
 

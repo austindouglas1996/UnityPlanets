@@ -17,6 +17,11 @@ namespace Assets.Scripts.Terrain.Engine.Stage
         /// <param name="utility">Compute shader containing the utility kernels.</param>
         public UtilityStage(ComputeShader utility)
         {
+            if (utility == null)
+            {
+                throw new System.ArgumentNullException("Utility shader is null.");
+            }
+
             this.utilityShader = utility;
             clearKernel = this.utilityShader.FindKernel("ClearRange");
         }

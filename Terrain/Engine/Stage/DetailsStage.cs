@@ -23,6 +23,11 @@
         /// <param name="chunkBuffer">Shared GPU buffers.</param>
         public DetailsStage(ComputeShader detailsShader, ChunkBuffers chunkBuffer)
         {
+            if (detailsShader == null)
+            {
+                throw new System.ArgumentNullException("Details shader is null");
+            }
+
             this.detailsShader = detailsShader;
             this.buffers = chunkBuffer;
 

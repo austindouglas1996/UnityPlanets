@@ -18,39 +18,53 @@
     /// 
     /// Nothing in here does heavy work on the CPU. It just feeds data and dispatches kernels.
     /// </summary>
-    public class MCTerrainOrchestrator : IChunkGenerator
+    [RequireComponent(typeof(IChunkServices))]
+    [RequireComponent(typeof(ChunkMaterialSettings))]
+    public class MCTerrainOrchestrator : MonoBehaviour, IChunkGenerator
     {
-        private readonly IChunkServices chunkServices;
-
+        [Header("Materials")]
+        private ChunkMaterialSettings materialManager;
         private Material chunkMaterial;
-        private readonly ChunkBuffers chunkBuffers;
 
-        private readonly DensityStage density;
-        private readonly MarchingCubesStage marchingCubes;
-        private readonly RepackStage repack;
-        private readonly DetailsStage details;
-        private readonly UtilityStage utility;
+        [Header("Shaders")]
+        [SerializeField] private ComputeShader DensityShader;
+        [SerializeField] private ComputeShader MarchingCubesShader;
+        [SerializeField] private ComputeShader RepackShader;
+        [SerializeField] private ComputeShader DetailsShader;
+        [SerializeField] private ComputeShader UtilityShader;
+
+        private DensityStage density;
+        private MarchingCubesStage marchingCubes;
+        private RepackStage repack;
+        private DetailsStage details;
+        private UtilityStage utility;
+
+        [Header("Services")]
+        private IChunkServices chunkServices;
 
         /// <summary>
-        /// Creates a new <see cref="MCTerrainOrchestrator"/> and wires up all compute stages
-        /// (density, marching, repack, details, utility) plus the shared buffer container.
+        /// Contains common buffers used throughout terrain generation.
         /// </summary>
-        /// <param name="services">Chunk services used for config, biome data, and world settings.</param>
-        /// <param name="chunkMaterial">Material used when rendering the generated chunk meshes.</param>
-        public MCTerrainOrchestrator(IChunkServices services, Material chunkMaterial)
+        private ChunkBuffers chunkBuffers;
+
+        /// <summary>
+        /// Called when the game starts.
+        /// </summary>
+        public void Awake()
         {
-            this.chunkServices = services;
-            this.chunkMaterial = chunkMaterial;
+            chunkServices = GetComponent<IChunkServices>();
+            materialManager = GetComponent<ChunkMaterialSettings>();
+            chunkMaterial = materialManager.BaseMaterial;
 
             // Centralized buffer container shared by every stage.
-            chunkBuffers = new ChunkBuffers(services);
+            chunkBuffers = new ChunkBuffers(chunkServices);
 
             // Load compute stages. Each stage wires buffers/kernels internally.
-            density =       new DensityStage(      Resources.Load<ComputeShader>("Shaders/Compute/Density"),       chunkBuffers);
-            marchingCubes = new MarchingCubesStage(Resources.Load<ComputeShader>("Shaders/Compute/MarchingCubes"), chunkBuffers);
-            repack =        new RepackStage(       Resources.Load<ComputeShader>("Shaders/Compute/Repack"),        chunkBuffers);
-            details =       new DetailsStage(      Resources.Load<ComputeShader>("Shaders/Compute/Details"),       chunkBuffers);
-            utility =       new UtilityStage(      Resources.Load<ComputeShader>("Shaders/Compute/Utility"));
+            density = new DensityStage(DensityShader, chunkBuffers);
+            marchingCubes = new MarchingCubesStage(MarchingCubesShader, chunkBuffers);
+            repack = new RepackStage(RepackShader, chunkBuffers);
+            details = new DetailsStage(DetailsShader, chunkBuffers);
+            utility = new UtilityStage(UtilityShader);
         }
 
         /// <summary>

@@ -1,6 +1,5 @@
 namespace GingerVoxelSystem
 {
-    using Assets.Scripts.Terrain.Engine;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Systems.Rendering;
     using UnityEngine;
@@ -9,32 +8,24 @@ namespace GingerVoxelSystem
     /// Unity-facing entry point for terrain generation.
     /// Ties together chunk layout, rendering, and a chosen generator (default: marching cubes).
     /// </summary>
+    [RequireComponent(typeof(IChunkGenerator))]
     [RequireComponent(typeof(ChunkRendererMono))]
-    [RequireComponent(typeof(ChunkMaterialSettings))]
     public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
     {
         [Tooltip("Configuration for terrain generation.")]
         public ChunkConfiguration ChunkConfiguration;
 
         protected ChunkRendererMono chunkRenderer;
-        protected ChunkMaterialSettings materialManager;
-
-        protected IChunkGenerator generator;
-
-        public static TerrainGeneratorMono instance;
+        protected IChunkGenerator chunkGenerator;
 
         /// <summary>
         /// Set up layout and renderer, and pick the generator backend.
         /// </summary>
         protected virtual void Awake()
         {
-            instance = this;
-
+            chunkGenerator = GetComponent<IChunkGenerator>();
             chunkRenderer = GetComponent<ChunkRendererMono>();
-            materialManager = GetComponent<ChunkMaterialSettings>();
 
-            generator = new MCTerrainOrchestrator(this, materialManager.BaseMaterial);
-   
             if (ChunkConfiguration == null)
                 Debug.LogError("ChunkConfiguration not assigned.");
 
@@ -47,14 +38,14 @@ namespace GingerVoxelSystem
         /// </summary>
         protected virtual void OnValidate()
         {
-            if (!Application.isPlaying || generator == null)
+            if (!Application.isPlaying || chunkGenerator == null)
                 return;
 
-            generator.UpdateOptions();
+            chunkGenerator.UpdateOptions();
             chunkRenderer.RefreshChunks();
         }
 
         IChunkConfiguration IChunkServices.Configuration => ChunkConfiguration;
-        IChunkGenerator IChunkServices.Generator => generator;
+        IChunkGenerator IChunkServices.Generator => chunkGenerator;
     }
 }

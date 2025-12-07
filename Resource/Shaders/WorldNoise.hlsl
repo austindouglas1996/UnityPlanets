@@ -1,8 +1,8 @@
 ﻿#ifndef SIMPLEDENSITY_INCLUDED
 #define SIMPLEDENSITY_INCLUDED
 
-#include "PerlinNoise.hlsl"
-#include "../ChunkFunctions.hlsl"
+#include "Lib/PerlinNoise.hlsl"
+#include "ChunkFunctions.hlsl"
 
 // Convert world pos to noise domain (flat or planet mode)
 [noinline]

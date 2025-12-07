@@ -27,6 +27,11 @@ namespace Assets.Scripts.Terrain.Engine.Stage
         /// <param name="buffers">Shared GPU buffers used across the terrain pipeline.</param>
         public MarchingCubesStage(ComputeShader marchShader, ChunkBuffers buffers)
         {
+            if (marchShader == null)
+            {
+                throw new System.ArgumentNullException("MarchingCubes shader is null.");
+            }
+
             this.marchShader = marchShader;
             this.buffers = buffers;
 

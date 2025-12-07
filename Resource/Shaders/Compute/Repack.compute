@@ -8,7 +8,7 @@
 
 /* Inputs */
 uint BatchSize;
-StructuredBuffer<ChunkDispatchKey> ChunkInputs;
+RWStructuredBuffer<ChunkDispatchKey> ChunkInputs;
 StructuredBuffer<uint> TriangleCount;
 
 /* Outputs */

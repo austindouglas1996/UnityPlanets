@@ -1,7 +1,7 @@
 ﻿#ifndef BIOMELOOKUP
 #define BIOMELOOKUP
 
-#include "Algo/SimpleDensityGen.hlsl"
+#include "WorldNoise.hlsl"
 
 StructuredBuffer<ChunkBiomeData> Biomes;
 uint _BiomesCount;

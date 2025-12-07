@@ -43,8 +43,6 @@ namespace GingerVoxelSystem.Systems.Rendering
         private void Update()
         {
             if (!isInitialized) return;
-
-            this.chunkServices.Generator.Update();
             lodTree.Update();
         }
 

@@ -31,7 +31,6 @@ namespace Assets.Scripts.Terrain.Engine
         public ComputeBuffer PlanetOptionsBuffer;       // Single planet-options struct
 
         public ComputeBuffer SurfaceMaskBuffer;         // 1 flag per chunk from the surface check
-        public ComputeBuffer countBuffer;               // Generic utility counter (legacy? rarely used)
 
         /// <summary>
         /// Creates a new <see cref="ChunkBuffers"/> instance configured using the supplied services.
@@ -148,7 +147,6 @@ namespace Assets.Scripts.Terrain.Engine
             DensityOptionsBuffer.Dispose();
             PlanetOptionsBuffer.Dispose();
             SurfaceMaskBuffer.Dispose();
-            countBuffer.Dispose();
         }
 
         /// <summary>
