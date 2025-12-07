@@ -65,7 +65,9 @@ Shader "Custom/ChunkProceduralLitGPU"
             StructuredBuffer<TriangleData> _TriangleBuffer;
             StructuredBuffer<ChunkDetailData> _TriangleDetailsBuffer;
 
-            int    Overlay;
+            CBUFFER_START(UnityPerMaterial)
+                int Overlay;
+            CBUFFER_END
 
             TEXTURE2D(_CustomBaseMap);
             SAMPLER(sampler_CustomBaseMap);
@@ -148,7 +150,7 @@ Shader "Custom/ChunkProceduralLitGPU"
     // --------------------------------------
     InputData inputData = (InputData)0;
     inputData.positionWS      = IN.positionWS;
-    inputData.normalWS        = normalize(-IN.normalWS);
+    inputData.normalWS        = normalize(IN.normalWS);
     inputData.viewDirectionWS = GetWorldSpaceViewDir(IN.positionWS);
     inputData.shadowCoord     = TransformWorldToShadowCoord(IN.positionWS);
     inputData.fogCoord        = ComputeFogFactor(IN.positionCS.z);

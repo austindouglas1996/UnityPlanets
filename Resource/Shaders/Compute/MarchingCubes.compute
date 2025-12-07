@@ -32,7 +32,7 @@ float3 GetNormalFast(int3 p, int keyIndex, int3 sampleSize)
     float dy = DensityMap[centerIndex + strideY] - DensityMap[centerIndex - strideY];
     float dz = DensityMap[centerIndex + strideZ] - DensityMap[centerIndex - strideZ];
 
-    float3 n = float3(dx, dy, dz);
+    float3 n = -float3(dx, dy, dz);
    
     return n;
 }
@@ -48,7 +48,7 @@ void CountTriangles(ChunkDispatchKeyInfo key)
         uint3 pos = key.LocalVoxelCoord + GetCornerOffset(i);
         float corner = DensityMap[GetVoxelSampleIndexRaw(pos, key.KeyIndex, sample3)];
         
-        if (corner > ISOLevel)
+        if (corner < ISOLevel)
             cubeIndex |= (1u << i);
     }
 
@@ -90,7 +90,7 @@ void March(ChunkDispatchKeyInfo key)
         corner[i] = DensityMap[GetVoxelSampleIndexRaw(pos, key.KeyIndex, sample3)];
         cornerPos[i] = float3(pos) * step + world;
         
-        if (corner[i] > ISOLevel)
+        if (corner[i] < ISOLevel)
             cubeIndex |= (1u << i);
     }
 

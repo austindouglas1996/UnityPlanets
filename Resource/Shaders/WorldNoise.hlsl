@@ -188,7 +188,7 @@ float GenerateNoiseValue(float3 world, int lod)
     if (TerrainType == TYPE_TERRAIN)
     {
         float v = SampleBaseHeight(world, lod);
-        float result = -(world.y - v);
+        float result = (world.y - v);
         
         baseNoise = Sanitize(result);
 
