@@ -4,7 +4,6 @@
     using System.Collections.Generic;
     using UnityEngine;
     using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.Helpers;
     using GingerVoxelSystem.Systems.Generation;
     using GingerVoxelSystem.Systems.Rendering;
 
@@ -16,11 +15,7 @@
     /// </summary>
     public class ChunkGenerationProcessor : IDisposable
     {
-        private const int SurfaceJobs = 512;
-        private const int GenerationJobs = 64;
-        private const int Generation0Jobs = 64;
-
-        private readonly List<ChunkGenerationJob> tmpSurfaceJobs = new(SurfaceJobs);
+        private readonly List<ChunkGenerationJob> tmpSurfaceJobs = new(ChunkEngineSettings.SurfaceJobsPerBatch);
         private readonly ChunkGenerationBatcher surfaceBatcher = new();
 
         /// <summary>
@@ -52,7 +47,7 @@
         {
             this.chunkServices = services;
 
-            this.layerRenderer = new ChunkRenderRouter(services, services.Generator, GenerationJobs, Generation0Jobs);
+            this.layerRenderer = new ChunkRenderRouter(services, services.Generator, ChunkEngineSettings.GenerationJobsPerBatch);
 
             if (renderFeature != null)
             {
@@ -61,7 +56,7 @@
             }
             else
             {
-                Debug.LogWarning("ChunkRenderFeature not assigned in the inspector. The terrain will not render.");
+                Debug.LogError("ChunkRenderFeature not assigned in the inspector. The terrain will not render.");
             }
         }
 
@@ -78,19 +73,24 @@
         /// </summary>
         public void RequestChunkGeneration(ChunkKey key, Action<ChunkKey, int, bool> onDone)
         {
+            if (key == ChunkKey.Invalid)
+            {
+                throw new System.ArgumentException("Invalid key was provided.");
+            }
+
             var job = new ChunkGenerationJob(key, onDone);
 
             layerRenderer.Add(job);
-            job.OnDone(job.Key, job.ParentIndex, true);
         }
 
         /// <summary>
         /// Removes all queued and active references to a given chunk.
         /// Call this when unloading or discarding a chunk to avoid processing it unnecessarily.
         /// </summary>
-        public void RemoveChunk(ChunkKey key)
+        public void RemoveChunk(ChunkKey key, bool now = false)
         {
-            this.removalQueue.Add(new(key, 30));
+            layerRenderer.Remove(key);
+            surfaceBatcher.Remove(key);
         }
 
         /// <summary>
@@ -100,6 +100,7 @@
         {
             this.removalQueue.Clear();
             this.layerRenderer.Clear();
+            this.surfaceBatcher.Clear();
         }
 
         /// <summary>
@@ -111,44 +112,13 @@
         {
             this.layerRenderer.Update();
 
-            ConsoleTimer.Start("ChunkProcessor");
-
             UpdateSurface();
-            UpdateRemoval();
-
-            ConsoleTimer.Stop("ChunkProcessor");
         }
 
         /// <summary>
         /// Releases any GPU resources held by the render region manager.
         /// </summary>
         public void Dispose() => layerRenderer.Dispose();
-
-        /// <summary>
-        /// Loop thru the <see cref="removalQueue"/> and throw away old chunks.
-        /// </summary>
-        private void UpdateRemoval()
-        {
-            if (removalQueue.Count == 0) return;
-
-            for (int i = removalQueue.Count - 1; i >= 0; i--)
-            {
-                var (key, framesLeft) = removalQueue[i];
-                framesLeft--;
-
-                if (framesLeft < 0)
-                {
-                    surfaceBatcher.Remove(key);
-                    layerRenderer.Remove(key);
-
-                    removalQueue.RemoveAt(i);
-                }
-                else
-                {
-                    removalQueue[i] = (key, framesLeft);
-                }
-            }
-        }
 
         /// <summary>
         /// Processes a batch of surface-check jobs.
@@ -161,10 +131,10 @@
                 return;
             SurfaceBusy = true;
 
-            int n = surfaceBatcher.TryBatch(SurfaceJobs, tmpSurfaceJobs);
+            int n = surfaceBatcher.TryBatch(ChunkEngineSettings.SurfaceJobsPerBatch, tmpSurfaceJobs);
             if (n == 0) return;
 
-            chunkServices.Generator.DispatchSurfaceChecks(tmpSurfaceJobs, (uint[] surfaceResults) =>
+            chunkServices.Generator.DispatchSurfaceCheck(tmpSurfaceJobs, (uint[] surfaceResults) =>
             {
                 for (int i = 0; i < n; i++)
                 {
@@ -176,5 +146,4 @@
             });
         }
     }
-
 }

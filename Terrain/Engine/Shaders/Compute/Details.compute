@@ -1,0 +1,40 @@
+#pragma only_renderers d3d11
+#pragma target 5.0
+
+#pragma kernel RunDetailsPass
+
+#include "../ChunkFunctions.hlsl"
+#include "../Biome.hlsl"
+#include "../ChunkColoring.hlsl"
+
+/* Inputs */
+StructuredBuffer<TriangleData> DetailTriangles;
+
+/* Outputs */
+RWStructuredBuffer<ChunkDetailData> DetailBuffer;
+
+[numthreads(64, 1, 1)]
+void RunDetailsPass(uint3 id : SV_DispatchThreadID)
+{
+    TriangleData tri = DetailTriangles[id.x];
+    ChunkDetailData d = (ChunkDetailData) 0;
+    
+    uint a = SampleBiomeIndex(tri.a);
+    uint b = SampleBiomeIndex(tri.b);
+    uint c = SampleBiomeIndex(tri.c);
+    
+    d.Biome = PackBiomeIndices(a, b, c, tri.LodIndex);
+    
+    // Using biome blending increases the compile time
+    // of this HLSL shader to 28 seconds from 14 seconds.
+    // I don't understand why ): 
+    d.ColorA = SampleBiomeBlended(tri.a);
+    d.ColorB = SampleBiomeBlended(tri.b);
+    d.ColorC = SampleBiomeBlended(tri.c);
+    
+    //d.ColorA = SampleBiomeBlend(Biomes[a], tri.a);
+    //d.ColorB = SampleBiomeBlend(Biomes[b], tri.b);
+    //d.ColorC = SampleBiomeBlend(Biomes[c], tri.c);
+
+    DetailBuffer[id.x] = d;
+}

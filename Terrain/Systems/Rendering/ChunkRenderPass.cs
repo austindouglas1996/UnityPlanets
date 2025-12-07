@@ -23,6 +23,9 @@ namespace GingerVoxelSystem.Systems.Rendering
             renderPassEvent = RenderPassEvent.AfterRenderingTransparents;
         }
 
+        /// <summary>
+        /// Dispose of the element.
+        /// </summary>
         public void Dispose()
         {
             if (router != null)
@@ -35,6 +38,7 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// Legacy URP execution path.
         /// Used when RenderGraph is disabled (Forward Renderer mode).
         /// </summary>
+        [Obsolete]
         public override void Execute(ScriptableRenderContext context, ref RenderingData data)
         {
             if (router == null)
@@ -80,5 +84,4 @@ namespace GingerVoxelSystem.Systems.Rendering
             public ChunkRenderRouter Router;
         }
     }
-
 }

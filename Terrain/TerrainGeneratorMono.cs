@@ -1,58 +1,34 @@
 namespace GingerVoxelSystem
 {
-    using UnityEngine;
     using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.Engine;
-    using GingerVoxelSystem.Helpers;
-    using GingerVoxelSystem.Systems.Chunks;
     using GingerVoxelSystem.Systems.Rendering;
+    using UnityEngine;
 
     /// <summary>
     /// Unity-facing entry point for terrain generation.
     /// Ties together chunk layout, rendering, and a chosen generator (default: marching cubes).
     /// </summary>
-    [RequireComponent(typeof(ChunkLayoutMono))]
+    [RequireComponent(typeof(IChunkGenerator))]
     [RequireComponent(typeof(ChunkRendererMono))]
     public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
     {
-        [Tooltip("Shader used for generation.")]
-        [SerializeField] public ComputeShader MarchingCubes;
-
-        /// <summary>
-        /// This material is marked here because if not, Unity release (in some cases) will not include the
-        /// material shader which is extremely frusturating.
-        /// </summary>
-        [Tooltip("Special material used for chunks.")]
-        [SerializeField] public Material ChunkMaterial;
-
         [Tooltip("Configuration for terrain generation.")]
-        public BaseChunkConfiguration ChunkConfiguration;
+        public ChunkConfiguration ChunkConfiguration;
 
-        protected ChunkLayoutMono chunkLayout;
         protected ChunkRendererMono chunkRenderer;
-
-        protected IChunkGenerator generator;
-        protected IChunkLayout layout;
+        protected IChunkGenerator chunkGenerator;
 
         /// <summary>
         /// Set up layout and renderer, and pick the generator backend.
         /// </summary>
         protected virtual void Awake()
         {
-            chunkLayout = GetComponent<ChunkLayoutMono>();
+            chunkGenerator = GetComponent<IChunkGenerator>();
             chunkRenderer = GetComponent<ChunkRendererMono>();
 
-            generator = new MarchingCubesChunkGenerator(this, MarchingCubes, ChunkMaterial);
-            layout = new BaseChunkLayout(ChunkConfiguration);
-
-            if (MarchingCubes == null)
-                Debug.LogError("ComputeShader not assigned.");
-            if (ChunkMaterial == null)
-                Debug.LogError("ChunkMaterial not assigned.");
             if (ChunkConfiguration == null)
                 Debug.LogError("ChunkConfiguration not assigned.");
 
-            chunkLayout.Initialize(layout);
             chunkRenderer.Initialize(this);
         }
 
@@ -62,23 +38,14 @@ namespace GingerVoxelSystem
         /// </summary>
         protected virtual void OnValidate()
         {
-            if (!Application.isPlaying || generator == null)
+            if (!Application.isPlaying || chunkGenerator == null)
                 return;
 
-            generator.UpdateOptions();
+            chunkGenerator.UpdateOptions();
             chunkRenderer.RefreshChunks();
         }
 
-        /// <summary>
-        /// Updated used for updating generator content.
-        /// </summary>
-        protected virtual void Update()
-        {
-            ConsoleTimer.WriteToConsole();
-        }
-
         IChunkConfiguration IChunkServices.Configuration => ChunkConfiguration;
-        IChunkLayout IChunkServices.Layout => layout;
-        IChunkGenerator IChunkServices.Generator => generator;
+        IChunkGenerator IChunkServices.Generator => chunkGenerator;
     }
 }

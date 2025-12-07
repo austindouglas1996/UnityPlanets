@@ -2,7 +2,6 @@ namespace GingerVoxelSystem.Systems.Rendering
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using UnityEngine;
     using UnityEngine.Rendering;
     using GingerVoxelSystem.Core;
@@ -62,6 +61,11 @@ namespace GingerVoxelSystem.Systems.Rendering
         }
 
         /// <summary>
+        /// An event called when a bucket is removed;
+        /// </summary>
+        public event EventHandler BucketRemoved;
+
+        /// <summary>
         /// Returns the amount of entries within this collection.
         /// </summary>
         public int KeysCount => keys.Count;
@@ -71,9 +75,12 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// Prefers refilling a previously-full bucket before touching the tail or creating a new one.
         /// </summary>
         /// <param name="key"></param>
-        public void Add(ChunkKey key)
+        public ChunkRenderBucket Add(ChunkKey key)
         {
-            if (keys.ContainsKey(key)) return;
+            if (keys.ContainsKey(key))
+            {
+                throw new System.ArgumentException("ChunkRenderBucketCollection tried to add an already existing key.");
+            }
 
             var bucket = GetOrCreateTailBucket();
 
@@ -86,8 +93,10 @@ namespace GingerVoxelSystem.Systems.Rendering
             }
             else
             {
-                Debug.LogWarning("Error: Failed to add key to bucket.");
+                throw new System.ArgumentException("Failed to add key into a bucket.");
             }
+
+            return bucket;
         }
 
         /// <summary>
@@ -111,6 +120,8 @@ namespace GingerVoxelSystem.Systems.Rendering
                         bucketsWithSpace.Remove(bucket);
 
                     this.buckets.Remove(bucket);
+
+                    this.BucketRemoved?.Invoke(bucket, EventArgs.Empty);
                 }
                 else if (!bucketsWithSpace.Contains(bucket))
                     bucketsWithSpace.Add(bucket);
@@ -199,11 +210,11 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// <returns></returns>
         private ChunkRenderBucket GetOrCreateTailBucket()
         {
-            Debug.LogWarning("We are using a .Where() here. This is not ideal.");
-            var availableBuckets = bucketsWithSpace.Where(r => !r.GenerateInProgress).ToList();
-            if (availableBuckets.Count != 0)
+            for (int i = 0; i < bucketsWithSpace.Count; i++)
             {
-                return availableBuckets[0];
+                var bucket = bucketsWithSpace[i];
+                if (!bucket.GenerateInProgress)
+                    return bucket;
             }
 
             if (buckets.Count == 0)

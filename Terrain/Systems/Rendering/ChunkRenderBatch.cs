@@ -42,6 +42,11 @@ namespace GingerVoxelSystem.Systems.Rendering
         public ComputeBuffer Details;
 
         /// <summary>
+        /// One of the buffers is unique.
+        /// </summary>
+        public ComputeBuffer DispatchArgs;
+
+        /// <summary>
         /// Indirect draw arguments buffer (ComputeBufferType.IndirectArguments).
         /// </summary>
         public ComputeBuffer Args;
@@ -59,18 +64,22 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// <param name="keys">Chunk keys included in this batch (for bounds computation).</param>
         /// <param name="services">Layout/services used to convert chunk keys to world space.</param>
         /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="Args"/> is null.</exception>
-        public ChunkRenderBatch(ComputeBuffer TriangleSource, ComputeBuffer TriangleDest, ComputeBuffer triangleCounts, ComputeBuffer triangleCursor, ComputeBuffer Details, ComputeBuffer densityMap, ComputeBuffer Args, IChunkServices services)
+        public ChunkRenderBatch(
+            ComputeBuffer TriangleSource, 
+            ComputeBuffer TriangleDest, 
+            ComputeBuffer triangleCounts, 
+            ComputeBuffer triangleCursor, 
+            ComputeBuffer Details, 
+            ComputeBuffer densityMap)
         {
-            if (Args == null)
-                throw new System.ArgumentNullException("args");
-
             this.RawTriangleBuffer = TriangleSource;
             this.FlatTriangleBuffer = TriangleDest;
             this.TriangleWriteCursor = triangleCursor;
             this.TriangleChunkCounts = triangleCounts;
             this.Details = Details;
             this.DensityMap = densityMap;
-            this.Args = Args;
+            this.Args = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
+            this.DispatchArgs = new ComputeBuffer(3, sizeof(uint), ComputeBufferType.IndirectArguments);
         }
 
         /// <summary>

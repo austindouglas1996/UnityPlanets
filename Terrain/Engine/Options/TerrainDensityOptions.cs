@@ -31,11 +31,11 @@ namespace GingerVoxelSystem.Engine
     /// </summary>
     public enum TemperatureBias
     {
-        ExtremelyCold = -4,
-        Cold = -2,
+        ExtremelyCold = -2,
+        Cold = -1,
         Normal = 0,
-        Hot = 2,
-        ExtremelyHot = 4
+        Hot = +1,
+        ExtremelyHot = +2
     }
 
     /// <summary>
@@ -44,11 +44,11 @@ namespace GingerVoxelSystem.Engine
     /// </summary>
     public enum HumidityBias
     {
-        VeryDry = -4,
-        Dry = -2,
+        VeryDry = -2,
+        Dry = -1,
         Normal = 0,
-        Wet = 2,
-        VeryWet = 4,
+        Wet = 1,
+        VeryWet = 2,
     }
 
     /// <summary>
@@ -57,11 +57,11 @@ namespace GingerVoxelSystem.Engine
     /// </summary>
     public enum FoliageBias
     {
-        None = -4,
-        VerySparse = -2,
+        None = -2,
+        VerySparse = -1,
         Normal = 0,
-        Rich = 2,
-        VeryRich = 4
+        Rich = 1,
+        VeryRich = 2
     }
 
     /// <summary>
@@ -70,11 +70,11 @@ namespace GingerVoxelSystem.Engine
     /// </summary>
     public enum WaterBias
     {
-        DriedUp = -4,
-        Low = -2,
+        DriedUp = -2,
+        Low = -1,
         Normal = 0,
-        High = 2,
-        Flooded = 4
+        High = 1,
+        Flooded = 2
     }
 
     /// <summary>

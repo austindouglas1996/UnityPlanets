@@ -1,10 +1,12 @@
 ﻿namespace GingerVoxelSystem.Systems.Generation
 {
-    using System.Collections.Generic;
-    using UnityEngine;
+    using DistantLands.Cozy;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Engine.Generation;
-    using GingerVoxelSystem.Helpers;
+    using System;
+    using System.Collections.Generic;
+    using UnityEditor.Experimental.GraphView;
+    using UnityEngine;
 
     /// <summary>
     /// A chunk-based octree that manages world detail through Level of Detail (LOD).
@@ -32,27 +34,30 @@
     public class ChunkLodOctree
     {
         /// <summary>
-        /// Tracks what stage a node is in:
-        /// - Unloaded: not in memory
-        /// - Loading: async request pending
-        /// - Ready: mesh is generated
-        /// - Subdivided: node has been replaced by children
-        /// </summary>
-        internal enum ContentPhase { Unloaded, Loading, Ready, Subdivided }
-
-        /// <summary>
         /// LOD decision outcome when evaluating a node:
         /// - KeepLeaf: no change
         /// - Subdivide: split into children
         /// - Merge: collapse children back to parent
         /// </summary>
-        internal enum LodDecision { KeepLeaf, Subdivide, Merge }
+        internal enum LodDecision 
+        { 
+            NoChange, // Do not change the node this time.
+            Subdivide, // Divide the node into 8 pieces.
+            Merge // Merge the node destroying its children.
+        }
 
         /// <summary>
-        /// Transient state during async operations to avoid double-scheduling.
-        /// Nodes should only ever be in one transition at a time.
+        /// Node state.
         /// </summary>
-        internal enum Transition { None, Subdivide, Merge }
+        internal enum NodeState
+        {
+            InActive,        // Element is freed awaiting to be set.
+            IdleLeaf,        // Leaf, mesh ready
+            AwaitGeneration, // Generation has been called, but awaiting confirmation.
+            AwaitSubdivide,  // Subdivide requested, surface checks pending
+            Subdivided,      // Children exist, parent hidden
+            AwaitMerge,      // Merge requested, waiting on mesh gen
+        }
 
         /// <summary>
         /// Represents a single node in the LOD tree.
@@ -65,98 +70,31 @@
 
             // Relationships
             public int ParentIndex = -1;
-            public List<int> Children = new List<int>();
+            public List<int> Children = new List<int>(8);
             public int ChildrenChecked = 0;
+            public int ChildrenExpected = 0;
+            public int ChildrenReady = 0;
 
             // State
-            public ContentPhase Phase = ContentPhase.Unloaded;    // Unloaded, Loading, Ready, Subdivided
-            public Transition Transition = Transition.None; // None, Subdivide, Merge
+            public NodeState State;
+            public bool MeshReady = false;
 
             // Helpers
-            public bool IsAlive = false;
-            public bool HasChildren => Children.Count != 0;
-            public bool IsLeaf => !HasChildren;
-            public Vector3Int Coordinates => Key.Coordinates;
             public int LODIndex => Key.LODIndex;
-
-            /// <summary>
-            /// Returns true if this node *can* safely subdivide given the desired LOD.
-            /// Landmine: Must only subdivide leaves that are NonEmpty and not already subdivided.
-            /// </summary>
-            /// <param name="desired"></param>
-            /// <returns></returns>
-            public bool CanSubdivide(int desired)
-            {
-                return Key.LODIndex > desired
-                    && Key.LODIndex != 0
-                    && IsLeaf
-                    && Phase != ContentPhase.Subdivided;
-            }
-
-            /// <summary>
-            /// Returns true if this node *can* safely merge back to a parent LOD.
-            /// Landmine: Only works if children exist.
-            /// </summary>
-            /// <param name="desired"></param>
-            /// <returns></returns>
-            public bool CanMerge(int desired)
-            {
-                return Key.LODIndex < desired && HasChildren;
-            }
 
             /// <summary>
             /// Reset all fields so the node can be reused.
             /// </summary>
             public void Free()
             {
+                this.MeshReady = false;
                 this.ParentIndex = -1;
                 this.Children.Clear();
+                this.ChildrenExpected = 0;
                 this.ChildrenChecked = 0;
-                this.Phase = ContentPhase.Unloaded;
-                this.Transition = Transition.None;
-                this.IsAlive = false;
-            }
-
-            /// <summary>
-            /// Enter a transition state. Prevents double scheduling.
-            /// Returns false if a transition was already in progress.
-            /// </summary>
-            /// <param name="newTransition"></param>
-            /// <returns></returns>
-            public bool StartTransition(Transition newTransition)
-            {
-                if (this.Transition != Transition.None)
-                    return false;
-
-                this.Phase = ContentPhase.Loading;
-                this.Transition = newTransition;
-
-                return true;
-            }
-
-            /// <summary>
-            /// Finish the current transition and update Phase accordingly.
-            /// </summary>
-            /// <returns></returns>
-            public bool FinishTransition()
-            {
-                if (this.Transition == Transition.None)
-                    return false;
-
-                switch (Transition)
-                {
-                    case Transition.Merge:
-                        Phase = ContentPhase.Ready;
-                        break;
-
-                    case Transition.Subdivide:
-                        Phase = ContentPhase.Subdivided; // parent becomes internal
-                        break;
-                }
-
-                this.Transition = Transition.None;
-
-                return true;
+                this.ChildrenReady = 0;
+                this.State = NodeState.InActive;
+                this.Key = ChunkKey.Invalid;
             }
         }
 
@@ -170,9 +108,11 @@
         /// Max number of nodes updated per Unity frame.
         /// This throttles Update() work to avoid spikes.
         /// </summary>
-        private const int UpdatePerTick = 500;
+        private const int UpdatePerTick = 250;
 
-        private readonly IChunkServices services;
+        private readonly ChunkMath math;
+        private readonly Transform follower;
+        private readonly IChunkConfiguration configuration;
         private readonly ChunkGenerationProcessor processor;
 
         private readonly List<ChunkLodTreeNode> Nodes = new();
@@ -190,9 +130,10 @@
         /// </summary>
         /// <param name="services"></param>
         /// <param name="processor"></param>
-        public ChunkLodOctree(IChunkServices services, ChunkGenerationProcessor processor)
+        public ChunkLodOctree(IChunkConfiguration configuration, Transform follower, ChunkGenerationProcessor processor)
         {
-            this.services = services;
+            this.math = new ChunkMath(configuration);
+            this.follower = follower;
             this.processor = processor;
         }
 
@@ -217,8 +158,6 @@
         /// </summary>
         public void Update()
         {
-            ConsoleTimer.Start("ChunkLODOctTree");
-
             int count = Nodes.Count;
             int processed = 0;
 
@@ -227,14 +166,15 @@
                 if (CurrentUpdateIndex >= count)
                     CurrentUpdateIndex = 0;
 
-                if (Nodes[CurrentUpdateIndex].IsAlive)
+                var node = Nodes[CurrentUpdateIndex];
+                if (node.State == NodeState.IdleLeaf || node.State == NodeState.Subdivided)
+                {
                     UpdateNode(CurrentUpdateIndex);
+                }
 
                 CurrentUpdateIndex++;
                 processed++;
             }
-
-            ConsoleTimer.Stop("ChunkLODOctTree");
         }
 
         /// <summary>
@@ -245,15 +185,42 @@
         {
             var n = Nodes[index];
 
-            if (n.Phase == ContentPhase.Loading)
-                return;
+            if (n.Key == ChunkKey.Invalid)
+            {
+                throw new System.ArgumentException("Invalid key provided for update.");
+            }
 
             var decision = GetLODDecision(n);
-            if (decision == LodDecision.Subdivide) PerformSubdivide(index);
-            else if (decision == LodDecision.Merge) PerformMerge(index);
 
-            if (n.IsLeaf && n.Phase == ContentPhase.Unloaded)
-                RequestGeneration(n);
+            switch (n.State)
+            {
+                case NodeState.IdleLeaf:
+                    if (decision == LodDecision.Subdivide)
+                    {
+                        PerformSubdivide(index);
+                        return;
+                    }
+
+                    if (!n.MeshReady)
+                    {
+                        n.State = NodeState.AwaitGeneration;
+                        this.processor.RequestChunkGeneration(n.Key, OnRequestGenerationCompleted);
+                    }
+                    return;
+                case NodeState.Subdivided:
+                    if (decision == LodDecision.Merge)
+                    {
+                        PerformMerge(index);
+                        return;
+                    }
+                    return;
+                case NodeState.AwaitSubdivide:
+                    return;
+                case NodeState.AwaitMerge:
+                    return;
+                case NodeState.AwaitGeneration:
+                    return;
+            }
         }
 
         /// <summary>
@@ -262,8 +229,11 @@
         /// <returns></returns>
         private int AllocSingleBlock()
         {
-            if (FreeSingleBlocks.Count > 0) return FreeSingleBlocks.Pop();
+            if (FreeSingleBlocks.Count > 0) 
+                return FreeSingleBlocks.Pop();
+
             Nodes.Add(new ChunkLodTreeNode());
+
             return Nodes.Count - 1;
         }
 
@@ -274,11 +244,10 @@
         private void FreeSingleBlock(int index)
         {
             var n = Nodes[index];
-            if (n.IsAlive)
-            {
-                IndexByKey.Remove(n.Key);
-                processor.RemoveChunk(n.Key);
-            }
+
+            IndexByKey.Remove(n.Key);
+            processor.RemoveChunk(n.Key);
+
             n.Free();
             FreeSingleBlocks.Push(index);
         }
@@ -291,19 +260,31 @@
         /// <returns></returns>
         private LodDecision GetLODDecision(ChunkLodTreeNode node)
         {
-            // Don't touch while transitioning. 
-            if (node.Transition != Transition.None)
-                return LodDecision.KeepLeaf;
+            if (node.State == NodeState.AwaitSubdivide ||
+                node.State == NodeState.AwaitMerge)
+            {
+                return LodDecision.NoChange;
+            }
 
-            int desired = services.Layout.GetLODForChunk(node.Key.Global);
+            int desired = math.GetLODForChunk(node.Key.Global, follower.transform.position);
 
-            if (node.CanSubdivide(desired))
-                return LodDecision.Subdivide;
+            if (node.State == NodeState.IdleLeaf)
+            {
+                if (node.LODIndex != 0 && node.LODIndex > desired)
+                    return LodDecision.Subdivide;
 
-            if (node.CanMerge(desired))
-                return LodDecision.Merge;
+                return LodDecision.NoChange;
+            }
 
-            return LodDecision.KeepLeaf;
+            if (node.State == NodeState.Subdivided)
+            {
+                if (node.LODIndex < RootLOD && node.LODIndex <= desired)
+                    return LodDecision.Merge;
+
+                return LodDecision.NoChange;
+            }
+
+            return LodDecision.NoChange;
         }
 
         /// <summary>
@@ -313,7 +294,16 @@
         private void PerformSubdivide(int index)
         {
             ChunkLodTreeNode node = Nodes[index];
-            node.StartTransition(Transition.Subdivide);
+            node.State = NodeState.AwaitSubdivide;
+
+            // Handle edge case: child subdivides before generating.
+            // Only count it as resolved if the *parent* is in AwaitSubdivide.
+            if (node.ParentIndex != -1)
+            {
+                var parent = Nodes[node.ParentIndex];
+                if (parent.State == NodeState.AwaitSubdivide)
+                    MarkChildResolvedIfHasParent(index);
+            }
 
             for (int i = 0; i < 8; i++)
             {
@@ -332,10 +322,25 @@
         private void PerformMerge(int index)
         {
             ChunkLodTreeNode node = Nodes[index];
-            node.StartTransition(Transition.Merge);
 
-            // Request gen.
-            this.RequestGeneration(node);
+            // Wait until all children finish
+            foreach (var childIndex in node.Children)
+                if (Nodes[childIndex].State != NodeState.IdleLeaf)
+                    return; // keep waiting; UpdateNode will try again later
+
+            // Set to merge.
+            node.State = NodeState.AwaitMerge;
+
+            if (!node.MeshReady)
+            {
+                // Request generation using our modified completion.
+                this.processor.RequestChunkGeneration(node.Key, OnRequestGenerationMergeCompleted);
+            }
+            else
+            {
+                // Resolves an issue where merge happens before the parent mesh is destroyed.
+                this.OnMergeComplete(node);
+            }
         }
 
         /// <summary>
@@ -347,20 +352,10 @@
         /// <param name="parentIndex"></param>
         private void TryCreateSingleNode(ChunkKey key, int parentIndex = -1)
         {
-            this.processor.RequestSurfaceCheck(key, OnSurfaceCheckCompleted, parentIndex);
-        }
+            if (this.IndexByKey.ContainsKey(key))
+                throw new ArgumentException("Asking to create a node with an existing key.");
 
-        /// <summary>
-        /// Request actual chunk generation (mesh build). Called for leaves that passed surface check. 
-        /// Also used during merge to recreate parent mesh.
-        /// Landmine: if this fails or you forget to clear children, you'll leak nodes.
-        /// </summary>
-        /// <param name="node"></param>
-        /// <exception cref="System.ArgumentException"></exception>
-        private void RequestGeneration(ChunkLodTreeNode node)
-        {
-            node.Phase = ContentPhase.Loading;
-            this.processor.RequestChunkGeneration(node.Key, OnRequestGenerationCompleted);
+            this.processor.RequestSurfaceCheck(key, OnSurfaceCheckCompleted, parentIndex);
         }
 
         /// <summary>
@@ -373,36 +368,45 @@
         {
             ChunkLodTreeNode parent = null;
 
+            // Should we notify the parent this child been checked?
             if (parentIndex != -1)
             {
                 parent = Nodes[parentIndex];
                 parent.ChildrenChecked++;
-
-                if (parent.ChildrenChecked == 8)
-                {
-                    parent.FinishTransition();
-                    processor.RemoveChunk(parent.Key);
-                }
             }
 
             if (hasSurface)
             {
-                int index = AllocSingleBlock();
-                ChunkLodTreeNode node = Nodes[index];
+                int childIndex = AllocSingleBlock();
+                var child = Nodes[childIndex];
 
-                node.Key = key;
-                node.IsAlive = true;
-                node.ParentIndex = parentIndex;
-
-                if (parentIndex != -1 && parent != null)
+                if (key == ChunkKey.Invalid)
                 {
-                    parent.Children.Add(index);
+                    throw new System.ArgumentException("Invalid key returned on surface check.");
                 }
 
-                // Add to entry.
-                Nodes[index] = node;
-                IndexByKey.TryAdd(node.Key, index);
+                // If we have already seen this key skip.
+                if (!IndexByKey.TryAdd(key, childIndex))
+                {
+                    FreeSingleBlock(childIndex);
+                }
+                else
+                {
+                    child.Key = key;
+                    child.State = NodeState.IdleLeaf;
+                    child.ParentIndex = parentIndex;
+
+                    if (parentIndex != -1)
+                    {
+                        parent.ChildrenExpected++;
+                        parent.Children.Add(childIndex);
+                    }
+                }
             }
+
+            // Did we complete all 8 checks with no children?
+            if (parentIndex != -1 && parent.ChildrenChecked == 8 && parent.ChildrenExpected == 0)
+                parent.State = NodeState.IdleLeaf;
         }
 
         /// <summary>
@@ -411,39 +415,80 @@
         /// <param name="node"></param>
         /// <param name="success"></param>
         /// <exception cref="System.ArgumentException"></exception>
-        private void OnRequestGenerationCompleted(ChunkKey key, int parentIndex, bool success)
+        private void OnRequestGenerationCompleted(ChunkKey key, int thisIsNotUsedIgnoreIt, bool success)
         {
-            int nodeIndex = -1;
-            if (!IndexByKey.TryGetValue(key, out nodeIndex))
-                return;
+            if (!success)
+                throw new System.ArgumentException("Chunk generation failed.");
+
+            if (!IndexByKey.TryGetValue(key, out int nodeIndex))
+                throw new System.ArgumentNullException("Invalid key returned.");
 
             ChunkLodTreeNode node = Nodes[nodeIndex];
+            node.MeshReady = true;
+            node.State = NodeState.IdleLeaf;
 
-            if (success)
-            {
-                node.Phase = ContentPhase.Ready;
-            }
-            else
-            {
+            // Handle parent relationship.
+            MarkChildResolvedIfHasParent(nodeIndex);
+        }
+
+        /// <summary>
+        /// Handle the execution of the generation job for a node that is merging.
+        /// </summary>
+        /// <param name="node"></param>
+        /// <param name="success"></param>
+        /// <exception cref="System.ArgumentException"></exception>
+        private void OnRequestGenerationMergeCompleted(ChunkKey key, int parentIndex, bool success)
+        {
+            if (!IndexByKey.TryGetValue(key, out int nodeIndex))
+                throw new System.ArgumentNullException("Invalid key returned.");
+
+            ChunkLodTreeNode node = Nodes[nodeIndex];
+            if (!success)
                 throw new System.ArgumentException("Chunk generation failed.");
+
+            this.OnMergeComplete(node);
+        }
+
+        /// <summary>
+        /// Finalize the merge process by killing the children of a node.
+        /// </summary>
+        /// <param name="node"></param>
+        private void OnMergeComplete(ChunkLodTreeNode node)
+        {
+            // The children can be safely removed now.
+            foreach (var child in node.Children)
+            {
+                FreeSingleBlock(child);
             }
 
-            // Was this a merge request?
-            if (node.Transition == Transition.Merge)
+            node.Children.Clear();
+            node.ChildrenExpected = 0;
+            node.ChildrenChecked = 0;
+            node.ChildrenReady = 0;
+
+            node.MeshReady = true;
+            node.State = NodeState.IdleLeaf;
+        }
+
+        /// <summary>
+        /// Increase the count of ready children for a given node.
+        /// </summary>
+        /// <param name="childNode"></param>
+        private void MarkChildResolvedIfHasParent(int childNode)
+        {
+            ChunkLodTreeNode node = Nodes[childNode];
+            if (node.ParentIndex == -1)
+                return;
+
+            ChunkLodTreeNode parent = Nodes[node.ParentIndex];
+            parent.ChildrenReady++;
+
+            if (parent.ChildrenReady == parent.ChildrenExpected &&
+                parent.ChildrenChecked == 8)
             {
-                if (success)
-                {
-                    // The children can be safely removed now.
-                    foreach (var child in node.Children)
-                    {
-                        FreeSingleBlock(child);
-                    }
-
-                    node.Children.Clear();
-                    node.ChildrenChecked = 0;
-                }
-
-                node.FinishTransition();
+                parent.MeshReady = false;
+                parent.State = NodeState.Subdivided;
+                processor.RemoveChunk(parent.Key);
             }
         }
 

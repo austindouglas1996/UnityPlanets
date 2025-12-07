@@ -10,7 +10,7 @@ namespace GingerVoxelSystem.EditorSupport
     [CreateAssetMenu(menuName = "Terrain/Biome Library", fileName = "BiomeLibrary")]
     public class BiomeLibraryAsset : ScriptableObject
     {
-        [SerializeField] private List<Biome> biomes = new();
-        public IReadOnlyList<Biome> Biomes => biomes;
+        [SerializeField] private List<BiomeAsset> biomes = new();
+        public IReadOnlyList<BiomeAsset> Biomes => biomes;
     }
 }

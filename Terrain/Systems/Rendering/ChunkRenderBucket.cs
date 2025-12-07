@@ -2,11 +2,11 @@ namespace GingerVoxelSystem.Systems.Rendering
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Runtime.CompilerServices;
     using UnityEngine;
     using UnityEngine.Rendering;
     using GingerVoxelSystem.Core;
+    using Assets.Scripts.Terrain.Engine;
 
     /// <summary>
     /// A collection of chunk keys to help with distributing render data.
@@ -121,7 +121,13 @@ namespace GingerVoxelSystem.Systems.Rendering
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryAdd(ChunkKey key)
         {
-            if (index.ContainsKey(key) || IsFull) return false;
+            if (index.ContainsKey(key))
+            {
+                Debug.LogError("ChunkRenderBucket tried to add an existing key.");
+                return false;
+            }
+
+            if (IsFull) return false;
 
             int pos;
             if (AvailableSlots.Count != 0)
@@ -174,7 +180,10 @@ namespace GingerVoxelSystem.Systems.Rendering
         private bool TryRemoveInternal(ChunkKey key, bool ignoreQueue = false)
         {
             if (!index.TryGetValue(key, out int i))
+            {
+                Debug.LogWarning("ChunkRenderBucket tried to remove an invalid key.");
                 return false;
+            }
 
             index.Remove(key);
             items[i] = null;
@@ -309,8 +318,8 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// </summary>
         protected virtual void OnDispatchGeneration()
         {
-            Debug.LogWarning("We are doing .ToArray() which makes a copy of the list. Fix it.");
-            chunkGenerator.DispatchGeneration(items.ToArray(), nextIndex, modifications, OnDispatchGenerationCompleted, this.renderData);
+            DispatchJob job = new DispatchJob(items, nextIndex, modifications, this.renderData, OnDispatchGenerationCompleted);
+            chunkGenerator.DispatchGeneration(job);
         }
 
         /// <summary>

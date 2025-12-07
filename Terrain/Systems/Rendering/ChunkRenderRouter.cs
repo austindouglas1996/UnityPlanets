@@ -4,13 +4,12 @@
     using System.Collections.Generic;
     using UnityEngine.Rendering;
     using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.Helpers;
     using GingerVoxelSystem.Systems.Generation;
 
     /// <summary>
     /// Thin “lane switch” over two <see cref="ChunkRenderBucketCollection"/>s:
     /// one for LOD0, one for everything else. I hand it <see cref="ChunkKey"/>s and
-    /// it routes them to the right pool; I call <see cref="Update"/> / <see cref="Draw(Material)"/> once.
+    /// it routes them to the right pool; I call <see cref="Update"/> / <see cref="Draw"/> once.
     /// No Unity-specific bits here except the draw material.
     /// </summary>
     /// <remarks>
@@ -23,8 +22,8 @@
         /// A collection of main buckets used throughout generation.
         /// </summary>
         private List<ChunkRenderBucketCollection> lodBuckets = new();
+        private readonly Dictionary<ChunkRenderBucket, List<ChunkGenerationJob>> callBacks = new();
 
-        private IChunkServices chunkServices;
         private IChunkGenerator chunkGenerator;
 
         /// <summary>
@@ -35,20 +34,15 @@
         /// <param name="mainThres">Removals before a non-LOD0 bucket regenerates.</param>
         /// <param name="lod0Cap">Max items per LOD0 bucket (keep this small: 24–32 is nice).</param>
         /// <param name="lod0Thres">Removals before an LOD0 bucket regenerates.</param>
-        public ChunkRenderRouter(IChunkServices services, IChunkGenerator chunkGenerator, int mainCap, int lod0Cap)
+        public ChunkRenderRouter(IChunkServices services, IChunkGenerator chunkGenerator, int capPerBucket)
         {
-            this.chunkServices = services;
             this.chunkGenerator = chunkGenerator;
 
-            // This is still in testing. Add/remove a new collection as LODs increase
-            // currently only LOD0 is allowed collision as its CPU intensive.
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, true, lod0Cap));
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, mainCap));
+            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, true, capPerBucket));
+            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, capPerBucket));
+
+            lodBuckets[0].BucketRemoved += Bucket_Removed;
+            lodBuckets[1].BucketRemoved += Bucket_Removed;
         }
 
         /// <summary>
@@ -57,7 +51,18 @@
         /// </summary>
         public void Add(ChunkGenerationJob job)
         {
-            lodBuckets[job.Key.LODIndex].Add(job.Key);
+            var bucket = lodBuckets[job.Key.LODIndex == 0 ? 0 : 1].Add(job.Key);
+
+            // Ensure list exists
+            if (!callBacks.TryGetValue(bucket, out var list))
+            {
+                callBacks[bucket] = new();
+
+                // Subscribe exactly once
+                bucket.OnGenerate += Bucket_OnGenerate;
+            }
+
+            callBacks[bucket].Add(job);
         }
 
         /// <summary>
@@ -66,7 +71,7 @@
         /// </summary>
         public bool Remove(ChunkKey key)
         {
-            return lodBuckets[key.LODIndex].Remove(key);
+            return lodBuckets[key.LODIndex == 0 ? 0 : 1].Remove(key);
         }
 
         /// <summary>
@@ -85,14 +90,10 @@
         /// </summary>
         public void Update()
         {
-            ConsoleTimer.Start("ChunkRouter.Update");
-
             foreach (var bucket in lodBuckets)
             {
                 bucket.Update();
             }
-
-            ConsoleTimer.Stop("ChunkRouter.Update");
         }
 
         /// <summary>
@@ -130,6 +131,41 @@
                 bucket.MarkAsDirty(force);
             }
         }
-    }
 
+        /// <summary>
+        /// Call collected <see cref="ChunkGenerationJob"/>s and set them to complete.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Bucket_OnGenerate(object sender, EventArgs e)
+        {
+            var bucket = (ChunkRenderBucket)sender;
+
+            // If bucket was removed mid-frame, ignore safely
+            if (!callBacks.TryGetValue(bucket, out var list))
+                return;
+
+            // Notify all jobs waiting on this bucket
+            foreach (var job in list)
+                job.OnDone(job.Key, job.ParentIndex, true);
+
+            list.Clear();
+        }
+
+        /// <summary>
+        /// Call when a bucket is removed we no longer need to watch for jobs.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Bucket_Removed(object sender, EventArgs e)
+        {
+            var bucket = (ChunkRenderBucket)sender;
+
+            // If we tracked callbacks for this bucket, remove them & unsubscribe
+            if (callBacks.Remove(bucket))
+            {
+                bucket.OnGenerate -= Bucket_OnGenerate;
+            }
+        }
+    }
 }

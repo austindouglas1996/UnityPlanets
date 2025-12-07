@@ -1,0 +1,67 @@
+#pragma only_renderers d3d11
+#pragma target 5.0
+
+#pragma kernel RunRepack
+#pragma kernel RunRepackPrePass
+
+#include "../ChunkFunctions.hlsl"
+
+/* Inputs */
+uint BatchSize;
+RWStructuredBuffer<ChunkDispatchKey> ChunkInputs;
+StructuredBuffer<uint> TriangleCount;
+
+/* Outputs */
+RWStructuredBuffer<uint> ArgsBuffer;
+RWStructuredBuffer<uint> DispatchArgsBuffer;
+RWStructuredBuffer<TriangleData> TriangleSourceBuffer;
+RWStructuredBuffer<TriangleData> TriangleDestBuffer;
+
+[numthreads(1, 1, 1)]
+void RunRepackPrePass(uint id : SV_DispatchThreadID)
+{
+    uint baseIndex = 0;
+
+    for (uint i = 0; i < BatchSize; i++)
+    {
+        ChunkDispatchKey key = ChunkInputs[i];
+        uint count = TriangleCount[i];
+
+        key.SourceCount = count;
+        key.SourceOffset = 1500 * i;
+        key.DestStart = baseIndex;
+
+        // write back
+        ChunkInputs[i] = key;
+
+        baseIndex += count;
+    }
+    
+    // Set args buffer.
+    ArgsBuffer[0] = baseIndex * 3; // vertex count
+    ArgsBuffer[1] = 1; // instance count
+    ArgsBuffer[2] = 0; // start vertex
+    ArgsBuffer[3] = 0; // start instance
+    ArgsBuffer[4] = 0; // padding (this is bidirectional)
+    
+    // This is used for the next one.
+    DispatchArgsBuffer[0] = (baseIndex + 63) / 64; // Cieling.
+    DispatchArgsBuffer[1] = 1;
+    DispatchArgsBuffer[2] = 1;
+}
+
+[numthreads(64, 1, 1)]
+void RunRepack(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadID)
+{
+    ChunkDispatchKey chunkKey = ChunkInputs[groupId.x];
+    
+    uint srcOffset = chunkKey.SourceOffset;
+    uint count = chunkKey.SourceCount;
+    uint dstStart = chunkKey.DestStart;
+
+    // Each thread copies every 64th triangle
+    for (uint t = tid.x; t < count; t += 64)
+    {
+        TriangleDestBuffer[dstStart + t] = TriangleSourceBuffer[srcOffset + t];
+    }
+}

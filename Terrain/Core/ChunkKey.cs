@@ -36,6 +36,16 @@ namespace GingerVoxelSystem.Core
             LODIndex = lod;
         }
 
+        public static bool operator ==(ChunkKey a, ChunkKey b)
+        {
+            return a.Equals(b);
+        }
+
+        public static bool operator !=(ChunkKey a, ChunkKey b)
+        {
+            return !a.Equals(b);
+        }
+
         /// <summary>
         /// An invalid key reference.
         /// </summary>
