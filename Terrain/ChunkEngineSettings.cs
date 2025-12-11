@@ -28,6 +28,6 @@
 
         // Maximum number of triangles after packing/compression.
         // This represents the upper bound for GPU memory allocation.
-        public const int TrianglesPerChunkPacked = 750;
+        public const int TrianglesPerChunkPacked = 1250;
     }
 }

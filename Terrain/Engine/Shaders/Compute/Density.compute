@@ -23,7 +23,7 @@ groupshared uint gHasBelow;
 void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
 {
     ChunkDispatchKeyInfo info = GetChunkAccessSamples(id, Offset, ChunkInputs);
-    DensityMap[info.SampleIndex] = GenerateNoiseValue(info.WorldPos, info.chunk.LodIndex);
+    DensityMap[info.SampleIndex] = GenerateNoiseValue(info.WorldPos);
 }
 
 [numthreads(4, 4, 4)]
@@ -62,7 +62,7 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
                 const float wz = origin.z + z * step;
 
                 // Uniform branch on subvariant is fine; compiler will keep it outside inner loop
-                float v = GenerateNoiseValue(float3(wx, wy, wz), chunk.LodIndex);
+                float v = GenerateNoiseValue(float3(wx, wy, wz));
 
                 // Set flags (branchless) and combine with atomics
                 // (bool → uint: (v >= iso) ? 1 : 0)

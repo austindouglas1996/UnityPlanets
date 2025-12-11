@@ -13,6 +13,50 @@ MonoBehaviour:
   m_Name: SimpleLibrary
   m_EditorClassIdentifier: Assembly-CSharp::BiomeLibrary
   biomes:
+  - Name: Beach
+    Height: 1
+    Temperature: 1
+    Humidity: 1
+    Foliage: 0
+    Highlight: {r: 1, g: 0.92156863, b: 0.7254902, a: 0}
+    Light: {r: 0.9411765, g: 0.8235294, b: 0.5686275, a: 0}
+    MidLight: {r: 0.8627451, g: 0.7058824, b: 0.43137255, a: 0}
+    Mid: {r: 0.78431374, g: 0.5882353, b: 0.3137255, a: 0}
+    Dark: {r: 0.6666667, g: 0.47058824, b: 0.23529412, a: 0}
+    Shadow: {r: 0.54901963, g: 0.37254903, b: 0.1764706, a: 0}
+  - Name: Grasslands
+    Height: 2
+    Temperature: 2
+    Humidity: 1
+    Foliage: 1
+    Highlight: {r: 0.78431374, g: 0.9411765, b: 0.627451, a: 0}
+    Light: {r: 0.64705884, g: 0.84313726, b: 0.50980395, a: 0}
+    MidLight: {r: 0.50980395, g: 0.7254902, b: 0.39215687, a: 0}
+    Mid: {r: 0.39215687, g: 0.60784316, b: 0.3137255, a: 0}
+    Dark: {r: 0.29411766, g: 0.49019608, b: 0.23529412, a: 0}
+    Shadow: {r: 0.19607843, g: 0.37254903, b: 0.15686275, a: 0}
+  - Name: Forest
+    Height: 2
+    Temperature: 1
+    Humidity: 1
+    Foliage: 2
+    Highlight: {r: 0.7254902, g: 0.88235295, b: 0.47058824, a: 0}
+    Light: {r: 0.5686275, g: 0.78431374, b: 0.3529412, a: 0}
+    MidLight: {r: 0.43137255, g: 0.6862745, b: 0.27450982, a: 0}
+    Mid: {r: 0.33333334, g: 0.5882353, b: 0.21568628, a: 0}
+    Dark: {r: 0.25490198, g: 0.47058824, b: 0.19607843, a: 0}
+    Shadow: {r: 0.1764706, g: 0.3529412, b: 0.1764706, a: 0}
+  - Name: Mountains
+    Height: 2
+    Temperature: 2
+    Humidity: -1
+    Foliage: -1
+    Highlight: {r: 0.8235294, g: 0.8235294, b: 0.8235294, a: 0}
+    Light: {r: 0.7058824, g: 0.7058824, b: 0.7058824, a: 0}
+    MidLight: {r: 0.54901963, g: 0.54901963, b: 0.54901963, a: 0}
+    Mid: {r: 0.43137255, g: 0.43137255, b: 0.43137255, a: 0}
+    Dark: {r: 0.3137255, g: 0.3137255, b: 0.3137255, a: 0}
+    Shadow: {r: 0.66666657, g: 0.66666657, b: 0.66666657, a: 0}
   - Name: Deep Ocean
     Height: 0
     Temperature: 0
@@ -90,17 +134,6 @@ MonoBehaviour:
     Mid: {r: 0.5686275, g: 0.4509804, b: 0.4117647, a: 0}
     Dark: {r: 0.43137255, g: 0.33333334, b: 0.3529412, a: 0}
     Shadow: {r: 0.3137255, g: 0.23529412, b: 0.27450982, a: 0}
-  - Name: Beach
-    Height: 1
-    Temperature: 1
-    Humidity: 1
-    Foliage: 0
-    Highlight: {r: 1, g: 0.92156863, b: 0.7254902, a: 0}
-    Light: {r: 0.9411765, g: 0.8235294, b: 0.5686275, a: 0}
-    MidLight: {r: 0.8627451, g: 0.7058824, b: 0.43137255, a: 0}
-    Mid: {r: 0.78431374, g: 0.5882353, b: 0.3137255, a: 0}
-    Dark: {r: 0.6666667, g: 0.47058824, b: 0.23529412, a: 0}
-    Shadow: {r: 0.54901963, g: 0.37254903, b: 0.1764706, a: 0}
   - Name: Icy Shore
     Height: 1
     Temperature: 0
@@ -123,28 +156,6 @@ MonoBehaviour:
     Mid: {r: 0.64705884, g: 0.6862745, b: 0.50980395, a: 0}
     Dark: {r: 0.50980395, g: 0.5882353, b: 0.39215687, a: 0}
     Shadow: {r: 0.3529412, g: 0.43137255, b: 0.27450982, a: 0}
-  - Name: Grasslands
-    Height: 2
-    Temperature: 2
-    Humidity: 1
-    Foliage: 1
-    Highlight: {r: 0.78431374, g: 0.9411765, b: 0.627451, a: 0}
-    Light: {r: 0.64705884, g: 0.84313726, b: 0.50980395, a: 0}
-    MidLight: {r: 0.50980395, g: 0.7254902, b: 0.39215687, a: 0}
-    Mid: {r: 0.39215687, g: 0.60784316, b: 0.3137255, a: 0}
-    Dark: {r: 0.29411766, g: 0.49019608, b: 0.23529412, a: 0}
-    Shadow: {r: 0.19607843, g: 0.37254903, b: 0.15686275, a: 0}
-  - Name: Forest
-    Height: 2
-    Temperature: 1
-    Humidity: 1
-    Foliage: 2
-    Highlight: {r: 0.7254902, g: 0.88235295, b: 0.47058824, a: 0}
-    Light: {r: 0.5686275, g: 0.78431374, b: 0.3529412, a: 0}
-    MidLight: {r: 0.43137255, g: 0.6862745, b: 0.27450982, a: 0}
-    Mid: {r: 0.33333334, g: 0.5882353, b: 0.21568628, a: 0}
-    Dark: {r: 0.25490198, g: 0.47058824, b: 0.19607843, a: 0}
-    Shadow: {r: 0.1764706, g: 0.3529412, b: 0.1764706, a: 0}
   - Name: Taiga
     Height: 2
     Temperature: 0
@@ -200,17 +211,6 @@ MonoBehaviour:
     Mid: {r: 0.29411766, g: 0.39215687, b: 0.27450982, a: 0}
     Dark: {r: 0.21568628, g: 0.29411766, b: 0.23529412, a: 0}
     Shadow: {r: 0.15686275, g: 0.21568628, b: 0.19607843, a: 0}
-  - Name: Mountains
-    Height: 2
-    Temperature: 2
-    Humidity: -1
-    Foliage: -1
-    Highlight: {r: 0.8235294, g: 0.8235294, b: 0.8235294, a: 0}
-    Light: {r: 0.7058824, g: 0.7058824, b: 0.7058824, a: 0}
-    MidLight: {r: 0.54901963, g: 0.54901963, b: 0.54901963, a: 0}
-    Mid: {r: 0.43137255, g: 0.43137255, b: 0.43137255, a: 0}
-    Dark: {r: 0.3137255, g: 0.3137255, b: 0.3137255, a: 0}
-    Shadow: {r: 0.19607843, g: 0.19607843, b: 0.19607843, a: 0}
   - Name: Snowy Peaks
     Height: 2
     Temperature: 0

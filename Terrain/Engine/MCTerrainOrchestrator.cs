@@ -10,6 +10,7 @@
     using System.Collections.Generic;
     using System.Runtime.InteropServices;
     using UnityEngine;
+    using UnityEngine.Rendering;
 
     /// <summary>
     /// High-level marching-cubes pipeline. 

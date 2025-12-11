@@ -39,13 +39,7 @@ inline float N01(float n)
 // Converts a number to [-1,1]
 inline float N11(float n)
 {
-    return saturate(n) * 2 - 1;
-}
-
-// Normalize to [-1,1] with saturate
-inline float N11SAT(float n)
-{
-    return saturate(n) * 2 - 1;
+    return n * 2 - 1;
 }
 
 // Quantize [0..1] value into N discrete bins (0..N-1)

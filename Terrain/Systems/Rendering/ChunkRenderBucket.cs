@@ -329,20 +329,14 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// <param name="output"></param>
         protected virtual void OnDispatchGenerationCompleted(ChunkRenderBatch output)
         {
-            RenderData = output;
-
-            // Something went wrong to reach this.
-            if (this.RenderData == null)
+            if (RenderData != output)
             {
-                this.IsDirty = false;
-                this.GenerateInProgress = false;
-                return;
+                RenderData = output;
+                mpb.SetBuffer("_TriangleBuffer", RenderData.FlatTriangleBuffer);
+                mpb.SetBuffer("_TriangleDetailsBuffer", RenderData.Details);
             }
 
             OnGenerate?.Invoke(this, EventArgs.Empty);
-
-            mpb.SetBuffer("_TriangleBuffer", RenderData.FlatTriangleBuffer);
-            mpb.SetBuffer("_TriangleDetailsBuffer", RenderData.Details);
 
             this.IsDirty = false;
             this.GenerateInProgress = false;

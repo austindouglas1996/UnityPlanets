@@ -1,9 +1,10 @@
 namespace GingerVoxelSystem.Systems.Rendering
 {
+    using GingerVoxelSystem.Core;
     using System;
+    using System.Runtime.InteropServices;
     using UnityEngine;
     using UnityEngine.Rendering;
-    using GingerVoxelSystem.Core;
 
     /// <summary>
     /// Draw-ready container for a chunk group: triangle append buffer + indirect args + culling bounds.
@@ -126,11 +127,34 @@ namespace GingerVoxelSystem.Systems.Rendering
                 throw new System.InvalidOperationException("Set has been disposed of.");
             }
 
-            AsyncGPUReadback.Request(set.FlatTriangleBuffer, rTris =>
+            AsyncGPUReadback.Request(set.Args, (reqArgs) =>
             {
-                if (rTris.hasError) { onDone(Array.Empty<TriangleDataGPU>()); return; }
+                if (reqArgs.hasError)
+                {
+                    onDone(Array.Empty<TriangleDataGPU>());
+                    return;
+                }
 
-                var output = rTris.GetData<TriangleDataGPU>().ToArray();
+                uint vertexCount = reqArgs.GetData<uint>()[0];
+                int triCount = (int)vertexCount / 3;
+
+                ReadTriangles(set, triCount, onDone);
+            });
+        }
+
+        private static void ReadTriangles(ChunkRenderBatch set, int triCount, Action<TriangleDataGPU[]> onDone)
+        {
+            int bytes = triCount * Marshal.SizeOf<TriangleDataGPU>();
+
+            AsyncGPUReadback.Request(set.FlatTriangleBuffer, bytes, 0, (reqTris) =>
+            {
+                if (reqTris.hasError)
+                {
+                    onDone(Array.Empty<TriangleDataGPU>());
+                    return;
+                }
+
+                var output = reqTris.GetData<TriangleDataGPU>().ToArray();
                 onDone(output);
             });
         }

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: DetailNormal
   m_EditorClassIdentifier: Assembly-CSharp::LODThresholds
   LOD0: 3
-  LOD1: 3
+  LOD1: 6
   LOD2: 2
   LOD3: 2
   LOD4: 2

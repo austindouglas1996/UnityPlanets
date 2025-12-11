@@ -100,17 +100,17 @@ int UnpackLOD(uint packed)
 // Sample a given position to find its biome data which is important for coloring.
 uint SampleBiomeIndex(float3 worldPos)
 {
-    float hVal = SampleHeight(worldPos);
-    float tVal = SampleTemperature(worldPos, hVal);
-    float mVal = SampleHumidity(worldPos, hVal, tVal);
-    float fVal = SampleFoliage(worldPos, hVal, tVal, mVal);
+    //float hVal = SampleHeight(worldPos);
+    //float tVal = SampleTemperature(worldPos, hVal);
+    //float mVal = SampleHumidity(worldPos, hVal, tVal);
+    //float fVal = SampleFoliage(worldPos, hVal, tVal, mVal);
 
-    uint h = QuantizeN(hVal, 3);
-    uint t = QuantizeN(tVal, 4);
-    uint m = QuantizeN(mVal, 3);
-    uint f = QuantizeN(fVal, 3);
+    //uint h = QuantizeN(hVal, 3);
+    //uint t = QuantizeN(tVal, 4);
+    //uint m = QuantizeN(mVal, 3);
+    //uint f = QuantizeN(fVal, 3);
 
-    return FindBiomeIndex(h, t, m, f);
+    return GetBiomeID(worldPos); //FindBiomeIndex(h, t, m, f);
 }
 
 // SampleBiomeBlend
