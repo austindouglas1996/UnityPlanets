@@ -5,7 +5,6 @@ namespace GingerVoxelSystem.Systems.Rendering
     using UnityEngine;
     using UnityEngine.Rendering;
     using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.Engine.Utiltiies;
 
     /// <summary>
     /// A collection container for <see cref="ChunkRenderBucket"/> that can grow as needed
@@ -28,19 +27,12 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// Who owns a key right now? (instant remove, no scans)
         /// </summary>
         private readonly Dictionary<ChunkKey, ChunkRenderBucket> keys = new();
-        private readonly Dictionary<ChunkRenderBucket, GameObject> colliders = new();
 
         /// <summary>
         /// The max amount of entries per bucket. Keeping this amount low, but not too low is important
         /// as every time an item is removed/added to a bucket it is resent back for generation.
         /// </summary>
         private int capacity = 128;
-
-        /// <summary>
-        /// Should the children buckets in this collection have colliders created for them. 
-        /// *** THIS IS VERY CPU INTENSE - ONLY DO THIS IS ON CHUNKS PLAYER WALKS ON ***
-        /// </summary>
-        private bool GenerateCollider = false;
 
         /// <summary>
         /// An instance of the generator used for generation jobs.
@@ -53,11 +45,10 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// <param name="chunkGenerator">Shared generator used by all buckets.</param>
         /// <param name="capacity">Max items per bucket (default 128).</param>
         /// <param name="rebuiltThreshold">Removals per bucket before it regenerates.</param>
-        public ChunkRenderBucketCollection(IChunkGenerator chunkGenerator, bool isLod0 = false, int capacity = 128)
+        public ChunkRenderBucketCollection(IChunkGenerator chunkGenerator, int capacity = 128)
         {
             this.chunkGenerator = chunkGenerator;
             this.capacity = capacity;
-            this.GenerateCollider = isLod0;
         }
 
         /// <summary>
@@ -142,12 +133,6 @@ namespace GingerVoxelSystem.Systems.Rendering
                 bucket.Clear();
             }
 
-            foreach (var go in colliders.Values)
-            {
-                UnityEngine.Object.Destroy(go);
-            }
-            colliders.Clear();
-
             keys.Clear();
         }
 
@@ -180,13 +165,6 @@ namespace GingerVoxelSystem.Systems.Rendering
                 for (int i = 0; i < buckets.Count; i++)
                     buckets[i].Dispose();
             }
-
-            foreach (var go in colliders.Values)
-            {
-                TriangleMeshBuilder.RecycleCollider(go);
-            }
-
-            colliders.Clear();
 
             buckets = null;
         }
@@ -237,36 +215,7 @@ namespace GingerVoxelSystem.Systems.Rendering
 
             buckets.Add(newBucket);
 
-            // We currently only generate collisions for LOD0 chunks.
-            if (GenerateCollider)
-            {
-                newBucket.OnGenerate += NewColl_OnGenerate;
-            }
-
             return newBucket;
-        }
-
-        /// <summary>
-        /// Generate a <see cref="GameObject"/> for collision on the terrain.
-        /// </summary>
-        /// <param name="sender">The bucket with the <see cref="ChunkRenderBucket"/></param>
-        /// <param name="e"></param>
-        /// <remarks>This is not thread safe. Must be called from main thread.</remarks>
-        private void NewColl_OnGenerate(object sender, EventArgs e)
-        {
-            ChunkRenderBucket bucket = (ChunkRenderBucket)sender;
-            ChunkRenderBatch.ReadTrianglesAsync(bucket.RenderData, (TriangleDataGPU[] tri) =>
-            {
-                GameObject existingGo = null;
-
-                if (colliders.ContainsKey(bucket))
-                    existingGo = colliders[bucket];
-
-                var mesh = TriangleMeshBuilder.BuildMesh(tri);
-                var newGo = TriangleMeshBuilder.CreateOrReuseCollider(mesh, existingGo);
-
-                colliders[bucket] = newGo;
-            });
         }
     }
 }

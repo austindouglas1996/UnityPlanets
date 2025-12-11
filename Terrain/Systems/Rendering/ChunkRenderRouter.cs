@@ -38,8 +38,8 @@
         {
             this.chunkGenerator = chunkGenerator;
 
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, true, capPerBucket));
-            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, false, capPerBucket));
+            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, capPerBucket));
+            lodBuckets.Add(new ChunkRenderBucketCollection(chunkGenerator, capPerBucket));
 
             lodBuckets[0].BucketRemoved += Bucket_Removed;
             lodBuckets[1].BucketRemoved += Bucket_Removed;
