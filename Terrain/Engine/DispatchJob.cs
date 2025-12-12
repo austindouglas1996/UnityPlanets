@@ -3,7 +3,7 @@ using GingerVoxelSystem.Systems.Rendering;
 using System;
 using System.Collections.Generic;
 
-namespace Assets.Scripts.Terrain.Engine
+namespace GingerVoxelSystem.Engine
 {
     public struct DispatchJob
     {

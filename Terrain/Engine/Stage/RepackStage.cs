@@ -1,7 +1,7 @@
 ﻿using GingerVoxelSystem.Systems.Rendering;
 using UnityEngine;
 
-namespace Assets.Scripts.Terrain.Engine.Stage
+namespace GingerVoxelSystem.Engine.Stage
 {
     /// <summary>
     /// Handles the repack phase of the pipeline. 

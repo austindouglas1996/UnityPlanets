@@ -1,6 +1,5 @@
-﻿using GingerVoxelSystem;
-using GingerVoxelSystem.Core;
-using GingerVoxelSystem.Engine;
+﻿using GingerVoxelSystem.Core;
+using GingerVoxelSystem.Engine.Options;
 using GingerVoxelSystem.Systems.Generation;
 using System;
 using System.Collections.Generic;
@@ -8,7 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-namespace Assets.Scripts.Terrain.Engine
+namespace GingerVoxelSystem.Engine
 {
     /// <summary>
     /// Central buffer container shared across all terrain-generation stages.

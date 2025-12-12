@@ -1,16 +1,15 @@
-﻿namespace Assets.Scripts.Terrain.Engine
+﻿namespace GingerVoxelSystem.Engine
 {
-    using Assets.Scripts.Terrain.Engine.Stage;
     using GingerVoxelSystem;
     using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.Engine;
+    using GingerVoxelSystem.Engine.Options;
+    using GingerVoxelSystem.Engine.Stage;
     using GingerVoxelSystem.Systems.Generation;
     using GingerVoxelSystem.Systems.Rendering;
     using System;
     using System.Collections.Generic;
     using System.Runtime.InteropServices;
     using UnityEngine;
-    using UnityEngine.Rendering;
 
     /// <summary>
     /// High-level marching-cubes pipeline. 

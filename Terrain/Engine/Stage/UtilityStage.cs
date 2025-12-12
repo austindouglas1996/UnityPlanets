@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace Assets.Scripts.Terrain.Engine.Stage
+namespace GingerVoxelSystem.Engine.Stage
 {
     /// <summary>
     /// Small utility stage for running generic compute kernels that don't belong

@@ -1,4 +1,4 @@
-namespace GingerVoxelSystem.Engine
+namespace GingerVoxelSystem.Engine.Options
 {
     using System;
     using UnityEngine;

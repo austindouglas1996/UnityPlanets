@@ -1,11 +1,11 @@
-﻿using GingerVoxelSystem.Engine;
-using GingerVoxelSystem.Engine.Helpers;
+﻿using GingerVoxelSystem.Engine.Helpers;
+using GingerVoxelSystem.Engine.Options;
 using GingerVoxelSystem.Systems.Rendering;
 using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-namespace Assets.Scripts.Terrain.Engine.Stage
+namespace GingerVoxelSystem.Engine.Stage
 {
     /// <summary>
     /// Handles both marching-cubes passes:

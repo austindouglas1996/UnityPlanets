@@ -1,9 +1,9 @@
 namespace GingerVoxelSystem.Core
 {
+    using GingerVoxelSystem.EditorSupport;
+    using GingerVoxelSystem.Engine.Options;
     using System;
     using UnityEngine;
-    using GingerVoxelSystem.EditorSupport;
-    using GingerVoxelSystem.Engine;
 
     /// <summary>
     /// Central configuration for how the world is generated and interpreted.

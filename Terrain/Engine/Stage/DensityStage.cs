@@ -1,7 +1,8 @@
-﻿namespace Assets.Scripts.Terrain.Engine.Stage
+﻿namespace GingerVoxelSystem.Engine.Stage
 {
     using GingerVoxelSystem;
     using GingerVoxelSystem.Engine;
+    using GingerVoxelSystem.Engine.Options;
     using GingerVoxelSystem.Systems.Rendering;
     using System;
     using System.Runtime.InteropServices;

@@ -85,13 +85,13 @@ float MountainShape(float3 p)
     float r = length(p.xz);
     
     float slope = 0.5; // steeper than 0.5
-    float tipHeight = 220.0; // height of the tip
+    float tipHeight = 320.0; // height of the tip
 
     float d = r * slope + (p.y - tipHeight);
-    d += sin(p.y * 0.05) * 2.0;
+    d += sin(p.y * 0.05) * 3.0;
 
     float heightFactor = saturate((p.y - tipHeight) * 0.01);
-    d -= fbm3D(p * 0.02, 4) * (heightFactor * 30.0);
+    d -= fbm3D(p * 0.02, 4) * (heightFactor * 50.0);
     
     // ridged noise gives spiky peaks
     float ridged = fbmRidged(p * 0.005);

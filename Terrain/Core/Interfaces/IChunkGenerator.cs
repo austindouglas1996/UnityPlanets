@@ -1,4 +1,4 @@
-using Assets.Scripts.Terrain.Engine;
+using GingerVoxelSystem.Engine;
 using GingerVoxelSystem.Systems.Generation;
 using System;
 using System.Collections.Generic;

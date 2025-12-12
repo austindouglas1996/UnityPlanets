@@ -1,18 +1,21 @@
-using System.Runtime.InteropServices;
-using UnityEngine;
-
-/// <summary>
-/// Struct that matches GPU memory layout for HLSL. 
-/// Used only for compute/StructuredBuffer work.
-/// </summary>
-[StructLayout(LayoutKind.Sequential)]
-public struct ChunkDispatchKeyGPU
+namespace GingerVoxelSystem.Engine
 {
-    public uint GlobalIndex;
-    public Vector3 CoordPos;
-    public int LodIndex;
+    using System.Runtime.InteropServices;
+    using UnityEngine;
 
-    public uint SourceOffset;
-    public uint SourceCount;
-    public uint DestStart;
+    /// <summary>
+    /// Struct that matches GPU memory layout for HLSL. 
+    /// Used only for compute/StructuredBuffer work.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ChunkDispatchKeyGPU
+    {
+        public uint GlobalIndex;
+        public Vector3 CoordPos;
+        public int LodIndex;
+
+        public uint SourceOffset;
+        public uint SourceCount;
+        public uint DestStart;
+    }
 }

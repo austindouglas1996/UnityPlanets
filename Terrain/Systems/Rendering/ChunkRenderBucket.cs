@@ -1,12 +1,12 @@
 namespace GingerVoxelSystem.Systems.Rendering
 {
+    using GingerVoxelSystem.Core;
+    using GingerVoxelSystem.Engine;
     using System;
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
     using UnityEngine;
     using UnityEngine.Rendering;
-    using GingerVoxelSystem.Core;
-    using Assets.Scripts.Terrain.Engine;
 
     /// <summary>
     /// A collection of chunk keys to help with distributing render data.

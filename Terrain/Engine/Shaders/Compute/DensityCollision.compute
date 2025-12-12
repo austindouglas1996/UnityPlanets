@@ -1,0 +1,54 @@
+﻿#pragma only_renderers d3d11
+#pragma target 5.0
+
+#pragma kernel GenerateCollisionBlock
+
+#include "../ChunkFunctions.hlsl"
+#include "../WorldNoise.hlsl"
+
+/* Inputs */
+// World-space center of the block (player position)
+float3 CenterPosition;
+
+// Distance between samples in world units (e.g. 3.0)
+float VoxelSpacing;
+
+// Resolution (must be 32 for now, but passed for flexibility)
+uint BlockResolution; // 32
+
+// Conservative bias so collision is slightly thicker
+float CollisionBias; // e.g. 0.5
+
+/* Output */
+RWStructuredBuffer<float> DensityOutput;
+
+[numthreads(4, 4, 4)]
+void GenerateCollisionBlock(uint3 id : SV_DispatchThreadID)
+{
+    // Guard against overrun if dispatch is padded
+    if (id.x >= BlockResolution ||
+        id.y >= BlockResolution ||
+        id.z >= BlockResolution)
+        return;
+
+    // Convert 3D index to linear index
+    uint idx =
+        id.x +
+        id.y * BlockResolution +
+        id.z * BlockResolution * BlockResolution;
+
+    // Compute local offset so block is centered
+    float3 halfExtent = (BlockResolution - 1) * 0.5 * VoxelSpacing;
+
+    float3 worldPos =
+        CenterPosition +
+        (float3(id) * VoxelSpacing - halfExtent);
+
+    // Sample full terrain SDF
+    float d = GenerateNoiseValue(worldPos);
+
+    // Conservative bias so collision never gets thinner than visuals
+    d -= CollisionBias;
+
+    DensityOutput[idx] = d;
+}
