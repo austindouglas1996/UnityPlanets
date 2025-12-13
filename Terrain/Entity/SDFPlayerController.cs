@@ -1,6 +1,5 @@
 ﻿using GingerVoxelSystem.Engine.Stage;
 using GingerVoxelSystem.Entity;
-using System;
 using UnityEngine;
 
 namespace GingerVoxelSystem.Player
