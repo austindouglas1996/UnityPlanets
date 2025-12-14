@@ -29,11 +29,14 @@
         [Header("Shaders")]
         [SerializeField] private ComputeShader DensityShader;
         [SerializeField] private ComputeShader MarchingCubesShader;
+        [SerializeField] private ComputeShader TransvoxelShader;
         [SerializeField] private ComputeShader RepackShader;
         [SerializeField] private ComputeShader DetailsShader;
         [SerializeField] private ComputeShader UtilityShader;
+        [SerializeField] private bool useTransvoxels = true;
 
         private DensityStage density;
+        private TransVoxelsStage transvoxels;
         private MarchingCubesStage marchingCubes;
         private RepackStage repack;
         private DetailsStage details;
@@ -61,6 +64,7 @@
 
             // Load compute stages. Each stage wires buffers/kernels internally.
             density = new DensityStage(DensityShader, chunkBuffers);
+            transvoxels = new TransVoxelsStage(TransvoxelShader, chunkBuffers);
             marchingCubes = new MarchingCubesStage(MarchingCubesShader, chunkBuffers);
             repack = new RepackStage(RepackShader, chunkBuffers);
             details = new DetailsStage(DetailsShader, chunkBuffers);
@@ -117,8 +121,11 @@
                 // Reset old triangle counts.
                 utility.DispatchClear(job.Batch.TriangleChunkCounts, start, length);
 
-                // Count how many triangles each chunk will output.
-                marchingCubes.DispatchTriangleCount(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
+                if (useTransvoxels)
+                    transvoxels.DispatchTriangleCount(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
+                else
+                    // Count how many triangles each chunk will output.
+                    marchingCubes.DispatchTriangleCount(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
             }
 
             // 2) Repack prepass — builds draw args + packed offsets
@@ -132,8 +139,12 @@
                 // Reset write cursor for each chunk.
                 utility.DispatchClear(job.Batch.TriangleWriteCursor, start, length);
 
-                // Emit triangles.
-                marchingCubes.DispatchMarching(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
+                if (useTransvoxels)
+                    // Emit triangles.
+                    transvoxels.DispatchMarching(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
+                else
+                    // Emit triangles.
+                    marchingCubes.DispatchMarching(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
             }
 
             // 4) Pack raw triangles into the final contiguous buffer.

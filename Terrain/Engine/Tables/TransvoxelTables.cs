@@ -1,6 +1,14 @@
-﻿namespace Assets.Scripts.Terrain.Engine.Tables
+﻿namespace GingerVoxelSystem.Engine.Helpers
 {
     using UnityEngine;
+
+    public static class TransvoxelGPU
+    {
+        public static void LoadBuffers(ComputeShader shader, int kernelId)
+        {
+
+        }
+    }
 
     public class RegularCellData
     {

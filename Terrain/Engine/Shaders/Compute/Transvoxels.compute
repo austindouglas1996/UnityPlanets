@@ -5,7 +5,7 @@
 #pragma kernel RunMarchingCubes
 
 #include "../ChunkFunctions.hlsl"
-#include "../Includes/TransVoxelsTables.hlsl"
+#include "../Includes/TransvoxelTables.hlsl"
 
 /* Inputs */
 uint Offset;
