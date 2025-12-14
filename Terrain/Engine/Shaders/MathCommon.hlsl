@@ -65,5 +65,26 @@ float3 UnpackFloat3(uint p)
     return float3((p >> 16) & 255, (p >> 8) & 255, p & 255) / 255.0;
 }
 
+inline float Union(float a, float b)
+{
+    return min(a, b);
+}
+
+float SmoothUnion(float a, float b, float k)
+{
+    float h = saturate(0.5 + 0.5 * (b - a) / k);
+    return lerp(b, a, h) - k * h * (1.0 - h);
+}
+
+inline float Intersect(float a, float b)
+{
+    return max(a, b);
+}
+
+inline float Subtract(float a, float b)
+{
+    return max(a, -b);
+}
+
 
 #endif

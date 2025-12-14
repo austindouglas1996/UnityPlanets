@@ -193,6 +193,17 @@ float fbm3D(float x, float y, float z, int octaves)
     return fbm3D(float3(x, y, z), octaves);
 }
 
+float fbmRidged(float3 p)
+{
+    float r = 1.0 - abs(fbm3D(p, 4));
+    return r * r * r;
+}
+
+inline float Turbulence(float3 p)
+{
+    return abs(fbm3D(p, 5) * 2 -1);
+}
+
 float3 hash3(int3 p)
 {
     // Large primes ensure good spatial hashing

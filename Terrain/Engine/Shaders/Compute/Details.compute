@@ -28,13 +28,13 @@ void RunDetailsPass(uint3 id : SV_DispatchThreadID)
     // Using biome blending increases the compile time
     // of this HLSL shader to 28 seconds from 14 seconds.
     // I don't understand why ): 
-    d.ColorA = SampleBiomeBlended(tri.a);
-    d.ColorB = SampleBiomeBlended(tri.b);
-    d.ColorC = SampleBiomeBlended(tri.c);
+    //d.ColorA = SampleBiomeBlended(tri.a);
+    //d.ColorB = SampleBiomeBlended(tri.b);
+    //d.ColorC = SampleBiomeBlended(tri.c);
     
-    //d.ColorA = SampleBiomeBlend(Biomes[a], tri.a);
-    //d.ColorB = SampleBiomeBlend(Biomes[b], tri.b);
-    //d.ColorC = SampleBiomeBlend(Biomes[c], tri.c);
+    d.ColorA = SampleBiomeBlend(Biomes[a], tri.a);
+    d.ColorB = SampleBiomeBlend(Biomes[b], tri.b);
+    d.ColorC = SampleBiomeBlend(Biomes[c], tri.c);
 
     DetailBuffer[id.x] = d;
 }

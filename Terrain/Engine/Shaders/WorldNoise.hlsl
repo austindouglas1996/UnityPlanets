@@ -6,9 +6,8 @@
 
 float SampleBiomeNoise(float3 p)
 {
-    // Low enough to produce large continent-like regions
-    float n = fbm3D(p * 0.0002, 4); // ← much lower frequency
-    return n; // still 0–1
+    float n = fbm3D(p * 0.0002, 4); 
+    return n;
 }
 
 int GetBiomeID(float3 p)
@@ -26,37 +25,6 @@ int GetBiomeID(float3 p)
 }
 
 
-inline float Union(float a, float b)
-{
-    return min(a, b);
-}
-
-float SmoothUnion(float a, float b, float k)
-{
-    float h = saturate(0.5 + 0.5 * (b - a) / k);
-    return lerp(b, a, h) - k * h * (1.0 - h);
-}
-
-inline float Intersect(float a, float b)
-{
-    return max(a, b);
-}
-
-inline float Subtract(float a, float b)
-{
-    return max(a, -b);
-}
-
-float fbmRidged(float3 p)
-{
-    float r = 1.0 - abs(fbm3D(p, 4));
-    return r * r * r;
-}
-
-inline float Turbulence(float3 p)
-{
-    return abs(N11(fbm3D(p, 5)));
-}
 
 
 float GroundVolumetric(float3 p)
@@ -100,17 +68,11 @@ float MountainShape(float3 p)
     return d;
 }
 
-
-
-
-
 [noinline]
 float GenerateNoiseValue(float3 p)
 {
-    float ground = GroundVolumetric(p);
-    
+    float ground = GroundVolumetric(p); 
     float mountain = MountainShape(p);
-    //mountain = max(mountain, ground);
 
     float terrain = SmoothUnion(ground, mountain, 30.0);
 
