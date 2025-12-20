@@ -1,4 +1,5 @@
-﻿using GingerVoxelSystem.Engine.Helpers;
+﻿using Assets.Scripts.Terrain.Engine.Stage;
+using GingerVoxelSystem.Engine.Helpers;
 using GingerVoxelSystem.Engine.Options;
 using GingerVoxelSystem.Systems.Rendering;
 using System;
@@ -12,7 +13,7 @@ namespace GingerVoxelSystem.Engine.Stage
     /// 1) PrePass: counts triangles per chunk
     /// 2) Main pass: emits actual triangle data
     /// </summary>
-    public class MarchingCubesStage : IDisposable
+    public class MarchingCubesStage : IMarchingShader
     {
         private readonly int countTrianglesKernel;
         private readonly int marchKernel;

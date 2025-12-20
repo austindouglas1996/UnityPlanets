@@ -39,118 +39,120 @@ float3 GetNormalFast(int3 p, int keyIndex, int3 sampleSize)
 
 void CountTriangles(ChunkDispatchKeyInfo key)
 {
-    uint cubeIndex = 0;
+    uint caseCode = 0;
     int3 sample3 = GetSamplesPerChunk3();
-    
+
+    // Build case code
     [loop]
     for (uint i = 0; i < 8; i++)
     {
-        uint3 pos = key.LocalVoxelCoord + GetCornerOffset(i);
-        float corner = DensityMap[GetVoxelSampleIndexRaw(pos, key.KeyIndex, sample3)];
-        
-        if (corner < ISOLevel)
-            cubeIndex |= (1u << i);
+        uint3 pos = key.LocalVoxelCoord + RegularCornerOffset[i];
+        float corner = DensityMap[GetVoxelSampleIndexRaw(pos, key.KeyIndex, sample3)] - ISOLevel;
+
+        if (corner > 0.0)
+            caseCode |= (1u << i);
     }
 
-    if (cubeIndex == 0 || cubeIndex == 255)
+    // Empty or full cell
+    if (caseCode == 0 || caseCode == 255)
         return;
-    
-    uint localCount = 0;
-    
-    [loop]
-    for (int i = 0; i < 16; i += 3)
-    {
-        int a = GetTriangleEdgeIndex(cubeIndex, i + 0);
-        int b = GetTriangleEdgeIndex(cubeIndex, i + 1);
-        int c = GetTriangleEdgeIndex(cubeIndex, i + 2);
 
-        if (a == -1 || b == -1 || c == -1)
-            break;
-        
-        localCount++;
-    }
-    
+    // Transvoxel lookup
+    uint cellClass = RegularCellClass[caseCode];
+    RegularCellData cell = RegularCellTable[cellClass];
+
+    // Triangle count is explicit
+    uint localCount = cell.TriangleCount;
+
     InterlockedAdd(TriangleCount[key.KeyIndex], localCount);
 }
 
 void March(ChunkDispatchKeyInfo key)
 {
-    uint cubeIndex = 0;
+    uint caseCode = 0;
     float corner[8];
     float3 cornerPos[8];
-    
+    float3 cornerNormal[8];
+
     int step = GetCubeSizeStep(key.chunk.LodIndex);
     float3 world = ToWorld(key.chunk.CoordPos, key.chunk.LodIndex);
     int3 sample3 = GetSamplesPerChunk3();
-    
-    [loop]
+
+    // Case code
     for (uint i = 0; i < 8; i++)
     {
-        uint3 pos = key.LocalVoxelCoord + GetCornerOffset(i);
+        uint3 pos = key.LocalVoxelCoord + RegularCornerOffset[i];
         corner[i] = DensityMap[GetVoxelSampleIndexRaw(pos, key.KeyIndex, sample3)];
-        cornerPos[i] = float3(pos) * step + world;
-        
-        if (corner[i] < ISOLevel)
-            cubeIndex |= (1u << i);
+        cornerPos[i] = (float3(pos) * step + world);
+
+        if (corner[i] - ISOLevel > 0.0)
+            caseCode |= (1u << i);
     }
 
-    if (cubeIndex == 0 || cubeIndex == 255)
+    if (caseCode == 0 || caseCode == 255)
         return;
-    
-    float3 cornerNormal[8];
-    
-    [loop]
-    for (int i = 0; i < 8; i++)
+
+    // Normals
+    for (uint i = 0; i < 8; i++)
     {
-        int3 pos = key.LocalVoxelCoord + GetCornerOffset(i);
+        int3 pos = key.LocalVoxelCoord + RegularCornerOffset[i];
         cornerNormal[i] = GetNormalFast(pos, key.KeyIndex, sample3);
     }
 
-    [loop]
-    for (int i = 0; i < 16; i += 3)
+    uint cellClass = RegularCellClass[caseCode];
+    RegularCellData cell = RegularCellTable[cellClass];
+
+    float3 cellPos[16];
+    float3 cellNormal[16];
+
+    // Generate vertices
+    for (uint i = 0; i < cell.VertexCount; i++)
     {
-        int a = GetTriangleEdgeIndex(cubeIndex, i + 0);
-        int b = GetTriangleEdgeIndex(cubeIndex, i + 1);
-        int c = GetTriangleEdgeIndex(cubeIndex, i + 2);
+        uint packed = GetPackedVertexU16(caseCode, i);
+        VertexDataUnpacked v = UnpackVertex(packed);
 
-        if (a == -1 || b == -1 || c == -1)
-            break;
+        float d0 = corner[v.Corner0] - ISOLevel;
+        float d1 = corner[v.Corner1] - ISOLevel;
 
-        int2 edge0 = GetEdgeConnection(a);
-        int2 edge1 = GetEdgeConnection(b);
-        int2 edge2 = GetEdgeConnection(c);
-        
-        // If you like a more minecraft look make RCP its own dedicated variable.
-        // I was doing that for quite some time, I liked the look but for some
-        // reason bringing them together makes smooth terrain :o
-        float t0 = (corner[edge0.x] - ISOLevel) * rcp(corner[edge0.x] - corner[edge0.y]);
-        float t1 = (corner[edge1.x] - ISOLevel) * rcp(corner[edge1.x] - corner[edge1.y]);
-        float t2 = (corner[edge2.x] - ISOLevel) * rcp(corner[edge2.x] - corner[edge2.y]);
-        
-        float3 worldA = lerp(cornerPos[edge0.x], cornerPos[edge0.y], t0);
-        float3 worldB = lerp(cornerPos[edge1.x], cornerPos[edge1.y], t1);
-        float3 worldC = lerp(cornerPos[edge2.x], cornerPos[edge2.y], t2);
-        
-        float3 normA = normalize(lerp(cornerNormal[edge0.x], cornerNormal[edge0.y], t0));
-        float3 normB = normalize(lerp(cornerNormal[edge1.x], cornerNormal[edge1.y], t1));
-        float3 normC = normalize(lerp(cornerNormal[edge2.x], cornerNormal[edge2.y], t2));
-        
+        float t = (d1 == 0) ? 1.0 :
+                  (d0 == 0) ? 0.0 :
+                  d1 / (d1 - d0);
+
+        cellPos[i] = lerp(
+            cornerPos[v.Corner0],
+            cornerPos[v.Corner1],t);
+
+        // Normal interpolation (NO ISO here)
+        cellNormal[i] = normalize(lerp(
+            cornerNormal[v.Corner0],
+            cornerNormal[v.Corner1],t));
+    }
+
+    // Emit triangles
+    for (uint i = 0; i < cell.IndicesCount; i += 3)
+    {
+        uint ia = GetIndex(cell, i + 0);
+        uint ib = GetIndex(cell, i + 1);
+        uint ic = GetIndex(cell, i + 2);
+
         TriangleData tri;
-        tri.a = worldA;
-        tri.b = worldB;
-        tri.c = worldC;
-        tri.NormalA = normA;
-        tri.NormalB = normB;
-        tri.NormalC = normC;
+        tri.a = cellPos[ia];
+        tri.b = cellPos[ib];
+        tri.c = cellPos[ic];
+
+        tri.NormalA = cellNormal[ia];
+        tri.NormalB = cellNormal[ib];
+        tri.NormalC = cellNormal[ic];
+
         tri.KeyIndex = key.KeyIndex;
         tri.LodIndex = key.chunk.LodIndex;
-        
+
         uint next;
         InterlockedAdd(TriangleCursor[key.KeyIndex], 1, next);
-        uint index = key.chunk.SourceOffset + next;
-        TriangleSourceBuffer[index] = tri;
+        TriangleSourceBuffer[key.chunk.SourceOffset + next] = tri;
     }
 }
+
 
 [numthreads(4, 4, 4)]
 void RunMarchingCubesPrePass(uint3 id : SV_DispatchThreadID)

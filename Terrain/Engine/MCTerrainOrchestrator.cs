@@ -1,5 +1,6 @@
 ﻿namespace GingerVoxelSystem.Engine
 {
+    using Assets.Scripts.Terrain.Engine.Stage;
     using GingerVoxelSystem;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Engine.Options;
@@ -36,8 +37,7 @@
         [SerializeField] private bool useTransvoxels = true;
 
         private DensityStage density;
-        private TransVoxelsStage transvoxels;
-        private MarchingCubesStage marchingCubes;
+        private IMarchingShader marchingCubes;
         private RepackStage repack;
         private DetailsStage details;
         private UtilityStage utility;
@@ -64,11 +64,27 @@
 
             // Load compute stages. Each stage wires buffers/kernels internally.
             density = new DensityStage(DensityShader, chunkBuffers);
-            transvoxels = new TransVoxelsStage(TransvoxelShader, chunkBuffers);
-            marchingCubes = new MarchingCubesStage(MarchingCubesShader, chunkBuffers);
+
+            if (useTransvoxels)
+            {
+                marchingCubes = new TransVoxelsStage(TransvoxelShader, chunkBuffers);
+            }
+            else
+            {
+                marchingCubes = new MarchingCubesStage(MarchingCubesShader, chunkBuffers);
+            }
+
             repack = new RepackStage(RepackShader, chunkBuffers);
             details = new DetailsStage(DetailsShader, chunkBuffers);
             utility = new UtilityStage(UtilityShader);
+        }
+
+        /// <summary>
+        /// Validate on changes.
+        /// </summary>
+        public void OnValidate()
+        {
+            if (!Application.isPlaying) return;
         }
 
         /// <summary>
@@ -121,11 +137,19 @@
                 // Reset old triangle counts.
                 utility.DispatchClear(job.Batch.TriangleChunkCounts, start, length);
 
-                if (useTransvoxels)
-                    transvoxels.DispatchTriangleCount(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
-                else
-                    // Count how many triangles each chunk will output.
-                    marchingCubes.DispatchTriangleCount(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
+                // Count how many triangles each chunk will output.
+                marchingCubes.DispatchTriangleCount(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
+
+                // HARD DEBUG SYNC POINT
+                string result = DebugCheckTriangleCounts(
+                    job.Batch.TriangleChunkCounts,
+                    length
+                );
+
+                if (result == "bee")
+                {
+                    string fd = "";
+                }
             }
 
             // 2) Repack prepass — builds draw args + packed offsets
@@ -139,12 +163,8 @@
                 // Reset write cursor for each chunk.
                 utility.DispatchClear(job.Batch.TriangleWriteCursor, start, length);
 
-                if (useTransvoxels)
-                    // Emit triangles.
-                    transvoxels.DispatchMarching(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
-                else
-                    // Emit triangles.
-                    marchingCubes.DispatchMarching(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
+                // Emit triangles.
+                marchingCubes.DispatchMarching(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
             }
 
             // 4) Pack raw triangles into the final contiguous buffer.
@@ -156,6 +176,27 @@
             // Return finished batch.
             job.OnCompleted.Invoke(job.Batch);
         }
+
+        public static string DebugCheckTriangleCounts(ComputeBuffer triangleCountBuffer,int chunkCount)
+        {
+            // Pull all triangle counts back to CPU
+            uint[] counts = new uint[chunkCount];
+            triangleCountBuffer.GetData(counts);
+
+            string apple = "apple";
+
+            for (int i = 0; i < counts.Length; i++)
+            {
+                if (counts[i] > 0)
+                {
+                    apple = "bee";
+                    break;
+                }
+            }
+
+            return apple;
+        }
+
 
         /// <summary>
         /// Pushes updated biome + density options into GPU buffers and the terrain material.

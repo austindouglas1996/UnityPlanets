@@ -1,12 +1,180 @@
 ﻿namespace GingerVoxelSystem.Engine.Helpers
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Runtime.InteropServices;
     using UnityEngine;
+
+    public struct RegularCellDataGPU
+    {
+        public int VertexCount;  
+        public int TriangleCount;   
+
+        public int IndicesStart;  
+        public int IndicesCount;  
+    }
+    public struct VertexData
+    {
+        public uint VertexStart;
+        public uint VertexCount;
+    }
 
     public static class TransvoxelGPU
     {
+        private static bool loaded = false;
+
+        private static ComputeBuffer RegularCornerOffset;
+        private static ComputeBuffer TransitionCornerOffset;
+        private static ComputeBuffer RegularCellClass;
+
+        // RegularCellData
+        private static ComputeBuffer RegularCellTable;
+        private static ComputeBuffer RegularCellIndices;
+
+        // RegularVertexData
+        private static ComputeBuffer RegularVertexRanges;
+        private static ComputeBuffer RegularVertexData;
+
         public static void LoadBuffers(ComputeShader shader, int kernelId)
         {
+            if (!loaded) Load();
 
+            shader.SetBuffer(kernelId, "RegularCornerOffset", RegularCornerOffset);
+            shader.SetBuffer(kernelId, "TransitionCornerOffset", TransitionCornerOffset);
+            shader.SetBuffer(kernelId, "RegularCellClass", RegularCellClass);
+            shader.SetBuffer(kernelId, "RegularCellTable", RegularCellTable);
+            shader.SetBuffer(kernelId, "RegularCellIndices", RegularCellIndices);
+            shader.SetBuffer(kernelId, "RegularVertexRanges", RegularVertexRanges);
+            shader.SetBuffer(kernelId, "RegularVertexData", RegularVertexData);
+        }
+
+        public static void Load()
+        {
+            RegularCornerOffset = new ComputeBuffer(TransvoxelTables.RegularCornerOffset.Length, Marshal.SizeOf<Vector3Int>(), ComputeBufferType.Structured);
+            TransitionCornerOffset = new ComputeBuffer(TransvoxelTables.TransitionCornerOffset.Length, Marshal.SizeOf<Vector3Int>(), ComputeBufferType.Structured);
+            RegularCellClass = new ComputeBuffer(256, sizeof(int), ComputeBufferType.Structured);
+
+            // Regular Cell Data.
+            RegularCellTable = new ComputeBuffer(TransvoxelTables.RegularCellData.Length, Marshal.SizeOf<RegularCellDataGPU>(), ComputeBufferType.Structured);
+            RegularCellIndices = new ComputeBuffer(156, Marshal.SizeOf<uint>(), ComputeBufferType.Structured);
+
+            // Regular Vertex Data
+            RegularVertexRanges = new ComputeBuffer(TransvoxelTables.RegularVertexData.Length, Marshal.SizeOf<VertexData>(), ComputeBufferType.Structured);
+            RegularVertexData = new ComputeBuffer(1536, sizeof(uint), ComputeBufferType.Structured);
+
+            LoadRegular();
+
+            loaded = true;
+        }
+
+        public static void LoadRegular()
+        {
+            RegularCornerOffset.SetData(TransvoxelTables.RegularCornerOffset);
+            TransitionCornerOffset.SetData(TransvoxelTables.TransitionCornerOffset);
+
+            // RegularCellClass
+            LoadRegularCellClass();
+
+            // RegularCellData
+            LoadRegularCellTable();
+
+            // RegularVertexData
+            LoadRegularVertexData();
+        }
+
+        public static void LoadRegularCellClass()
+        {
+            var src = TransvoxelTables.RegularCellClass; // byte[256]
+            int[] dst = new int[src.Length];
+
+            for (int i = 0; i < src.Length; i++)
+                dst[i] = src[i];
+
+            RegularCellClass.SetData(dst);
+        }
+
+        public static void LoadRegularCellTable()
+        {
+            List<RegularCellDataGPU> dataGPU = new();
+            List<uint> indices = new();
+
+            int startIndex = 0;
+
+            foreach (var data in TransvoxelTables.RegularCellData)
+            {
+                RegularCellDataGPU newData = new RegularCellDataGPU();
+                newData.VertexCount = (int)data.GetVertexCount();
+                newData.TriangleCount = (int)data.GetTriangleCount();
+                newData.IndicesStart = startIndex;
+                newData.IndicesCount = newData.TriangleCount * 3;
+
+                var lindices = data.GetIndices();
+                foreach (var indice in lindices)
+                {
+                    indices.Add(indice);
+                }
+
+                startIndex += newData.IndicesCount;
+                dataGPU.Add(newData);
+            }
+
+            Debug.Assert(indices.Count == 156);
+
+            RegularCellTable.SetData(dataGPU.ToArray());
+            RegularCellIndices.SetData(indices.ToArray());
+        }
+
+        public static void LoadRegularVertexData()
+        {
+            List<VertexData> vertexRanges = new();
+            List<uint> vertexData = new();
+
+            uint start = 0;
+            foreach (var vertexList in TransvoxelTables.RegularVertexData)
+            {
+                VertexData newData = new VertexData();
+                newData.VertexStart = start;
+                newData.VertexCount = (uint)vertexList.Length;
+
+                vertexRanges.Add(newData);
+
+                // Add packed vertex descriptors
+                foreach (ushort v in vertexList)
+                {
+                    vertexData.Add((uint)v);
+                }
+
+                start += newData.VertexCount;
+            }
+
+            Debug.Assert(vertexData.Count == 1536);
+            Debug.Assert(vertexRanges.Count == TransvoxelTables.RegularVertexData.Length);
+
+            RegularVertexRanges.SetData(vertexRanges.ToArray());
+            RegularVertexData.SetData(vertexData.ToArray());
+        }
+
+        public static void Dispose()
+        {
+            ReleaseBuffer(ref RegularCornerOffset);
+            ReleaseBuffer(ref TransitionCornerOffset);
+            ReleaseBuffer(ref RegularCellClass);
+
+            ReleaseBuffer(ref RegularCellTable);
+            ReleaseBuffer(ref RegularCellIndices);
+
+            ReleaseBuffer(ref RegularVertexRanges);
+            ReleaseBuffer(ref RegularVertexData);
+        }
+
+        private static void ReleaseBuffer(ref ComputeBuffer buffer)
+        {
+            if (buffer != null)
+            {
+                buffer.Release();
+                buffer.Dispose();
+                buffer = null;
+            }
         }
     }
 
@@ -73,7 +241,6 @@
 		    new Vector3Int(2,2,2)  // C
 	    };
 
-        // 256
         public static readonly byte[] RegularCellClass =
         {
             0x00, 0x01, 0x01, 0x03, 0x01, 0x03, 0x02, 0x04, 0x01, 0x02, 0x03, 0x04, 0x03, 0x04, 0x04, 0x03,
@@ -97,20 +264,20 @@
         public static readonly RegularCellData[] RegularCellData =
         {
             new RegularCellData(0x00, new byte[]{}),
-            new RegularCellData(0x31, new byte[]{0, 1, 2}),
-            new RegularCellData(0x62, new byte[]{0, 1, 2, 3, 4, 5}),
+            new RegularCellData(0x31, new byte[]{0, 1, 2}), // 3
+            new RegularCellData(0x62, new byte[]{0, 1, 2, 3, 4, 5}), // 12
             new RegularCellData(0x42, new byte[]{0, 1, 2, 0, 2, 3}),
-            new RegularCellData(0x53, new byte[]{0, 1, 4, 1, 3, 4, 1, 2, 3}),
+            new RegularCellData(0x53, new byte[]{0, 1, 4, 1, 3, 4, 1, 2, 3}), // 24
             new RegularCellData(0x73, new byte[]{0, 1, 2, 0, 2, 3, 4, 5, 6}),
             new RegularCellData(0x93, new byte[]{0, 1, 2, 3, 4, 5, 6, 7, 8}),
-            new RegularCellData(0x84, new byte[]{0, 1, 4, 1, 3, 4, 1, 2, 3, 5, 6, 7}),
+            new RegularCellData(0x84, new byte[]{0, 1, 4, 1, 3, 4, 1, 2, 3, 5, 6, 7}), // 36
             new RegularCellData(0x84, new byte[]{0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7}),
             new RegularCellData(0xC4, new byte[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}),
-            new RegularCellData(0x64, new byte[]{0, 4, 5, 0, 1, 4, 1, 3, 4, 1, 2, 3}),
+            new RegularCellData(0x64, new byte[]{0, 4, 5, 0, 1, 4, 1, 3, 4, 1, 2, 3}), // 48
             new RegularCellData(0x64, new byte[]{0, 5, 4, 0, 4, 1, 1, 4, 3, 1, 3, 2}),
             new RegularCellData(0x64, new byte[]{0, 4, 5, 0, 3, 4, 0, 1, 3, 1, 2, 3}),
             new RegularCellData(0x64, new byte[]{0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5}),
-            new RegularCellData(0x75, new byte[]{0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 6}),
+            new RegularCellData(0x75, new byte[]{0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 6}), //30
             new RegularCellData(0x95, new byte[]{0, 4, 5, 0, 3, 4, 0, 1, 3, 1, 2, 3, 6, 7, 8})
         };
 

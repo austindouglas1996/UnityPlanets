@@ -1,5 +1,6 @@
 ﻿namespace GingerVoxelSystem.Engine.Stage
 {
+    using Assets.Scripts.Terrain.Engine.Stage;
     using GingerVoxelSystem.Engine.Helpers;
     using GingerVoxelSystem.Engine.Options;
     using GingerVoxelSystem.Systems.Rendering;
@@ -12,7 +13,7 @@
     /// 1) PrePass: counts triangles per chunk
     /// 2) Main pass: emits actual triangle data
     /// </summary>
-    public class TransVoxelsStage : IDisposable
+    public class TransVoxelsStage : IMarchingShader
     {
         private readonly int countTrianglesKernel;
         private readonly int marchKernel;
@@ -90,6 +91,7 @@
             cornerOffsets?.Dispose();
             edgeConnections?.Dispose();
             triangleTable?.Dispose();
+            TransvoxelGPU.Dispose();
         }
     }
 }
