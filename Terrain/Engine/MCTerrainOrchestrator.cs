@@ -139,17 +139,6 @@
 
                 // Count how many triangles each chunk will output.
                 marchingCubes.DispatchTriangleCount(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
-
-                // HARD DEBUG SYNC POINT
-                string result = DebugCheckTriangleCounts(
-                    job.Batch.TriangleChunkCounts,
-                    length
-                );
-
-                if (result == "bee")
-                {
-                    string fd = "";
-                }
             }
 
             // 2) Repack prepass — builds draw args + packed offsets
@@ -176,27 +165,6 @@
             // Return finished batch.
             job.OnCompleted.Invoke(job.Batch);
         }
-
-        public static string DebugCheckTriangleCounts(ComputeBuffer triangleCountBuffer,int chunkCount)
-        {
-            // Pull all triangle counts back to CPU
-            uint[] counts = new uint[chunkCount];
-            triangleCountBuffer.GetData(counts);
-
-            string apple = "apple";
-
-            for (int i = 0; i < counts.Length; i++)
-            {
-                if (counts[i] > 0)
-                {
-                    apple = "bee";
-                    break;
-                }
-            }
-
-            return apple;
-        }
-
 
         /// <summary>
         /// Pushes updated biome + density options into GPU buffers and the terrain material.

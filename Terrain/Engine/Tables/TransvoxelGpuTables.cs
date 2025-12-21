@@ -8,6 +8,7 @@
 namespace GingerVoxelSystem.Engine.Helpers
 {
     using System.Collections.Generic;
+    using System.Drawing;
     using System.Runtime.InteropServices;
     using UnityEngine;
 
@@ -92,6 +93,7 @@ namespace GingerVoxelSystem.Engine.Helpers
             if (!isInitialized)
             {
                 LoadRegular();
+                LoadTransition();
                 isInitialized = true;
             }
 
@@ -102,6 +104,13 @@ namespace GingerVoxelSystem.Engine.Helpers
             shader.SetBuffer(kernelId, "RegularCellIndices", RegularCellIndices);
             shader.SetBuffer(kernelId, "RegularVertexRanges", RegularVertexRanges);
             shader.SetBuffer(kernelId, "RegularVertexData", RegularVertexData);
+
+            shader.SetBuffer(kernelId, "TransitionCellClass", TransitionCellClass);
+            shader.SetBuffer(kernelId, "TransitionCornerData", TransitionCornerData);
+            shader.SetBuffer(kernelId, "TransitionCellTable", TransitionCellTable);
+            shader.SetBuffer(kernelId, "TransitionCellIndices", TransitionCellIndices);
+            shader.SetBuffer(kernelId, "TransitionVertexRanges", TransitionVertexRanges);
+            shader.SetBuffer(kernelId, "TransitionVertexData", TransitionVertexData);
         }
 
         /// <summary>
@@ -225,6 +234,93 @@ namespace GingerVoxelSystem.Engine.Helpers
         #endregion
 
         #region Transition
+        private static void LoadTransition()
+        {
+            // MAY need to be converted to int.
+            TransitionCellClass = new ComputeBuffer(TransvoxelTables.TransitionCellClass.Length, sizeof(int));
+            TransitionCornerData = new ComputeBuffer(TransvoxelTables.TransitionCornerData.Length, sizeof(int));
+
+            // Transition Cell Data.
+            TransitionCellTable = new ComputeBuffer(TransvoxelTables.TransitionRegularCellData.Length, Marshal.SizeOf<RegularCellDataGPU>());
+            TransitionCellIndices = new ComputeBuffer(924, Marshal.SizeOf<uint>());
+
+            // Transition Vertex Data
+            TransitionVertexRanges = new ComputeBuffer(TransvoxelTables.TransitionVertexData.Length, Marshal.SizeOf<VertexData>());
+            TransitionVertexData = new ComputeBuffer(4096, sizeof(uint));
+
+            TransitionCellClass.SetData(TransvoxelTables.TransitionCellClass);
+            TransitionCornerData.SetData(TransvoxelTables.TransitionCornerData);
+
+            LoadTransitionCellTable();
+            LoadTransitionVertexData();
+        }
+
+        /// <summary>
+        /// Flattens and uploads regular cell topology data into GPU buffers.
+        /// </summary>
+        private static void LoadTransitionCellTable()
+        {
+            List<RegularCellDataGPU> dataGPU = new();
+            List<uint> indices = new();
+
+            int startIndex = 0;
+
+            foreach (var data in TransvoxelTables.TransitionRegularCellData)
+            {
+                RegularCellDataGPU newData = new RegularCellDataGPU();
+                newData.VertexCount = (int)data.GetVertexCount();
+                newData.TriangleCount = (int)data.GetTriangleCount();
+                newData.IndicesStart = startIndex;
+                newData.IndicesCount = newData.TriangleCount * 3;
+
+                var lindices = data.GetIndices();
+                foreach (var indice in lindices)
+                {
+                    indices.Add(indice);
+                }
+
+                startIndex += newData.IndicesCount;
+                dataGPU.Add(newData);
+            }
+
+            Debug.Assert(indices.Count == 924);
+
+            TransitionCellTable.SetData(dataGPU.ToArray());
+            TransitionCellIndices.SetData(indices.ToArray());
+        }
+
+        /// <summary>
+        /// Flattens and uploads packed vertex descriptor data into GPU buffers.
+        /// </summary>
+        private static void LoadTransitionVertexData()
+        {
+            List<VertexData> vertexRanges = new();
+            List<uint> vertexData = new();
+
+            uint start = 0;
+            foreach (var vertexList in TransvoxelTables.TransitionVertexData)
+            {
+                VertexData newData = new VertexData();
+                newData.VertexStart = start;
+                newData.VertexCount = (uint)vertexList.Length;
+
+                vertexRanges.Add(newData);
+
+                // Add packed vertex descriptors
+                foreach (ushort v in vertexList)
+                {
+                    vertexData.Add((uint)v);
+                }
+
+                start += newData.VertexCount;
+            }
+
+            Debug.Assert(vertexData.Count == 1536);
+            Debug.Assert(vertexRanges.Count == TransvoxelTables.TransitionVertexData.Length);
+
+            TransitionVertexRanges.SetData(vertexRanges.ToArray());
+            TransitionVertexData.SetData(vertexData.ToArray());
+        }
         #endregion
 
         /// <summary>
