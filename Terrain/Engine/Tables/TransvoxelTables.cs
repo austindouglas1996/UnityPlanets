@@ -1,182 +1,10 @@
-﻿namespace GingerVoxelSystem.Engine.Helpers
+﻿/*
+ * This is a copy from the following project.
+ * https://github.com/bbQsauce5/transvoxel-unity/blob/main/Runtime/Mesher/TransvoxelTables.cs
+ */
+namespace GingerVoxelSystem.Engine.Helpers
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Runtime.InteropServices;
     using UnityEngine;
-
-    public struct RegularCellDataGPU
-    {
-        public int VertexCount;  
-        public int TriangleCount;   
-
-        public int IndicesStart;  
-        public int IndicesCount;  
-    }
-    public struct VertexData
-    {
-        public uint VertexStart;
-        public uint VertexCount;
-    }
-
-    public static class TransvoxelGPU
-    {
-        private static bool loaded = false;
-
-        private static ComputeBuffer RegularCornerOffset;
-        private static ComputeBuffer TransitionCornerOffset;
-        private static ComputeBuffer RegularCellClass;
-
-        // RegularCellData
-        private static ComputeBuffer RegularCellTable;
-        private static ComputeBuffer RegularCellIndices;
-
-        // RegularVertexData
-        private static ComputeBuffer RegularVertexRanges;
-        private static ComputeBuffer RegularVertexData;
-
-        public static void LoadBuffers(ComputeShader shader, int kernelId)
-        {
-            if (!loaded) Load();
-
-            shader.SetBuffer(kernelId, "RegularCornerOffset", RegularCornerOffset);
-            shader.SetBuffer(kernelId, "TransitionCornerOffset", TransitionCornerOffset);
-            shader.SetBuffer(kernelId, "RegularCellClass", RegularCellClass);
-            shader.SetBuffer(kernelId, "RegularCellTable", RegularCellTable);
-            shader.SetBuffer(kernelId, "RegularCellIndices", RegularCellIndices);
-            shader.SetBuffer(kernelId, "RegularVertexRanges", RegularVertexRanges);
-            shader.SetBuffer(kernelId, "RegularVertexData", RegularVertexData);
-        }
-
-        public static void Load()
-        {
-            RegularCornerOffset = new ComputeBuffer(TransvoxelTables.RegularCornerOffset.Length, Marshal.SizeOf<Vector3Int>(), ComputeBufferType.Structured);
-            TransitionCornerOffset = new ComputeBuffer(TransvoxelTables.TransitionCornerOffset.Length, Marshal.SizeOf<Vector3Int>(), ComputeBufferType.Structured);
-            RegularCellClass = new ComputeBuffer(256, sizeof(int), ComputeBufferType.Structured);
-
-            // Regular Cell Data.
-            RegularCellTable = new ComputeBuffer(TransvoxelTables.RegularCellData.Length, Marshal.SizeOf<RegularCellDataGPU>(), ComputeBufferType.Structured);
-            RegularCellIndices = new ComputeBuffer(156, Marshal.SizeOf<uint>(), ComputeBufferType.Structured);
-
-            // Regular Vertex Data
-            RegularVertexRanges = new ComputeBuffer(TransvoxelTables.RegularVertexData.Length, Marshal.SizeOf<VertexData>(), ComputeBufferType.Structured);
-            RegularVertexData = new ComputeBuffer(1536, sizeof(uint), ComputeBufferType.Structured);
-
-            LoadRegular();
-
-            loaded = true;
-        }
-
-        public static void LoadRegular()
-        {
-            RegularCornerOffset.SetData(TransvoxelTables.RegularCornerOffset);
-            TransitionCornerOffset.SetData(TransvoxelTables.TransitionCornerOffset);
-
-            // RegularCellClass
-            LoadRegularCellClass();
-
-            // RegularCellData
-            LoadRegularCellTable();
-
-            // RegularVertexData
-            LoadRegularVertexData();
-        }
-
-        public static void LoadRegularCellClass()
-        {
-            var src = TransvoxelTables.RegularCellClass; // byte[256]
-            int[] dst = new int[src.Length];
-
-            for (int i = 0; i < src.Length; i++)
-                dst[i] = src[i];
-
-            RegularCellClass.SetData(dst);
-        }
-
-        public static void LoadRegularCellTable()
-        {
-            List<RegularCellDataGPU> dataGPU = new();
-            List<uint> indices = new();
-
-            int startIndex = 0;
-
-            foreach (var data in TransvoxelTables.RegularCellData)
-            {
-                RegularCellDataGPU newData = new RegularCellDataGPU();
-                newData.VertexCount = (int)data.GetVertexCount();
-                newData.TriangleCount = (int)data.GetTriangleCount();
-                newData.IndicesStart = startIndex;
-                newData.IndicesCount = newData.TriangleCount * 3;
-
-                var lindices = data.GetIndices();
-                foreach (var indice in lindices)
-                {
-                    indices.Add(indice);
-                }
-
-                startIndex += newData.IndicesCount;
-                dataGPU.Add(newData);
-            }
-
-            Debug.Assert(indices.Count == 156);
-
-            RegularCellTable.SetData(dataGPU.ToArray());
-            RegularCellIndices.SetData(indices.ToArray());
-        }
-
-        public static void LoadRegularVertexData()
-        {
-            List<VertexData> vertexRanges = new();
-            List<uint> vertexData = new();
-
-            uint start = 0;
-            foreach (var vertexList in TransvoxelTables.RegularVertexData)
-            {
-                VertexData newData = new VertexData();
-                newData.VertexStart = start;
-                newData.VertexCount = (uint)vertexList.Length;
-
-                vertexRanges.Add(newData);
-
-                // Add packed vertex descriptors
-                foreach (ushort v in vertexList)
-                {
-                    vertexData.Add((uint)v);
-                }
-
-                start += newData.VertexCount;
-            }
-
-            Debug.Assert(vertexData.Count == 1536);
-            Debug.Assert(vertexRanges.Count == TransvoxelTables.RegularVertexData.Length);
-
-            RegularVertexRanges.SetData(vertexRanges.ToArray());
-            RegularVertexData.SetData(vertexData.ToArray());
-        }
-
-        public static void Dispose()
-        {
-            ReleaseBuffer(ref RegularCornerOffset);
-            ReleaseBuffer(ref TransitionCornerOffset);
-            ReleaseBuffer(ref RegularCellClass);
-
-            ReleaseBuffer(ref RegularCellTable);
-            ReleaseBuffer(ref RegularCellIndices);
-
-            ReleaseBuffer(ref RegularVertexRanges);
-            ReleaseBuffer(ref RegularVertexData);
-        }
-
-        private static void ReleaseBuffer(ref ComputeBuffer buffer)
-        {
-            if (buffer != null)
-            {
-                buffer.Release();
-                buffer.Dispose();
-                buffer = null;
-            }
-        }
-    }
 
     public class RegularCellData
     {
@@ -212,6 +40,7 @@
 
     public class TransvoxelTables
     {
+        // Regular data.
         public static readonly Vector3Int[] RegularCornerOffset =
         {
             new Vector3Int(0,0,0), // 0         6-------7
@@ -241,24 +70,24 @@
 		    new Vector3Int(2,2,2)  // C
 	    };
 
-        public static readonly byte[] RegularCellClass =
+        public static readonly int[] RegularCellClass =
         {
-            0x00, 0x01, 0x01, 0x03, 0x01, 0x03, 0x02, 0x04, 0x01, 0x02, 0x03, 0x04, 0x03, 0x04, 0x04, 0x03,
-            0x01, 0x03, 0x02, 0x04, 0x02, 0x04, 0x06, 0x0C, 0x02, 0x05, 0x05, 0x0B, 0x05, 0x0A, 0x07, 0x04,
-            0x01, 0x02, 0x03, 0x04, 0x02, 0x05, 0x05, 0x0A, 0x02, 0x06, 0x04, 0x0C, 0x05, 0x07, 0x0B, 0x04,
-            0x03, 0x04, 0x04, 0x03, 0x05, 0x0B, 0x07, 0x04, 0x05, 0x07, 0x0A, 0x04, 0x08, 0x0E, 0x0E, 0x03,
-            0x01, 0x02, 0x02, 0x05, 0x03, 0x04, 0x05, 0x0B, 0x02, 0x06, 0x05, 0x07, 0x04, 0x0C, 0x0A, 0x04,
-            0x03, 0x04, 0x05, 0x0A, 0x04, 0x03, 0x07, 0x04, 0x05, 0x07, 0x08, 0x0E, 0x0B, 0x04, 0x0E, 0x03,
-            0x02, 0x06, 0x05, 0x07, 0x05, 0x07, 0x08, 0x0E, 0x06, 0x09, 0x07, 0x0F, 0x07, 0x0F, 0x0E, 0x0D,
-            0x04, 0x0C, 0x0B, 0x04, 0x0A, 0x04, 0x0E, 0x03, 0x07, 0x0F, 0x0E, 0x0D, 0x0E, 0x0D, 0x02, 0x01,
-            0x01, 0x02, 0x02, 0x05, 0x02, 0x05, 0x06, 0x07, 0x03, 0x05, 0x04, 0x0A, 0x04, 0x0B, 0x0C, 0x04,
-            0x02, 0x05, 0x06, 0x07, 0x06, 0x07, 0x09, 0x0F, 0x05, 0x08, 0x07, 0x0E, 0x07, 0x0E, 0x0F, 0x0D,
-            0x03, 0x05, 0x04, 0x0B, 0x05, 0x08, 0x07, 0x0E, 0x04, 0x07, 0x03, 0x04, 0x0A, 0x0E, 0x04, 0x03,
-            0x04, 0x0A, 0x0C, 0x04, 0x07, 0x0E, 0x0F, 0x0D, 0x0B, 0x0E, 0x04, 0x03, 0x0E, 0x02, 0x0D, 0x01,
-            0x03, 0x05, 0x05, 0x08, 0x04, 0x0A, 0x07, 0x0E, 0x04, 0x07, 0x0B, 0x0E, 0x03, 0x04, 0x04, 0x03,
-            0x04, 0x0B, 0x07, 0x0E, 0x0C, 0x04, 0x0F, 0x0D, 0x0A, 0x0E, 0x0E, 0x02, 0x04, 0x03, 0x0D, 0x01,
-            0x04, 0x07, 0x0A, 0x0E, 0x0B, 0x0E, 0x0E, 0x02, 0x0C, 0x0F, 0x04, 0x0D, 0x04, 0x0D, 0x03, 0x01,
-            0x03, 0x04, 0x04, 0x03, 0x04, 0x03, 0x0D, 0x01, 0x04, 0x0D, 0x03, 0x01, 0x03, 0x01, 0x01, 0x00
+            0,  1,  1,  3,  1,  3,  2,  4,  1,  2,  3,  4,  3,  4,  4,  3,
+            1,  3,  2,  4,  2,  4,  6, 12,  2,  5,  5, 11,  5, 10,  7,  4,
+            1,  2,  3,  4,  2,  5,  5, 10,  2,  6,  4, 12,  5,  7, 11,  4,
+            3,  4,  4,  3,  5, 11,  7,  4,  5,  7, 10,  4,  8, 14, 14,  3,
+            1,  2,  2,  5,  3,  4,  5, 11,  2,  6,  5,  7,  4, 12, 10,  4,
+            3,  4,  5, 10,  4,  3,  7,  4,  5,  7,  8, 14, 11,  4, 14,  3,
+            2,  6,  5,  7,  5,  7,  8, 14,  6,  9,  7, 15,  7, 15, 14, 13,
+            4, 12, 11,  4, 10,  4, 14,  3,  7, 15, 14, 13, 14, 13,  2,  1,
+            1,  2,  2,  5,  2,  5,  6,  7,  3,  5,  4, 10,  4, 11, 12,  4,
+            2,  5,  6,  7,  6,  7,  9, 15,  5,  8,  7, 14,  7, 14, 15, 13,
+            3,  5,  4, 11,  5,  8,  7, 14,  4,  7,  3,  4, 10, 14,  4,  3,
+            4, 10, 12,  4,  7, 14, 15, 13, 11, 14,  4,  3, 14,  2, 13,  1,
+            3,  5,  5,  8,  4, 10,  7, 14,  4,  7, 11, 14,  3,  4,  4,  3,
+            4, 11,  7, 14, 12,  4, 15, 13, 10, 14, 14,  2,  4,  3, 13,  1,
+            4,  7, 10, 14, 11, 14, 14,  2, 12, 15,  4, 13,  4, 13,  3,  1,
+            3,  4,  4,  3,  4,  3, 13,  1,  4, 13,  3,  1,  3,  1,  1,  0
         };
 
         public static readonly RegularCellData[] RegularCellData =
@@ -541,6 +370,7 @@
             new ushort[] {}
         };
 
+        // Transition data.
         public static readonly byte[] TransitionCellClass = new byte[]
         {
             0x00, 0x01, 0x02, 0x84, 0x01, 0x05, 0x04, 0x04, 0x02, 0x87, 0x09, 0x8C, 0x84, 0x0B, 0x05, 0x05,

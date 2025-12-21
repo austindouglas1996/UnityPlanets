@@ -61,10 +61,7 @@ void CountTriangles(ChunkDispatchKeyInfo key)
     uint cellClass = RegularCellClass[caseCode];
     RegularCellData cell = RegularCellTable[cellClass];
 
-    // Triangle count is explicit
-    uint localCount = cell.TriangleCount;
-
-    InterlockedAdd(TriangleCount[key.KeyIndex], localCount);
+    InterlockedAdd(TriangleCount[key.KeyIndex], cell.TriangleCount);
 }
 
 void March(ChunkDispatchKeyInfo key)
@@ -84,20 +81,14 @@ void March(ChunkDispatchKeyInfo key)
         uint3 pos = key.LocalVoxelCoord + RegularCornerOffset[i];
         corner[i] = DensityMap[GetVoxelSampleIndexRaw(pos, key.KeyIndex, sample3)];
         cornerPos[i] = (float3(pos) * step + world);
-
+        cornerNormal[i] = GetNormalFast(pos, key.KeyIndex, sample3);
+        
         if (corner[i] - ISOLevel > 0.0)
             caseCode |= (1u << i);
     }
 
     if (caseCode == 0 || caseCode == 255)
         return;
-
-    // Normals
-    for (uint i = 0; i < 8; i++)
-    {
-        int3 pos = key.LocalVoxelCoord + RegularCornerOffset[i];
-        cornerNormal[i] = GetNormalFast(pos, key.KeyIndex, sample3);
-    }
 
     uint cellClass = RegularCellClass[caseCode];
     RegularCellData cell = RegularCellTable[cellClass];
@@ -114,26 +105,17 @@ void March(ChunkDispatchKeyInfo key)
         float d0 = corner[v.Corner0] - ISOLevel;
         float d1 = corner[v.Corner1] - ISOLevel;
 
-        float t = (d1 == 0) ? 1.0 :
-                  (d0 == 0) ? 0.0 :
-                  d1 / (d1 - d0);
-
-        cellPos[i] = lerp(
-            cornerPos[v.Corner0],
-            cornerPos[v.Corner1],t);
-
-        // Normal interpolation (NO ISO here)
-        cellNormal[i] = normalize(lerp(
-            cornerNormal[v.Corner0],
-            cornerNormal[v.Corner1],t));
+        float t = (d0 == d1) ? 0.5f : d1 / (d1 - d0);
+        cellPos[i] = lerp(cornerPos[v.Corner0], cornerPos[v.Corner1],t);
+        cellNormal[i] = normalize(lerp(cornerNormal[v.Corner0], cornerNormal[v.Corner1],t));
     }
 
     // Emit triangles
     for (uint i = 0; i < cell.IndicesCount; i += 3)
     {
-        uint ia = GetIndex(cell, i + 0);
-        uint ib = GetIndex(cell, i + 1);
-        uint ic = GetIndex(cell, i + 2);
+        uint ia = RegularCellIndices[cell.IndicesStart + i + 0];
+        uint ib = RegularCellIndices[cell.IndicesStart + i + 1];
+        uint ic = RegularCellIndices[cell.IndicesStart + i + 2];
 
         TriangleData tri;
         tri.a = cellPos[ia];
@@ -152,7 +134,6 @@ void March(ChunkDispatchKeyInfo key)
         TriangleSourceBuffer[key.chunk.SourceOffset + next] = tri;
     }
 }
-
 
 [numthreads(4, 4, 4)]
 void RunMarchingCubesPrePass(uint3 id : SV_DispatchThreadID)

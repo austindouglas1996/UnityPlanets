@@ -52,8 +52,8 @@
             transvoxelShader.SetBuffer(countTrianglesKernel, "ChunkInputs", buffers.GenerateChunkInputBuffer);
             transvoxelShader.SetBuffer(marchKernel, "ChunkInputs", buffers.GenerateChunkInputBuffer);
 
-            TransvoxelGPU.LoadBuffers(transvoxelShader, countTrianglesKernel);
-            TransvoxelGPU.LoadBuffers(transvoxelShader, marchKernel);
+            TransvoxelGpuTables.SetBuffer(transvoxelShader, countTrianglesKernel);
+            TransvoxelGpuTables.SetBuffer(transvoxelShader, marchKernel);
         }
 
         /// <summary>
@@ -91,7 +91,7 @@
             cornerOffsets?.Dispose();
             edgeConnections?.Dispose();
             triangleTable?.Dispose();
-            TransvoxelGPU.Dispose();
+            TransvoxelGpuTables.Dispose();
         }
     }
 }
