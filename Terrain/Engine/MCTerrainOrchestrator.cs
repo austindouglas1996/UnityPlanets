@@ -23,6 +23,9 @@
     [RequireComponent(typeof(ChunkMaterialSettings))]
     public class MCTerrainOrchestrator : MonoBehaviour, IChunkGenerator
     {
+        [Header("World")]
+        [SerializeField] private Transform Player;
+
         [Header("Materials")]
         private ChunkMaterialSettings materialManager;
         private Material chunkMaterial;
@@ -60,7 +63,7 @@
             chunkMaterial = materialManager.BaseMaterial;
 
             // Centralized buffer container shared by every stage.
-            chunkBuffers = new ChunkBuffers(chunkServices);
+            chunkBuffers = new ChunkBuffers(chunkServices, Player);
 
             // Load compute stages. Each stage wires buffers/kernels internally.
             density = new DensityStage(DensityShader, chunkBuffers);

@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: edb1354207f6bf140934e34ede8d3959, type: 3}
   m_Name: DetailNormal
   m_EditorClassIdentifier: Assembly-CSharp::LODThresholds
-  LOD0: 6
-  LOD1: 6
+  LOD0: 2
+  LOD1: 2
   LOD2: 2
   LOD3: 2
   LOD4: 2

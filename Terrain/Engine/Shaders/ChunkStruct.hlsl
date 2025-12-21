@@ -11,7 +11,9 @@ struct ChunkDispatchKey
 {
     uint GlobalIndex;
     float3 CoordPos;
-    uint LodIndex;
+    
+    uint LodIndex;  
+    uint LodEdgeMask;
     
     uint SourceOffset;
     uint SourceCount;

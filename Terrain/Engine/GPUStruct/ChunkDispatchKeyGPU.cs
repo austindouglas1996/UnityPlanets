@@ -12,7 +12,9 @@ namespace GingerVoxelSystem.Engine
     {
         public uint GlobalIndex;
         public Vector3 CoordPos;
+
         public int LodIndex;
+        public uint LodEdgeMask;
 
         public uint SourceOffset;
         public uint SourceCount;

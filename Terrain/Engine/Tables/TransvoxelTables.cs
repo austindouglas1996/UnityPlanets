@@ -1,6 +1,9 @@
 ﻿/*
- * This is a copy from the following project.
+ * This implementation is based on the Transvoxel reference implementation:
  * https://github.com/bbQsauce5/transvoxel-unity/blob/main/Runtime/Mesher/TransvoxelTables.cs
+ *
+ * The goal here is not to re-invent Transvoxel, but to adapt the tables and data
+ * into a GPU-friendly format that works cleanly with Unity compute shaders.
  */
 namespace GingerVoxelSystem.Engine.Helpers
 {

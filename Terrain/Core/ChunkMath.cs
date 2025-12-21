@@ -10,6 +10,16 @@ namespace GingerVoxelSystem.Core
     /// </summary>
     public class ChunkMath
     {
+        public static readonly Vector3Int[] ChunkOffsets =
+        {
+            new Vector3Int( 1, 0, 0), // +X
+            new Vector3Int(-1, 0, 0), // -X
+            new Vector3Int( 0, 1, 0), // +Y
+            new Vector3Int( 0,-1, 0), // -Y
+            new Vector3Int( 0, 0, 1), // +Z
+            new Vector3Int( 0, 0,-1), // -Z
+        };
+
         /// <summary>
         /// The set of LOD thresholds for chunk rendering.
         /// </summary>
@@ -143,6 +153,30 @@ namespace GingerVoxelSystem.Core
             int ring = Mathf.CeilToInt(dist / chunkSize);
 
             return DesiredLodFromRings(ring);
+        }
+
+        /// <summary>
+        /// Builds a 6-bit LOD edge mask for a chunk.
+        /// Each bit indicates that the corresponding neighbor is a lower LOD
+        /// and therefore requires a Transvoxel transition on that face.
+        ///
+        /// Bit layout:
+        /// 0 = +X, 1 = -X, 2 = +Y, 3 = -Y, 4 = +Z, 5 = -Z
+        /// </summary>
+        public uint GetLodMaskForChunk(Vector3Int coord, int givenLod, Vector3 playerWorldPos)
+        {
+            uint mask = 0;
+
+            for (int i = 0; i < 6; i++)
+            {
+                int neighborLod = GetLODForChunk(coord + ChunkOffsets[i], playerWorldPos);
+
+                // Only generate transitions when this chunk is higher detail
+                if (neighborLod < givenLod)
+                    mask |= 1u << i;
+            }
+
+            return mask;
         }
 
         /// <summary>
