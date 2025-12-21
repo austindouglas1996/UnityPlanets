@@ -37,6 +37,8 @@ namespace GingerVoxelSystem.Systems.Rendering
         private ChunkGenerationProcessor processor;
         private ChunkLodOctree lodTree;
 
+        public ChunkLodOctree LODTree => lodTree;
+
         /// <summary>
         /// Update the chunk layout and render any available chunks.
         /// </summary>

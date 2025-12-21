@@ -63,7 +63,7 @@
             chunkMaterial = materialManager.BaseMaterial;
 
             // Centralized buffer container shared by every stage.
-            chunkBuffers = new ChunkBuffers(chunkServices, Player);
+            chunkBuffers = new ChunkBuffers(chunkServices);
 
             // Load compute stages. Each stage wires buffers/kernels internally.
             density = new DensityStage(DensityShader, chunkBuffers);

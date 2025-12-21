@@ -52,6 +52,16 @@ struct VertexDataUnpacked
     uint CacheDir;
 };
 
+static const uint FaceCorners[6][4] =
+{
+    { 1, 2, 6, 5 }, // +X
+    { 0, 4, 7, 3 }, // -X
+    { 3, 7, 6, 2 }, // +Y
+    { 0, 1, 5, 4 }, // -Y
+    { 4, 5, 6, 7 }, // +Z
+    { 0, 3, 2, 1 } // -Z
+};
+
 // -----------------------------------------------------------------------------
 // Corner offsets for regular and transition cells.
 // These define the relative positions of cube corners in voxel space.

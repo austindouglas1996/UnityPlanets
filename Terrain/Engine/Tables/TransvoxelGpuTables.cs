@@ -315,7 +315,7 @@ namespace GingerVoxelSystem.Engine.Helpers
                 start += newData.VertexCount;
             }
 
-            Debug.Assert(vertexData.Count == 1536);
+            Debug.Assert(vertexData.Count == 4096);
             Debug.Assert(vertexRanges.Count == TransvoxelTables.TransitionVertexData.Length);
 
             TransitionVertexRanges.SetData(vertexRanges.ToArray());

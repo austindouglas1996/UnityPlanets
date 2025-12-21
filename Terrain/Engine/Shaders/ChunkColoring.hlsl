@@ -23,6 +23,11 @@ float4 GetColorByID(uint id)
 
 float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint overlay)
 {
+    if (tri.LodIndex == 9)
+    {
+        return float4(0, 0, 0, 1);
+    }
+    
     if (overlay == 0)
     {
         return float4((vertex == 0) ? data.ColorA :

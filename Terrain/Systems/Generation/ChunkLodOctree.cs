@@ -1,11 +1,9 @@
 ﻿namespace GingerVoxelSystem.Systems.Generation
 {
-    using DistantLands.Cozy;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Engine.Generation;
     using System;
     using System.Collections.Generic;
-    using UnityEditor.Experimental.GraphView;
     using UnityEngine;
 
     /// <summary>
@@ -119,6 +117,8 @@
         private readonly Dictionary<ChunkKey, int> IndexByKey = new();
         private readonly Stack<int> FreeSingleBlocks = new();
 
+        private Vector3Int playerCoordinatePos;
+
         /// <summary>
         /// The current index of <see cref="Update"/> as we limit the amount of nodes updated during an
         /// update to help streamline the process.
@@ -152,12 +152,31 @@
             TryCreateSingleNode(new ChunkKey(coord, RootLOD));
         }
 
+        public uint GetLODEdgeMask(ChunkKey key)
+        {
+            uint mask = 0;
+
+            for (int face = 0; face < 6; face++)
+            {
+                Vector3Int neighborCoord = key.Coordinates + ChunkMath.ChunkOffsets[face];
+                if (math.GetLODForChunk(neighborCoord, playerCoordinatePos) > key.LODIndex)
+                    mask |= 1u << face;
+            }
+
+            if (mask != 0)
+                Debug.LogError($"{mask}");
+
+            return mask;
+        }
+
         /// <summary>
         /// Called every frame. Processes up to UpdatePerTick nodes in round-robin fashion.
         /// Landmine: never loop over all nodes each frame — that killed perf in the old version.
         /// </summary>
         public void Update()
         {
+            playerCoordinatePos = math.ToCoordinates(follower.position);
+
             int count = Nodes.Count;
             int processed = 0;
 
@@ -266,7 +285,7 @@
                 return LodDecision.NoChange;
             }
 
-            int desired = math.GetLODForChunk(node.Key.Global, follower.transform.position);
+            int desired = math.GetLODForChunk(node.Key.Global, playerCoordinatePos);
 
             if (node.State == NodeState.IdleLeaf)
             {

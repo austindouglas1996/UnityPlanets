@@ -1,3 +1,5 @@
+using GingerVoxelSystem.Systems.Generation;
+
 namespace GingerVoxelSystem.Core
 {
     /// <summary>
@@ -11,6 +13,11 @@ namespace GingerVoxelSystem.Core
         /// Immutable settings that control chunk sizing/behavior.
         /// </summary>
         IChunkConfiguration Configuration { get; }
+
+        /// <summary>
+        /// A greedy system for managing what chunks should be rendered throughout the world.
+        /// </summary>
+        ChunkLodOctree Octree { get; }
 
         /// <summary>
         /// Produces the data needed to build chunk meshes/fields.

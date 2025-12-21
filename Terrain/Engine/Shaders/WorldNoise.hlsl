@@ -72,9 +72,10 @@ float MountainShape(float3 p)
 float GenerateNoiseValue(float3 p)
 {
     float ground = GroundVolumetric(p); 
-    float mountain = MountainShape(p);
-
-    float terrain = SmoothUnion(ground, mountain, 30.0);
+    
+    //float mountain = MountainShape(p);
+    //float terrain = SmoothUnion(ground, mountain, 30.0);
+    // Remeber to return terrain.
 
     return ground;
 }

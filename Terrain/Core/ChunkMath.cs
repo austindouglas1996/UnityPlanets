@@ -133,63 +133,16 @@ namespace GingerVoxelSystem.Core
         /// </summary>
         /// <param name="chunkCoordinates"></param>
         /// <returns></returns>
-        public int GetLODForChunk(Vector3Int coord, Vector3 playerWorldPos)
+        public int GetLODForChunk(Vector3Int chunkCoord, Vector3Int PlayerChunkPos)
         {
-            int chunkSize = GetChunkSize(0);
+            int dx = Mathf.Abs(chunkCoord.x - PlayerChunkPos.x);
+            int dz = Mathf.Abs(chunkCoord.z - PlayerChunkPos.z);
 
-            Vector3 worldMin = coord * chunkSize;
-            Vector3 worldMax = worldMin + new Vector3(chunkSize, chunkSize, chunkSize);
+            int ring = Mathf.Max(dx, dz);
 
-            // Clamp player position to chunk AABB
-            float px = Mathf.Clamp(playerWorldPos.x, worldMin.x, worldMax.x);
-            float py = Mathf.Clamp(playerWorldPos.y, worldMin.y, worldMax.y);
-            float pz = Mathf.Clamp(playerWorldPos.z, worldMin.z, worldMax.z);
-
-            float dx = Mathf.Abs(playerWorldPos.x - px);
-            float dy = Mathf.Abs(playerWorldPos.y - py);
-            float dz = Mathf.Abs(playerWorldPos.z - pz);
-
-            float dist = Mathf.Sqrt(dx * dx + dy * dy + dz * dz);
-            int ring = Mathf.CeilToInt(dist / chunkSize);
-
-            return DesiredLodFromRings(ring);
-        }
-
-        /// <summary>
-        /// Builds a 6-bit LOD edge mask for a chunk.
-        /// Each bit indicates that the corresponding neighbor is a lower LOD
-        /// and therefore requires a Transvoxel transition on that face.
-        ///
-        /// Bit layout:
-        /// 0 = +X, 1 = -X, 2 = +Y, 3 = -Y, 4 = +Z, 5 = -Z
-        /// </summary>
-        public uint GetLodMaskForChunk(Vector3Int coord, int givenLod, Vector3 playerWorldPos)
-        {
-            uint mask = 0;
-
-            for (int i = 0; i < 6; i++)
-            {
-                int neighborLod = GetLODForChunk(coord + ChunkOffsets[i], playerWorldPos);
-
-                // Only generate transitions when this chunk is higher detail
-                if (neighborLod < givenLod)
-                    mask |= 1u << i;
-            }
-
-            return mask;
-        }
-
-        /// <summary>
-        /// Determine the best LOD ring to use based on the distance.
-        /// </summary>
-        /// <param name="dChunks0"></param>
-        /// <param name="rings"></param>
-        /// <returns></returns>
-        private int DesiredLodFromRings(int dChunks0)
-        {
             for (int i = 0; i < LODRings.Length; i++)
             {
-                if (dChunks0 < LODRings[i])
+                if (ring < LODRings[i])
                     return i;
             }
 

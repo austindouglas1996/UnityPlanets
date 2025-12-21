@@ -20,8 +20,7 @@ namespace GingerVoxelSystem.Engine
         private readonly List<ChunkDispatchKeyGPU> InputSurface = new(ChunkEngineSettings.SurfaceJobsPerBatch);
         private readonly List<ChunkDispatchKeyGPU> InputGenerate = new(ChunkEngineSettings.GenerationJobsPerBatch);
 
-        private Transform player;
-        private ChunkMath chunkMath;
+        private IChunkServices ChunkServices;
 
         // GPU buffers used by various stages.
         public ComputeBuffer SurfaceChunkInputBuffer;   // Per-chunk metadata for surface mask pass
@@ -38,10 +37,9 @@ namespace GingerVoxelSystem.Engine
         /// Creates a new <see cref="ChunkBuffers"/> instance configured using the supplied services.
         /// This allocates all GPU buffers and uploads initial option/biome data.
         /// </summary>
-        public ChunkBuffers(IChunkServices services, Transform player)
+        public ChunkBuffers(IChunkServices services)
         {
-            this.player = player;
-            this.chunkMath = new ChunkMath(services.Configuration);
+            this.ChunkServices = services;
 
             BiomeBuffer = new ComputeBuffer(services.Configuration.BiomeLibrary.Biomes.Count, Marshal.SizeOf<ChunkBiomeGPU>());
 
@@ -95,7 +93,7 @@ namespace GingerVoxelSystem.Engine
                     GlobalIndex = (uint)i,  // Used by some kernels as an index hint
                     CoordPos = ctx.Coordinates,
                     LodIndex = ctx.LODIndex,
-                    LodEdgeMask = chunkMath.GetLodMaskForChunk(ctx.Coordinates, ctx.LODIndex, player.position)
+                    LodEdgeMask = ChunkServices.Octree.GetLODEdgeMask(ctx),
                 });
             }
 

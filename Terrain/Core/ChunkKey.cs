@@ -36,6 +36,11 @@ namespace GingerVoxelSystem.Core
             LODIndex = lod;
         }
 
+        /// <summary>
+        /// How many LOD0 chunks this key contains.
+        /// </summary>
+        public int Size0 => 1 << LODIndex;
+
         public static bool operator ==(ChunkKey a, ChunkKey b)
         {
             return a.Equals(b);
