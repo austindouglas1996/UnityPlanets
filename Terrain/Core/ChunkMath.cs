@@ -12,12 +12,12 @@ namespace GingerVoxelSystem.Core
     {
         public static readonly Vector3Int[] ChunkOffsets =
         {
-            new Vector3Int( 1, 0, 0), // +X
             new Vector3Int(-1, 0, 0), // -X
-            new Vector3Int( 0, 1, 0), // +Y
+            new Vector3Int( 1, 0, 0), // +X
             new Vector3Int( 0,-1, 0), // -Y
-            new Vector3Int( 0, 0, 1), // +Z
+            new Vector3Int( 0, 1, 0), // +Y
             new Vector3Int( 0, 0,-1), // -Z
+            new Vector3Int( 0, 0, 1), // +Z
         };
 
         /// <summary>

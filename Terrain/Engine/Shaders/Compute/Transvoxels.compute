@@ -172,18 +172,11 @@ void March(ChunkDispatchKeyInfo key)
         tri.KeyIndex = key.KeyIndex;
         tri.LodIndex = key.chunk.LodIndex;
         
-        if (key.chunk.LodEdgeMask != 0)
-        {
-            tri.LodIndex = 9;
-        }
-
         uint next;
         InterlockedAdd(TriangleCursor[key.KeyIndex], 1, next);
         TriangleSourceBuffer[key.chunk.SourceOffset + next] = tri;
     }
-    
-    return;
-   
+
     uint mask = key.chunk.LodEdgeMask;
 
     [loop]
@@ -206,19 +199,21 @@ void MarchTransitionFace(uint face, ChunkDispatchKeyInfo key, int step, float3 w
     float tCornerD[13];
     float3 tCornerPos[13];
     float3 tCornerN[13];
+    
+    int3 base = (int3) key.LocalVoxelCoord;
 
     // Populate transition corner samples once
     [loop]
     for (uint c = 0; c < 13; c++)
     {
-        uint cornerIndex = c;
+        uint cornerIndex = c; // later: remap per face
 
-        // If your tables require per-face corner remap, this is where it goes:
-        // cornerIndex = TransitionFaceCornerRemap[face * 13 + c];
-        uint3 spos = key.LocalVoxelCoord + (uint3) TransitionCornerOffset[cornerIndex];
+        int3 offset = TransitionCornerOffset[cornerIndex];
+        int3 sposI = base + offset;
+        uint3 spos = (uint3) sposI;
 
         tCornerD[c] = DensityMap[GetVoxelSampleIndexRaw(spos, key.KeyIndex, sample3)];
-        tCornerPos[c] = (float3(spos) * step + world);
+        tCornerPos[c] = (float3(sposI) * (step * 0.5f) + world);
         tCornerN[c] = GetNormalFast(spos, key.KeyIndex, sample3);
     }
 
