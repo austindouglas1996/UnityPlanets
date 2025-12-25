@@ -11,7 +11,7 @@ namespace GingerVoxelSystem.Engine
     public struct ChunkDispatchKeyGPU
     {
         public uint GlobalIndex;
-        public Vector3 CoordPos;
+        public Vector3 Origin0;
 
         public int LodIndex;
         public uint LodEdgeMask;

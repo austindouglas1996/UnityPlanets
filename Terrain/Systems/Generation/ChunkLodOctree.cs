@@ -4,6 +4,7 @@
     using GingerVoxelSystem.Engine.Generation;
     using System;
     using System.Collections.Generic;
+    using UnityEditor.Experimental.GraphView;
     using UnityEngine;
 
     /// <summary>
@@ -75,7 +76,10 @@
 
             // State
             public NodeState State;
+            public uint LodEdgeMask = 0;
             public bool MeshReady = false;
+
+            public bool IsLeaf => Children.Count != 0;
 
             // Helpers
             public int LODIndex => Key.LODIndex;
@@ -106,7 +110,7 @@
         /// Max number of nodes updated per Unity frame.
         /// This throttles Update() work to avoid spikes.
         /// </summary>
-        private const int UpdatePerTick = 250;
+        private const int UpdatePerTick = 550;
 
         private readonly ChunkMath math;
         private readonly Transform follower;
@@ -115,6 +119,7 @@
 
         private readonly List<ChunkLodTreeNode> Nodes = new();
         private readonly Dictionary<ChunkKey, int> IndexByKey = new();
+        private readonly Dictionary<Vector3Int, int> IndexByOrigin = new();
         private readonly Stack<int> FreeSingleBlocks = new();
 
         private Vector3Int playerCoordinatePos;
@@ -149,8 +154,15 @@
         /// <param name="coord"></param>
         public void AddRoot(Vector3Int coord)
         {
-            TryCreateSingleNode(new ChunkKey(coord, RootLOD));
+            // coord is LOD-space root coordinate
+            Vector3Int origin0 = new Vector3Int(
+                coord.x << RootLOD,
+                coord.y << RootLOD,
+                coord.z << RootLOD);
+
+            TryCreateSingleNode(new ChunkKey(origin0, RootLOD));
         }
+
 
         public uint GetLODEdgeMask(ChunkKey key)
         {
@@ -158,13 +170,19 @@
 
             for (int face = 0; face < 6; face++)
             {
-                Vector3Int neighborCoord = key.Coordinates + ChunkMath.ChunkOffsets[face];
-                if (math.GetLODForChunk(neighborCoord, playerCoordinatePos) > key.LODIndex)
+                Vector3Int neighborOrigin0 = key.Origin0 + ChunkMath.ChunkOffsets[face] * key.Size0;
+
+                // Ask me how long I spent thinking TryGetValue returns -1 when not found ):
+                // and how awful the random bug that occured so rare.
+                if (!IndexByOrigin.TryGetValue(neighborOrigin0, out int neighborIndex))
+                    continue;
+
+                var node = Nodes[neighborIndex];
+
+                ChunkKey neighborKey = node.Key;
+                if (neighborKey.LODIndex < key.LODIndex)
                     mask |= 1u << face;
             }
-
-            if (mask != 0)
-                Debug.LogError($"{mask}");
 
             return mask;
         }
@@ -175,7 +193,7 @@
         /// </summary>
         public void Update()
         {
-            playerCoordinatePos = math.ToCoordinates(follower.position);
+            playerCoordinatePos = math.WorldToOrigin0(follower.position);
 
             int count = Nodes.Count;
             int processed = 0;
@@ -202,16 +220,16 @@
         /// <param name="index"></param>
         private void UpdateNode(int index)
         {
-            var n = Nodes[index];
+            var node = Nodes[index];
 
-            if (n.Key == ChunkKey.Invalid)
+            if (node.Key == ChunkKey.Invalid)
             {
                 throw new System.ArgumentException("Invalid key provided for update.");
             }
 
-            var decision = GetLODDecision(n);
+            var decision = GetLODDecision(node);
 
-            switch (n.State)
+            switch (node.State)
             {
                 case NodeState.IdleLeaf:
                     if (decision == LodDecision.Subdivide)
@@ -220,11 +238,21 @@
                         return;
                     }
 
-                    if (!n.MeshReady)
+                    if (!node.MeshReady)
                     {
-                        n.State = NodeState.AwaitGeneration;
-                        this.processor.RequestChunkGeneration(n.Key, OnRequestGenerationCompleted);
+                        node.State = NodeState.AwaitGeneration;
+                        this.processor.RequestChunkGeneration(node.Key, OnRequestGenerationCompleted);
                     }
+
+                    // Check the chunk to see if it may need an 
+                    // update with a new LOD edge mask being set.
+                    uint newMask = GetLODEdgeMask(node.Key);
+                    if (newMask != node.LodEdgeMask)
+                    {
+                        node.LodEdgeMask = newMask;
+                        processor.RequestEdit(node.Key);
+                    }
+
                     return;
                 case NodeState.Subdivided:
                     if (decision == LodDecision.Merge)
@@ -265,6 +293,7 @@
             var n = Nodes[index];
 
             IndexByKey.Remove(n.Key);
+            IndexByOrigin.Remove(n.Key.Origin0);
             processor.RemoveChunk(n.Key);
 
             n.Free();
@@ -285,7 +314,7 @@
                 return LodDecision.NoChange;
             }
 
-            int desired = math.GetLODForChunk(node.Key.Global, playerCoordinatePos);
+            int desired = math.GetLODForChunk(node.Key.Origin0, playerCoordinatePos);
 
             if (node.State == NodeState.IdleLeaf)
             {
@@ -324,12 +353,13 @@
                     MarkChildResolvedIfHasParent(index);
             }
 
+            int childLOD = node.Key.LODIndex - 1;
+            int childSize0 = 1 << childLOD; // half of parent size
+
             for (int i = 0; i < 8; i++)
             {
-                var coordinates = GetChildOffset(i, node.Key.Coordinates * 2);
-                var lodIndex = node.LODIndex - 1;
-                var chunkKey = new ChunkKey(coordinates, lodIndex);
-                TryCreateSingleNode(chunkKey, index);
+                Vector3Int childOrigin0 = node.Key.Origin0 + GetChildOffset(i, childSize0);
+                TryCreateSingleNode(new ChunkKey(childOrigin0, childLOD), index);
             }
         }
 
@@ -411,6 +441,8 @@
                 }
                 else
                 {
+                    IndexByOrigin[key.Origin0] = childIndex;
+
                     child.Key = key;
                     child.State = NodeState.IdleLeaf;
                     child.ParentIndex = parentIndex;
@@ -520,33 +552,12 @@
         /// <param name="baseOffset"></param>
         /// <returns></returns>
         /// <exception cref="System.IndexOutOfRangeException"></exception>
-        private Vector3Int GetChildOffset(int index, Vector3Int baseOffset)
+        private Vector3Int GetChildOffset(int index, int childSize0)
         {
-            int cx = baseOffset.x;
-            int cy = baseOffset.y;
-            int cz = baseOffset.z;
-
-            switch (index)
-            {
-                case 0:
-                    return new Vector3Int(cx + 0, cy + 0, cz + 0);
-                case 1:
-                    return new Vector3Int(cx + 1, cy + 0, cz + 0);
-                case 2:
-                    return new Vector3Int(cx + 0, cy + 0, cz + 1);
-                case 3:
-                    return new Vector3Int(cx + 1, cy + 0, cz + 1);
-                case 4:
-                    return new Vector3Int(cx + 0, cy + 1, cz + 0);
-                case 5:
-                    return new Vector3Int(cx + 1, cy + 1, cz + 0);
-                case 6:
-                    return new Vector3Int(cx + 0, cy + 1, cz + 1);
-                case 7:
-                    return new Vector3Int(cx + 1, cy + 1, cz + 1);
-            }
-
-            throw new System.IndexOutOfRangeException();
+            return new Vector3Int(
+                (index & 1) != 0 ? childSize0 : 0,
+                (index & 2) != 0 ? childSize0 : 0,
+                (index & 4) != 0 ? childSize0 : 0);
         }
     }
 }

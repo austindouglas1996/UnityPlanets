@@ -80,7 +80,7 @@ void March(ChunkDispatchKeyInfo key)
     float3 cornerPos[8];
     
     int step = GetCubeSizeStep(key.chunk.LodIndex);
-    float3 world = ToWorld(key.chunk.CoordPos, key.chunk.LodIndex);
+    float3 world = ToWorld(key.chunk.Origin0);
     int3 sample3 = GetSamplesPerChunk3();
     
     [loop]

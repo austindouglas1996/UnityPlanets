@@ -43,13 +43,13 @@ int GetCubeSizeStep(uint lodIndex)
 }
 
 // Convert chunk coordinates to world space (with LOD)
-float3 ToWorld(int3 coordinates, uint lodIndex)
+float3 ToWorld(int3 origin0)
 {
-    return coordinates * GetCubesPerAxis(lodIndex);
+    return origin0 * GetCubesPerAxis(0);
 }
 
 // Convert world position to chunk coordinates
-int3 ToCoordinates(float3 worldPos)
+int3 WorldToOrigin0(float3 worldPos)
 {
     int CubesPerAxis = GetCubesPerAxis(0);
     float inv = rcp((float) CubesPerAxis);

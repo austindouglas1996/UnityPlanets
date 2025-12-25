@@ -68,7 +68,7 @@ namespace GingerVoxelSystem.Engine
                 var ctx = keys[i];
                 InputSurface.Add(new ChunkDispatchKeyGPU
                 {
-                    CoordPos = ctx.Key.Coordinates,
+                    Origin0 = ctx.Key.Origin0,
                     LodIndex = ctx.Key.LODIndex
                 });
             }
@@ -91,7 +91,7 @@ namespace GingerVoxelSystem.Engine
                 InputGenerate.Add(new ChunkDispatchKeyGPU
                 {
                     GlobalIndex = (uint)i,  // Used by some kernels as an index hint
-                    CoordPos = ctx.Coordinates,
+                    Origin0 = ctx.Origin0,
                     LodIndex = ctx.LODIndex,
                     LodEdgeMask = ChunkServices.Octree.GetLODEdgeMask(ctx),
                 });

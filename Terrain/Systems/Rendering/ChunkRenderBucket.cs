@@ -213,6 +213,27 @@ namespace GingerVoxelSystem.Systems.Rendering
         }
 
         /// <summary>
+        /// Modify an existing key with details that have been modified.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public bool TryModify(ChunkKey key)
+        {
+            if (!index.TryGetValue(key, out int pos))
+            {
+                Debug.LogWarning("ChunkRenderBucket tried to modify an invalid key.");
+                return false;
+            }
+
+            items[pos] = key;
+            index[key] = pos;
+            modifications[pos] = key;
+            MarkAsDirty(false);
+
+            return true;
+        }
+
+        /// <summary>
         /// Remove all elements from this collection.
         /// </summary>
         public void Clear()

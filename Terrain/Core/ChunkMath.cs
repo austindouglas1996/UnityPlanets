@@ -51,81 +51,17 @@ namespace GingerVoxelSystem.Core
         }
 
         /// <summary>
-        /// Return a set of coordinates to world position.
-        /// </summary>
-        /// <param name="coordinates"></param>
-        /// <returns></returns>
-        public Vector3 ToWorld(Vector3 coordinates)
-        {
-            int chunkSize = GetChunkSize(0);
-            return new Vector3(
-                coordinates.x * chunkSize,
-                coordinates.y * chunkSize,
-                coordinates.z * chunkSize);
-        }
-
-        /// <summary>
         /// Return a world position in world coordinates.
         /// </summary>
         /// <param name="world"></param>
         /// <returns></returns>
-        public Vector3Int ToCoordinates(Vector3 worldPositon)
+        public Vector3Int WorldToOrigin0(Vector3 worldPositon)
         {
             int chunkSize = GetChunkSize(0);
             return new Vector3Int(
                 Mathf.FloorToInt(worldPositon.x / chunkSize),
                 Mathf.FloorToInt(worldPositon.y / chunkSize),
                 Mathf.FloorToInt(worldPositon.z / chunkSize));
-        }
-
-        /// <summary>
-        /// Retrieve the <see cref="Bounds"/> for a given <see cref="ChunkKey"/>.
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        public Bounds GetBounds(ChunkKey key)
-        {
-            return GetBounds(key.Coordinates, key.LODIndex);
-        }
-
-        /// <summary>
-        /// Retrieve the <see cref="Bounds"/> for a given <see cref="ChunkKey"/>.
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        public Bounds GetBounds(Vector3Int coordinates, int lodIndex)
-        {
-            int chunkSize = GetChunkSize(lodIndex);
-
-            Vector3 worldPos = new Vector3(
-                 coordinates.x * chunkSize,
-                 coordinates.y * chunkSize,
-                 coordinates.z * chunkSize);
-
-            Bounds bounds = new Bounds
-            {
-                center = worldPos + new Vector3(chunkSize, chunkSize, chunkSize) * 0.5f,
-                size = new Vector3(chunkSize, chunkSize, chunkSize)
-            };
-
-            return bounds;
-        }
-
-        /// <summary>
-        /// Retrieve a set of coordinates based on a <see cref="Bounds"/> object.
-        /// </summary>
-        /// <param name="bounds"></param>
-        /// <param name="lodIndex"></param>
-        /// <returns></returns>
-        public Vector3Int BoundsToCoordinates(Bounds bounds, int lodIndex)
-        {
-            int chunkSize = GetChunkSize(lodIndex);
-            Vector3 pos = bounds.min;
-
-            return new Vector3Int(
-                Mathf.FloorToInt(pos.x / chunkSize),
-                Mathf.FloorToInt(pos.y / chunkSize),
-                Mathf.FloorToInt(pos.z / chunkSize));
         }
 
         /// <summary>

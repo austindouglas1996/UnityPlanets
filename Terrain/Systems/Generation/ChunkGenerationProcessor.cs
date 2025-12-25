@@ -84,6 +84,15 @@
         }
 
         /// <summary>
+        /// Request a chunks collection to be set to update as if a new chunk has been added.
+        /// </summary>
+        /// <param name="key"></param>
+        public void RequestEdit(ChunkKey key)
+        {
+            layerRenderer.Edit(key);
+        }
+
+        /// <summary>
         /// Removes all queued and active references to a given chunk.
         /// Call this when unloading or discarding a chunk to avoid processing it unnecessarily.
         /// </summary>

@@ -5,12 +5,12 @@
 //   - Field order
 //   - Data type sizes/alignment
 // Key that identifies a chunk for dispatch.
-// CoordPos = logical world-space position of the chunk
+// CoordPos = chunk origin in LOD0-space (global, authoritative)
 // LodIndex = step size based on current LOD
 struct ChunkDispatchKey
 {
     uint GlobalIndex;
-    float3 CoordPos;
+    float3 Origin0;
     
     uint LodIndex;  
     uint LodEdgeMask;

@@ -124,6 +124,18 @@ namespace GingerVoxelSystem.Systems.Rendering
         }
 
         /// <summary>
+        /// Try to modify an exiting key from our bucket collection so a regeneration is ordered.
+        /// </summary>
+        /// <param name="key"></param>
+        public void Edit(ChunkKey key)
+        {
+            if (!keys.ContainsKey(key)) return;
+
+            var bucket = keys[key];
+            bucket.TryModify(key);
+        }
+
+        /// <summary>
         /// Remove all elements.
         /// </summary>
         public void Clear()
