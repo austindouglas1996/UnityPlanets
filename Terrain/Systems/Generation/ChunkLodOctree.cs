@@ -104,7 +104,7 @@
         /// RootLOD is the coarsest level (biggest chunks).
         /// Personal note: this is inverted from what you'd expect ("higher" means *less* detail).
         /// </summary>
-        private const int RootLOD = 6;
+        private const int RootLOD = 4;
 
         /// <summary>
         /// Max number of nodes updated per Unity frame.

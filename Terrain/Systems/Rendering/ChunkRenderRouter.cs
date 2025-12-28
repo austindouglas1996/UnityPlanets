@@ -156,7 +156,10 @@
 
             // Notify all jobs waiting on this bucket
             foreach (var job in list)
-                job.OnDone(job.Key, job.ParentIndex, true);
+            {
+                if (job.OnDone != null)
+                    job.OnDone(job.Key, job.ParentIndex, true);
+            }
 
             list.Clear();
         }

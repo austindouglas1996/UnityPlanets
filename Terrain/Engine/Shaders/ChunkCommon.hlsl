@@ -15,6 +15,11 @@ uint GetSamplesPerAxis()
     return CubesPerAxis + 1;
 }
 
+uint GetMaxCubeIndex()
+{
+    return GetSamplesPerAxis() - 2;
+}
+
 // Vector form of samples (used for buffer allocation / indexing)
 int3 GetSamplesPerChunk3()
 {

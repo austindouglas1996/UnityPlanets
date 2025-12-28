@@ -8,7 +8,7 @@ namespace GingerVoxelSystem.Core
     /// Combines chunk coordinates with the LOD (level of detail) index,
     /// so we can easily tell one chunk apart from another.
     /// </summary>
-    public readonly struct ChunkKey : IEquatable<ChunkKey>
+    public struct ChunkKey : IEquatable<ChunkKey>
     {
         /// <summary>
         /// Global origin in LOD0 chunk units (authoritative).
@@ -29,7 +29,10 @@ namespace GingerVoxelSystem.Core
         {
             this.Origin0 = origin0;
             LODIndex = lod;
+            Mask = 0;
         }
+
+        public uint Mask;
 
         /// <summary>
         /// Coordinates of this chunk in its own LOD grid.

@@ -1,4 +1,4 @@
-namespace GingerVoxelSystem.Systems.Rendering
+﻿namespace GingerVoxelSystem.Systems.Rendering
 {
     using UnityEngine;
     using GingerVoxelSystem.Core;
@@ -45,7 +45,7 @@ namespace GingerVoxelSystem.Systems.Rendering
         private void Update()
         {
             if (!isInitialized) return;
-            lodTree.Update();
+            //lodTree.Update();
         }
 
         /// <summary>
@@ -80,6 +80,91 @@ namespace GingerVoxelSystem.Systems.Rendering
             isInitialized = true;
 
             this.InitializeRootChunks();
+            this.DebugChunks();
+            //this.DebugChunks1();
+        }
+
+        private void DebugChunks1()
+        {
+            // Create chunks
+            ChunkKey k1 = new ChunkKey(new Vector3Int(0, 0, 0), 2);
+            ChunkKey k2 = new ChunkKey(new Vector3Int(0, 0, -2), 1);
+            ChunkKey k3 = new ChunkKey(new Vector3Int(4, 0, 0), 1);
+
+            uint mask1 = 0; // k1 is coarser → NO transitions
+
+            uint mask2 = 0;
+            mask2 |= 1u << 5; // +Z (toward k1)
+
+            uint mask3 = 0;
+            mask3 |= 1u << 0; // +Z (toward k1)
+
+            k1.Mask = mask1;
+            k2.Mask = mask2;
+            k3.Mask = mask3;
+
+
+            // Inject into chunk system (however you store masks)
+            this.processor.RequestChunkGeneration(k1, null);
+            this.processor.RequestChunkGeneration(k2, null);
+            this.processor.RequestChunkGeneration(k3, null);
+        }
+
+
+        private void DebugChunks()
+        {
+            // Create chunks
+            ChunkKey k1 = new ChunkKey(new Vector3Int(0, 0, 0), 4);
+            ChunkKey k2 = new ChunkKey(new Vector3Int(0, 0, -8), 3);
+            ChunkKey k7 = new ChunkKey(new Vector3Int(0, 0, 16), 3);
+            ChunkKey k3 = new ChunkKey(new Vector3Int(-8, 0, 8), 3);
+            ChunkKey k4 = new ChunkKey(new Vector3Int(-8, 0, 0), 3);
+            ChunkKey k5 = new ChunkKey(new Vector3Int(16, 0, 8), 3);
+            ChunkKey k6 = new ChunkKey(new Vector3Int(16, 0, 0), 3);
+            ChunkKey k8 = new ChunkKey(new Vector3Int(24, 0, 0), 2);
+
+            uint mask1 = 0; // k1 is coarser → NO transitions
+
+            uint mask2 = 0;
+            mask2 |= 1u << 5; // +Z (toward k1)
+
+            uint mask7 = 0;
+            mask7 |= 1u << 4; // +Z (toward k1)
+
+            uint mask3 = 0;
+            mask3 |= 1u << 1; // -X (toward k1)
+
+            uint mask4 = 0;
+            mask4 |= 1u << 1; // -X (toward k1)
+
+            uint mask5 = 0;
+            mask5 |= 1u << 0; // +X (toward k1)
+
+            uint mask6 = 0;
+            mask6 |= 1u << 0; // +X (toward k1)
+
+            uint mask8 = 0;
+            mask8 |= 1u << 0; // +X (toward k1)
+
+            k1.Mask = mask1;
+            k2.Mask = mask2;
+            k3.Mask = mask3;
+            k4.Mask = mask4;
+            k5.Mask = mask5;
+            k6.Mask = mask6;
+            k7.Mask = mask7;
+            k8.Mask = mask8;
+
+
+            // Inject into chunk system (however you store masks)
+            this.processor.RequestChunkGeneration(k1, null);
+            this.processor.RequestChunkGeneration(k2, null);
+            this.processor.RequestChunkGeneration(k3, null);
+            this.processor.RequestChunkGeneration(k4, null);
+            this.processor.RequestChunkGeneration(k5, null);
+            this.processor.RequestChunkGeneration(k6, null);
+            this.processor.RequestChunkGeneration(k7, null);
+            this.processor.RequestChunkGeneration(k8, null);
         }
 
         /// <summary>

@@ -52,14 +52,15 @@ struct VertexDataUnpacked
     uint CacheDir;
 };
 
+// The face corners of a given cube.
 static const uint FaceCorners[6][4] =
 {
-    { 1, 2, 6, 5 }, // +X
     { 0, 4, 7, 3 }, // -X
-    { 3, 7, 6, 2 }, // +Y
+    { 1, 2, 6, 5 }, // +X
     { 0, 1, 5, 4 }, // -Y
-    { 4, 5, 6, 7 }, // +Z
-    { 0, 3, 2, 1 } // -Z
+    { 3, 7, 6, 2 }, // +Y
+    { 0, 3, 2, 1 }, // -Z
+    { 4, 5, 6, 7 } // +Z
 };
 
 // -----------------------------------------------------------------------------
@@ -122,9 +123,9 @@ StructuredBuffer<uint> TransitionVertexData;
 // The descriptor is stored in a uint buffer, but only the lower 16 bits
 // are meaningful.
 // -----------------------------------------------------------------------------
-uint GetPackedVertexU16(uint classId, uint vertexIndex)
+uint GetPackedVertexU16(uint caseId, uint vertexIndex)
 {
-    uint baseIndex = RegularVertexRanges[classId].VertexStart;
+    uint baseIndex = RegularVertexRanges[caseId].VertexStart;
     return RegularVertexData[baseIndex + vertexIndex];
 }
 
@@ -132,9 +133,9 @@ uint GetPackedVertexU16(uint classId, uint vertexIndex)
 // Fetches a packed 16-bit transition vertex descriptor for a given
 // transition cell class and local vertex index.
 // -----------------------------------------------------------------------------
-uint GetTransitionPackedVertexU16(uint classId, uint vertexIndex)
+uint GetTransitionPackedVertexU16(uint caseId, uint vertexIndex)
 {
-    uint baseIndex = TransitionVertexRanges[classId].VertexStart;
+    uint baseIndex = TransitionVertexRanges[caseId].VertexStart;
     return TransitionVertexData[baseIndex + vertexIndex];
 }
 
@@ -159,4 +160,98 @@ VertexDataUnpacked UnpackVertex(uint packed)
     v.CacheDir = (packed >> 12) & 0x07;
 
     return v;
+}
+
+// Returns whether a given voxel position is on the egde of a given face.
+bool CubeOnFace(uint face, int3 voxel, int max)
+{
+    switch (face)
+    {
+        case 0:
+            return voxel.x == 0; // -X
+        case 1:
+            return voxel.x == max; // +X
+        case 2:
+            return voxel.y == 0; // -Y
+        case 3:
+            return voxel.y == max; // +Y
+        case 4:
+            return voxel.z == 0; // -Z
+        case 5:
+            return voxel.z == max; // +Z
+    }
+    return false;
+}
+
+int3 RemapTransitionCorner(uint face, int3 c)
+{
+    // Z is the CANONICAL space here.
+
+    switch (face)
+    {
+        // -X face (x = 0)
+        case 0:
+            // x fixed at 0, y=z plane
+            return int3(0, c.y, c.x);
+
+        // +X face (x = max)
+        case 1:
+            // x fixed at 2, flip u
+            return int3(2, c.y, 2 - c.x);
+
+        // -Y face (y = 0)
+        case 2:
+            return int3(c.x, 0, c.y);
+
+        // +Y face (y = max)
+        case 3:
+            return int3(c.x, 2, 2 - c.y);
+
+        // -Z face (CANONICAL — NO ROTATION)
+        case 4: // -Z
+            return int3(2 - c.x, c.y, 0);
+
+        // +Z face (CANONICAL — FLIP DEPTH)
+        case 5: // +Z
+            return int3(c.x, c.y, 2);
+
+        default:
+            return c;
+    }
+}
+
+int3 GetFaceAnchor(uint face)
+{
+    switch (face)
+    {
+        case 0:
+            return int3(0, 0, 0); // -X
+        case 1:
+            return int3(-1, 0, 0); // +X
+        case 2:
+            return int3(0, 0, 0); // -Y
+        case 3:
+            return int3(0, -1, 0); // +Y
+        case 4:
+            return int3(0, 0, 0); // -Z
+        case 5:
+            return int3(0, 0, -1); // +Z
+    }
+    return int3(0, 0, 0);
+}
+
+
+int3 GetTransitionCornerSamplePos(uint face,uint corner,int3 baseCube,int halfStep)
+{
+    // offset is 0,1,2 in canonical transition space
+    int3 offset = RemapTransitionCorner(face, TransitionCornerOffset[corner]);
+
+    // TransitionCornerOffset is defined in SAMPLE space
+    // No step, no halfStep here
+    return baseCube + GetFaceAnchor(face) + offset;
+}
+
+float3 GetTransitionCornerWorldPos(int3 samplePos,int step,float3 worldOrigin)
+{
+    return float3(samplePos) * step + worldOrigin;
 }

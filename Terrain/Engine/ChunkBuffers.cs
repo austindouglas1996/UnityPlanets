@@ -93,7 +93,7 @@ namespace GingerVoxelSystem.Engine
                     GlobalIndex = (uint)i,  // Used by some kernels as an index hint
                     Origin0 = ctx.Origin0,
                     LodIndex = ctx.LODIndex,
-                    LodEdgeMask = ChunkServices.Octree.GetLODEdgeMask(ctx),
+                    LodEdgeMask = ctx.Mask,//ChunkServices.Octree.GetLODEdgeMask(ctx),
                 });
             }
 
