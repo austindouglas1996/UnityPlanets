@@ -123,28 +123,24 @@
             ChunkKey k6 = new ChunkKey(new Vector3Int(16, 0, 0), 3);
             ChunkKey k8 = new ChunkKey(new Vector3Int(24, 0, 0), 2);
 
-            uint mask1 = 0; // k1 is coarser → NO transitions
+            uint mask1 = 0;
+            mask1 |= 1u << 0;
+            mask1 |= 1u << 1;
+            mask1 |= 1u << 2;
+            mask1 |= 1u << 3;
+            mask1 |= 1u << 4;
+            mask1 |= 1u << 5;
 
             uint mask2 = 0;
-            mask2 |= 1u << 5; // +Z (toward k1)
-
-            uint mask7 = 0;
-            mask7 |= 1u << 4; // +Z (toward k1)
-
             uint mask3 = 0;
-            mask3 |= 1u << 1; // -X (toward k1)
-
             uint mask4 = 0;
-            mask4 |= 1u << 1; // -X (toward k1)
-
             uint mask5 = 0;
-            mask5 |= 1u << 0; // +X (toward k1)
+            uint mask7 = 0;
 
             uint mask6 = 0;
-            mask6 |= 1u << 0; // +X (toward k1)
+            mask6 |= 1u << 1; // LOD3 → LOD2 transition
 
             uint mask8 = 0;
-            mask8 |= 1u << 0; // +X (toward k1)
 
             k1.Mask = mask1;
             k2.Mask = mask2;
@@ -154,7 +150,6 @@
             k6.Mask = mask6;
             k7.Mask = mask7;
             k8.Mask = mask8;
-
 
             // Inject into chunk system (however you store masks)
             this.processor.RequestChunkGeneration(k1, null);

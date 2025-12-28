@@ -180,7 +180,7 @@
                 var node = Nodes[neighborIndex];
 
                 ChunkKey neighborKey = node.Key;
-                if (neighborKey.LODIndex < key.LODIndex)
+                if (neighborKey.LODIndex > key.LODIndex)
                     mask |= 1u << face;
             }
 

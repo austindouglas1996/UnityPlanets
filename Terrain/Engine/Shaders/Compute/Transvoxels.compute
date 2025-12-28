@@ -12,6 +12,7 @@
 int CountTransvoxels(ChunkDispatchKeyInfo key);
 uint BuildTransitionCase(uint face, ChunkDispatchKeyInfo key);
 void MarchTransitionFace(uint face, ChunkDispatchKeyInfo key, int step, float3 world, int3 sample3);
+void CreateTriangles(ChunkDispatchKeyInfo key, RegularCellData tcell, in float3 cellPos[16], in float3 cellNormal[16]);
 
 /* Inputs */
 uint Offset;
@@ -43,6 +44,34 @@ float3 GetNormalFast(int3 p, int keyIndex, int3 sampleSize)
     return n;
 }
 
+void CreateTriangles(ChunkDispatchKeyInfo key, RegularCellData tcell, in float3 cellPos[16], in float3 cellNormal[16])
+{
+    [loop]
+    for (uint i = 0; i < tcell.IndicesCount; i += 3)
+    {
+        // Nothing here is different from 
+        uint ia = TransitionCellIndices[tcell.IndicesStart + i + 0];
+        uint ib = TransitionCellIndices[tcell.IndicesStart + i + 1];
+        uint ic = TransitionCellIndices[tcell.IndicesStart + i + 2];
+
+        TriangleData tri;
+        tri.a = cellPos[ia];
+        tri.b = cellPos[ib];
+        tri.c = cellPos[ic];
+
+        tri.NormalA = cellNormal[ia];
+        tri.NormalB = cellNormal[ib];
+        tri.NormalC = cellNormal[ic];
+
+        tri.KeyIndex = key.KeyIndex;
+        tri.LodIndex = 9; //key.chunk.LodIndex;
+
+        uint next;
+        InterlockedAdd(TriangleCursor[key.KeyIndex], 1, next);
+        TriangleSourceBuffer[key.chunk.SourceOffset + next] = tri;
+    }
+}
+
 void CountTriangles(ChunkDispatchKeyInfo key)
 {
     uint totalTriangles = 0;
@@ -67,8 +96,11 @@ void CountTriangles(ChunkDispatchKeyInfo key)
     // Regular cells
     totalTriangles += RegularCellTable[RegularCellClass[caseCode] & 0x7F].TriangleCount;
     
-    // Transvoxels.
-    totalTriangles += CountTransvoxels(key);
+    // Count the transvoxels triangles needed if this is an edge chunk.
+    if (key.chunk.LodEdgeMask != 0)
+    { 
+        totalTriangles += CountTransvoxels(key);
+    }
 
     InterlockedAdd(TriangleCount[key.KeyIndex], totalTriangles);
 }
@@ -175,16 +207,16 @@ void March(ChunkDispatchKeyInfo key)
 
 
 
-uint BuildTransitionCase(uint face, ChunkDispatchKeyInfo key, int halfStep)
+uint BuildTransitionCase(uint face, ChunkDispatchKeyInfo key)
 {
     int3 sample3 = GetSamplesPerChunk3();
     uint caseCode = 0;
 
-    [unroll]
+    [loop]
     for (uint i = 0; i < 9; i++)
     {
-        int3 samplePos = GetTransitionCornerSamplePos(face, i, key.LocalVoxelCoord, halfStep);
-        float d = DensityMap[GetVoxelSampleIndexRaw((uint3) samplePos, key.KeyIndex, sample3)] - ISOLevel;
+        int3 samplePos = GetTransitionCornerSamplePos(face, i, key.LocalVoxelCoord);
+        float d = DensityMap[GetVoxelSampleIndexRaw((uint3) samplePos, key.KeyIndex, sample3)];
 
         if (d < 0.0)
             caseCode |= (1u << i);
@@ -195,32 +227,26 @@ uint BuildTransitionCase(uint face, ChunkDispatchKeyInfo key, int halfStep)
 
 int CountTransvoxels(ChunkDispatchKeyInfo key)
 {
-    if (key.chunk.LodEdgeMask == 0)
-        return 0;
-    
     int totalTriangles = 0;
     uint maxVoxel = GetMaxCubeIndex();
-    int halfStep = max(1, GetCubeSizeStep(key.chunk.LodIndex) >> 1);
     
     [loop]
     for (uint face = 0; face < 6; face++)
     {
+        // Is this specific face an edge?
         if ((key.chunk.LodEdgeMask & (1u << face)) == 0)
             continue;
         
+        // Confirm this specific column/row is on the edge.
         if (!CubeOnFace(face, key.LocalVoxelCoord, maxVoxel))
             continue;
 
         // Build transition case code for this face
-        uint transitionCase = BuildTransitionCase(face, key, halfStep);
+        uint transitionCase = BuildTransitionCase(face, key);
         if (transitionCase == 0 || transitionCase == 511)
             continue;
         
-        // Lookup transition cell
-        uint transitionClass = TransitionCellClass[transitionCase];
-        RegularCellData tcell = TransitionCellTable[transitionClass & 0x7F];
-
-        totalTriangles += tcell.TriangleCount;
+        totalTriangles += GetTransitionCellData(transitionCase).TriangleCount;
     }
     
     return totalTriangles;
@@ -228,71 +254,61 @@ int CountTransvoxels(ChunkDispatchKeyInfo key)
 
 void MarchTransitionFace(uint face, ChunkDispatchKeyInfo key, int step, float3 world, int3 sample3)
 {
-    int halfStep = max(1, step >> 1);
+    // Get the transition case.
+    // if the case is 0, or 511 (limit) we have an invalid entry.
+    uint transitionCase = BuildTransitionCase(face, key);  
+    if (transitionCase == 0 || transitionCase == 511)
+        return;
     
-    uint transitionCase = BuildTransitionCase(face, key, halfStep);
-    uint transitionClass = TransitionCellClass[transitionCase];
-    RegularCellData tcell = TransitionCellTable[transitionClass & 0x7F];
-
+    // Retrieve the transition 'RegularCellData'. 
+    RegularCellData tcell = GetTransitionCellData(transitionCase);
+    
+    // Corner data.
     float tCornerD[13];
     float3 tCornerPos[13];
     float3 tCornerN[13];
     
+    // Vertex data.
     float3 cellPos[16];
     float3 cellNormal[16];
 
-    // Generate corner data.
+    /*
+    Step #1.
+        Generate corner data.
+    */
+    [loop]
     for (uint c = 0; c < 13; c++)
     {
-        uint3 samplePos = GetTransitionCornerSamplePos(face, c, key.LocalVoxelCoord,step);
+        uint3 samplePos = GetTransitionCornerSamplePos(face, c, key.LocalVoxelCoord);
 
         tCornerD[c] = DensityMap[GetVoxelSampleIndexRaw(samplePos, key.KeyIndex, sample3)];
-        tCornerPos[c] = GetTransitionCornerWorldPos(samplePos, step, world);
+        tCornerPos[c] = float3(samplePos) * step + world;
         tCornerN[c] = GetNormalFast(samplePos, key.KeyIndex, sample3);
-
     }
 
-    // Generate transition vertices
+    /*
+    Step #2.
+        Generate the vertexes data.
+    */
     [loop]
     for (uint i = 0; i < tcell.VertexCount; i++)
     {
-        uint packed = GetTransitionPackedVertexU16(transitionCase, i);
-        VertexDataUnpacked v = UnpackVertex(packed);
+        // Unpack the vertex data. 
+        uint packedIndex = GetTransitionPackedVertexU16(transitionCase, i);
+        VertexDataUnpacked v = UnpackVertex(packedIndex);
 
-        // v.Corner0 / v.Corner1 are transition corner indices (expected 0..12)
-        float d0 = tCornerD[v.Corner0] - ISOLevel;
-        float d1 = tCornerD[v.Corner1] - ISOLevel;
+        float t = (tCornerD[v.Corner0] - ISOLevel) * rcp(tCornerD[v.Corner0] - tCornerD[v.Corner1]);
 
-        float t = d0 * rcp(tCornerD[v.Corner0] - tCornerD[v.Corner1]);
-
+        // Set the position and normal.
         cellPos[i] = lerp(tCornerPos[v.Corner0], tCornerPos[v.Corner1], t);
         cellNormal[i] = normalize(lerp(tCornerN[v.Corner0], tCornerN[v.Corner1], t));
     }
     
-    // Emit transition triangles
-    [loop]
-    for (uint i = 0; i < tcell.IndicesCount; i += 3)
-    {
-        uint ia = TransitionCellIndices[tcell.IndicesStart + i + 0];
-        uint ib = TransitionCellIndices[tcell.IndicesStart + i + 1];
-        uint ic = TransitionCellIndices[tcell.IndicesStart + i + 2];
-
-        TriangleData tri;
-        tri.a = cellPos[ia];
-        tri.b = cellPos[ib];
-        tri.c = cellPos[ic];
-
-        tri.NormalA = cellNormal[ia];
-        tri.NormalB = cellNormal[ib];
-        tri.NormalC = cellNormal[ic];
-
-        tri.KeyIndex = key.KeyIndex;
-        tri.LodIndex = 9; //key.chunk.LodIndex;
-
-        uint next;
-        InterlockedAdd(TriangleCursor[key.KeyIndex], 1, next);
-        TriangleSourceBuffer[key.chunk.SourceOffset + next] = tri;
-    }
+    /*
+    Step #3.
+        Generate triangles.
+    */
+    CreateTriangles(key, tcell, cellPos, cellNormal);
 }
 
 

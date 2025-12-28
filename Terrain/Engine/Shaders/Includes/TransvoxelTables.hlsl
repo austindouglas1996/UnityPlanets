@@ -162,6 +162,18 @@ VertexDataUnpacked UnpackVertex(uint packed)
     return v;
 }
 
+RegularCellData GetRegularCellData(uint regularCase)
+{
+    uint regularClass = RegularCellClass[regularCase];
+    return RegularCellTable[regularClass & 0x7F];
+}
+
+RegularCellData GetTransitionCellData(uint transitionCase)
+{
+    uint transitionClass = TransitionCellClass[transitionCase];
+    return TransitionCellTable[transitionClass & 0x7F];
+}
+
 // Returns whether a given voxel position is on the egde of a given face.
 bool CubeOnFace(uint face, int3 voxel, int max)
 {
@@ -185,73 +197,44 @@ bool CubeOnFace(uint face, int3 voxel, int max)
 
 int3 RemapTransitionCorner(uint face, int3 c)
 {
-    // Z is the CANONICAL space here.
+    // Canonical transition space is Z-facing
 
     switch (face)
     {
-        // -X face (x = 0)
+        // -X (fine side)
         case 0:
-            // x fixed at 0, y=z plane
             return int3(0, c.y, c.x);
 
-        // +X face (x = max)
+        // +X (transition plane, flipped)
         case 1:
-            // x fixed at 2, flip u
-            return int3(2, c.y, 2 - c.x);
+            return int3(1, c.y, 2 - c.x);
 
-        // -Y face (y = 0)
+        // -Y
         case 2:
             return int3(c.x, 0, c.y);
 
-        // +Y face (y = max)
+        // +Y (transition plane, flipped)
         case 3:
-            return int3(c.x, 2, 2 - c.y);
+            return int3(c.x, 1, 2 - c.y);
 
-        // -Z face (CANONICAL — NO ROTATION)
-        case 4: // -Z
+        // -Z (fine side)
+        case 4:
             return int3(2 - c.x, c.y, 0);
 
-        // +Z face (CANONICAL — FLIP DEPTH)
-        case 5: // +Z
-            return int3(c.x, c.y, 2);
-
-        default:
-            return c;
-    }
-}
-
-int3 GetFaceAnchor(uint face)
-{
-    switch (face)
-    {
-        case 0:
-            return int3(0, 0, 0); // -X
-        case 1:
-            return int3(-1, 0, 0); // +X
-        case 2:
-            return int3(0, 0, 0); // -Y
-        case 3:
-            return int3(0, -1, 0); // +Y
-        case 4:
-            return int3(0, 0, 0); // -Z
+        // +Z (transition plane)
         case 5:
-            return int3(0, 0, -1); // +Z
+            return int3(c.x, c.y, 1);
     }
-    return int3(0, 0, 0);
+
+    return c;
 }
 
-
-int3 GetTransitionCornerSamplePos(uint face,uint corner,int3 baseCube,int halfStep)
+int3 GetTransitionCornerSamplePos(uint face,uint corner,int3 baseCube)
 {
     // offset is 0,1,2 in canonical transition space
     int3 offset = RemapTransitionCorner(face, TransitionCornerOffset[corner]);
 
     // TransitionCornerOffset is defined in SAMPLE space
     // No step, no halfStep here
-    return baseCube + GetFaceAnchor(face) + offset;
-}
-
-float3 GetTransitionCornerWorldPos(int3 samplePos,int step,float3 worldOrigin)
-{
-    return float3(samplePos) * step + worldOrigin;
+    return baseCube + offset;
 }
