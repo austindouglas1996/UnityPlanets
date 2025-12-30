@@ -4,21 +4,21 @@
 #include "ChunkCommon.hlsl"
 
 // Computes the flat index into the density map for a voxel within a chunk batch
-int GetVoxelSampleIndexRaw(int3 pos, int KeyIndex, int3 totalSampleSize)
+int GetDensitySampleIndexLocal(int3 sampleCoord, int ChunkKeyIndex, int3 totalSampleSize)
 {
     int voxelCountPerChunk = totalSampleSize.x * totalSampleSize.y * totalSampleSize.z;
-    int localIndex = mad(pos.z, totalSampleSize.x * totalSampleSize.y,
-                     mad(pos.y, totalSampleSize.x, pos.x));
+    int localIndex = mad(sampleCoord.z, totalSampleSize.x * totalSampleSize.y,
+                     mad(sampleCoord.y, totalSampleSize.x, sampleCoord.x));
     
-    return KeyIndex * voxelCountPerChunk + localIndex;
+    return ChunkKeyIndex * voxelCountPerChunk + localIndex;
 }
 
 // Computes the flat index into the density map for a voxel within a chunk batch
-int GetVoxelSampleIndex(int3 pos, int KeyIndex, int3 totalSampleSize)
+int GetDensitySampleIndexPadded(int3 sampleCoord, int ChunkKeyIndex, int3 totalSampleSize)
 {
     // Apply border offset so (0,0,0) maps to (Border,Border,Border)
-    pos += int3(BorderSamplesPerAxis, BorderSamplesPerAxis, BorderSamplesPerAxis); 
-    return GetVoxelSampleIndexRaw(pos, KeyIndex, totalSampleSize);
+    sampleCoord += int3(BorderSamplesPerAxis, BorderSamplesPerAxis, BorderSamplesPerAxis);
+    return GetDensitySampleIndexLocal(sampleCoord, ChunkKeyIndex, totalSampleSize);
 }
 
 // GetChunkAccess()
@@ -32,36 +32,36 @@ int GetVoxelSampleIndex(int3 pos, int KeyIndex, int3 totalSampleSize)
 //   id     : Dispatch thread ID (x, y, z) from the compute shader
 //   sampleSize.x, sampleSize.y, sampleSize.z : Chunk dimensions in voxels (per axis)
 //   keys   : Structured buffer of all active chunks to process
-ChunkDispatchKeyInfo GetChunkAccessCubes(uint3 id, uint offset, StructuredBuffer<ChunkDispatchKey> keys)
+ChunkCellContext GetChunkCellCubes(uint3 id, uint offset, StructuredBuffer<ChunkWorkDescriptor> keys)
 {
-    ChunkDispatchKeyInfo r;
+    ChunkCellContext r;
 
     uint keyCount, stride;
     keys.GetDimensions(keyCount, stride);
 
     // Compute chunk within this dispatch
-    uint chunkLocal = id.x / CubesPerAxis;
-    uint localX = id.x % CubesPerAxis;
+    uint chunkLocal = id.x / CellsPerAxis;
+    uint localX = id.x % CellsPerAxis;
 
     // Apply global offset for key lookup
-    r.KeyIndex = chunkLocal + offset;
+    r.ChunkKeyIndex = chunkLocal + offset;
 
     // Safety check that is for some reason breaks if not here.
     // 11/2 - I don't remember why I added this, but if this is missing
     // chunks dont render correctly which seems like we are overdispatching.
-    if (r.KeyIndex >= keyCount || id.y >= CubesPerAxis || id.z >= CubesPerAxis)
+    if (r.ChunkKeyIndex >= keyCount || id.y >= CellsPerAxis || id.z >= CellsPerAxis)
     {
-        r.SampleIndex = -1;
+        r.DensitySampleIndex = -1;
         return r;
     }
 
     // local coordinates stay within 0..sampleSize.x-1
-    r.LocalVoxelCoord = uint3(localX, id.y, id.z);
+    r.CellCoord = uint3(localX, id.y, id.z);
     
     // Fetch key and compute world position
-    ChunkDispatchKey key = keys[r.KeyIndex];
-    r.chunk = key;   
-    r.WorldPos = ToWorld(key.Origin0) + float3(r.LocalVoxelCoord) * GetCubeSizeStep(r.chunk.LodIndex);
+    ChunkWorkDescriptor key = keys[r.ChunkKeyIndex];
+    r.Chunk = key;   
+    r.CellWorldPos = ChunkOriginToWorld(key.Origin) + float3(r.CellCoord) * GetCellStep(r.Chunk.LodIndex);
 
     return r;
 }
@@ -77,11 +77,11 @@ ChunkDispatchKeyInfo GetChunkAccessCubes(uint3 id, uint offset, StructuredBuffer
 //   id     : Dispatch thread ID (x, y, z) from the compute shader
 //   sampleSize.x, sampleSize.y, sampleSize.z : Chunk dimensions in voxels (per axis)
 //   keys   : Structured buffer of all active chunks to process
-ChunkDispatchKeyInfo GetChunkAccessSamples(uint3 id, uint offset, StructuredBuffer<ChunkDispatchKey> keys)
+ChunkCellContext GetChunkCellSamples(uint3 id, uint offset, StructuredBuffer<ChunkWorkDescriptor> keys)
 {
-    ChunkDispatchKeyInfo r;
+    ChunkCellContext r;
 
-    uint3 sampleSize = GetSamplesPerChunk3();
+    uint3 sampleSize = GetPaddedSamplesGridSize();
     uint keyCount, strideBytes;
     keys.GetDimensions(keyCount, strideBytes);
 
@@ -90,31 +90,29 @@ ChunkDispatchKeyInfo GetChunkAccessSamples(uint3 id, uint offset, StructuredBuff
     uint localX = id.x % sampleSize.x;
 
     // Apply global offset for key lookup
-    r.KeyIndex = chunkLocal + offset;
+    r.ChunkKeyIndex = chunkLocal + offset;
 
     // Safety check that is for some reason breaks if not here.
     // 11/2 - I don't remember why I added this, but if this is missing
     // chunks dont render correctly which seems like we are overdispatching.
-    if (r.KeyIndex >= keyCount || id.y >= sampleSize.y || id.z >= sampleSize.z)
+    if (r.ChunkKeyIndex >= keyCount || id.y >= sampleSize.y || id.z >= sampleSize.z)
     {
-        r.SampleIndex = -1;
+        r.DensitySampleIndex = -1;
         return r;
     }
 
     // local coordinates stay within 0..sampleSize.x-1
-    r.LocalVoxelCoord = uint3(localX, id.y, id.z);
+    r.CellCoord = uint3(localX, id.y, id.z);
 
     // This points to the exact position in the map.
-    r.SampleIndex = GetVoxelSampleIndexRaw(r.LocalVoxelCoord, r.KeyIndex, sampleSize);
+    r.DensitySampleIndex = GetDensitySampleIndexLocal(r.CellCoord, r.ChunkKeyIndex, sampleSize);
 
     // Set key data
-    ChunkDispatchKey key = keys[r.KeyIndex];
-    r.chunk = key;
-    r.WorldPos = ToWorld(key.Origin0) + float3(r.LocalVoxelCoord) * GetCubeSizeStep(r.chunk.LodIndex);
+    ChunkWorkDescriptor key = keys[r.ChunkKeyIndex];
+    r.Chunk = key;
+    r.CellWorldPos = ChunkOriginToWorld(key.Origin) + float3(r.CellCoord) * GetCellStep(r.Chunk.LodIndex);
 
     return r;
 }
-
-
 
 #endif

@@ -9,7 +9,7 @@
 
 /* Inputs */
 uint Offset;
-StructuredBuffer<ChunkDispatchKey> ChunkInputs;
+StructuredBuffer<ChunkWorkDescriptor> ChunkInputs;
 StructuredBuffer<float> DensityMap;
 
 /* Outputs */
@@ -17,7 +17,7 @@ RWStructuredBuffer<uint> TriangleCount;
 RWStructuredBuffer<uint> TriangleCursor;
 RWStructuredBuffer<TriangleData> TriangleSourceBuffer;
 
-float3 GetNormalFast(int3 p, int keyIndex, int3 sampleSize)
+float3 GetNormalFast(int3 p, int ChunkKeyIndex, int3 sampleSize)
 {
     // Precompute strides in the flattened density buffer
     const int strideX = 1;
@@ -25,7 +25,7 @@ float3 GetNormalFast(int3 p, int keyIndex, int3 sampleSize)
     const int strideZ = sampleSize.x * sampleSize.y;
 
     // Convert center sample position to flat index (handles borders)
-    int centerIndex = GetVoxelSampleIndex(p, keyIndex, sampleSize);
+    int centerIndex = GetDensitySampleIndexPadded(p, ChunkKeyIndex, sampleSize);
 
     // Central differences
     float dx = DensityMap[centerIndex + strideX] - DensityMap[centerIndex - strideX];
@@ -37,22 +37,22 @@ float3 GetNormalFast(int3 p, int keyIndex, int3 sampleSize)
     return n;
 }
 
-void CountTriangles(ChunkDispatchKeyInfo key)
+void CountTriangles(ChunkCellContext key)
 {
-    uint cubeIndex = 0;
-    int3 sample3 = GetSamplesPerChunk3();
+    uint CellCoord = 0;
+    int3 sample3 = GetPaddedSamplesGridSize();
     
     [loop]
     for (uint i = 0; i < 8; i++)
     {
-        uint3 pos = key.LocalVoxelCoord + GetCornerOffset(i);
-        float corner = DensityMap[GetVoxelSampleIndexRaw(pos, key.KeyIndex, sample3)];
+        uint3 pos = key.CellCoord + GetCornerOffset(i);
+        float corner = DensityMap[GetDensitySampleIndexLocal(pos, key.ChunkKeyIndex, sample3)];
         
         if (corner < ISOLevel)
-            cubeIndex |= (1u << i);
+            CellCoord |= (1u << i);
     }
 
-    if (cubeIndex == 0 || cubeIndex == 255)
+    if (CellCoord == 0 || CellCoord == 255)
         return;
     
     uint localCount = 0;
@@ -60,9 +60,9 @@ void CountTriangles(ChunkDispatchKeyInfo key)
     [loop]
     for (int i = 0; i < 16; i += 3)
     {
-        int a = GetTriangleEdgeIndex(cubeIndex, i + 0);
-        int b = GetTriangleEdgeIndex(cubeIndex, i + 1);
-        int c = GetTriangleEdgeIndex(cubeIndex, i + 2);
+        int a = GetTriangleEdgeIndex(CellCoord, i + 0);
+        int b = GetTriangleEdgeIndex(CellCoord, i + 1);
+        int c = GetTriangleEdgeIndex(CellCoord, i + 2);
 
         if (a == -1 || b == -1 || c == -1)
             break;
@@ -70,31 +70,31 @@ void CountTriangles(ChunkDispatchKeyInfo key)
         localCount++;
     }
     
-    InterlockedAdd(TriangleCount[key.KeyIndex], localCount);
+    InterlockedAdd(TriangleCount[key.ChunkKeyIndex], localCount);
 }
 
-void March(ChunkDispatchKeyInfo key)
+void March(ChunkCellContext key)
 {
-    uint cubeIndex = 0;
+    uint CellCoord = 0;
     float corner[8];
     float3 cornerPos[8];
     
-    int step = GetCubeSizeStep(key.chunk.LodIndex);
-    float3 world = ToWorld(key.chunk.Origin0);
-    int3 sample3 = GetSamplesPerChunk3();
+    int step = GetCellStep(key.Chunk.LodIndex);
+    float3 world = ChunkOriginToWorld(key.Chunk.Origin);
+    int3 sample3 = GetPaddedSamplesGridSize();
     
     [loop]
     for (uint i = 0; i < 8; i++)
     {
-        uint3 pos = key.LocalVoxelCoord + GetCornerOffset(i);
-        corner[i] = DensityMap[GetVoxelSampleIndexRaw(pos, key.KeyIndex, sample3)];
+        uint3 pos = key.CellCoord + GetCornerOffset(i);
+        corner[i] = DensityMap[GetDensitySampleIndexLocal(pos, key.ChunkKeyIndex, sample3)];
         cornerPos[i] = float3(pos) * step + world;
         
         if (corner[i] < ISOLevel)
-            cubeIndex |= (1u << i);
+            CellCoord |= (1u << i);
     }
 
-    if (cubeIndex == 0 || cubeIndex == 255)
+    if (CellCoord == 0 || CellCoord == 255)
         return;
     
     float3 cornerNormal[8];
@@ -102,8 +102,8 @@ void March(ChunkDispatchKeyInfo key)
     [loop]
     for (int i = 0; i < 8; i++)
     {
-        int3 pos = key.LocalVoxelCoord + GetCornerOffset(i);
-        cornerNormal[i] = GetNormalFast(pos, key.KeyIndex, sample3);
+        int3 pos = key.CellCoord + GetCornerOffset(i);
+        cornerNormal[i] = GetNormalFast(pos, key.ChunkKeyIndex, sample3);
     }
     
     /*
@@ -145,9 +145,9 @@ void March(ChunkDispatchKeyInfo key)
     [loop]
     for (int i = 0; i < 16; i += 3)
     {
-        int a = GetTriangleEdgeIndex(cubeIndex, i + 0);
-        int b = GetTriangleEdgeIndex(cubeIndex, i + 1);
-        int c = GetTriangleEdgeIndex(cubeIndex, i + 2);
+        int a = GetTriangleEdgeIndex(CellCoord, i + 0);
+        int b = GetTriangleEdgeIndex(CellCoord, i + 1);
+        int c = GetTriangleEdgeIndex(CellCoord, i + 2);
 
         if (a == -1 || b == -1 || c == -1)
             break;
@@ -178,12 +178,12 @@ void March(ChunkDispatchKeyInfo key)
         tri.NormalA = normA;
         tri.NormalB = normB;
         tri.NormalC = normC;
-        tri.KeyIndex = key.KeyIndex;
-        tri.LodIndex = key.chunk.LodIndex;
+        tri.ChunkKeyIndex = key.ChunkKeyIndex;
+        tri.LodIndex = key.Chunk.LodIndex;
         
         uint next;
-        InterlockedAdd(TriangleCursor[key.KeyIndex], 1, next);
-        uint index = key.chunk.SourceOffset + next;
+        InterlockedAdd(TriangleCursor[key.ChunkKeyIndex], 1, next);
+        uint index = key.Chunk.SourceOffset + next;
         TriangleSourceBuffer[index] = tri;
     }
 }
@@ -191,7 +191,7 @@ void March(ChunkDispatchKeyInfo key)
 [numthreads(4, 4, 4)]
 void RunMarchingCubesPrePass(uint3 id : SV_DispatchThreadID)
 {
-    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, Offset, ChunkInputs);
+    ChunkCellContext access = GetChunkCellCubes(id, Offset, ChunkInputs);
     CountTriangles(access);
 }
 
@@ -204,6 +204,6 @@ void RunMarchingCubesPrePass(uint3 id : SV_DispatchThreadID)
 [numthreads(4, 4, 4)]
 void RunMarchingCubes(uint3 id : SV_DispatchThreadID)
 {
-    ChunkDispatchKeyInfo access = GetChunkAccessCubes(id, Offset, ChunkInputs);
+    ChunkCellContext access = GetChunkCellCubes(id, Offset, ChunkInputs);
     March(access);
 }

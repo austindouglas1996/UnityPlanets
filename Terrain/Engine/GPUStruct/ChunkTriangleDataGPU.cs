@@ -17,7 +17,7 @@ namespace GingerVoxelSystem.Engine
         public Vector3 NormalB;
         public Vector3 NormalC;
         public uint LodIndex;
-        public uint KeyIndex;
+        public uint ChunkKeyIndex;
     }
 
     [StructLayout(LayoutKind.Sequential)]

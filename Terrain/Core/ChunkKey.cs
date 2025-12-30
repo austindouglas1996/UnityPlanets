@@ -14,7 +14,7 @@ namespace GingerVoxelSystem.Core
         /// Global origin in LOD0 chunk units (authoritative).
         /// This identifies where the chunk exists in world space.
         /// </summary>
-        public readonly Vector3Int Origin0;
+        public readonly Vector3Int Origin;
 
         /// <summary>
         /// Which LOD (Level of Detail) this chunk is at.
@@ -25,9 +25,9 @@ namespace GingerVoxelSystem.Core
         /// <summary>
         /// Creates a new key from coordinates and an LOD index.
         /// </summary>
-        public ChunkKey(Vector3Int origin0, int lod)
+        public ChunkKey(Vector3Int Origin, int lod)
         {
-            this.Origin0 = origin0;
+            this.Origin = Origin;
             LODIndex = lod;
             Mask = 0;
         }
@@ -38,7 +38,7 @@ namespace GingerVoxelSystem.Core
         /// Coordinates of this chunk in its own LOD grid.
         /// This is DERIVED and should not be used for neighbor queries.
         /// </summary>
-        public Vector3Int Coordinates => new Vector3Int(Origin0.x >> LODIndex, Origin0.y >> LODIndex, Origin0.z >> LODIndex);
+        public Vector3Int Coordinates => new Vector3Int(Origin.x >> LODIndex, Origin.y >> LODIndex, Origin.z >> LODIndex);
 
         /// <summary>
         /// How many LOD0 chunks this key contains.
@@ -58,7 +58,7 @@ namespace GingerVoxelSystem.Core
         /// (same coordinates AND same LOD).
         /// </summary>
         public bool Equals(ChunkKey other) =>
-            Origin0.Equals(other.Origin0) && LODIndex == other.LODIndex;
+            Origin.Equals(other.Origin) && LODIndex == other.LODIndex;
 
         /// <summary>
         /// Equality check against any object (safe cast).
@@ -76,9 +76,9 @@ namespace GingerVoxelSystem.Core
         {
             unchecked
             {
-                int h = Origin0.x * 73856093
-                      ^ Origin0.y * 19349663
-                      ^ Origin0.z * 83492791;
+                int h = Origin.x * 73856093
+                      ^ Origin.y * 19349663
+                      ^ Origin.z * 83492791;
                 return h ^ (LODIndex * 486187739);
             }
         }
@@ -87,6 +87,6 @@ namespace GingerVoxelSystem.Core
         /// Human-readable string version (good for debugging/logs).
         /// </summary>
         public override string ToString() =>
-            $"Key LOD:{LODIndex} Origin0:{Origin0}";
+            $"Key LOD:{LODIndex} Origin:{Origin}";
     }
 }

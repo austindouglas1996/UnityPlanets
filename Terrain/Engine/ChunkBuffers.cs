@@ -17,8 +17,8 @@ namespace GingerVoxelSystem.Engine
     public class ChunkBuffers : IDisposable
     {
         // Reused staging lists -> avoids per-dispatch allocations.
-        private readonly List<ChunkDispatchKeyGPU> InputSurface = new(ChunkEngineSettings.SurfaceJobsPerBatch);
-        private readonly List<ChunkDispatchKeyGPU> InputGenerate = new(ChunkEngineSettings.GenerationJobsPerBatch);
+        private readonly List<ChunkWorkDescriptorGPU> InputSurface = new(ChunkEngineSettings.SurfaceJobsPerBatch);
+        private readonly List<ChunkWorkDescriptorGPU> InputGenerate = new(ChunkEngineSettings.GenerationJobsPerBatch);
 
         private IChunkServices ChunkServices;
 
@@ -47,8 +47,8 @@ namespace GingerVoxelSystem.Engine
             DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<TerrainDensityOptions>(), ComputeBufferType.Constant);
             PlanetOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<PlanetDensityOptions>(), ComputeBufferType.Constant);
 
-            SurfaceChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.SurfaceJobsPerBatch, Marshal.SizeOf<ChunkDispatchKeyGPU>());
-            GenerateChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.GenerationJobsPerBatch, Marshal.SizeOf<ChunkDispatchKeyGPU>());
+            SurfaceChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.SurfaceJobsPerBatch, Marshal.SizeOf<ChunkWorkDescriptorGPU>());
+            GenerateChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.GenerationJobsPerBatch, Marshal.SizeOf<ChunkWorkDescriptorGPU>());
             SurfaceMaskBuffer = new ComputeBuffer(ChunkEngineSettings.SurfaceJobsPerBatch, sizeof(uint));
 
             Update(services);
@@ -66,9 +66,9 @@ namespace GingerVoxelSystem.Engine
             for (int i = 0; i < n; i++)
             {
                 var ctx = keys[i];
-                InputSurface.Add(new ChunkDispatchKeyGPU
+                InputSurface.Add(new ChunkWorkDescriptorGPU
                 {
-                    Origin0 = ctx.Key.Origin0,
+                    Origin = ctx.Key.Origin,
                     LodIndex = ctx.Key.LODIndex
                 });
             }
@@ -88,12 +88,12 @@ namespace GingerVoxelSystem.Engine
             for (int i = 0; i < n; i++)
             {
                 var ctx = keys[i].Value;
-                InputGenerate.Add(new ChunkDispatchKeyGPU
+                InputGenerate.Add(new ChunkWorkDescriptorGPU
                 {
                     GlobalIndex = (uint)i,  // Used by some kernels as an index hint
-                    Origin0 = ctx.Origin0,
+                    Origin = ctx.Origin,
                     LodIndex = ctx.LODIndex,
-                    LodEdgeMask = ctx.Mask,//ChunkServices.Octree.GetLODEdgeMask(ctx),
+                    LodEdgeMask = ctx.Mask //ChunkServices.Octree.GetLODEdgeMask(ctx),
                 });
             }
 

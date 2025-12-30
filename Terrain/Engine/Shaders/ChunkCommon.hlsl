@@ -9,61 +9,60 @@
 #define TYPE_PLANET  1
 #define TYPE_CAVE    2
 
-// Samples = Cubes + 1
-uint GetSamplesPerAxis()
+//<summary>
+//</summary>
+uint GetBaseSamplesPerAxis()
 {
-    return CubesPerAxis + 1;
+    return CellsPerAxis + 1;
 }
 
-uint GetMaxCubeIndex()
+uint GetPaddedSamplesPerAxis()
 {
-    return GetSamplesPerAxis() - 2;
+    return GetBaseSamplesPerAxis() + (2 * BorderSamplesPerAxis);
 }
 
-// Vector form of samples (used for buffer allocation / indexing)
-int3 GetSamplesPerChunk3()
+uint3 GetBaseSamplesGridSize()
 {
-    int sampleSize = GetSamplesPerAxis(); // Core Cubes+1
-    int totalSample = sampleSize + (2 * BorderSamplesPerAxis);
-    return int3(totalSample, totalSample, totalSample);
+    uint cells = GetBaseSamplesPerAxis();
+    return uint3(cells, cells, cells);
 }
 
-// Number of cubes per axis at this LOD
-int GetCubesPerAxis(uint lodIndex)
+uint3 GetPaddedSamplesGridSize()
 {
-    return CubesPerAxis << lodIndex;
+    uint totalSample = GetPaddedSamplesPerAxis();
+    return uint3(totalSample, totalSample, totalSample);
 }
 
-// Vector form of cubes per axis
-int3 GetCubesPerChunk3(uint lodIndex)
+uint GetMaxCellCoord()
 {
-    int cubes = GetCubesPerAxis(lodIndex);
-    return int3(cubes,cubes,cubes);
+    return CellsPerAxis - 1;
 }
 
-// The step size of each cube based on LOD level.
-int GetCubeSizeStep(uint lodIndex)
+
+int GetChunkCellSpan(uint lodIndex)
+{
+    return CellsPerAxis << lodIndex;
+}
+
+int GetCellStep(uint lodIndex)
 {
     return 1 << lodIndex;
 }
 
-// Convert chunk coordinates to world space (with LOD)
-float3 ToWorld(int3 origin0)
+float3 ChunkOriginToWorld(int3 Origin)
 {
-    return origin0 * GetCubesPerAxis(0);
+    return Origin * GetChunkCellSpan(0);
 }
 
-// Convert world position to chunk coordinates
-int3 WorldToOrigin0(float3 worldPos)
+int3 WorldToChunkOrigin(float3 worldPos)
 {
-    int CubesPerAxis = GetCubesPerAxis(0);
-    float inv = rcp((float) CubesPerAxis);
+    int CellsPerAxis = GetChunkCellSpan(0);
+    float inv = rcp((float) CellsPerAxis);
 
     return int3(
         (int) floor(worldPos.x * inv),
         (int) floor(worldPos.y * inv),
         (int) floor(worldPos.z * inv));
 }
-
 
 #endif

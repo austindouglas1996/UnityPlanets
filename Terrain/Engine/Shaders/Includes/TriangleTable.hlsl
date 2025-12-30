@@ -18,10 +18,10 @@ int2 GetEdgeConnection(int i)
 }
 
 // Get the i-th triangle edge index for a given cube configuration
-int GetTriangleEdgeIndex(int cubeIndex, int triangleVertexIndex)
+int GetTriangleEdgeIndex(int CellCoord, int triangleVertexIndex)
 {
-    // Each cubeIndex has 16 possible edge indices (-1 if not used)
-    return TriangleTableBuffer[cubeIndex * 16 + triangleVertexIndex];
+    // Each CellCoord has 16 possible edge indices (-1 if not used)
+    return TriangleTableBuffer[CellCoord * 16 + triangleVertexIndex];
 }
 
 #endif

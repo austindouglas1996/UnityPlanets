@@ -7,10 +7,10 @@
 // Key that identifies a chunk for dispatch.
 // CoordPos = chunk origin in LOD0-space (global, authoritative)
 // LodIndex = step size based on current LOD
-struct ChunkDispatchKey
+struct ChunkWorkDescriptor
 {
     uint GlobalIndex;
-    float3 Origin0;
+    float3 Origin;
     
     uint LodIndex;  
     uint LodEdgeMask;
@@ -23,13 +23,15 @@ struct ChunkDispatchKey
 // Returned by GetChunkAccess(). Holds everything needed
 // for compute dispatch: the chunk index, map index, voxel coord,
 // world position, and the original chunk key.
-struct ChunkDispatchKeyInfo
+struct ChunkCellContext
 {
-    uint KeyIndex;
-    uint SampleIndex;
-    uint3 LocalVoxelCoord;
-    float3 WorldPos;
-    ChunkDispatchKey chunk;
+    uint ChunkKeyIndex; // Index of the key this belongs to.
+    uint DensitySampleIndex; // Position in a flattened density map.
+    
+    uint3 CellCoord; // [0..15]³ cell in chunk
+    float3 CellWorldPos; // world-space origin
+    
+    ChunkWorkDescriptor Chunk;
 };
 
 // Triangle data generated during marching.
@@ -44,7 +46,7 @@ struct TriangleData
     float3 NormalB;
     float3 NormalC;
     uint LodIndex;
-    uint KeyIndex;
+    uint ChunkKeyIndex;
 };
 
 // ChunkDetailData

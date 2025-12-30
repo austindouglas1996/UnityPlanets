@@ -87,7 +87,7 @@ namespace GingerVoxelSystem.Engine.Options
     {
         [Header("Global")]
         [Tooltip("Logical voxel width of a chunk (before LOD).")]
-        public int CubesPerAxis;
+        public int CellsPerAxis;
 
         [Tooltip("Additional voxel width given for sampling for edge smoothness.")]
         public int BorderSamplesPerAxis;

@@ -47,7 +47,7 @@ namespace GingerVoxelSystem.Core
         /// <returns></returns>
         public int GetChunkSize(int lod)
         {
-            return this.Configuration.DensityOptions.CubesPerAxis << lod;
+            return this.Configuration.DensityOptions.CellsPerAxis << lod;
         }
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace GingerVoxelSystem.Core
         /// </summary>
         /// <param name="world"></param>
         /// <returns></returns>
-        public Vector3Int WorldToOrigin0(Vector3 worldPositon)
+        public Vector3Int WorldToOrigin(Vector3 worldPositon)
         {
             int chunkSize = GetChunkSize(0);
             return new Vector3Int(

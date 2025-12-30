@@ -116,11 +116,11 @@
             if (job.Batch == null)
                 job.Batch = CreateBatch();
 
-            int cubesPerAxis = densityOptions.CubesPerAxis;
-            int samplesPerAxis = cubesPerAxis + 1 + (2 * densityOptions.BorderSamplesPerAxis);
+            int CellsPerAxis = densityOptions.CellsPerAxis;
+            int samplesPerAxis = CellsPerAxis + 1 + (2 * densityOptions.BorderSamplesPerAxis);
 
             // Compute-thread division for 4x4x4 kernels.
-            int marchGroupSize = Mathf.CeilToInt(cubesPerAxis / 4f);
+            int marchGroupSize = Mathf.CeilToInt(CellsPerAxis / 4f);
             int genGroupSize = Mathf.CeilToInt(samplesPerAxis / 4f);
 
             // Modified chunk ranges grouped contiguously so we don't dispatch per-chunk.
@@ -204,7 +204,7 @@
             var detailBuffer = new ComputeBuffer(maxSimple, Marshal.SizeOf<ChunkDetailDataGPU>(), ComputeBufferType.Append | ComputeBufferType.Structured);
 
             // Density map allocation (scalar field) — rough over-alloc based on max jobs.
-            int samples = densityOptions.CubesPerAxis + 1 + (2 * densityOptions.BorderSamplesPerAxis);
+            int samples = densityOptions.CellsPerAxis + 1 + (2 * densityOptions.BorderSamplesPerAxis);
             int samplesPerChunk = samples * samples * samples;
             int totalSamples = samplesPerChunk * ChunkEngineSettings.GenerationJobsPerBatch;
 

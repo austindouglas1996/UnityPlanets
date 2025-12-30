@@ -38,8 +38,8 @@
         /// - Subdivide: split into children
         /// - Merge: collapse children back to parent
         /// </summary>
-        internal enum LodDecision 
-        { 
+        internal enum LodDecision
+        {
             NoChange, // Do not change the node this time.
             Subdivide, // Divide the node into 8 pieces.
             Merge // Merge the node destroying its children.
@@ -170,7 +170,7 @@
 
             for (int face = 0; face < 6; face++)
             {
-                Vector3Int neighborOrigin0 = key.Origin0 + ChunkMath.ChunkOffsets[face] * key.Size0;
+                Vector3Int neighborOrigin0 = key.Origin + ChunkMath.ChunkOffsets[face] * key.Size0;
 
                 // Ask me how long I spent thinking TryGetValue returns -1 when not found ):
                 // and how awful the random bug that occured so rare.
@@ -180,7 +180,7 @@
                 var node = Nodes[neighborIndex];
 
                 ChunkKey neighborKey = node.Key;
-                if (neighborKey.LODIndex > key.LODIndex)
+                if (neighborKey.LODIndex < key.LODIndex)
                     mask |= 1u << face;
             }
 
@@ -193,7 +193,7 @@
         /// </summary>
         public void Update()
         {
-            playerCoordinatePos = math.WorldToOrigin0(follower.position);
+            playerCoordinatePos = math.WorldToOrigin(follower.position);
 
             int count = Nodes.Count;
             int processed = 0;
@@ -276,7 +276,7 @@
         /// <returns></returns>
         private int AllocSingleBlock()
         {
-            if (FreeSingleBlocks.Count > 0) 
+            if (FreeSingleBlocks.Count > 0)
                 return FreeSingleBlocks.Pop();
 
             Nodes.Add(new ChunkLodTreeNode());
@@ -293,7 +293,7 @@
             var n = Nodes[index];
 
             IndexByKey.Remove(n.Key);
-            IndexByOrigin.Remove(n.Key.Origin0);
+            IndexByOrigin.Remove(n.Key.Origin);
             processor.RemoveChunk(n.Key);
 
             n.Free();
@@ -314,7 +314,7 @@
                 return LodDecision.NoChange;
             }
 
-            int desired = math.GetLODForChunk(node.Key.Origin0, playerCoordinatePos);
+            int desired = math.GetLODForChunk(node.Key.Origin, playerCoordinatePos);
 
             if (node.State == NodeState.IdleLeaf)
             {
@@ -358,7 +358,7 @@
 
             for (int i = 0; i < 8; i++)
             {
-                Vector3Int childOrigin0 = node.Key.Origin0 + GetChildOffset(i, childSize0);
+                Vector3Int childOrigin0 = node.Key.Origin + GetChildOffset(i, childSize0);
                 TryCreateSingleNode(new ChunkKey(childOrigin0, childLOD), index);
             }
         }
@@ -441,7 +441,7 @@
                 }
                 else
                 {
-                    IndexByOrigin[key.Origin0] = childIndex;
+                    IndexByOrigin[key.Origin] = childIndex;
 
                     child.Key = key;
                     child.State = NodeState.IdleLeaf;

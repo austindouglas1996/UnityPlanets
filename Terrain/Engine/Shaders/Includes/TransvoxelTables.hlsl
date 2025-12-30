@@ -39,10 +39,10 @@ struct VertexData
 // -----------------------------------------------------------------------------
 struct VertexDataUnpacked
 {
-    // First corner index (0..7) used for interpolation.
+    // First corner index (0..12) used for interpolation.
     uint Corner0;
 
-    // Second corner index (0..7) used for interpolation.
+    // Second corner index (0..12) used for interpolation.
     uint Corner1;
 
     // Cache slot index used by the Transvoxel vertex cache.
@@ -197,44 +197,20 @@ bool CubeOnFace(uint face, int3 voxel, int max)
 
 int3 RemapTransitionCorner(uint face, int3 c)
 {
-    // Canonical transition space is Z-facing
-
     switch (face)
     {
-        // -X (fine side)
         case 0:
-            return int3(0, c.y, c.x);
-
-        // +X (transition plane, flipped)
+            return int3(0, c.y, c.x); // -X
         case 1:
-            return int3(1, c.y, 2 - c.x);
-
-        // -Y
+            return int3(2, c.y, 2 - c.x); // +X
         case 2:
-            return int3(c.x, 0, c.y);
-
-        // +Y (transition plane, flipped)
+            return int3(c.x, 0, c.y); // -Y
         case 3:
-            return int3(c.x, 1, 2 - c.y);
-
-        // -Z (fine side)
+            return int3(c.x, 2, 2 - c.y); // +Y
         case 4:
-            return int3(2 - c.x, c.y, 0);
-
-        // +Z (transition plane)
+            return int3(2 - c.x, c.y, 0); // -Z
         case 5:
-            return int3(c.x, c.y, 1);
+            return int3(c.x, c.y, 2); // +Z
     }
-
     return c;
-}
-
-int3 GetTransitionCornerSamplePos(uint face,uint corner,int3 baseCube)
-{
-    // offset is 0,1,2 in canonical transition space
-    int3 offset = RemapTransitionCorner(face, TransitionCornerOffset[corner]);
-
-    // TransitionCornerOffset is defined in SAMPLE space
-    // No step, no halfStep here
-    return baseCube + offset;
 }

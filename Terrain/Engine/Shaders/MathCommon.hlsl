@@ -20,27 +20,18 @@ static const float PI = 3.14159265359;
 static const float TAU = 6.28318530718;
 static const float INV_9 = 1.0 / 9.0;
 
-inline float Sanitize(float v)
-{
-    return (isnan(v) || isinf(v)) ? 0.0 : v;
-}
+inline float Sanitize(float v) { return (isnan(v) || isinf(v)) ? 0.0 : v; }
 
-inline float sqr(float x) { return x * x; }
+inline float  sqr(float x)  { return x * x; }
 inline float2 sqr(float2 x) { return x * x; }
 inline float3 sqr(float3 x) { return x * x; }
 inline float4 sqr(float4 x) { return x * x; }
 
 // Converts a number to [0,1]
-inline float N01(float n)
-{
-    return 0.5 * n + 0.5;
-}
+inline float N01(float n) { return 0.5 * n + 0.5; }
 
 // Converts a number to [-1,1]
-inline float N11(float n)
-{
-    return n * 2 - 1;
-}
+inline float N11(float n) { return n * 2 - 1; }
 
 // Quantize [0..1] value into N discrete bins (0..N-1)
 inline uint QuantizeN(float value, uint bins)
