@@ -1,9 +1,7 @@
 ﻿using GingerVoxelSystem.Systems.Rendering;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace Assets.Scripts.Terrain.Engine.Stage
+namespace GingerVoxelSystem.Engine.Stage
 {
     public interface IMarchingShader : IDisposable
     {

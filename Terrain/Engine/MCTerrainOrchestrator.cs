@@ -1,6 +1,5 @@
 ﻿namespace GingerVoxelSystem.Engine
 {
-    using Assets.Scripts.Terrain.Engine.Stage;
     using GingerVoxelSystem;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Engine.Options;
@@ -37,7 +36,6 @@
         [SerializeField] private ComputeShader RepackShader;
         [SerializeField] private ComputeShader DetailsShader;
         [SerializeField] private ComputeShader UtilityShader;
-        [SerializeField] private bool useTransvoxels = true;
 
         private DensityStage density;
         private IMarchingShader marchingCubes;
@@ -68,14 +66,7 @@
             // Load compute stages. Each stage wires buffers/kernels internally.
             density = new DensityStage(DensityShader, chunkBuffers);
 
-            if (useTransvoxels)
-            {
-                marchingCubes = new TransVoxelsStage(TransvoxelShader, chunkBuffers);
-            }
-            else
-            {
-                marchingCubes = new MarchingCubesStage(MarchingCubesShader, chunkBuffers);
-            }
+            marchingCubes = new TransVoxelsStage(TransvoxelShader, chunkBuffers);
 
             repack = new RepackStage(RepackShader, chunkBuffers);
             details = new DetailsStage(DetailsShader, chunkBuffers);

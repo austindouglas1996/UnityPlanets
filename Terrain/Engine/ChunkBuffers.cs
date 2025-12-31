@@ -1,14 +1,14 @@
-﻿using GingerVoxelSystem.Core;
-using GingerVoxelSystem.Engine.Options;
-using GingerVoxelSystem.Systems.Generation;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using UnityEngine;
-
-namespace GingerVoxelSystem.Engine
+﻿namespace GingerVoxelSystem.Engine
 {
+    using GingerVoxelSystem.Core;
+    using GingerVoxelSystem.Engine.Options;
+    using GingerVoxelSystem.Systems.Generation;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Runtime.InteropServices;
+    using UnityEngine;
+
     /// <summary>
     /// Central buffer container shared across all terrain-generation stages.
     /// Holds static options (density/planet), biome tables, and per-batch input buffers.
@@ -19,8 +19,6 @@ namespace GingerVoxelSystem.Engine
         // Reused staging lists -> avoids per-dispatch allocations.
         private readonly List<ChunkWorkDescriptorGPU> InputSurface = new(ChunkEngineSettings.SurfaceJobsPerBatch);
         private readonly List<ChunkWorkDescriptorGPU> InputGenerate = new(ChunkEngineSettings.GenerationJobsPerBatch);
-
-        private IChunkServices ChunkServices;
 
         // GPU buffers used by various stages.
         public ComputeBuffer SurfaceChunkInputBuffer;   // Per-chunk metadata for surface mask pass
@@ -39,8 +37,6 @@ namespace GingerVoxelSystem.Engine
         /// </summary>
         public ChunkBuffers(IChunkServices services)
         {
-            this.ChunkServices = services;
-
             BiomeBuffer = new ComputeBuffer(services.Configuration.BiomeLibrary.Biomes.Count, Marshal.SizeOf<ChunkBiomeGPU>());
 
             // Single struct (Structured buffer of length 1)

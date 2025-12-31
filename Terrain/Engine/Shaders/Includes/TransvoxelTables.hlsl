@@ -63,12 +63,40 @@ static const uint FaceCorners[6][4] =
     { 4, 5, 6, 7 } // +Z
 };
 
-// -----------------------------------------------------------------------------
-// Corner offsets for regular and transition cells.
-// These define the relative positions of cube corners in voxel space.
-// -----------------------------------------------------------------------------
-StructuredBuffer<int3> RegularCornerOffset;
-StructuredBuffer<int3> TransitionCornerOffset;
+// RegularCornerOffset
+// Defines the local corner offsets for a standard Marching Cubes cell.
+//
+// Coordinates are in local cell space (0 or 1 on each axis).
+// These offsets are applied relative to the cell's minimum corner
+// to compute the world-space position of each cube corner.
+//
+// Corner indices:
+//
+//        6-------7
+//       /|      /|
+//      / |     / |
+//     4-------5  |
+//     |  2----|--3
+//     | /     | /
+//     |/      |/
+//     0-------1
+//
+// Axes:
+//   x → right
+//   y ↑ up
+//   z → forward
+static const int3 RegularCornerOffset[8] =
+{
+    int3(0, 0, 0), // 0
+    int3(1, 0, 0), // 1
+    int3(0, 0, 1), // 2
+    int3(1, 0, 1), // 3
+
+    int3(0, 1, 0), // 4
+    int3(1, 1, 0), // 5
+    int3(0, 1, 1), // 6
+    int3(1, 1, 1) // 7
+};
 
 // Maps a marching-cubes case code (0..255) to a regular cell class index.
 StructuredBuffer<uint> RegularCellClass;
@@ -85,21 +113,66 @@ StructuredBuffer<uint> RegularCellIndices;
 StructuredBuffer<VertexData> RegularVertexRanges;
 StructuredBuffer<uint> RegularVertexData;
 
-
-
-
 // -----------------------------------------------------------------------------
 // Transition cell class lookup.
 // Maps a transition case code to a transition cell class index.
 // -----------------------------------------------------------------------------
 StructuredBuffer<uint> TransitionCellClass;
 
+// TransitionCornerOffset
+// Defines the canonical 3x3 transition-grid corner positions.
+//
+// These coordinates are in a local 0..2 grid and are later remapped
+// per-face using RemapTransitionCorner(). The layout matches the
+// standard Transvoxel transition corner ordering.
+//
+// Corner indices:
+//
+//     B-----------C
+//    /|          /|
+//   / |         / |
+//  6-----7-----8  |
+//  |   | |     |  |
+//  |   9 |-----|--A
+//  3-----4-----5 /
+//  | /   |     |/
+//  0-----1-----2
+//
+// Axes:
+//   x → right
+//   y ↑ up
+//   z → out of the face
+static const int3 TransitionCornerOffset[13] =
+{
+    int3(0, 0, 0), // 0
+    int3(1, 0, 0), // 1
+    int3(2, 0, 0), // 2
+
+    int3(0, 1, 0), // 3
+    int3(1, 1, 0), // 4
+    int3(2, 1, 0), // 5
+
+    int3(0, 2, 0), // 6
+    int3(1, 2, 0), // 7
+    int3(2, 2, 0), // 8
+
+    // Anchor corners (duplicated outer corners)
+    int3(0, 0, 2), // 9
+    int3(2, 0, 2), // A
+    int3(0, 2, 2), // B
+    int3(2, 2, 2)  // C
+};
+
 // -----------------------------------------------------------------------------
 // Packed transition corner metadata.
 // Each entry encodes which regular/transition corners participate
 // in the transition cell configuration.
 // -----------------------------------------------------------------------------
-StructuredBuffer<uint> TransitionCornerData;
+static const int TransitionCornerData[13] =
+{
+    0x30, 0x21, 0x20, 0x12, 0x40, 0x82,
+    0x10, 0x81, 0x80, 0x37, 0x27, 0x17, 0x87
+};
 
 // -----------------------------------------------------------------------------
 // Transition cell topology data.
@@ -115,7 +188,6 @@ StructuredBuffer<uint> TransitionCellIndices;
 // -----------------------------------------------------------------------------
 StructuredBuffer<VertexData> TransitionVertexRanges;
 StructuredBuffer<uint> TransitionVertexData;
-
 
 // -----------------------------------------------------------------------------
 // Fetches a packed 16-bit vertex descriptor for a given cell class and
@@ -170,31 +242,21 @@ RegularCellData GetRegularCellData(uint regularCase)
 
 RegularCellData GetTransitionCellData(uint transitionCase)
 {
+    // Convert raw 9-bit case into a symmetry-reduced class + flip flag
     uint transitionClass = TransitionCellClass[transitionCase];
+
+    // Mask off flip bit and fetch canonical triangle topology
     return TransitionCellTable[transitionClass & 0x7F];
 }
 
-// Returns whether a given voxel position is on the egde of a given face.
-bool CubeOnFace(uint face, int3 voxel, int max)
-{
-    switch (face)
-    {
-        case 0:
-            return voxel.x == 0; // -X
-        case 1:
-            return voxel.x == max; // +X
-        case 2:
-            return voxel.y == 0; // -Y
-        case 3:
-            return voxel.y == max; // +Y
-        case 4:
-            return voxel.z == 0; // -Z
-        case 5:
-            return voxel.z == max; // +Z
-    }
-    return false;
-}
-
+// RemapTransitionCorner
+// Remaps a transition-grid corner coordinate (0..2) into the correct
+// orientation for the specified face.
+//
+// The transition grid is defined in a canonical orientation, but each
+// chunk face has a different axis alignment. This function rotates and
+// mirrors the corner coordinates so the same transition tables can be
+// reused for all faces.
 int3 RemapTransitionCorner(uint face, int3 c)
 {
     switch (face)

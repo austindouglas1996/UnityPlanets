@@ -49,9 +49,14 @@ int GetCellStep(uint lodIndex)
     return 1 << lodIndex;
 }
 
-float3 ChunkOriginToWorld(int3 Origin)
+float3 ChunkOriginToWorld(int3 Origin, uint lodIndex)
 {
-    return Origin * GetChunkCellSpan(0);
+    return Origin * GetChunkCellSpan(lodIndex);
+}
+
+float3 ChunkOriginToWorld(ChunkWorkDescriptor chunk)
+{
+    return ChunkOriginToWorld(chunk.Origin, chunk.LodIndex);
 }
 
 int3 WorldToChunkOrigin(float3 worldPos)

@@ -61,7 +61,7 @@ ChunkCellContext GetChunkCellCubes(uint3 id, uint offset, StructuredBuffer<Chunk
     // Fetch key and compute world position
     ChunkWorkDescriptor key = keys[r.ChunkKeyIndex];
     r.Chunk = key;   
-    r.CellWorldPos = ChunkOriginToWorld(key.Origin) + float3(r.CellCoord) * GetCellStep(r.Chunk.LodIndex);
+    r.CellWorldPos = ChunkOriginToWorld(key) + (float3(r.CellCoord) * GetCellStep(r.Chunk.LodIndex));
 
     return r;
 }
@@ -110,7 +110,7 @@ ChunkCellContext GetChunkCellSamples(uint3 id, uint offset, StructuredBuffer<Chu
     // Set key data
     ChunkWorkDescriptor key = keys[r.ChunkKeyIndex];
     r.Chunk = key;
-    r.CellWorldPos = ChunkOriginToWorld(key.Origin) + float3(r.CellCoord) * GetCellStep(r.Chunk.LodIndex);
+    r.CellWorldPos = ChunkOriginToWorld(key) + (float3(r.CellCoord) * GetCellStep(key.LodIndex));
 
     return r;
 }

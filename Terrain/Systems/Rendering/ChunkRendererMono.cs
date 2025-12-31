@@ -115,14 +115,15 @@
 
         private void DebugChunks()
         {
-            ChunkKey k1 = new ChunkKey(new Vector3Int(20, 0, 0), 4);
-            ChunkKey k2 = new ChunkKey(new Vector3Int(20, 0, -8), 3);
-            ChunkKey k7 = new ChunkKey(new Vector3Int(20, 0, 16), 3);
-            ChunkKey k3 = new ChunkKey(new Vector3Int(12, 0, 8), 3);
-            ChunkKey k4 = new ChunkKey(new Vector3Int(12, 0, 0), 3);
-            ChunkKey k5 = new ChunkKey(new Vector3Int(36, 0, 8), 3);
-            ChunkKey k6 = new ChunkKey(new Vector3Int(36, 0, 0), 3);
-            ChunkKey k8 = new ChunkKey(new Vector3Int(8, 0, 0), 2);
+            ChunkKey k1 = new ChunkKey(new Vector3Int(0, 0, 0), 4);
+            ChunkKey k2 = new ChunkKey(new Vector3Int(0, 0, -1), 3);
+            ChunkKey k7 = new ChunkKey(new Vector3Int(0, 0, 2), 3);
+            ChunkKey k3 = new ChunkKey(new Vector3Int(-1, 0, 1), 3);
+            ChunkKey k4 = new ChunkKey(new Vector3Int(-1, 0, 0), 3);
+            ChunkKey k5 = new ChunkKey(new Vector3Int(2, 0, 1), 3);
+            ChunkKey k6 = new ChunkKey(new Vector3Int(2, 0, 0), 3);
+            ChunkKey k8 = new ChunkKey(new Vector3Int(-3, 0, 0), 2);
+            ChunkKey k9 = new ChunkKey(new Vector3Int(-7, 0, 0), 1);
 
             uint tMask1A = 0;
             tMask1A |= 1u << 0;
@@ -137,12 +138,13 @@
             tMask3A |= 1u << 0;
             uint tMask4A = 0;
             tMask4A |= 1u << 0;
-            uint tMask5A = 0;
-            uint tMask7A = 0;
-            uint tMask8A = 0;
-
+            uint tMask5A = 0; 
             uint tMask6A = 0;
             tMask6A |= 1u << 1;
+            uint tMask7A = 0;
+            uint tMask8A = 0;
+            tMask8A |= 1u << 0;
+            uint tMask9A = 0;
 
             k1.Mask = tMask1A;
             k2.Mask = tMask2A;
@@ -152,17 +154,19 @@
             k6.Mask = tMask6A;
             k7.Mask = tMask7A;
             k8.Mask = tMask8A;
+            k9.Mask = tMask9A;
 
 
             // Inject into chunk system (however you store masks)
             this.processor.RequestChunkGeneration(k1, null);
             this.processor.RequestChunkGeneration(k2, null);
-            this.processor.RequestChunkGeneration(k3, null);
+            //this.processor.RequestChunkGeneration(k3, null);
             this.processor.RequestChunkGeneration(k4, null);
             this.processor.RequestChunkGeneration(k5, null);
             this.processor.RequestChunkGeneration(k6, null);
             this.processor.RequestChunkGeneration(k7, null);
             this.processor.RequestChunkGeneration(k8, null);
+            this.processor.RequestChunkGeneration(k9, null);
         }
 
         private void DebugChunksA()

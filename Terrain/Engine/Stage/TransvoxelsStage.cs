@@ -1,10 +1,8 @@
 ﻿namespace GingerVoxelSystem.Engine.Stage
 {
-    using Assets.Scripts.Terrain.Engine.Stage;
     using GingerVoxelSystem.Engine.Helpers;
     using GingerVoxelSystem.Engine.Options;
     using GingerVoxelSystem.Systems.Rendering;
-    using System;
     using System.Runtime.InteropServices;
     using UnityEngine;
 
@@ -19,11 +17,6 @@
         private readonly int marchKernel;
 
         private readonly ComputeShader transvoxelShader;
-        private readonly ChunkBuffers buffers;
-
-        ComputeBuffer cornerOffsets = MarchingCubesTables.CornerOffsetsBuffer();
-        ComputeBuffer edgeConnections = MarchingCubesTables.EdgeConnectionsBuffer();
-        ComputeBuffer triangleTable = MarchingCubesTables.TriangleTableBuffer();
 
         /// <summary>
         /// Creates a new <see cref="MarchingCubesStage"/> and wires up the kernels,
@@ -39,7 +32,6 @@
             }
 
             this.transvoxelShader = transvoxelShader;
-            this.buffers = buffers;
 
             countTrianglesKernel = transvoxelShader.FindKernel("RunMarchingCubesPrePass");
             marchKernel = transvoxelShader.FindKernel("RunMarchingCubes");
@@ -88,9 +80,6 @@
 
         public void Dispose()
         {
-            cornerOffsets?.Dispose();
-            edgeConnections?.Dispose();
-            triangleTable?.Dispose();
             TransvoxelGpuTables.Dispose();
         }
     }

@@ -37,7 +37,7 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
     const int baseSize = GetBaseSamplesPerAxis();
     const int step = GetCellStep(chunk.LodIndex);
 
-    const float3 origin = ChunkOriginToWorld(chunk.Origin);
+    const float3 origin = ChunkOriginToWorld(chunk.Origin, chunk.LodIndex);
 
     if (groupIdx == 0)
     {
