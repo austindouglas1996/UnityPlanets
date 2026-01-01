@@ -30,22 +30,24 @@ RWStructuredBuffer<TriangleData> TriangleSourceBuffer;
 //
 // `voxel` is the cell coordinate within the chunk (0..max).
 // `max` is the maximum valid cell index (typically CellsPerAxis - 1).
-bool CubeOnFace(uint face, int3 voxel, int max)
+bool CubeOnFace(uint face, int3 voxel)
 {
+    uint max = CellsPerAxis;
+    
     switch (face)
     {
         case 0:
             return voxel.x == 0; // -X
         case 1:
-            return voxel.x == max; // +X
+            return voxel.x == max - 1; // +X
         case 2:
             return voxel.y == 0; // -Y
         case 3:
-            return voxel.y == max; // +Y
+            return voxel.y == max - 1; // +Y
         case 4:
             return voxel.z == 0; // -Z
         case 5:
-            return voxel.z == max; // +Z
+            return voxel.z == max - 1; // +Z
     }
     return false;
 }
@@ -230,8 +232,6 @@ void March(ChunkCellContext key)
         cellNormal[i] = normalize(lerp(cornerNormal[v.Corner0], cornerNormal[v.Corner1], t));
     }
     
-    int maxCellCoord = GetMaxCellCoord();
-
     // Emit triangles
     for (uint i = 0; i < cell.IndicesCount; i += 3)
     {
@@ -256,7 +256,7 @@ void March(ChunkCellContext key)
             if (!IsFaceAnEdge(ii, key))
                 continue;
         
-            if (CubeOnFace(ii, key.CellCoord, maxCellCoord))
+            if (CubeOnFace(ii, key.CellCoord))
             {
                 tri.LodIndex = 8;
             }
@@ -276,7 +276,7 @@ void March(ChunkCellContext key)
         if (!IsFaceAnEdge(face, key))
             continue;
         
-        if (!CubeOnFace(face, key.CellCoord, maxCellCoord))
+        if (!CubeOnFace(face, key.CellCoord))
             continue;
 
         MarchTransitionFace(face, key);
@@ -291,7 +291,6 @@ void March(ChunkCellContext key)
 int CountTransvoxels(ChunkCellContext key)
 {
     int totalTriangles = 0;
-    uint maxCellCoord = GetMaxCellCoord();
     
     [loop]
     for (uint face = 0; face < 6; face++)
@@ -302,7 +301,7 @@ int CountTransvoxels(ChunkCellContext key)
         
         // Is this specific cell located on that face?
         // This ensures we only generate transitions on the outer layer of cells.
-        if (!CubeOnFace(face, key.CellCoord, maxCellCoord))
+        if (!CubeOnFace(face, key.CellCoord))
             continue;
 
         // Build the transition case for this face and add its triangle count
@@ -324,7 +323,8 @@ float3 GetCornerPosition(uint face, ChunkCellContext key, int corner)
     
     // CellWorldPos = ChunkOriginToWorld(key) + (float3(r.CellCoord) * GetCellStep(r.Chunk.LodIndex));
     // Transition grid uses the finer LOD step (LOD - 1).
-    return key.CellWorldPos + float3(cellOffset) * GetCellStep(key.Chunk.LodIndex - 1);
+    uint fineStep = GetCellStep(key.Chunk.LodIndex - 1);
+    return key.CellWorldPos + float3(cellOffset) * fineStep;
 }
 
 // GetCornerNormal

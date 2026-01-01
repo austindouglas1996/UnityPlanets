@@ -194,20 +194,22 @@ StructuredBuffer<uint> TransitionVertexData;
 // local vertex index.
 // The descriptor is stored in a uint buffer, but only the lower 16 bits
 // are meaningful.
+// There is 256 in the vertexRanges.
 // -----------------------------------------------------------------------------
-uint GetPackedVertexU16(uint caseId, uint vertexIndex)
+uint GetPackedVertexU16(uint regularClass, uint vertexIndex)
 {
-    uint baseIndex = RegularVertexRanges[caseId].VertexStart;
+    uint baseIndex = RegularVertexRanges[regularClass].VertexStart;
     return RegularVertexData[baseIndex + vertexIndex];
 }
 
 // -----------------------------------------------------------------------------
 // Fetches a packed 16-bit transition vertex descriptor for a given
-// transition cell class and local vertex index.
+// transition cell class and local vertex index. 
+// There is 512 in the vertexRanges.
 // -----------------------------------------------------------------------------
-uint GetTransitionPackedVertexU16(uint caseId, uint vertexIndex)
+uint GetTransitionPackedVertexU16(uint transitionCase, uint vertexIndex)
 {
-    uint baseIndex = TransitionVertexRanges[caseId].VertexStart;
+    uint baseIndex = TransitionVertexRanges[transitionCase].VertexStart;
     return TransitionVertexData[baseIndex + vertexIndex];
 }
 
@@ -248,6 +250,7 @@ RegularCellData GetTransitionCellData(uint transitionCase)
     // Mask off flip bit and fetch canonical triangle topology
     return TransitionCellTable[transitionClass & 0x7F];
 }
+
 
 // RemapTransitionCorner
 // Remaps a transition-grid corner coordinate (0..2) into the correct

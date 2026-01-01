@@ -33,12 +33,6 @@ uint3 GetPaddedSamplesGridSize()
     return uint3(totalSample, totalSample, totalSample);
 }
 
-uint GetMaxCellCoord()
-{
-    return CellsPerAxis - 1;
-}
-
-
 int GetChunkCellSpan(uint lodIndex)
 {
     return CellsPerAxis << lodIndex;

@@ -1094,7 +1094,7 @@ namespace GingerVoxelSystem.Engine.Helpers
             RegularCellTable = new ComputeBuffer(TransvoxelTables.RegularCellData.Length, Marshal.SizeOf<RegularCellDataGPU>());
             RegularCellIndices = new ComputeBuffer(156, Marshal.SizeOf<uint>());
 
-            // Regular Vertex Data
+            // Regular Vertex Data (256)
             RegularVertexRanges = new ComputeBuffer(TransvoxelTables.RegularVertexData.Length, Marshal.SizeOf<VertexData>());
             RegularVertexData = new ComputeBuffer(1536, sizeof(uint));
 
@@ -1185,7 +1185,7 @@ namespace GingerVoxelSystem.Engine.Helpers
             TransitionCellTable = new ComputeBuffer(TransvoxelTables.TransitionRegularCellData.Length, Marshal.SizeOf<RegularCellDataGPU>());
             TransitionCellIndices = new ComputeBuffer(924, Marshal.SizeOf<uint>());
 
-            // Transition Vertex Data
+            // Transition Vertex Data (512)
             TransitionVertexRanges = new ComputeBuffer(TransvoxelTables.TransitionVertexData.Length, Marshal.SizeOf<VertexData>());
             TransitionVertexData = new ComputeBuffer(4096, sizeof(uint));
 

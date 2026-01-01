@@ -25,6 +25,11 @@ int GetBiomeID(float3 p)
 }
 
 
+float GroundVolumetricA(float3 p)
+{
+    return abs(p.y) - 20.0;
+}
+
 float GroundVolumetric(float3 p)
 {
     // Large solid ground volume around y=0

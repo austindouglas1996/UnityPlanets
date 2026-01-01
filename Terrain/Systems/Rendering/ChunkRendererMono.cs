@@ -123,7 +123,8 @@
             ChunkKey k5 = new ChunkKey(new Vector3Int(2, 0, 1), 3);
             ChunkKey k6 = new ChunkKey(new Vector3Int(2, 0, 0), 3);
             ChunkKey k8 = new ChunkKey(new Vector3Int(-3, 0, 0), 2);
-            ChunkKey k9 = new ChunkKey(new Vector3Int(-7, 0, 0), 1);
+            ChunkKey k9 = new ChunkKey(new Vector3Int(-9, 0, 0), 1);
+            ChunkKey k10 = new ChunkKey(new Vector3Int(-2, 0, 0), 5);
 
             uint tMask1A = 0;
             tMask1A |= 1u << 0;
@@ -141,10 +142,9 @@
             uint tMask5A = 0; 
             uint tMask6A = 0;
             tMask6A |= 1u << 1;
-            uint tMask7A = 0;
-            uint tMask8A = 0;
-            tMask8A |= 1u << 0;
-            uint tMask9A = 0;
+            uint tMask7A = 63;
+            uint tMask8A = 63;
+            uint tMask9A = 63;
 
             k1.Mask = tMask1A;
             k2.Mask = tMask2A;
@@ -155,6 +155,7 @@
             k7.Mask = tMask7A;
             k8.Mask = tMask8A;
             k9.Mask = tMask9A;
+            k10.Mask = 63;
 
 
             // Inject into chunk system (however you store masks)
@@ -167,6 +168,7 @@
             this.processor.RequestChunkGeneration(k7, null);
             this.processor.RequestChunkGeneration(k8, null);
             this.processor.RequestChunkGeneration(k9, null);
+            this.processor.RequestChunkGeneration(k10, null);
         }
 
         private void DebugChunksA()
