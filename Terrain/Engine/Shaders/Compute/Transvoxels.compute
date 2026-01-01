@@ -30,24 +30,24 @@ RWStructuredBuffer<TriangleData> TriangleSourceBuffer;
 //
 // `voxel` is the cell coordinate within the chunk (0..max).
 // `max` is the maximum valid cell index (typically CellsPerAxis - 1).
-bool CubeOnFace(uint face, int3 voxel)
+bool CubeOnFace(uint face, int3 cellGrid)
 {
     uint max = CellsPerAxis;
     
     switch (face)
     {
         case 0:
-            return voxel.x == 0; // -X
+            return cellGrid.x == 0; // -X
         case 1:
-            return voxel.x == max - 1; // +X
+            return cellGrid.x == max - 1; // +X
         case 2:
-            return voxel.y == 0; // -Y
+            return cellGrid.y == 0; // -Y THIS ONE BREAKS LOD5.
         case 3:
-            return voxel.y == max - 1; // +Y
+            return cellGrid.y == max - 1; // +Y
         case 4:
-            return voxel.z == 0; // -Z
+            return cellGrid.z == 0; // -Z
         case 5:
-            return voxel.z == max - 1; // +Z
+            return cellGrid.z == max - 1; // +Z
     }
     return false;
 }
@@ -316,15 +316,9 @@ int CountTransvoxels(ChunkCellContext key)
 // for a specific face of the current cell.
 float3 GetCornerPosition(uint face, ChunkCellContext key, int corner)
 {
-    // Remap the transition corner based on the face we are stitching.
-    // RemapTransitionCorner returns offsets in the range 0..2
-    // within the 3x3 transition grid.
-    int3 cellOffset = RemapTransitionCorner(face, TransitionCornerOffset[corner]);
-    
-    // CellWorldPos = ChunkOriginToWorld(key) + (float3(r.CellCoord) * GetCellStep(r.Chunk.LodIndex));
-    // Transition grid uses the finer LOD step (LOD - 1).
-    uint fineStep = GetCellStep(key.Chunk.LodIndex - 1);
-    return key.CellWorldPos + float3(cellOffset) * fineStep;
+    float fineStep = GetCellStep(key.Chunk.LodIndex - 1);
+    int3 gridOffset = FaceToLocalSpace(face, TransitionCornerOffset[corner]);
+    return key.CellWorldPos + float3(gridOffset) * fineStep;
 }
 
 // GetCornerNormal
@@ -348,9 +342,10 @@ uint GetTransitionCase(uint face, ChunkCellContext key)
     [loop]
     for (uint i = 0; i < 9; i++)
     {
-        float3 worldPos = GetCornerPosition(face, key, i);
+        uint cornerIndex = TransitionCaseCornerMap[i];
+        float3 worldPos = GetCornerPosition(face, key, cornerIndex);
         
-        if (GenerateNoiseValue(worldPos) - ISOLevel < 0.0)
+        if (GenerateNoiseValue(worldPos) < 0)
             caseCode |= (1u << i);
     }
 
@@ -365,6 +360,11 @@ void MarchTransitionFace(uint face, ChunkCellContext key)
 {
     // Build the transition case for this face
     uint transitionCase = GetTransitionCase(face, key);
+    
+    if (transitionCase > 512)
+    {
+        return;
+    }
 
     // Look up the transition cell data via case -> class mapping
     RegularCellData tcell = GetTransitionCellData(transitionCase);
@@ -443,7 +443,7 @@ void MarchTransitionFace(uint face, ChunkCellContext key)
     uint transitionClass = TransitionCellClass[transitionCase];
     bool flip = (transitionClass & 0x80) != 0;
 
-    CreateTransitionTriangles(key, tcell, cellPos, cellNormal, flip);
+    CreateTransitionTriangles(key, tcell, cellPos, cellNormal, !flip);
 }
 
 [numthreads(4, 4, 4)]

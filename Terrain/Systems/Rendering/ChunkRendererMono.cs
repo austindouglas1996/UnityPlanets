@@ -46,7 +46,7 @@
         private void Update()
         {
             if (!isInitialized) return;
-            //lodTree.Update();
+            lodTree.Update();
         }
 
         /// <summary>
@@ -81,7 +81,7 @@
             isInitialized = true;
 
             this.InitializeRootChunks();
-            this.DebugChunks();
+            //this.DebugChunks();
             //this.DebugChunks1();
             //this.DebugChunksA();
         }
@@ -115,7 +115,8 @@
 
         private void DebugChunks()
         {
-            ChunkKey k1 = new ChunkKey(new Vector3Int(0, 0, 0), 4);
+            ChunkKey k0 = new ChunkKey(new Vector3Int(0, 0, 0), 4);
+            ChunkKey k1 = new ChunkKey(new Vector3Int(-5, 0, 0), 4);
             ChunkKey k2 = new ChunkKey(new Vector3Int(0, 0, -1), 3);
             ChunkKey k7 = new ChunkKey(new Vector3Int(0, 0, 2), 3);
             ChunkKey k3 = new ChunkKey(new Vector3Int(-1, 0, 1), 3);
@@ -123,7 +124,7 @@
             ChunkKey k5 = new ChunkKey(new Vector3Int(2, 0, 1), 3);
             ChunkKey k6 = new ChunkKey(new Vector3Int(2, 0, 0), 3);
             ChunkKey k8 = new ChunkKey(new Vector3Int(-3, 0, 0), 2);
-            ChunkKey k9 = new ChunkKey(new Vector3Int(-9, 0, 0), 1);
+            ChunkKey k9 = new ChunkKey(new Vector3Int(-7, 0, 0), 1);
             ChunkKey k10 = new ChunkKey(new Vector3Int(-2, 0, 0), 5);
 
             uint tMask1A = 0;
@@ -144,9 +145,10 @@
             tMask6A |= 1u << 1;
             uint tMask7A = 63;
             uint tMask8A = 63;
-            uint tMask9A = 63;
+            uint tMask9A = 0;
 
-            k1.Mask = tMask1A;
+            k0.Mask = 63;
+            k1.Mask = 0;
             k2.Mask = tMask2A;
             k3.Mask = tMask3A;
             k4.Mask = tMask4A;
@@ -159,9 +161,10 @@
 
 
             // Inject into chunk system (however you store masks)
+            this.processor.RequestChunkGeneration(k0, null);
             this.processor.RequestChunkGeneration(k1, null);
             this.processor.RequestChunkGeneration(k2, null);
-            //this.processor.RequestChunkGeneration(k3, null);
+            this.processor.RequestChunkGeneration(k3, null);
             this.processor.RequestChunkGeneration(k4, null);
             this.processor.RequestChunkGeneration(k5, null);
             this.processor.RequestChunkGeneration(k6, null);
@@ -233,6 +236,7 @@
         public void RefreshChunks()
         {
             this.processor.RemoveAll();
+            //this.DebugChunks();
             this.InitializeRootChunks();
         }
 

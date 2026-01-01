@@ -12,6 +12,8 @@
 
 cbuffer TerrainDensityOptions
 { 
+    int Debug1;
+    
     // Logical voxel width of a chunk (before LOD).
     uint CellsPerAxis;
     

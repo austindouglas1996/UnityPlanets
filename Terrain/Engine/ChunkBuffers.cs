@@ -31,12 +31,16 @@
 
         public ComputeBuffer SurfaceMaskBuffer;         // 1 flag per chunk from the surface check
 
+        private IChunkServices chunkServices;
+
         /// <summary>
         /// Creates a new <see cref="ChunkBuffers"/> instance configured using the supplied services.
         /// This allocates all GPU buffers and uploads initial option/biome data.
         /// </summary>
         public ChunkBuffers(IChunkServices services)
         {
+            this.chunkServices = services;
+
             BiomeBuffer = new ComputeBuffer(services.Configuration.BiomeLibrary.Biomes.Count, Marshal.SizeOf<ChunkBiomeGPU>());
 
             // Single struct (Structured buffer of length 1)
@@ -89,7 +93,7 @@
                     GlobalIndex = (uint)i,  // Used by some kernels as an index hint
                     Origin = ctx.Origin,
                     LodIndex = ctx.LODIndex,
-                    LodEdgeMask = ctx.Mask //ChunkServices.Octree.GetLODEdgeMask(ctx),
+                    LodEdgeMask = chunkServices.Octree.GetLODEdgeMask(ctx),
                 });
             }
 

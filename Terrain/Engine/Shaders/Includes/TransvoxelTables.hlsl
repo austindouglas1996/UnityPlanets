@@ -163,6 +163,52 @@ static const int3 TransitionCornerOffset[13] =
     int3(2, 2, 2)  // C
 };
 
+// TransitionCaseCornerMap
+// Defines which of the 13 transition corners participate in the
+// 9-bit transition case code, and in what order.
+//
+// IMPORTANT:
+// The transition case bits DO NOT map directly to TransitionCornerOffset[0..8].
+// The Transvoxel vertex tables expect a specific winding-based ordering of
+// corners around the 3x3 transition grid, followed by the center.
+//
+// Case bit layout (bit index → corner index):
+//
+//     bit 0  → 0  (bottom-left)
+//     bit 1  → 1  (bottom-mid)
+//     bit 2  → 2  (bottom-right)
+//     bit 3  → 5  (mid-right)
+//     bit 4  → 8  (top-right)
+//     bit 5  → 7  (top-mid)
+//     bit 6  → 6  (top-left)
+//     bit 7  → 3  (mid-left)
+//     bit 8  → 4  (center)
+//
+// Visual order (clockwise around the grid, center last):
+//
+//     6 ---- 7 ---- 8
+//     |      |      |
+//     3 ---- 4 ---- 5
+//     |      |      |
+//     0 ---- 1 ---- 2
+//
+// This ordering MUST match the Transvoxel transition vertex tables.
+// Changing this will produce incorrect triangulation (diagonal spikes,
+// stretched triangles, LOD-dependent artifacts).
+//
+static const uint TransitionCaseCornerMap[9] =
+{
+    0, // bottom-left
+    1, // bottom-mid
+    2, // bottom-right
+    5, // mid-right
+    8, // top-right
+    7, // top-mid
+    6, // top-left
+    3, // mid-left
+    4 // center
+};
+
 // -----------------------------------------------------------------------------
 // Packed transition corner metadata.
 // Each entry encodes which regular/transition corners participate
@@ -228,8 +274,8 @@ VertexDataUnpacked UnpackVertex(uint packed)
     // Mask to 16 bits to avoid any garbage in the upper half.
     packed &= 0xFFFF;
 
-    v.Corner1 = packed & 0x0F;
-    v.Corner0 = (packed >> 4) & 0x0F;
+    v.Corner0 = packed & 0x0F;
+    v.Corner1 = (packed >> 4) & 0x0F;
     v.CacheIndex = (packed >> 8) & 0x0F;
     v.CacheDir = (packed >> 12) & 0x07;
 
@@ -251,31 +297,43 @@ RegularCellData GetTransitionCellData(uint transitionCase)
     return TransitionCellTable[transitionClass & 0x7F];
 }
 
-
-// RemapTransitionCorner
-// Remaps a transition-grid corner coordinate (0..2) into the correct
-// orientation for the specified face.
+// FaceToLocalSpace
+// Rotates canonical transition-corner coordinates into local cube space
+// based on which face is being stitched.
 //
-// The transition grid is defined in a canonical orientation, but each
-// chunk face has a different axis alignment. This function rotates and
-// mirrors the corner coordinates so the same transition tables can be
-// reused for all faces.
-int3 RemapTransitionCorner(uint face, int3 c)
+// This applies a full 3D cube rotation (NOT a 2D face projection).
+// Corner offsets are defined in canonical -Z space, and this function
+// remaps (x, y, z) so the transition tables see a consistent orientation
+// regardless of face.
+//
+// IMPORTANT:
+// - Preserves cornerOffset.z so anchor corners remain valid.
+// - +Z requires both axis swap AND depth inversion (2 - z).
+// - This matches the source Transvoxel implementation semantics.
+// - Do NOT clamp or flatten Z here; doing so breaks +Z transitions.
+//
+// Source: https://github.com/bbQsauce5/transvoxel-unity/blob/main/Runtime/Mesher/TransvoxelMesher.Transitions.cs
+int3 FaceToLocalSpace(uint face, int3 cornerOffset)
 {
+    uint x = cornerOffset.x;
+    uint y = cornerOffset.y;
+    uint z = cornerOffset.z;
+    
     switch (face)
     {
         case 0:
-            return int3(0, c.y, c.x); // -X
+            return int3(z, x, y); // -X 
         case 1:
-            return int3(2, c.y, 2 - c.x); // +X
+            return int3(2 - z, y, x); // +X
         case 2:
-            return int3(c.x, 0, c.y); // -Y
+            return int3(y, z, x); // -Y
         case 3:
-            return int3(c.x, 2, 2 - c.y); // +Y
+            return int3(x, 2 - z, y); // +Y
         case 4:
-            return int3(2 - c.x, c.y, 0); // -Z
+            return int3(x, y, z); // -Z (Canoncial)
         case 5:
-            return int3(c.x, c.y, 2); // +Z
+            return int3(y, x, 2 - z); // +Z
+        default:
+            return int3(x, y, z);
     }
-    return c;
 }

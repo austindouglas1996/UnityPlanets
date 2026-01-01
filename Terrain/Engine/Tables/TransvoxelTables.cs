@@ -16,6 +16,7 @@ namespace GingerVoxelSystem.Engine.Helpers
     /// This mirrors the CPU-side Transvoxel tables as closely as possible,
     /// but stays within HLSL / StructuredBuffer limitations.
     /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
     public struct RegularCellDataGPU
     {
         public int VertexCount;
@@ -30,6 +31,7 @@ namespace GingerVoxelSystem.Engine.Helpers
     /// The original Transvoxel vertex data is jagged, so it must be flattened
     /// before it can be accessed cleanly from HLSL.
     /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
     public struct VertexData
     {
         public uint VertexStart;
@@ -1186,8 +1188,8 @@ namespace GingerVoxelSystem.Engine.Helpers
             TransitionCellIndices = new ComputeBuffer(924, Marshal.SizeOf<uint>());
 
             // Transition Vertex Data (512)
-            TransitionVertexRanges = new ComputeBuffer(TransvoxelTables.TransitionVertexData.Length, Marshal.SizeOf<VertexData>());
-            TransitionVertexData = new ComputeBuffer(4096, sizeof(uint));
+            TransitionVertexRanges = new ComputeBuffer(TransvoxelTables.TransitionVertexData.Length, 8);
+            TransitionVertexData = new ComputeBuffer(4096, 4);
 
             TransitionCellClass.SetData(TransvoxelTables.TransitionCellClass);
 
