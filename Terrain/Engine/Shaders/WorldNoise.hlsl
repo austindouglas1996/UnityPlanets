@@ -24,31 +24,14 @@ int GetBiomeID(float3 p)
         return 3; // mountain
 }
 
-
-float GroundVolumetricA(float3 p)
-{
-    float d = p.y - 0.5f * p.z - 8.0f
-              + 0.01f * sin(p.x);
-    
-    // Low-frequency noise creates big rolling landforms
-    float n = fbm3D(p * 0.1, 8);
-    d -= n * 8.0; // soften/strengthen as needed
-
-    // High-frequency noise adds small detail but not too much
-    float detail = N11(fbm3D(p * 0.02, 8));
-    d -= detail * 1.5;
-    
-    return d;
-}
-    
 float GroundVolumetric(float3 p)
 {
     // Large solid ground volume around y=0
-    float d = abs(p.y) - Debug1;
+    float d = abs(p.y) - 10;
 
     // Low-frequency noise creates big rolling landforms
     float n = fbm3D(p * 0.1, 8);
-    d -= n * 8.0; // soften/strengthen as needed
+    d -= n * 3; // soften/strengthen as needed
 
     // High-frequency noise adds small detail but not too much
     float detail = N11(fbm3D(p * 0.02, 8));
@@ -87,11 +70,11 @@ float GenerateNoiseValue(float3 p)
 {
     float ground = GroundVolumetric(p); 
     
-    //float mountain = MountainShape(p);
-    //float terrain = SmoothUnion(ground, mountain, 30.0);
+    float mountain = MountainShape(p);
+    float terrain = SmoothUnion(ground, mountain, 30.0);
 
     // Remember to change back to terrain:
-    return ground;
+    return terrain;
 }
 
 #endif

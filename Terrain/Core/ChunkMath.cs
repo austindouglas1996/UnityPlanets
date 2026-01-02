@@ -41,38 +41,18 @@ namespace GingerVoxelSystem.Core
         }
 
         /// <summary>
-        /// Returns the chunk size for a given LOD level.
-        /// </summary>
-        /// <param name="lod"></param>
-        /// <returns></returns>
-        public int GetChunkSize(int lod)
-        {
-            return this.Configuration.DensityOptions.CellsPerAxis << lod;
-        }
-
-        /// <summary>
-        /// Return a world position in world coordinates.
-        /// </summary>
-        /// <param name="world"></param>
-        /// <returns></returns>
-        public Vector3Int WorldToOrigin(Vector3 worldPositon)
-        {
-            int chunkSize = GetChunkSize(0);
-            return new Vector3Int(
-                Mathf.FloorToInt(worldPositon.x / chunkSize),
-                Mathf.FloorToInt(worldPositon.y / chunkSize),
-                Mathf.FloorToInt(worldPositon.z / chunkSize));
-        }
-
-        /// <summary>
         /// Retrieve the expected chunk LOD level for a given coordinate.
         /// </summary>
         /// <param name="chunkCoordinates"></param>
         /// <returns></returns>
-        public int GetLODForChunk(Vector3Int chunkCoord, Vector3Int PlayerChunkPos)
+        public int GetLODForChunk(Vector3Int chunkOrigin, Vector3 playerWorldPos)
         {
-            int dx = Mathf.Abs(chunkCoord.x - PlayerChunkPos.x);
-            int dz = Mathf.Abs(chunkCoord.z - PlayerChunkPos.z);
+            // Convert player position into LOD0 chunk coordinates
+            int playerChunkX = Mathf.FloorToInt(playerWorldPos.x / 16);
+            int playerChunkZ = Mathf.FloorToInt(playerWorldPos.z / 16);
+
+            int dx = Mathf.Abs(chunkOrigin.x - playerChunkX);
+            int dz = Mathf.Abs(chunkOrigin.z - playerChunkZ);
 
             int ring = Mathf.Max(dx, dz);
 

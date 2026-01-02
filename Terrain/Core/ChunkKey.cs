@@ -17,6 +17,11 @@ namespace GingerVoxelSystem.Core
         public readonly Vector3Int Origin;
 
         /// <summary>
+        /// Gets the center of the key in a LOD0 specification.
+        /// </summary>
+        public readonly Vector3Int BaseCenter;
+
+        /// <summary>
         /// Which LOD (Level of Detail) this chunk is at.
         /// Lower = closer / higher detail, higher = farther / less detail.
         /// </summary>
@@ -29,21 +34,23 @@ namespace GingerVoxelSystem.Core
         {
             this.Origin = Origin;
             LODIndex = lod;
-            Mask = 0;
+
+            int span = 1 << LODIndex;
+
+            Vector3Int corner = new Vector3Int(
+                Origin.x * span,
+                Origin.y * span,
+                Origin.z * span
+            );
+
+            int half = span >> 1;
+
+            BaseCenter = new Vector3Int(
+                corner.x + half,
+                corner.y + half,
+                corner.z + half
+            );
         }
-
-        public uint Mask;
-
-        /// <summary>
-        /// Coordinates of this chunk in its own LOD grid.
-        /// This is DERIVED and should not be used for neighbor queries.
-        /// </summary>
-        public Vector3Int Coordinates => new Vector3Int(Origin.x >> LODIndex, Origin.y >> LODIndex, Origin.z >> LODIndex);
-
-        /// <summary>
-        /// How many LOD0 chunks this key contains.
-        /// </summary>
-        public int Size0 => 1 << LODIndex;
 
         public static bool operator ==(ChunkKey a, ChunkKey b) => a.Equals(b);
         public static bool operator !=(ChunkKey a, ChunkKey b) => !a.Equals(b);

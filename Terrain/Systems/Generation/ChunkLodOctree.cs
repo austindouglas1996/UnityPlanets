@@ -5,6 +5,7 @@
     using System;
     using System.Collections.Generic;
     using UnityEngine;
+    using static UnityEngine.UI.Image;
 
     /// <summary>
     /// A chunk-based octree that manages world detail through Level of Detail (LOD).
@@ -78,7 +79,7 @@
             public uint LodEdgeMask = 0;
             public bool MeshReady = false;
 
-            public bool IsLeaf => Children.Count != 0;
+            public bool IsLeaf => Children.Count == 0;
 
             // Helpers
             public int LODIndex => Key.LODIndex;
@@ -121,8 +122,6 @@
         private readonly Dictionary<Vector3Int, int> IndexByOrigin = new();
         private readonly Stack<int> FreeSingleBlocks = new();
 
-        private Vector3Int playerCoordinatePos;
-
         /// <summary>
         /// The current index of <see cref="Update"/> as we limit the amount of nodes updated during an
         /// update to help streamline the process.
@@ -153,38 +152,36 @@
         /// <param name="coord"></param>
         public void AddRoot(Vector3Int coord)
         {
-            // coord is LOD-space root coordinate
-            Vector3Int origin0 = new Vector3Int(
-                coord.x << RootLOD,
-                coord.y << RootLOD,
-                coord.z << RootLOD);
-
-            TryCreateSingleNode(new ChunkKey(origin0, RootLOD));
+            TryCreateSingleNode(new ChunkKey(coord, RootLOD));
         }
-
 
         public uint GetLODEdgeMask(ChunkKey key)
         {
+            if (key.LODIndex == 0)
+                return 0;
+
             uint mask = 0;
+
+            Vector3Int origin0 = key.BaseCenter;
+            int span = 1 << key.LODIndex; // how many LOD0 chunks this chunk spans
 
             for (int face = 0; face < 6; face++)
             {
-                Vector3Int neighborOrigin0 = key.Origin + ChunkMath.ChunkOffsets[face] * key.Size0;
+                Vector3Int offset = ChunkMath.ChunkOffsets[face];
 
-                // Ask me how long I spent thinking TryGetValue returns -1 when not found ):
-                // and how awful the random bug that occured so rare.
-                if (!IndexByOrigin.TryGetValue(neighborOrigin0, out int neighborIndex))
-                    continue;
+                Vector3Int neighborOrigin0 = origin0 + new Vector3Int(
+                    offset.x * span,
+                    offset.y * span,
+                    offset.z * span
+                );
 
-                var node = Nodes[neighborIndex];
-
-                ChunkKey neighborKey = node.Key;
-                if (neighborKey.LODIndex < key.LODIndex)
+                if (math.GetLODForChunk(neighborOrigin0, follower.position) < key.LODIndex)
                     mask |= 1u << face;
             }
 
             return mask;
         }
+
 
         /// <summary>
         /// Called every frame. Processes up to UpdatePerTick nodes in round-robin fashion.
@@ -192,8 +189,6 @@
         /// </summary>
         public void Update()
         {
-            playerCoordinatePos = math.WorldToOrigin(follower.position);
-
             int count = Nodes.Count;
             int processed = 0;
 
@@ -313,7 +308,7 @@
                 return LodDecision.NoChange;
             }
 
-            int desired = math.GetLODForChunk(node.Key.Origin, playerCoordinatePos);
+            int desired = math.GetLODForChunk(node.Key.BaseCenter, follower.position);
 
             if (node.State == NodeState.IdleLeaf)
             {
@@ -353,12 +348,10 @@
             }
 
             int childLOD = node.Key.LODIndex - 1;
-            int childSize0 = 1 << childLOD; // half of parent size
-
             for (int i = 0; i < 8; i++)
             {
-                Vector3Int childOrigin0 = node.Key.Origin + GetChildOffset(i, childSize0);
-                TryCreateSingleNode(new ChunkKey(childOrigin0, childLOD), index);
+                Vector3Int childOrigin = node.Key.Origin * 2 + GetChildOffset(i);
+                TryCreateSingleNode(new ChunkKey(childOrigin, childLOD), index);
             }
         }
 
@@ -551,12 +544,12 @@
         /// <param name="baseOffset"></param>
         /// <returns></returns>
         /// <exception cref="System.IndexOutOfRangeException"></exception>
-        private Vector3Int GetChildOffset(int index, int childSize0)
+        private static Vector3Int GetChildOffset(int index)
         {
             return new Vector3Int(
-                (index & 1) != 0 ? childSize0 : 0,
-                (index & 2) != 0 ? childSize0 : 0,
-                (index & 4) != 0 ? childSize0 : 0);
+                (index & 1) != 0 ? 1 : 0,
+                (index & 2) != 0 ? 1 : 0,
+                (index & 4) != 0 ? 1 : 0);
         }
     }
 }
