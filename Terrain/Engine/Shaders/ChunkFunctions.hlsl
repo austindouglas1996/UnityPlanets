@@ -3,22 +3,65 @@
 
 #include "ChunkCommon.hlsl"
 
-// Computes the flat index into the density map for a voxel within a chunk batch
+// Computes the flat index into the density map for a voxel within a chunk batch.
+//
+// IMPORTANT:
+// - `sampleCoord` is assumed to already be in *padded sample space*.
+// - No border offset is applied here.
+// - Use this when the caller has already converted from logical → padded,
+//   or when operating directly in sample-grid space.
+//
+// Typical usage:
+// - Sampling density / normals when `sampleCoord` comes from padded dispatch
+// - Any code that already added `BorderSamplesPerAxis` explicitly
+//
 int GetDensitySampleIndexLocal(int3 sampleCoord, int ChunkKeyIndex, int3 totalSampleSize)
 {
-    int voxelCountPerChunk = totalSampleSize.x * totalSampleSize.y * totalSampleSize.z;
-    int localIndex = mad(sampleCoord.z, totalSampleSize.x * totalSampleSize.y,
-                     mad(sampleCoord.y, totalSampleSize.x, sampleCoord.x));
-    
+    // Total number of samples stored per chunk (padded grid)
+    int voxelCountPerChunk =
+        totalSampleSize.x * totalSampleSize.y * totalSampleSize.z;
+
+    // Flatten 3D sample coordinates (x, y, z) into a linear index
+    // Layout: X changes fastest, then Y, then Z
+    int localIndex =
+        mad(sampleCoord.z, totalSampleSize.x * totalSampleSize.y,
+        mad(sampleCoord.y, totalSampleSize.x,
+            sampleCoord.x));
+
+    // Offset into the batch by chunk index
     return ChunkKeyIndex * voxelCountPerChunk + localIndex;
 }
 
-// Computes the flat index into the density map for a voxel within a chunk batch
+// Computes the flat index into the density map for a voxel within a chunk batch.
+//
+// IMPORTANT:
+// - `sampleCoord` is assumed to be in *logical sample space* (NOT padded).
+// - This function applies the border offset internally.
+// - Use this when sampling density from logical cube code
+//   (e.g. Marching Cubes, triangle counting).
+//
+// Typical usage:
+// - logicalCubeCoord + RegularCornerOffset
+// - Any code that operates in logical cube space and needs density
+//
+// DO NOT use this if `sampleCoord` is already padded.
+// Padding must be applied exactly once.
+//
 int GetDensitySampleIndexPadded(int3 sampleCoord, int ChunkKeyIndex, int3 totalSampleSize)
 {
-    // Apply border offset so (0,0,0) maps to (Border,Border,Border)
-    sampleCoord += int3(BorderSamplesPerAxis, BorderSamplesPerAxis, BorderSamplesPerAxis);
-    return GetDensitySampleIndexLocal(sampleCoord, ChunkKeyIndex, totalSampleSize);
+    // Convert logical sample coordinate into padded sample space
+    // so that border samples are addressed correctly.
+    sampleCoord += int3(
+        BorderSamplesPerAxis,
+        BorderSamplesPerAxis,
+        BorderSamplesPerAxis
+    );
+
+    return GetDensitySampleIndexLocal(
+        sampleCoord,
+        ChunkKeyIndex,
+        totalSampleSize
+    );
 }
 
 // GetChunkAccess()
@@ -108,9 +151,10 @@ ChunkCellContext GetChunkCellSamples(uint3 id, uint offset, StructuredBuffer<Chu
     r.DensitySampleIndex = GetDensitySampleIndexLocal(r.CellCoord, r.ChunkKeyIndex, sampleSize);
 
     // Set key data
+    int3 logicalCoord = int3(r.CellCoord) - BorderSamplesPerAxis;
     ChunkWorkDescriptor key = keys[r.ChunkKeyIndex];
     r.Chunk = key;
-    r.CellWorldPos = ChunkOriginToWorld(key) + (float3(r.CellCoord) * GetCellStep(key.LodIndex));
+    r.CellWorldPos = ChunkOriginToWorld(key) + (float3(logicalCoord) * GetCellStep(key.LodIndex));
 
     return r;
 }

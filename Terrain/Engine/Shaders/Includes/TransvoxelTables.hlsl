@@ -1,4 +1,24 @@
-﻿// -----------------------------------------------------------------------------
+﻿/*
+    TransvoxelTables.hlsl
+    Author: Austin Douglas
+    Date: 2026-01-01
+
+    Based on the Transvoxel algorithm and adapted for HLSL usage.
+    Reference implementation and inspiration:
+    https://github.com/bbQsauce5/transvoxel-unity
+    https://transvoxel.org/
+
+    This file contains lookup tables for Transvoxel mesh generation,
+    an extension of the marching cubes algorithm used to stitch
+    meshes across LOD boundaries.
+
+    No public HLSL-native implementation was available, so these
+    tables were derived and adapted manually to work within HLSL
+    constraints (no dynamic allocation, limited struct support,
+    and GPU-friendly access patterns).
+*/
+
+// -----------------------------------------------------------------------------
 // Regular Transvoxel cell metadata.
 // This mirrors the CPU-side regular cell table, but is laid out in a form
 // that can be consumed directly by HLSL StructuredBuffers.
@@ -98,27 +118,6 @@ static const int3 RegularCornerOffset[8] =
     int3(1, 1, 1) // 7
 };
 
-// Maps a marching-cubes case code (0..255) to a regular cell class index.
-StructuredBuffer<uint> RegularCellClass;
-
-// -----------------------------------------------------------------------------
-// Regular cell topology data.
-// -----------------------------------------------------------------------------
-StructuredBuffer<RegularCellData> RegularCellTable;
-StructuredBuffer<uint> RegularCellIndices;
-
-// -----------------------------------------------------------------------------
-// Regular vertex lookup data.
-// -----------------------------------------------------------------------------
-StructuredBuffer<VertexData> RegularVertexRanges;
-StructuredBuffer<uint> RegularVertexData;
-
-// -----------------------------------------------------------------------------
-// Transition cell class lookup.
-// Maps a transition case code to a transition cell class index.
-// -----------------------------------------------------------------------------
-StructuredBuffer<uint> TransitionCellClass;
-
 // TransitionCornerOffset
 // Defines the canonical 3x3 transition-grid corner positions.
 //
@@ -160,8 +159,29 @@ static const int3 TransitionCornerOffset[13] =
     int3(0, 0, 2), // 9
     int3(2, 0, 2), // A
     int3(0, 2, 2), // B
-    int3(2, 2, 2)  // C
+    int3(2, 2, 2) // C
 };
+
+// Maps a marching-cubes case code (0..255) to a regular cell class index.
+StructuredBuffer<uint> RegularCellClass;
+
+// -----------------------------------------------------------------------------
+// Regular cell topology data.
+// -----------------------------------------------------------------------------
+StructuredBuffer<RegularCellData> RegularCellTable;
+StructuredBuffer<uint> RegularCellIndices;
+
+// -----------------------------------------------------------------------------
+// Regular vertex lookup data.
+// -----------------------------------------------------------------------------
+StructuredBuffer<VertexData> RegularVertexRanges;
+StructuredBuffer<uint> RegularVertexData;
+
+// -----------------------------------------------------------------------------
+// Transition cell class lookup.
+// Maps a transition case code to a transition cell class index.
+// -----------------------------------------------------------------------------
+StructuredBuffer<uint> TransitionCellClass;
 
 // TransitionCaseCornerMap
 // Defines which of the 13 transition corners participate in the
@@ -282,12 +302,18 @@ VertexDataUnpacked UnpackVertex(uint packed)
     return v;
 }
 
+// GetRegularCellData
+// HLSL has limited support for complex data structures, so this helper
+// resolves a regular marching-cubes case into its canonical cell data.
 RegularCellData GetRegularCellData(uint regularCase)
 {
     uint regularClass = RegularCellClass[regularCase];
     return RegularCellTable[regularClass & 0x7F];
 }
 
+// GetTransitionCellData
+// Resolves a raw 9-bit Transvoxel transition case into its canonical
+// cell data by first mapping it to a symmetry-reduced class.
 RegularCellData GetTransitionCellData(uint transitionCase)
 {
     // Convert raw 9-bit case into a symmetry-reduced class + flip flag

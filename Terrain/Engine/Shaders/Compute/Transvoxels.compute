@@ -30,24 +30,24 @@ RWStructuredBuffer<TriangleData> TriangleSourceBuffer;
 //
 // `voxel` is the cell coordinate within the chunk (0..max).
 // `max` is the maximum valid cell index (typically CellsPerAxis - 1).
-bool CubeOnFace(uint face, int3 cellGrid)
+bool CubeOnFace(uint face, int3 cellCoord)
 {
-    uint max = CellsPerAxis;
-    
+    const int max = CellsPerAxis - 1;
+
     switch (face)
     {
         case 0:
-            return cellGrid.x == 0; // -X
+            return cellCoord.x == 0; // -X
         case 1:
-            return cellGrid.x == max - 1; // +X
+            return cellCoord.x == max; // +X
         case 2:
-            return cellGrid.y == 0; // -Y THIS ONE BREAKS LOD5.
+            return cellCoord.y == 0; // -Y
         case 3:
-            return cellGrid.y == max - 1; // +Y
+            return cellCoord.y == max; // +Y
         case 4:
-            return cellGrid.z == 0; // -Z
+            return cellCoord.z == 0; // -Z
         case 5:
-            return cellGrid.z == max - 1; // +Z
+            return cellCoord.z == max; // +Z
     }
     return false;
 }
@@ -153,7 +153,7 @@ void CountTriangles(ChunkCellContext key)
     for (uint i = 0; i < 8; i++)
     {
         uint3 pos = key.CellCoord + RegularCornerOffset[i];
-        float corner = DensityMap[GetDensitySampleIndexLocal(pos, key.ChunkKeyIndex, sample3)] - ISOLevel;
+        float corner = DensityMap[GetDensitySampleIndexPadded(pos, key.ChunkKeyIndex, sample3)] - ISOLevel;
 
         if (corner > 0.0)
             caseCode |= (1u << i);
@@ -201,7 +201,7 @@ void March(ChunkCellContext key)
     for (uint i = 0; i < 8; i++)
     {
         uint3 cellPos = key.CellCoord + RegularCornerOffset[i];
-        int sampleIndex = GetDensitySampleIndexLocal(cellPos, key.ChunkKeyIndex, sample3Padded);
+        int sampleIndex = GetDensitySampleIndexPadded(cellPos, key.ChunkKeyIndex, sample3Padded);
         
         corner[i] = DensityMap[sampleIndex];
         cornerPos[i] = key.CellWorldPos + RegularCornerOffset[i] * step;
@@ -250,18 +250,7 @@ void March(ChunkCellContext key)
 
         tri.ChunkKeyIndex = key.ChunkKeyIndex;
         tri.LodIndex = key.Chunk.LodIndex;
-        
-        for (int ii = 0; ii < 6; ii++)
-        {
-            if (!IsFaceAnEdge(ii, key))
-                continue;
-        
-            if (CubeOnFace(ii, key.CellCoord))
-            {
-                tri.LodIndex = 8;
-            }
-        }
-        
+
         uint next;
         InterlockedAdd(TriangleCursor[key.ChunkKeyIndex], 1, next);
         TriangleSourceBuffer[key.Chunk.SourceOffset + next] = tri;
@@ -269,7 +258,7 @@ void March(ChunkCellContext key)
 
     if (key.Chunk.LodEdgeMask == 0)
         return;
-    
+
     [loop]
     for (uint face = 0; face < 6; face++)
     {
@@ -311,14 +300,50 @@ int CountTransvoxels(ChunkCellContext key)
     return totalTriangles;
 }
 
+// GetTransitionCornerCubeOffset
+// Returns the cube index needed for the density map. This allows
+// us to query the DensityMap directly instead of getting the noise again.
+int3 GetTransitionCornerCubeOffset(uint corner)
+{
+    switch (corner)
+    {
+        case 0:
+            return int3(0, 0, 0);
+        case 2:
+            return int3(1, 0, 0);
+        case 6:
+            return int3(0, 1, 0);
+        case 8:
+            return int3(1, 1, 0);
+    }
+    
+    return int3(0, 0, 0);
+}
+
 // GetCornerPosition
 // Returns the world-space position of a transition-grid corner
 // for a specific face of the current cell.
-float3 GetCornerPosition(uint face, ChunkCellContext key, int corner)
+float3 GetCornerWorldPosition(uint face, ChunkCellContext key, int corner)
 {
     float fineStep = GetCellStep(key.Chunk.LodIndex - 1);
     int3 gridOffset = FaceToLocalSpace(face, TransitionCornerOffset[corner]);
+    
     return key.CellWorldPos + float3(gridOffset) * fineStep;
+}
+
+// GetCornerSampleIndex
+// Returns the DensityMap sample index of a given key and face.
+uint GetCornerSampleIndex(uint face, ChunkCellContext key, uint corner, int3 samplePadded)
+{
+    // Rotate/remap into cube-local 0..2 space for this face.
+    int3 cubeGrid = FaceToLocalSpace(face, TransitionCornerOffset[corner]);
+
+    // Collapse 0/2 -> 0/1 to get an actual cube-corner offset.
+    // (For 0/2/6/8, cubeGrid components should be even.)
+    int3 cubeCornerOffset = cubeGrid / 2;
+
+    int3 logicalSampleCoord = key.CellCoord + cubeCornerOffset;
+    return GetDensitySampleIndexPadded(logicalSampleCoord, key.ChunkKeyIndex, samplePadded);
 }
 
 // GetCornerNormal
@@ -338,14 +363,25 @@ float3 GetCornerNormal(uint face, ChunkCellContext key, int corner)
 uint GetTransitionCase(uint face, ChunkCellContext key)
 {
     uint caseCode = 0;
+    int3 samplePadded = GetPaddedSamplesGridSize();
 
     [loop]
     for (uint i = 0; i < 9; i++)
     {
         uint cornerIndex = TransitionCaseCornerMap[i];
-        float3 worldPos = GetCornerPosition(face, key, cornerIndex);
+        float value;
         
-        if (GenerateNoiseValue(worldPos) < ISOLevel)
+        if (cornerIndex == 0 || cornerIndex == 2 || cornerIndex == 6 || cornerIndex == 8)
+        {
+            value = DensityMap[GetCornerSampleIndex(face, key, cornerIndex, samplePadded)];
+        }
+        else
+        {
+            float3 worldPos = GetCornerWorldPosition(face, key, cornerIndex);
+            value = GenerateNoiseValue(worldPos);
+        }
+          
+        if (value < ISOLevel)
             caseCode |= (1u << i);
     }
 
@@ -361,10 +397,9 @@ void MarchTransitionFace(uint face, ChunkCellContext key)
     // Build the transition case for this face
     uint transitionCase = GetTransitionCase(face, key);
     
+    // There is no only up to 511 cases.
     if (transitionCase > 512)
-    {
         return;
-    }
 
     // Look up the transition cell data via case -> class mapping
     RegularCellData tcell = GetTransitionCellData(transitionCase);
@@ -389,7 +424,7 @@ void MarchTransitionFace(uint face, ChunkCellContext key)
     [loop]
     for (int i = 0; i < 9; i++)
     { 
-        float3 worldPos = GetCornerPosition(face, key, i);
+        float3 worldPos = GetCornerWorldPosition(face, key, i);
         
         tCornerD[i] = GenerateNoiseValue(worldPos);
         tCornerPos[i] = worldPos;
