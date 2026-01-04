@@ -1,6 +1,9 @@
 #ifndef LOOKUP_TABLES_INCLUDED
 #define LOOKUP_TABLES_INCLUDED
 
+    /// NOTE: This was replaced with Transvoxels. This has been kept as a REFERENCE only
+    /// THIS IS NOT MAINTAINED NOR UPDATED.
+
 StructuredBuffer<float3> CornerOffsetsBuffer; // [8]
 StructuredBuffer<int2> EdgeConnectionsBuffer; // [12]
 StructuredBuffer<int> TriangleTableBuffer; // [16 * 256]

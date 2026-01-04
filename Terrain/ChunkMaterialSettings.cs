@@ -29,7 +29,10 @@
         Direction = 6,
 
         // The calculated normal lighting.
-        Normals = 7
+        Normals = 7,
+
+        // Colors based on Vertex.
+        Vertex = 8
     }
 
     /// <summary>

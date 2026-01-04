@@ -65,7 +65,7 @@
         /// The provided callback will be invoked once the check completes.
         /// </summary>
         public void RequestSurfaceCheck(ChunkKey key, Action<ChunkKey, int, bool> onDone, int parentIndex = -1) =>
-            surfaceBatcher.Add(new ChunkGenerationJob(key, onDone, parentIndex));
+            surfaceBatcher.Add(new ChunkGenerationJob(key,onDone, parentIndex));
 
         /// <summary>
         /// Queues a chunk for full generation.
@@ -78,9 +78,18 @@
                 throw new System.ArgumentException("Invalid key was provided.");
             }
 
-            var job = new ChunkGenerationJob(key, onDone);
+            var job = new ChunkGenerationJob(key,onDone);
 
             layerRenderer.Add(job);
+        }
+
+        /// <summary>
+        /// Request a chunks collection to be set to update as if a new chunk has been added.
+        /// </summary>
+        /// <param name="key"></param>
+        public void RequestEdit(ChunkKey key)
+        {
+            layerRenderer.Edit(key);
         }
 
         /// <summary>

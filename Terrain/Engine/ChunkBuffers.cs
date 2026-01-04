@@ -1,14 +1,14 @@
-﻿using GingerVoxelSystem.Core;
-using GingerVoxelSystem.Engine.Options;
-using GingerVoxelSystem.Systems.Generation;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using UnityEngine;
-
-namespace GingerVoxelSystem.Engine
+﻿namespace GingerVoxelSystem.Engine
 {
+    using GingerVoxelSystem.Core;
+    using GingerVoxelSystem.Engine.Options;
+    using GingerVoxelSystem.Systems.Generation;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Runtime.InteropServices;
+    using UnityEngine;
+
     /// <summary>
     /// Central buffer container shared across all terrain-generation stages.
     /// Holds static options (density/planet), biome tables, and per-batch input buffers.
@@ -17,8 +17,8 @@ namespace GingerVoxelSystem.Engine
     public class ChunkBuffers : IDisposable
     {
         // Reused staging lists -> avoids per-dispatch allocations.
-        private readonly List<ChunkDispatchKeyGPU> InputSurface = new(ChunkEngineSettings.SurfaceJobsPerBatch);
-        private readonly List<ChunkDispatchKeyGPU> InputGenerate = new(ChunkEngineSettings.GenerationJobsPerBatch);
+        private readonly List<ChunkWorkDescriptorGPU> InputSurface = new(ChunkEngineSettings.SurfaceJobsPerBatch);
+        private readonly List<ChunkWorkDescriptorGPU> InputGenerate = new(ChunkEngineSettings.GenerationJobsPerBatch);
 
         // GPU buffers used by various stages.
         public ComputeBuffer SurfaceChunkInputBuffer;   // Per-chunk metadata for surface mask pass
@@ -31,20 +31,28 @@ namespace GingerVoxelSystem.Engine
 
         public ComputeBuffer SurfaceMaskBuffer;         // 1 flag per chunk from the surface check
 
+        private ChunkMath math;
+        private IChunkServices chunkServices;
+        private Transform player;
+
         /// <summary>
         /// Creates a new <see cref="ChunkBuffers"/> instance configured using the supplied services.
         /// This allocates all GPU buffers and uploads initial option/biome data.
         /// </summary>
-        public ChunkBuffers(IChunkServices services)
+        public ChunkBuffers(IChunkServices services, Transform player)
         {
+            this.chunkServices = services;
+            this.math = new ChunkMath(this.chunkServices.Configuration);
+            this.player = player;
+
             BiomeBuffer = new ComputeBuffer(services.Configuration.BiomeLibrary.Biomes.Count, Marshal.SizeOf<ChunkBiomeGPU>());
 
             // Single struct (Structured buffer of length 1)
             DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<TerrainDensityOptions>(), ComputeBufferType.Constant);
             PlanetOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<PlanetDensityOptions>(), ComputeBufferType.Constant);
 
-            SurfaceChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.SurfaceJobsPerBatch, Marshal.SizeOf<ChunkDispatchKeyGPU>());
-            GenerateChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.GenerationJobsPerBatch, Marshal.SizeOf<ChunkDispatchKeyGPU>());
+            SurfaceChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.SurfaceJobsPerBatch, Marshal.SizeOf<ChunkWorkDescriptorGPU>());
+            GenerateChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.GenerationJobsPerBatch, Marshal.SizeOf<ChunkWorkDescriptorGPU>());
             SurfaceMaskBuffer = new ComputeBuffer(ChunkEngineSettings.SurfaceJobsPerBatch, sizeof(uint));
 
             Update(services);
@@ -62,9 +70,9 @@ namespace GingerVoxelSystem.Engine
             for (int i = 0; i < n; i++)
             {
                 var ctx = keys[i];
-                InputSurface.Add(new ChunkDispatchKeyGPU
+                InputSurface.Add(new ChunkWorkDescriptorGPU
                 {
-                    CoordPos = ctx.Key.Coordinates,
+                    Origin = ctx.Key.Origin,
                     LodIndex = ctx.Key.LODIndex
                 });
             }
@@ -84,11 +92,12 @@ namespace GingerVoxelSystem.Engine
             for (int i = 0; i < n; i++)
             {
                 var ctx = keys[i].Value;
-                InputGenerate.Add(new ChunkDispatchKeyGPU
+                InputGenerate.Add(new ChunkWorkDescriptorGPU
                 {
                     GlobalIndex = (uint)i,  // Used by some kernels as an index hint
-                    CoordPos = ctx.Coordinates,
-                    LodIndex = ctx.LODIndex
+                    Origin = ctx.Origin,
+                    LodIndex = ctx.LODIndex,
+                    LodEdgeMask = math.GetLODEdgeMask(ctx, player.position),
                 });
             }
 

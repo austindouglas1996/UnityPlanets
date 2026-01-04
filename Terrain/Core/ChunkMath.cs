@@ -10,6 +10,16 @@ namespace GingerVoxelSystem.Core
     /// </summary>
     public class ChunkMath
     {
+        public static readonly Vector3Int[] ChunkOffsets =
+        {
+            new Vector3Int(-1, 0, 0), // -X
+            new Vector3Int( 1, 0, 0), // +X
+            new Vector3Int( 0,-1, 0), // -Y
+            new Vector3Int( 0, 1, 0), // +Y
+            new Vector3Int( 0, 0,-1), // -Z
+            new Vector3Int( 0, 0, 1), // +Z
+        };
+
         /// <summary>
         /// The set of LOD thresholds for chunk rendering.
         /// </summary>
@@ -31,135 +41,67 @@ namespace GingerVoxelSystem.Core
         }
 
         /// <summary>
-        /// Returns the chunk size for a given LOD level.
-        /// </summary>
-        /// <param name="lod"></param>
-        /// <returns></returns>
-        public int GetChunkSize(int lod)
-        {
-            return this.Configuration.DensityOptions.CubesPerAxis << lod;
-        }
-
-        /// <summary>
-        /// Return a set of coordinates to world position.
-        /// </summary>
-        /// <param name="coordinates"></param>
-        /// <returns></returns>
-        public Vector3 ToWorld(Vector3 coordinates)
-        {
-            int chunkSize = GetChunkSize(0);
-            return new Vector3(
-                coordinates.x * chunkSize,
-                coordinates.y * chunkSize,
-                coordinates.z * chunkSize);
-        }
-
-        /// <summary>
-        /// Return a world position in world coordinates.
-        /// </summary>
-        /// <param name="world"></param>
-        /// <returns></returns>
-        public Vector3Int ToCoordinates(Vector3 worldPositon)
-        {
-            int chunkSize = GetChunkSize(0);
-            return new Vector3Int(
-                Mathf.FloorToInt(worldPositon.x / chunkSize),
-                Mathf.FloorToInt(worldPositon.y / chunkSize),
-                Mathf.FloorToInt(worldPositon.z / chunkSize));
-        }
-
-        /// <summary>
-        /// Retrieve the <see cref="Bounds"/> for a given <see cref="ChunkKey"/>.
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        public Bounds GetBounds(ChunkKey key)
-        {
-            return GetBounds(key.Coordinates, key.LODIndex);
-        }
-
-        /// <summary>
-        /// Retrieve the <see cref="Bounds"/> for a given <see cref="ChunkKey"/>.
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        public Bounds GetBounds(Vector3Int coordinates, int lodIndex)
-        {
-            int chunkSize = GetChunkSize(lodIndex);
-
-            Vector3 worldPos = new Vector3(
-                 coordinates.x * chunkSize,
-                 coordinates.y * chunkSize,
-                 coordinates.z * chunkSize);
-
-            Bounds bounds = new Bounds
-            {
-                center = worldPos + new Vector3(chunkSize, chunkSize, chunkSize) * 0.5f,
-                size = new Vector3(chunkSize, chunkSize, chunkSize)
-            };
-
-            return bounds;
-        }
-
-        /// <summary>
-        /// Retrieve a set of coordinates based on a <see cref="Bounds"/> object.
-        /// </summary>
-        /// <param name="bounds"></param>
-        /// <param name="lodIndex"></param>
-        /// <returns></returns>
-        public Vector3Int BoundsToCoordinates(Bounds bounds, int lodIndex)
-        {
-            int chunkSize = GetChunkSize(lodIndex);
-            Vector3 pos = bounds.min;
-
-            return new Vector3Int(
-                Mathf.FloorToInt(pos.x / chunkSize),
-                Mathf.FloorToInt(pos.y / chunkSize),
-                Mathf.FloorToInt(pos.z / chunkSize));
-        }
-
-        /// <summary>
         /// Retrieve the expected chunk LOD level for a given coordinate.
         /// </summary>
         /// <param name="chunkCoordinates"></param>
         /// <returns></returns>
-        public int GetLODForChunk(Vector3Int coord, Vector3 playerWorldPos)
+        public int GetLODForChunk(Vector3Int chunkOrigin, Vector3 playerWorldPos)
         {
-            int chunkSize = GetChunkSize(0);
+            // Convert player position into LOD0 chunk coordinates
+            int playerChunkX = Mathf.FloorToInt(playerWorldPos.x / 16);
+            int playerChunkZ = Mathf.FloorToInt(playerWorldPos.z / 16);
 
-            Vector3 worldMin = coord * chunkSize;
-            Vector3 worldMax = worldMin + new Vector3(chunkSize, chunkSize, chunkSize);
+            int dx = Mathf.Abs(chunkOrigin.x - playerChunkX);
+            int dz = Mathf.Abs(chunkOrigin.z - playerChunkZ);
 
-            // Clamp player position to chunk AABB
-            float px = Mathf.Clamp(playerWorldPos.x, worldMin.x, worldMax.x);
-            float py = Mathf.Clamp(playerWorldPos.y, worldMin.y, worldMax.y);
-            float pz = Mathf.Clamp(playerWorldPos.z, worldMin.z, worldMax.z);
+            int ring = Mathf.Max(dx, dz);
 
-            float dx = Mathf.Abs(playerWorldPos.x - px);
-            float dy = Mathf.Abs(playerWorldPos.y - py);
-            float dz = Mathf.Abs(playerWorldPos.z - pz);
-
-            float dist = Mathf.Sqrt(dx * dx + dy * dy + dz * dz);
-            int ring = Mathf.CeilToInt(dist / chunkSize);
-
-            return DesiredLodFromRings(ring);
-        }
-
-        /// <summary>
-        /// Determine the best LOD ring to use based on the distance.
-        /// </summary>
-        /// <param name="dChunks0"></param>
-        /// <param name="rings"></param>
-        /// <returns></returns>
-        private int DesiredLodFromRings(int dChunks0)
-        {
             for (int i = 0; i < LODRings.Length; i++)
             {
-                if (dChunks0 < LODRings[i])
+                if (ring < LODRings[i])
                     return i;
             }
 
             return LODRings.Length - 1;
+        }
+
+        /// <summary>
+        /// Computes the LOD edge mask for a chunk, indicating which faces border
+        /// neighboring chunks of a higher-detail LOD (lower LOD index).
+        ///
+        /// A bit is set for each face where the adjacent region is represented
+        /// by a chunk with a lower LOD index, meaning the neighbor is more detailed
+        /// and requires LOD transition stitching on that face.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="position"></param>
+        /// <returns>A 6-bit mask where each bit corresponds to a cube face that borders a
+        /// higher-detail neighboring chunk.</returns>
+        public uint GetLODEdgeMask(ChunkKey key, Vector3 position)
+        {
+            if (key.LODIndex == 0)
+                return 0;
+
+            uint mask = 0;
+
+            Vector3Int origin0 = key.BaseCenter;
+            int span = 1 << key.LODIndex; // how many LOD0 chunks this chunk spans
+
+            for (int face = 0; face < 6; face++)
+            {
+                Vector3Int offset = ChunkMath.ChunkOffsets[face];
+
+                Vector3Int neighborOrigin0 = origin0 + new Vector3Int(
+                    offset.x * span,
+                    offset.y * span,
+                    offset.z * span
+                );
+
+                if (GetLODForChunk(neighborOrigin0, position) < key.LODIndex)
+                    mask |= 1u << face;
+            }
+
+            return mask;
         }
     }
 }

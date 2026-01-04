@@ -1,6 +1,7 @@
 namespace GingerVoxelSystem
 {
     using GingerVoxelSystem.Core;
+    using GingerVoxelSystem.Systems.Generation;
     using GingerVoxelSystem.Systems.Rendering;
     using UnityEngine;
 
@@ -47,5 +48,6 @@ namespace GingerVoxelSystem
 
         IChunkConfiguration IChunkServices.Configuration => ChunkConfiguration;
         IChunkGenerator IChunkServices.Generator => chunkGenerator;
+        ChunkLodOctree IChunkServices.Octree => chunkRenderer.LODTree;
     }
 }

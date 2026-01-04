@@ -8,11 +8,13 @@ namespace GingerVoxelSystem.Engine
     /// Used only for compute/StructuredBuffer work.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    public struct ChunkDispatchKeyGPU
+    public struct ChunkWorkDescriptorGPU
     {
         public uint GlobalIndex;
-        public Vector3 CoordPos;
+        public Vector3 Origin;
+
         public int LodIndex;
+        public uint LodEdgeMask;
 
         public uint SourceOffset;
         public uint SourceCount;

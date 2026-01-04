@@ -8,7 +8,7 @@
 
 /* Inputs */
 uint BatchSize;
-RWStructuredBuffer<ChunkDispatchKey> ChunkInputs;
+RWStructuredBuffer<ChunkWorkDescriptor> ChunkInputs;
 StructuredBuffer<uint> TriangleCount;
 
 /* Outputs */
@@ -24,7 +24,7 @@ void RunRepackPrePass(uint id : SV_DispatchThreadID)
 
     for (uint i = 0; i < BatchSize; i++)
     {
-        ChunkDispatchKey key = ChunkInputs[i];
+        ChunkWorkDescriptor key = ChunkInputs[i];
         uint count = TriangleCount[i];
 
         key.SourceCount = count;
@@ -53,7 +53,7 @@ void RunRepackPrePass(uint id : SV_DispatchThreadID)
 [numthreads(64, 1, 1)]
 void RunRepack(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadID)
 {
-    ChunkDispatchKey chunkKey = ChunkInputs[groupId.x];
+    ChunkWorkDescriptor chunkKey = ChunkInputs[groupId.x];
     
     uint srcOffset = chunkKey.SourceOffset;
     uint count = chunkKey.SourceCount;

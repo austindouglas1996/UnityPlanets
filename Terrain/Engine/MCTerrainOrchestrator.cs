@@ -22,6 +22,9 @@
     [RequireComponent(typeof(ChunkMaterialSettings))]
     public class MCTerrainOrchestrator : MonoBehaviour, IChunkGenerator
     {
+        [Header("World")]
+        [SerializeField] private Transform Player;
+
         [Header("Materials")]
         private ChunkMaterialSettings materialManager;
         private Material chunkMaterial;
@@ -29,12 +32,13 @@
         [Header("Shaders")]
         [SerializeField] private ComputeShader DensityShader;
         [SerializeField] private ComputeShader MarchingCubesShader;
+        [SerializeField] private ComputeShader TransvoxelShader;
         [SerializeField] private ComputeShader RepackShader;
         [SerializeField] private ComputeShader DetailsShader;
         [SerializeField] private ComputeShader UtilityShader;
 
         private DensityStage density;
-        private MarchingCubesStage marchingCubes;
+        private IMarchingShader marchingCubes;
         private RepackStage repack;
         private DetailsStage details;
         private UtilityStage utility;
@@ -57,14 +61,24 @@
             chunkMaterial = materialManager.BaseMaterial;
 
             // Centralized buffer container shared by every stage.
-            chunkBuffers = new ChunkBuffers(chunkServices);
+            chunkBuffers = new ChunkBuffers(chunkServices, Player);
 
             // Load compute stages. Each stage wires buffers/kernels internally.
             density = new DensityStage(DensityShader, chunkBuffers);
-            marchingCubes = new MarchingCubesStage(MarchingCubesShader, chunkBuffers);
+
+            marchingCubes = new TransVoxelsStage(TransvoxelShader, chunkBuffers);
+
             repack = new RepackStage(RepackShader, chunkBuffers);
             details = new DetailsStage(DetailsShader, chunkBuffers);
             utility = new UtilityStage(UtilityShader);
+        }
+
+        /// <summary>
+        /// Validate on changes.
+        /// </summary>
+        public void OnValidate()
+        {
+            if (!Application.isPlaying) return;
         }
 
         /// <summary>
@@ -93,11 +107,11 @@
             if (job.Batch == null)
                 job.Batch = CreateBatch();
 
-            int cubesPerAxis = densityOptions.CubesPerAxis;
-            int samplesPerAxis = cubesPerAxis + 1 + (2 * densityOptions.BorderSamplesPerAxis);
+            int CellsPerAxis = densityOptions.CellsPerAxis;
+            int samplesPerAxis = CellsPerAxis + 1 + (2 * densityOptions.BorderSamplesPerAxis);
 
             // Compute-thread division for 4x4x4 kernels.
-            int marchGroupSize = Mathf.CeilToInt(cubesPerAxis / 4f);
+            int marchGroupSize = Mathf.CeilToInt(CellsPerAxis / 4f);
             int genGroupSize = Mathf.CeilToInt(samplesPerAxis / 4f);
 
             // Modified chunk ranges grouped contiguously so we don't dispatch per-chunk.
@@ -181,7 +195,7 @@
             var detailBuffer = new ComputeBuffer(maxSimple, Marshal.SizeOf<ChunkDetailDataGPU>(), ComputeBufferType.Append | ComputeBufferType.Structured);
 
             // Density map allocation (scalar field) — rough over-alloc based on max jobs.
-            int samples = densityOptions.CubesPerAxis + 1 + (2 * densityOptions.BorderSamplesPerAxis);
+            int samples = densityOptions.CellsPerAxis + 1 + (2 * densityOptions.BorderSamplesPerAxis);
             int samplesPerChunk = samples * samples * samples;
             int totalSamples = samplesPerChunk * ChunkEngineSettings.GenerationJobsPerBatch;
 

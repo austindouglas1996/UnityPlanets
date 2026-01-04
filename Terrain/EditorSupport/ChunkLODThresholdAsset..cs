@@ -14,22 +14,22 @@ namespace GingerVoxelSystem.EditorSupport
         public int LOD0 = 2;
 
         [Tooltip("LOD1 — near field: trees, paths")]
-        public int LOD1 = 2;
+        public int LOD1 = 4;
 
         [Tooltip("LOD2 — visible terrain shape, some structure")]
-        public int LOD2 = 2;
+        public int LOD2 = 8;
 
         [Tooltip("LOD3 — far terrain shape only")]
-        public int LOD3 = 2;
+        public int LOD3 = 16;
 
         [Tooltip("LOD4 — horizon terrain")]
-        public int LOD4 = 2;
+        public int LOD4 = 32;
 
         [Tooltip("LOD5 — far horizon terrain")]
-        public int LOD5 = 2;
+        public int LOD5 = 64;
 
         [Tooltip("LOD5 — very far horizon terrain")]
-        public int LOD6 = 2;
+        public int LOD6 = 128;
 
         /// <summary>
         /// Build an array of accumulated ring distances based on LOD0.
@@ -38,17 +38,7 @@ namespace GingerVoxelSystem.EditorSupport
         public int[] ToArray()
         {
             int[] counts = { LOD0, LOD1, LOD2, LOD3, LOD4, LOD5, LOD6 };
-            int[] rings = new int[counts.Length];
-            int acc = 0;
-
-            for (int L = 0; L < counts.Length; L++)
-            {
-                int step = 1 << L;
-                acc += counts[L] * step;
-                rings[L] = acc;
-            }
-
-            return rings;
+            return counts;
         }
     }
 }

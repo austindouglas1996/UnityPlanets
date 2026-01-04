@@ -1,11 +1,9 @@
 ﻿namespace GingerVoxelSystem.Systems.Generation
 {
-    using DistantLands.Cozy;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Engine.Generation;
     using System;
     using System.Collections.Generic;
-    using UnityEditor.Experimental.GraphView;
     using UnityEngine;
 
     /// <summary>
@@ -39,8 +37,8 @@
         /// - Subdivide: split into children
         /// - Merge: collapse children back to parent
         /// </summary>
-        internal enum LodDecision 
-        { 
+        internal enum LodDecision
+        {
             NoChange, // Do not change the node this time.
             Subdivide, // Divide the node into 8 pieces.
             Merge // Merge the node destroying its children.
@@ -77,7 +75,11 @@
 
             // State
             public NodeState State;
+            public uint LodEdgeMask = 0;
             public bool MeshReady = false;
+            public int LastCheckedTopologyVersion;
+
+            public bool IsLeaf => Children.Count == 0;
 
             // Helpers
             public int LODIndex => Key.LODIndex;
@@ -95,6 +97,7 @@
                 this.ChildrenReady = 0;
                 this.State = NodeState.InActive;
                 this.Key = ChunkKey.Invalid;
+                this.LastCheckedTopologyVersion = 0;
             }
         }
 
@@ -102,13 +105,13 @@
         /// RootLOD is the coarsest level (biggest chunks).
         /// Personal note: this is inverted from what you'd expect ("higher" means *less* detail).
         /// </summary>
-        private const int RootLOD = 6;
+        private const int RootLOD = 4;
 
         /// <summary>
         /// Max number of nodes updated per Unity frame.
         /// This throttles Update() work to avoid spikes.
         /// </summary>
-        private const int UpdatePerTick = 250;
+        private const int UpdatePerTick = 550;
 
         private readonly ChunkMath math;
         private readonly Transform follower;
@@ -117,6 +120,7 @@
 
         private readonly List<ChunkLodTreeNode> Nodes = new();
         private readonly Dictionary<ChunkKey, int> IndexByKey = new();
+        private readonly Dictionary<Vector3Int, int> IndexByOrigin = new();
         private readonly Stack<int> FreeSingleBlocks = new();
 
         /// <summary>
@@ -124,6 +128,12 @@
         /// update to help streamline the process.
         /// </summary>
         private int CurrentUpdateIndex = 0;
+
+        /// <summary>
+        /// Has there been changes in the octTree that nodes should verify their 
+        /// LOD edge mask?
+        /// </summary>
+        private int LodTopologyVersion;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ChunkLodOctree"/> class.
@@ -183,16 +193,16 @@
         /// <param name="index"></param>
         private void UpdateNode(int index)
         {
-            var n = Nodes[index];
+            var node = Nodes[index];
 
-            if (n.Key == ChunkKey.Invalid)
+            if (node.Key == ChunkKey.Invalid)
             {
                 throw new System.ArgumentException("Invalid key provided for update.");
             }
 
-            var decision = GetLODDecision(n);
+            var decision = GetLODDecision(node);
 
-            switch (n.State)
+            switch (node.State)
             {
                 case NodeState.IdleLeaf:
                     if (decision == LodDecision.Subdivide)
@@ -201,10 +211,24 @@
                         return;
                     }
 
-                    if (!n.MeshReady)
+                    if (!node.MeshReady)
                     {
-                        n.State = NodeState.AwaitGeneration;
-                        this.processor.RequestChunkGeneration(n.Key, OnRequestGenerationCompleted);
+                        node.State = NodeState.AwaitGeneration;
+                        this.processor.RequestChunkGeneration(node.Key, OnRequestGenerationCompleted);
+                    }
+
+                    if (node.LastCheckedTopologyVersion != LodTopologyVersion)
+                    {
+                        // Check the chunk to see if it may need an 
+                        // update with a new LOD edge mask being set.
+                        uint newMask = math.GetLODEdgeMask(node.Key, follower.position);
+                        if (newMask != node.LodEdgeMask)
+                        {
+                            node.LodEdgeMask = newMask;
+                            processor.RequestEdit(node.Key);
+                        }
+
+                        node.LastCheckedTopologyVersion = LodTopologyVersion;
                     }
                     return;
                 case NodeState.Subdivided:
@@ -229,7 +253,7 @@
         /// <returns></returns>
         private int AllocSingleBlock()
         {
-            if (FreeSingleBlocks.Count > 0) 
+            if (FreeSingleBlocks.Count > 0)
                 return FreeSingleBlocks.Pop();
 
             Nodes.Add(new ChunkLodTreeNode());
@@ -246,6 +270,7 @@
             var n = Nodes[index];
 
             IndexByKey.Remove(n.Key);
+            IndexByOrigin.Remove(n.Key.Origin);
             processor.RemoveChunk(n.Key);
 
             n.Free();
@@ -266,7 +291,7 @@
                 return LodDecision.NoChange;
             }
 
-            int desired = math.GetLODForChunk(node.Key.Global, follower.transform.position);
+            int desired = math.GetLODForChunk(node.Key.BaseCenter, follower.position);
 
             if (node.State == NodeState.IdleLeaf)
             {
@@ -305,12 +330,11 @@
                     MarkChildResolvedIfHasParent(index);
             }
 
+            int childLOD = node.Key.LODIndex - 1;
             for (int i = 0; i < 8; i++)
             {
-                var coordinates = GetChildOffset(i, node.Key.Coordinates * 2);
-                var lodIndex = node.LODIndex - 1;
-                var chunkKey = new ChunkKey(coordinates, lodIndex);
-                TryCreateSingleNode(chunkKey, index);
+                Vector3Int childOrigin = node.Key.Origin * 2 + GetChildOffset(i);
+                TryCreateSingleNode(new ChunkKey(childOrigin, childLOD), index);
             }
         }
 
@@ -392,6 +416,8 @@
                 }
                 else
                 {
+                    IndexByOrigin[key.Origin] = childIndex;
+
                     child.Key = key;
                     child.State = NodeState.IdleLeaf;
                     child.ParentIndex = parentIndex;
@@ -429,6 +455,9 @@
 
             // Handle parent relationship.
             MarkChildResolvedIfHasParent(nodeIndex);
+
+            // Have neighbors verify their edge mask.
+            LodTopologyVersion++;
         }
 
         /// <summary>
@@ -468,6 +497,9 @@
 
             node.MeshReady = true;
             node.State = NodeState.IdleLeaf;
+
+            // Have neighbors verify their edge mask.
+            LodTopologyVersion++;
         }
 
         /// <summary>
@@ -501,33 +533,12 @@
         /// <param name="baseOffset"></param>
         /// <returns></returns>
         /// <exception cref="System.IndexOutOfRangeException"></exception>
-        private Vector3Int GetChildOffset(int index, Vector3Int baseOffset)
+        private static Vector3Int GetChildOffset(int index)
         {
-            int cx = baseOffset.x;
-            int cy = baseOffset.y;
-            int cz = baseOffset.z;
-
-            switch (index)
-            {
-                case 0:
-                    return new Vector3Int(cx + 0, cy + 0, cz + 0);
-                case 1:
-                    return new Vector3Int(cx + 1, cy + 0, cz + 0);
-                case 2:
-                    return new Vector3Int(cx + 0, cy + 0, cz + 1);
-                case 3:
-                    return new Vector3Int(cx + 1, cy + 0, cz + 1);
-                case 4:
-                    return new Vector3Int(cx + 0, cy + 1, cz + 0);
-                case 5:
-                    return new Vector3Int(cx + 1, cy + 1, cz + 0);
-                case 6:
-                    return new Vector3Int(cx + 0, cy + 1, cz + 1);
-                case 7:
-                    return new Vector3Int(cx + 1, cy + 1, cz + 1);
-            }
-
-            throw new System.IndexOutOfRangeException();
+            return new Vector3Int(
+                (index & 1) != 0 ? 1 : 0,
+                (index & 2) != 0 ? 1 : 0,
+                (index & 4) != 0 ? 1 : 0);
         }
     }
 }

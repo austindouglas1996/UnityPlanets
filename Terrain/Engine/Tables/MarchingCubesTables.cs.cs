@@ -1,4 +1,4 @@
-namespace GingerVoxelSystem.Engine.Helpers
+﻿namespace GingerVoxelSystem.Engine.Helpers
 {
     using System.Runtime.InteropServices;
     using Unity.Mathematics;
@@ -9,6 +9,9 @@ namespace GingerVoxelSystem.Engine.Helpers
     /// Holds corner offsets, edge connections, tri tables, etc.
     /// Also has methods to pack these arrays into <see cref="ComputeBuffer"/> 
     /// so they can be used in GPU code.
+    /// 
+    /// NOTE: This was replaced with Transvoxels. This has been kept as a REFERENCE only
+    /// THIS IS NOT MAINTAINED NOR UPDATED.
     /// </summary>
     public static class MarchingCubesTables
     {

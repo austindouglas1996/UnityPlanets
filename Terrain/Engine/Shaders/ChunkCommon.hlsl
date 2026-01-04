@@ -9,56 +9,59 @@
 #define TYPE_PLANET  1
 #define TYPE_CAVE    2
 
-// Samples = Cubes + 1
-uint GetSamplesPerAxis()
+//<summary>
+//</summary>
+uint GetBaseSamplesPerAxis()
 {
-    return CubesPerAxis + 1;
+    return CellsPerAxis + 1;
 }
 
-// Vector form of samples (used for buffer allocation / indexing)
-int3 GetSamplesPerChunk3()
+uint GetPaddedSamplesPerAxis()
 {
-    int sampleSize = GetSamplesPerAxis(); // Core Cubes+1
-    int totalSample = sampleSize + (2 * BorderSamplesPerAxis);
-    return int3(totalSample, totalSample, totalSample);
+    return GetBaseSamplesPerAxis() + (2 * BorderSamplesPerAxis);
 }
 
-// Number of cubes per axis at this LOD
-int GetCubesPerAxis(uint lodIndex)
+uint3 GetBaseSamplesGridSize()
 {
-    return CubesPerAxis << lodIndex;
+    uint cells = GetBaseSamplesPerAxis();
+    return uint3(cells, cells, cells);
 }
 
-// Vector form of cubes per axis
-int3 GetCubesPerChunk3(uint lodIndex)
+uint3 GetPaddedSamplesGridSize()
 {
-    int cubes = GetCubesPerAxis(lodIndex);
-    return int3(cubes,cubes,cubes);
+    uint totalSample = GetPaddedSamplesPerAxis();
+    return uint3(totalSample, totalSample, totalSample);
 }
 
-// The step size of each cube based on LOD level.
-int GetCubeSizeStep(uint lodIndex)
+int GetChunkCellSpan(uint lodIndex)
+{
+    return CellsPerAxis << lodIndex;
+}
+
+int GetCellStep(uint lodIndex)
 {
     return 1 << lodIndex;
 }
 
-// Convert chunk coordinates to world space (with LOD)
-float3 ToWorld(int3 coordinates, uint lodIndex)
+float3 ChunkOriginToWorld(int3 Origin, uint lodIndex)
 {
-    return coordinates * GetCubesPerAxis(lodIndex);
+    return Origin * GetChunkCellSpan(lodIndex);
 }
 
-// Convert world position to chunk coordinates
-int3 ToCoordinates(float3 worldPos)
+float3 ChunkOriginToWorld(ChunkWorkDescriptor chunk)
 {
-    int CubesPerAxis = GetCubesPerAxis(0);
-    float inv = rcp((float) CubesPerAxis);
+    return ChunkOriginToWorld(chunk.Origin, chunk.LodIndex);
+}
+
+int3 WorldToChunkOrigin(float3 worldPos)
+{
+    int CellsPerAxis = GetChunkCellSpan(0);
+    float inv = rcp((float) CellsPerAxis);
 
     return int3(
         (int) floor(worldPos.x * inv),
         (int) floor(worldPos.y * inv),
         (int) floor(worldPos.z * inv));
 }
-
 
 #endif

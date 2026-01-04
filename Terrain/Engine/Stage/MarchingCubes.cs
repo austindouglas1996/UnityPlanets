@@ -11,6 +11,9 @@ namespace GingerVoxelSystem.Engine.Stage
     /// Handles both marching-cubes passes:
     /// 1) PrePass: counts triangles per chunk
     /// 2) Main pass: emits actual triangle data
+    /// 
+    /// NOTE: This was replaced with Transvoxels. This has been kept as a REFERENCE only
+    /// THIS IS NOT MAINTAINED NOR UPDATED.
     /// </summary>
     public class MarchingCubesStage : IDisposable
     {

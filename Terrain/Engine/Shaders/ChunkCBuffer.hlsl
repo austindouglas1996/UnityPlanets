@@ -13,7 +13,7 @@
 cbuffer TerrainDensityOptions
 { 
     // Logical voxel width of a chunk (before LOD).
-    uint CubesPerAxis;
+    uint CellsPerAxis;
     
     // Additional voxel width in density generation.
     uint BorderSamplesPerAxis;

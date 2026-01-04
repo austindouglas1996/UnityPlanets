@@ -75,6 +75,15 @@
         }
 
         /// <summary>
+        /// Edit a given entity so its bucket collection is regenerated.
+        /// </summary>
+        /// <param name="key"></param>
+        public void Edit(ChunkKey key)
+        {
+            lodBuckets[key.LODIndex == 0 ? 0 : 1].Edit(key);
+        }
+
+        /// <summary>
         /// Remove all elements.
         /// </summary>
         public void Clear()
@@ -147,7 +156,10 @@
 
             // Notify all jobs waiting on this bucket
             foreach (var job in list)
-                job.OnDone(job.Key, job.ParentIndex, true);
+            {
+                if (job.OnDone != null)
+                    job.OnDone(job.Key, job.ParentIndex, true);
+            }
 
             list.Clear();
         }

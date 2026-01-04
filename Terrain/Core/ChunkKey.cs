@@ -8,18 +8,18 @@ namespace GingerVoxelSystem.Core
     /// Combines chunk coordinates with the LOD (level of detail) index,
     /// so we can easily tell one chunk apart from another.
     /// </summary>
-    public readonly struct ChunkKey : IEquatable<ChunkKey>
+    public struct ChunkKey : IEquatable<ChunkKey>
     {
         /// <summary>
-        /// A universal ID based on this chunk's position in LOD0-space.
-        /// Useful for spatial alignment across LODs.
+        /// Global origin in LOD0 chunk units (authoritative).
+        /// This identifies where the chunk exists in world space.
         /// </summary>
-        public Vector3Int Global => Coordinates * (1 << LODIndex);
+        public readonly Vector3Int Origin;
 
         /// <summary>
-        /// The 3D grid coordinates of the chunk.
+        /// Gets the center of the key in a LOD0 specification.
         /// </summary>
-        public readonly Vector3Int Coordinates;
+        public readonly Vector3Int BaseCenter;
 
         /// <summary>
         /// Which LOD (Level of Detail) this chunk is at.
@@ -30,21 +30,30 @@ namespace GingerVoxelSystem.Core
         /// <summary>
         /// Creates a new key from coordinates and an LOD index.
         /// </summary>
-        public ChunkKey(Vector3Int coords, int lod)
+        public ChunkKey(Vector3Int Origin, int lod)
         {
-            Coordinates = coords;
+            this.Origin = Origin;
             LODIndex = lod;
+
+            int span = 1 << LODIndex;
+
+            Vector3Int corner = new Vector3Int(
+                Origin.x * span,
+                Origin.y * span,
+                Origin.z * span
+            );
+
+            int half = span >> 1;
+
+            BaseCenter = new Vector3Int(
+                corner.x + half,
+                corner.y + half,
+                corner.z + half
+            );
         }
 
-        public static bool operator ==(ChunkKey a, ChunkKey b)
-        {
-            return a.Equals(b);
-        }
-
-        public static bool operator !=(ChunkKey a, ChunkKey b)
-        {
-            return !a.Equals(b);
-        }
+        public static bool operator ==(ChunkKey a, ChunkKey b) => a.Equals(b);
+        public static bool operator !=(ChunkKey a, ChunkKey b) => !a.Equals(b);
 
         /// <summary>
         /// An invalid key reference.
@@ -56,7 +65,7 @@ namespace GingerVoxelSystem.Core
         /// (same coordinates AND same LOD).
         /// </summary>
         public bool Equals(ChunkKey other) =>
-            Coordinates.Equals(other.Coordinates) && LODIndex == other.LODIndex;
+            Origin.Equals(other.Origin) && LODIndex == other.LODIndex;
 
         /// <summary>
         /// Equality check against any object (safe cast).
@@ -74,10 +83,10 @@ namespace GingerVoxelSystem.Core
         {
             unchecked
             {
-                int h = Coordinates.x * 73856093
-                      ^ Coordinates.y * 19349663
-                      ^ Coordinates.z * 83492791;
-                return (h ^ (LODIndex * 486187739));
+                int h = Origin.x * 73856093
+                      ^ Origin.y * 19349663
+                      ^ Origin.z * 83492791;
+                return h ^ (LODIndex * 486187739);
             }
         }
 
@@ -85,6 +94,6 @@ namespace GingerVoxelSystem.Core
         /// Human-readable string version (good for debugging/logs).
         /// </summary>
         public override string ToString() =>
-            $"Key LOD:{LODIndex} ({Coordinates.x},{Coordinates.y},{Coordinates.z})";
+            $"Key LOD:{LODIndex} Origin:{Origin}";
     }
 }

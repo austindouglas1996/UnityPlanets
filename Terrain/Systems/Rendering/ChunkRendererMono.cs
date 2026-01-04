@@ -1,10 +1,11 @@
-namespace GingerVoxelSystem.Systems.Rendering
+﻿namespace GingerVoxelSystem.Systems.Rendering
 {
     using UnityEngine;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.EditorSupport;
     using GingerVoxelSystem.Engine.Generation;
     using GingerVoxelSystem.Systems.Generation;
+    using System.Collections.Generic;
 
     /// <summary>
     /// Unity-facing host for chunk rendering:
@@ -36,6 +37,8 @@ namespace GingerVoxelSystem.Systems.Rendering
         private IChunkServices chunkServices;
         private ChunkGenerationProcessor processor;
         private ChunkLodOctree lodTree;
+
+        public ChunkLodOctree LODTree => lodTree;
 
         /// <summary>
         /// Update the chunk layout and render any available chunks.
