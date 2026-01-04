@@ -1,6 +1,5 @@
 namespace GingerVoxelSystem.Core
 {
-    using Unity.Mathematics;
     using UnityEngine;
 
     /// <summary>
@@ -66,6 +65,18 @@ namespace GingerVoxelSystem.Core
             return LODRings.Length - 1;
         }
 
+        /// <summary>
+        /// Computes the LOD edge mask for a chunk, indicating which faces border
+        /// neighboring chunks of a higher-detail LOD (lower LOD index).
+        ///
+        /// A bit is set for each face where the adjacent region is represented
+        /// by a chunk with a lower LOD index, meaning the neighbor is more detailed
+        /// and requires LOD transition stitching on that face.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="position"></param>
+        /// <returns>A 6-bit mask where each bit corresponds to a cube face that borders a
+        /// higher-detail neighboring chunk.</returns>
         public uint GetLODEdgeMask(ChunkKey key, Vector3 position)
         {
             if (key.LODIndex == 0)
