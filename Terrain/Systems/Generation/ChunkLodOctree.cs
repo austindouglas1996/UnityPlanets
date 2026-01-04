@@ -5,7 +5,6 @@
     using System;
     using System.Collections.Generic;
     using UnityEngine;
-    using static UnityEngine.UI.Image;
 
     /// <summary>
     /// A chunk-based octree that manages world detail through Level of Detail (LOD).
@@ -78,6 +77,7 @@
             public NodeState State;
             public uint LodEdgeMask = 0;
             public bool MeshReady = false;
+            public int LastCheckedTopologyVersion;
 
             public bool IsLeaf => Children.Count == 0;
 
@@ -97,6 +97,7 @@
                 this.ChildrenReady = 0;
                 this.State = NodeState.InActive;
                 this.Key = ChunkKey.Invalid;
+                this.LastCheckedTopologyVersion = 0;
             }
         }
 
@@ -129,6 +130,12 @@
         private int CurrentUpdateIndex = 0;
 
         /// <summary>
+        /// Has there been changes in the octTree that nodes should verify their 
+        /// LOD edge mask?
+        /// </summary>
+        private int LodTopologyVersion;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="ChunkLodOctree"/> class.
         /// </summary>
         /// <param name="services"></param>
@@ -154,34 +161,6 @@
         {
             TryCreateSingleNode(new ChunkKey(coord, RootLOD));
         }
-
-        public uint GetLODEdgeMask(ChunkKey key)
-        {
-            if (key.LODIndex == 0)
-                return 0;
-
-            uint mask = 0;
-
-            Vector3Int origin0 = key.BaseCenter;
-            int span = 1 << key.LODIndex; // how many LOD0 chunks this chunk spans
-
-            for (int face = 0; face < 6; face++)
-            {
-                Vector3Int offset = ChunkMath.ChunkOffsets[face];
-
-                Vector3Int neighborOrigin0 = origin0 + new Vector3Int(
-                    offset.x * span,
-                    offset.y * span,
-                    offset.z * span
-                );
-
-                if (math.GetLODForChunk(neighborOrigin0, follower.position) < key.LODIndex)
-                    mask |= 1u << face;
-            }
-
-            return mask;
-        }
-
 
         /// <summary>
         /// Called every frame. Processes up to UpdatePerTick nodes in round-robin fashion.
@@ -238,15 +217,19 @@
                         this.processor.RequestChunkGeneration(node.Key, OnRequestGenerationCompleted);
                     }
 
-                    // Check the chunk to see if it may need an 
-                    // update with a new LOD edge mask being set.
-                    uint newMask = GetLODEdgeMask(node.Key);
-                    if (newMask != node.LodEdgeMask)
+                    if (node.LastCheckedTopologyVersion != LodTopologyVersion)
                     {
-                        node.LodEdgeMask = newMask;
-                        processor.RequestEdit(node.Key);
-                    }
+                        // Check the chunk to see if it may need an 
+                        // update with a new LOD edge mask being set.
+                        uint newMask = math.GetLODEdgeMask(node.Key, follower.position);
+                        if (newMask != node.LodEdgeMask)
+                        {
+                            node.LodEdgeMask = newMask;
+                            processor.RequestEdit(node.Key);
+                        }
 
+                        node.LastCheckedTopologyVersion = LodTopologyVersion;
+                    }
                     return;
                 case NodeState.Subdivided:
                     if (decision == LodDecision.Merge)
@@ -472,6 +455,9 @@
 
             // Handle parent relationship.
             MarkChildResolvedIfHasParent(nodeIndex);
+
+            // Have neighbors verify their edge mask.
+            LodTopologyVersion++;
         }
 
         /// <summary>
@@ -511,6 +497,9 @@
 
             node.MeshReady = true;
             node.State = NodeState.IdleLeaf;
+
+            // Have neighbors verify their edge mask.
+            LodTopologyVersion++;
         }
 
         /// <summary>

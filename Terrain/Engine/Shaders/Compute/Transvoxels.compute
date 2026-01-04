@@ -93,15 +93,15 @@ float3 GetNormalFast(int3 p, int ChunkKeyIndex, uint3 sampleSize)
 // Triangle indices are taken from the TransitionCellIndices table.
 // The `flip` flag comes from the transition class and determines
 // whether triangle winding must be reversed to match orientation.
-void CreateTransitionTriangles(ChunkCellContext key, RegularCellData tcell, in float3 cellPos[16], in float3 cellNormal[16], bool flip)
+void CreateTriangles(ChunkCellContext key, RegularCellData cell, StructuredBuffer<uint> indices, in float3 cellPos[16], in float3 cellNormal[16], bool flip = true)
 {
     [loop]
-    for (uint i = 0; i < tcell.IndicesCount; i += 3)
+    for (uint i = 0; i < cell.IndicesCount; i += 3)
     {
         // Nothing here is different from 
-        uint ia = TransitionCellIndices[tcell.IndicesStart + i + 0];
-        uint ib = TransitionCellIndices[tcell.IndicesStart + i + 1];
-        uint ic = TransitionCellIndices[tcell.IndicesStart + i + 2];
+        uint ia = indices[cell.IndicesStart + i + 0];
+        uint ib = indices[cell.IndicesStart + i + 1];
+        uint ic = indices[cell.IndicesStart + i + 2];
 
         TriangleData tri;
 
@@ -128,7 +128,7 @@ void CreateTransitionTriangles(ChunkCellContext key, RegularCellData tcell, in f
         }
 
         tri.ChunkKeyIndex = key.ChunkKeyIndex;
-        tri.LodIndex = 9; // This is a debug LOD. While I work on transvoxels. I can see the transition triangles.
+        tri.LodIndex = key.Chunk.LodIndex;
 
         // Append triangle to the output buffer for this chunk
         uint next;
@@ -233,29 +233,8 @@ void March(ChunkCellContext key)
     }
     
     // Emit triangles
-    for (uint i = 0; i < cell.IndicesCount; i += 3)
-    {
-        uint ia = RegularCellIndices[cell.IndicesStart + i + 0];
-        uint ib = RegularCellIndices[cell.IndicesStart + i + 1];
-        uint ic = RegularCellIndices[cell.IndicesStart + i + 2];
-
-        TriangleData tri;
-        tri.a = cellPos[ia];
-        tri.b = cellPos[ib];
-        tri.c = cellPos[ic];
-
-        tri.NormalA = cellNormal[ia];
-        tri.NormalB = cellNormal[ib];
-        tri.NormalC = cellNormal[ic];
-
-        tri.ChunkKeyIndex = key.ChunkKeyIndex;
-        tri.LodIndex = key.Chunk.LodIndex;
-
-        uint next;
-        InterlockedAdd(TriangleCursor[key.ChunkKeyIndex], 1, next);
-        TriangleSourceBuffer[key.Chunk.SourceOffset + next] = tri;
-    }
-
+    CreateTriangles(key, cell, RegularCellIndices, cellPos, cellNormal);
+    
     if (key.Chunk.LodEdgeMask == 0)
         return;
 
@@ -346,6 +325,25 @@ uint GetCornerSampleIndex(uint face, ChunkCellContext key, uint corner, int3 sam
     return GetDensitySampleIndexPadded(logicalSampleCoord, key.ChunkKeyIndex, samplePadded);
 }
 
+// GetCornerValue
+// Returns the density value for a transition face corner.
+//
+// Corners 0, 2, 6, and 8 correspond to real integer sample positions in the density map,
+// so they can be fetched directly.
+//
+// Corners 1, 3, 4 (face center), and 7 lie at half-step positions on the face and do not
+// exist as discrete samples, so their values must be regenerated from the noise field.
+float GetCornerValue(uint face, ChunkCellContext key, int cornerIndex, int3 samplePadded)
+{
+    if (cornerIndex == 0 || cornerIndex == 2 || cornerIndex == 6 || cornerIndex == 8)
+        return DensityMap[GetCornerSampleIndex(face, key, cornerIndex, samplePadded)];
+    else
+    {
+        float3 worldPos = GetCornerWorldPosition(face, key, cornerIndex);
+        return GenerateNoiseValue(worldPos);
+    }
+}
+
 // GetCornerNormal
 // NOTE: This is currently a debug-only implementation.
 // It returns a single normal per cell regardless of face or corner.
@@ -364,24 +362,14 @@ uint GetTransitionCase(uint face, ChunkCellContext key)
 {
     uint caseCode = 0;
     int3 samplePadded = GetPaddedSamplesGridSize();
-
+    
     [loop]
     for (uint i = 0; i < 9; i++)
     {
         uint cornerIndex = TransitionCaseCornerMap[i];
         float value;
         
-        if (cornerIndex == 0 || cornerIndex == 2 || cornerIndex == 6 || cornerIndex == 8)
-        {
-            value = DensityMap[GetCornerSampleIndex(face, key, cornerIndex, samplePadded)];
-        }
-        else
-        {
-            float3 worldPos = GetCornerWorldPosition(face, key, cornerIndex);
-            value = GenerateNoiseValue(worldPos);
-        }
-          
-        if (value < ISOLevel)
+        if (GetCornerValue(face, key, cornerIndex, samplePadded) < ISOLevel)
             caseCode |= (1u << i);
     }
 
@@ -417,17 +405,17 @@ void MarchTransitionFace(uint face, ChunkCellContext key)
     float3 cellPos[16];
     float3 cellNormal[16];
     
+    int3 samplePadded = GetPaddedSamplesGridSize();
+    
     /*
         Step 1:
         Sample density, position, and normals for the 3x3 transition grid.
     */
     [loop]
     for (int i = 0; i < 9; i++)
-    { 
-        float3 worldPos = GetCornerWorldPosition(face, key, i);
-        
-        tCornerD[i] = GenerateNoiseValue(worldPos);
-        tCornerPos[i] = worldPos;
+    {   
+        tCornerD[i] = GetCornerValue(face, key, i, samplePadded);
+        tCornerPos[i] = GetCornerWorldPosition(face, key, i);
         tCornerN[i] = GetCornerNormal(face, key, i);
     }
     
@@ -478,7 +466,7 @@ void MarchTransitionFace(uint face, ChunkCellContext key)
     uint transitionClass = TransitionCellClass[transitionCase];
     bool flip = (transitionClass & 0x80) != 0;
 
-    CreateTransitionTriangles(key, tcell, cellPos, cellNormal, !flip);
+    CreateTriangles(key, tcell, TransitionCellIndices, cellPos, cellNormal, !flip);
 }
 
 [numthreads(4, 4, 4)]

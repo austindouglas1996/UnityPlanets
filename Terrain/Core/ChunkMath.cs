@@ -1,5 +1,6 @@
 namespace GingerVoxelSystem.Core
 {
+    using Unity.Mathematics;
     using UnityEngine;
 
     /// <summary>
@@ -63,6 +64,33 @@ namespace GingerVoxelSystem.Core
             }
 
             return LODRings.Length - 1;
+        }
+
+        public uint GetLODEdgeMask(ChunkKey key, Vector3 position)
+        {
+            if (key.LODIndex == 0)
+                return 0;
+
+            uint mask = 0;
+
+            Vector3Int origin0 = key.BaseCenter;
+            int span = 1 << key.LODIndex; // how many LOD0 chunks this chunk spans
+
+            for (int face = 0; face < 6; face++)
+            {
+                Vector3Int offset = ChunkMath.ChunkOffsets[face];
+
+                Vector3Int neighborOrigin0 = origin0 + new Vector3Int(
+                    offset.x * span,
+                    offset.y * span,
+                    offset.z * span
+                );
+
+                if (GetLODForChunk(neighborOrigin0, position) < key.LODIndex)
+                    mask |= 1u << face;
+            }
+
+            return mask;
         }
     }
 }
