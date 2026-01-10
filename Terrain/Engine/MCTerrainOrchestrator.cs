@@ -112,7 +112,8 @@
 
             // Compute-thread division for 4x4x4 kernels.
             int marchGroupSize = Mathf.CeilToInt(CellsPerAxis / 4f);
-            int genGroupSize = Mathf.CeilToInt(samplesPerAxis / 8f);
+            int genGroupSurfaceSize = Mathf.CeilToInt(samplesPerAxis / 8f);
+            int genGroupSize = Mathf.CeilToInt(samplesPerAxis / 4f);
 
             // Modified chunk ranges grouped contiguously so we don't dispatch per-chunk.
             List<(int start, int end)> ranges = chunkBuffers.GroupContiguous(job.Modifications);
@@ -124,6 +125,9 @@
             foreach (var (start, end) in ranges)
             {
                 int length = (end - start + 1);
+
+                // Generate density samples for all the chunks in the range.
+                density.DispatchSurfaceGeneration(job.Batch, length * genGroupSurfaceSize, genGroupSurfaceSize, start);
 
                 // Generate density for all chunks in the range.
                 density.DispatchGeneration(job.Batch, length * genGroupSize, genGroupSize, genGroupSize, start);

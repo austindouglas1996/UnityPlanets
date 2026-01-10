@@ -1,6 +1,7 @@
 ﻿#pragma only_renderers d3d11
 #pragma target 5.0
 
+#pragma kernel GenerateDensitySurface
 #pragma kernel GenerateDensityMap
 #pragma kernel GenerateSurfaceMask
 
@@ -12,6 +13,7 @@ uint Offset;
 StructuredBuffer<ChunkWorkDescriptor> ChunkInputs;
 
 /* Output */
+RWStructuredBuffer<float> DensitySurface;
 RWStructuredBuffer<float> DensityMap;
 RWStructuredBuffer<uint> SurfaceMask;
 
@@ -19,46 +21,27 @@ RWStructuredBuffer<uint> SurfaceMask;
 groupshared uint gHasAbove;
 groupshared uint gHasBelow;
 
-uint GetColumnIndex(ChunkCellContext context)
-{
-    // Each chunk owns a contiguous block of columns
-    uint columnsPerChunk = CellsPerAxis * CellsPerAxis;
-
-    uint x = context.CellCoord.x;
-    uint z = context.CellCoord.z;
-
-    return context.ChunkKeyIndex * columnsPerChunk + (z * CellsPerAxis + x);
-}
-
 [numthreads(8, 8, 1)]
-void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
+void GenerateDensitySurface(uint3 id : SV_DispatchThreadID)
 {
-    uint3 sampleSize = GetPaddedSamplesGridSize();
+    ChunkCellContext col = GetChunkCellSamplesXZ(id, Offset, ChunkInputs);
 
-    ChunkCellContext col =
-        GetChunkCellSamplesXZ(id, Offset, ChunkInputs);
-
-    if (col.ChunkKeyIndex == -1) // or DensitySampleIndex == -1 if you prefer
+    if (col.ChunkKeyIndex == -1)
         return;
 
-    float height = SampleHeight(col.CellWorldPos.xz);
+    DensitySurface[col.DensitySampleIndex] = SampleHeight(col.CellWorldPos.xz);
+}
 
-    // Loop Y explicitly
-    for (uint y = 0; y < sampleSize.y; y++)
-    {
-        uint3 cellCoord = uint3(col.CellCoord.x, y, col.CellCoord.z);
-
-        uint densityIndex =
-            GetDensitySampleIndexLocal(cellCoord, col.ChunkKeyIndex, sampleSize);
-
-        int3 logicalCoord = int3(cellCoord) - BorderSamplesPerAxis;
-
-        float3 worldPos =
-            ChunkOriginToWorld(col.Chunk) +
-            float3(logicalCoord) * GetCellStep(col.Chunk.LodIndex);
-
-        DensityMap[densityIndex] = worldPos.y - height;
-    }
+[numthreads(4, 4, 4)]
+void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
+{
+    ChunkCellContext context = GetChunkCellSamples(id, Offset, ChunkInputs);
+    uint surfaceIndex = GetSurfaceIndex(context.ChunkKeyIndex, context.CellCoord.x, context.CellCoord.z);
+    
+    if (context.ChunkKeyIndex == -1 || surfaceIndex == -1)
+        return;
+    
+    DensityMap[context.DensitySampleIndex] = context.CellWorldPos.y - DensitySurface[surfaceIndex];
 }
 
 [numthreads(4, 4, 4)]
@@ -80,7 +63,7 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
         gHasBelow = 0;
     }
     GroupMemoryBarrierWithGroupSync();
-
+    
     // Partition the 3D region across 4x4x4 threads
     // Each thread processes a strided subset.
     const uint done = gHasAbove & gHasBelow;

@@ -40,7 +40,7 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// <summary>
         /// The density map for the columns for the render batch.
         /// </summary>
-        public ComputeBuffer DensityColumnsMap;
+        public ComputeBuffer DensitySurfaceMap;
 
         /// <summary>
         /// Append buffer containing generated detail data for triangles.
@@ -85,7 +85,7 @@ namespace GingerVoxelSystem.Systems.Rendering
             this.TriangleChunkCounts = triangleCounts;
             this.Details = Details;
             this.DensityMap = densityMap;
-            this.DensityColumnsMap = densityColumnMap;
+            this.DensitySurfaceMap = densityColumnMap;
             this.Args = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
             this.DispatchArgs = new ComputeBuffer(3, sizeof(uint), ComputeBufferType.IndirectArguments);
         }
@@ -111,7 +111,7 @@ namespace GingerVoxelSystem.Systems.Rendering
             if (TriangleWriteCursor != null) TriangleWriteCursor.Dispose();
             if (Details != null) Details.Dispose();
             if (DensityMap != null) DensityMap.Dispose();
-            if (DensityColumnsMap != null) DensityColumnsMap.Dispose();
+            if (DensitySurfaceMap != null) DensitySurfaceMap.Dispose();
 
             Args = null;
             RawTriangleBuffer = null;
@@ -120,7 +120,7 @@ namespace GingerVoxelSystem.Systems.Rendering
             TriangleWriteCursor = null;
             Details = null;
             DensityMap = null;
-            DensityColumnsMap = null;
+            DensitySurfaceMap = null;
         }
 
         /// <summary>

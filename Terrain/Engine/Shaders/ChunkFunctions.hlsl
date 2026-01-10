@@ -64,17 +64,35 @@ int GetDensitySampleIndexPadded(int3 sampleCoord, int ChunkKeyIndex, int3 totalS
     );
 }
 
-// GetChunkAccess()
-// Maps a dispatch thread ID (id) into:
-//   - which chunk it belongs to
-//   - the voxel's coordinates within that chunk
-//   - its corresponding world position
-//   - its flat index in the voxel map buffer
+// GetSurfaceIndex()
+// Computes the flat index into the surface (XZ) buffer for a given chunk
+// and local surface coordinate.
 //
-// Parameters:
-//   id     : Dispatch thread ID (x, y, z) from the compute shader
-//   sampleSize.x, sampleSize.y, sampleSize.z : Chunk dimensions in voxels (per axis)
-//   keys   : Structured buffer of all active chunks to process
+// Surface buffers are laid out as:
+//   [chunk][z][x]
+uint GetSurfaceIndex(uint chunkKeyIndex, uint x, uint z)
+{
+    uint3 sampleSize = GetPaddedSamplesGridSize();
+    uint surfaceStride = sampleSize.x * sampleSize.z;
+
+    return chunkKeyIndex * surfaceStride + (z * sampleSize.x + x);
+}
+
+// GetChunkCellCubes()
+// Maps a dispatch thread ID into a chunk-local cube coordinate
+// WITHOUT padding or border samples.
+//
+// This is intended for cube-aligned logic where each thread corresponds
+// directly to a logical cell inside the chunk.
+//
+// Maps:
+//   id.x -> packed (chunk-local X across chunks)
+//   id.y -> local Y
+//   id.z -> local Z
+//
+// NOTE:
+//   This function does NOT compute a density buffer index and should
+//   not be used with DensityMap or marching cubes.
 ChunkCellContext GetChunkCellCubes(uint3 id, uint offset, StructuredBuffer<ChunkWorkDescriptor> keys)
 {
     ChunkCellContext r;
@@ -109,17 +127,17 @@ ChunkCellContext GetChunkCellCubes(uint3 id, uint offset, StructuredBuffer<Chunk
     return r;
 }
 
-// GetChunkAccess()
-// Maps a dispatch thread ID (id) into:
-//   - which chunk it belongs to
-//   - the voxel's coordinates within that chunk
-//   - its corresponding world position
-//   - its flat index in the voxel map buffer
+// GetChunkCellSamples()
+// Maps a dispatch thread ID into a padded voxel sample used for
+// density generation, marching cubes, and transvoxel stitching.
 //
-// Parameters:
-//   id     : Dispatch thread ID (x, y, z) from the compute shader
-//   sampleSize.x, sampleSize.y, sampleSize.z : Chunk dimensions in voxels (per axis)
-//   keys   : Structured buffer of all active chunks to process
+// This function operates in padded voxel space to ensure correct
+// sampling across chunk boundaries.
+//
+// Maps:
+//   id.x -> packed (chunk-local X across chunks)
+//   id.y -> local Y (padded)
+//   id.z -> local Z (padded)
 ChunkCellContext GetChunkCellSamples(uint3 id, uint offset, StructuredBuffer<ChunkWorkDescriptor> keys)
 {
     ChunkCellContext r;
@@ -159,6 +177,25 @@ ChunkCellContext GetChunkCellSamples(uint3 id, uint offset, StructuredBuffer<Chu
     return r;
 }
 
+// GetChunkCellSamplesXZ()
+// Maps a dispatch thread ID into a padded surface (XZ) sample.
+//
+// This function is used for surface-aligned work such as:
+//   - height evaluation
+//   - foliage placement
+//   - erosion
+//   - surface-driven density generation
+//
+// It operates in padded XZ space but fixes Y to 0.
+//
+// Maps:
+//   id.x -> packed (chunk-local X across chunks)
+//   id.y -> local Z (padded)
+//
+// NOTE:
+//   The DensitySampleIndex produced here MUST only be used with
+//   surface buffers (e.g., DensitySurface). It is not compatible
+//   with DensityMap.
 ChunkCellContext GetChunkCellSamplesXZ(uint3 id, uint offset, StructuredBuffer<ChunkWorkDescriptor> keys)
 {
     ChunkCellContext r;
@@ -184,9 +221,9 @@ ChunkCellContext GetChunkCellSamplesXZ(uint3 id, uint offset, StructuredBuffer<C
 
     // Column = (x, 0, z)
     r.CellCoord = uint3(localX, 0, localZ);
-
-    // No density index here unless you want one
-    r.DensitySampleIndex = -1;
+    
+    // Set as it would in a (Cells * Size) * Cells
+    r.DensitySampleIndex = GetSurfaceIndex(r.ChunkKeyIndex, r.CellCoord.x, r.CellCoord.z);
 
     // World position: SAME math as 3D path
     ChunkWorkDescriptor key = keys[r.ChunkKeyIndex];
@@ -199,6 +236,5 @@ ChunkCellContext GetChunkCellSamplesXZ(uint3 id, uint offset, StructuredBuffer<C
 
     return r;
 }
-
 
 #endif
