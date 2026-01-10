@@ -1,7 +1,6 @@
 ﻿#pragma only_renderers d3d11
 #pragma target 5.0
 
-#pragma kernel GenerateDensityColumns
 #pragma kernel GenerateDensityMap
 #pragma kernel GenerateSurfaceMask
 
@@ -13,7 +12,6 @@ uint Offset;
 StructuredBuffer<ChunkWorkDescriptor> ChunkInputs;
 
 /* Output */
-RWStructuredBuffer<float> DensityColumns;
 RWStructuredBuffer<float> DensityMap;
 RWStructuredBuffer<uint> SurfaceMask;
 
@@ -33,31 +31,34 @@ uint GetColumnIndex(ChunkCellContext context)
 }
 
 [numthreads(8, 8, 1)]
-void GenerateDensityColumns(uint3 id : SV_DispatchThreadID)
-{
-    if (id.y >= CellsPerAxis)
-        return;
-    
-    ChunkCellContext context = GetChunkCellSamplesColumn(id, Offset, ChunkInputs);
-    
-    if (context.DensitySampleIndex == -1)
-        return;
-    
-    DensityColumns[GetColumnIndex(context)] = SampleHeight(float2(context.CellWorldPos.x, context.CellWorldPos.z));
-}
-
-[numthreads(4, 4, 4)]
 void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
 {
-    ChunkCellContext context = GetChunkCellSamples(id, Offset, ChunkInputs);
+    uint3 sampleSize = GetPaddedSamplesGridSize();
 
-    if (context.DensitySampleIndex == -1)
+    ChunkCellContext col =
+        GetChunkCellSamplesXZ(id, Offset, ChunkInputs);
+
+    if (col.ChunkKeyIndex == -1) // or DensitySampleIndex == -1 if you prefer
         return;
 
-    float height = DensityColumns[GetColumnIndex(context)];
-    float density = context.CellWorldPos.y - height;
+    float height = SampleHeight(col.CellWorldPos.xz);
 
-    DensityMap[context.DensitySampleIndex] = density;
+    // Loop Y explicitly
+    for (uint y = 0; y < sampleSize.y; y++)
+    {
+        uint3 cellCoord = uint3(col.CellCoord.x, y, col.CellCoord.z);
+
+        uint densityIndex =
+            GetDensitySampleIndexLocal(cellCoord, col.ChunkKeyIndex, sampleSize);
+
+        int3 logicalCoord = int3(cellCoord) - BorderSamplesPerAxis;
+
+        float3 worldPos =
+            ChunkOriginToWorld(col.Chunk) +
+            float3(logicalCoord) * GetCellStep(col.Chunk.LodIndex);
+
+        DensityMap[densityIndex] = worldPos.y - height;
+    }
 }
 
 [numthreads(4, 4, 4)]

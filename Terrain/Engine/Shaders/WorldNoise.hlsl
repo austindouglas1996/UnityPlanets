@@ -82,5 +82,12 @@ float GenerateNoiseValue(float3 p)
     return density;
 }
 
+float ComputeDensity(float3 worldPos)
+{
+    float height = SampleHeight(worldPos.xz);
+    return worldPos.y - height;
+}
+
+
 
 #endif
