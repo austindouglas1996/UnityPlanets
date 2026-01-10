@@ -159,4 +159,55 @@ ChunkCellContext GetChunkCellSamples(uint3 id, uint offset, StructuredBuffer<Chu
     return r;
 }
 
+// GetChunkAccess()
+// Maps a dispatch thread ID (id) into:
+//   - which chunk it belongs to
+//   - the voxel's coordinates within that chunk
+//   - its corresponding world position
+//   - its flat index in the voxel map buffer
+//
+// Parameters:
+//   id     : Dispatch thread ID (x, y, z) from the compute shader
+//   sampleSize.x, sampleSize.y, sampleSize.z : Chunk dimensions in voxels (per axis)
+//   keys   : Structured buffer of all active chunks to process
+ChunkCellContext GetChunkCellSamplesColumn(uint3 id, uint offset, StructuredBuffer<ChunkWorkDescriptor> keys)
+{
+    ChunkCellContext r;
+
+    uint3 sampleSize = GetPaddedSamplesGridSize(); // <-- KEY: padded
+    uint keyCount, strideBytes;
+    keys.GetDimensions(keyCount, strideBytes);
+
+    // Pack chunks along X exactly like GetChunkCellSamples does
+    uint chunkLocal = id.x / sampleSize.x;
+    uint localX = id.x % sampleSize.x;
+    uint localZ = id.y; // column kernel uses id.y as Z
+
+    r.ChunkKeyIndex = chunkLocal + offset;
+
+    if (r.ChunkKeyIndex >= keyCount || localZ >= sampleSize.z)
+    {
+        r.DensitySampleIndex = -1;
+        return r;
+    }
+
+    // Y fixed to 0, but X/Z are padded coordinates
+    r.CellCoord = uint3(localX, 0, localZ);
+
+    // Column buffer index is also padded: sampleSize.x * sampleSize.z per chunk
+    uint columnsPerChunk = sampleSize.x * sampleSize.z;
+    uint chunkBase = r.ChunkKeyIndex * columnsPerChunk;
+
+    r.DensitySampleIndex = chunkBase + (localZ * sampleSize.x + localX);
+
+    // World position: same logicalCoord mapping as the 3D function
+    ChunkWorkDescriptor key = keys[r.ChunkKeyIndex];
+    r.Chunk = key;
+
+    int3 logicalCoord = int3(r.CellCoord) - BorderSamplesPerAxis;
+    r.CellWorldPos = ChunkOriginToWorld(key) + (float3(logicalCoord) * GetCellStep(key.LodIndex));
+
+    return r;
+}
+
 #endif

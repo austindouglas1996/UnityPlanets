@@ -10,71 +10,77 @@ float SampleBiomeNoise(float3 p)
     return n;
 }
 
+float GroundHeight(float2 xz)
+{
+    float base = 10.0;
+
+    float n = fbm2D(xz * 0.1, 8);
+    base += n * 3.0;
+
+    float detail = N11(fbm2D(xz * 0.02, 8));
+    base += detail * 1.5;
+
+    return base;
+}
+
+
+float MountainHeight(float2 xz)
+{
+    float r = length(xz);
+
+    // radial falloff
+    float mountainMask = saturate(1.0 - r / 200.0);
+
+    // vertical height contribution
+    float height = mountainMask * 300.0;
+
+    // breakup
+    height += fbm2D(xz * 0.01, 3) * 10.0;
+
+    return height;
+}
+
+float SampleHeight(float2 xz)
+{
+    float ground = GroundHeight(xz);
+    float mountain = MountainHeight(xz);
+
+    // smooth blend in height space
+    float blend = saturate(mountain / 300.0);
+    return lerp(ground, max(ground, mountain), blend);
+}
+
+
 int GetBiomeID(float3 p)
 {
-    float y = p.y;
+    float height = SampleHeight(p.xz);
 
-    if (y < -15.0)
+    if (height < -15.0)
         return 0; // sand
-    else if (y < 10.0)
+    else if (height < 10.0)
         return 1; // grass
-    else if (y < 40.0)
+    else if (height < 40.0)
         return 2; // alpine
     else
         return 3; // mountain
 }
 
-float GroundVolumetric(float3 p)
-{
-    // Large solid ground volume around y=0
-    float d = abs(p.y) - 10;
 
-    // Low-frequency noise creates big rolling landforms
-    float n = fbm3D(p * 0.1, 8);
-    d -= n * 3; // soften/strengthen as needed
-
-    // High-frequency noise adds small detail but not too much
-    float detail = N11(fbm3D(p * 0.02, 8));
-    d -= detail * 1.5;
-
-    return d;
-}
-
-float MountainShape(float3 p)
-{
-    float warp1 = N11(fbm3D(p * 0.01, 3));
-    float warp2 = N11(fbm3D(p * 0.01 + 37.0, 3));
-    p.x += warp1 * 20.0;
-    p.z += warp2 * 20.0;
-    
-    float r = length(p.xz);
-    
-    float slope = 0.5; // steeper than 0.5
-    float tipHeight = 320.0; // height of the tip
-
-    float d = r * slope + (p.y - tipHeight);
-    d += sin(p.y * 0.05) * 3.0;
-
-    float heightFactor = saturate((p.y - tipHeight) * 0.01);
-    d -= fbm3D(p * 0.02, 4) * (heightFactor * 50.0);
-    
-    // ridged noise gives spiky peaks
-    float ridged = fbmRidged(p * 0.005);
-    d -= ridged * 40.0;
-
-    return d;
-}
 
 [noinline]
 float GenerateNoiseValue(float3 p)
 {
-    float ground = GroundVolumetric(p); 
-    
-    float mountain = MountainShape(p);
-    float terrain = SmoothUnion(ground, mountain, 30.0);
+    float height = SampleHeight(p.xz);
 
-    // Remember to change back to terrain:
-    return terrain;
+    // base terrain field
+    float density = p.y - height;
+
+    // OPTIONAL: caves (selective 3D noise)
+    if (p.y > -20 && p.y < 50)
+        density += fbm3D(p * 0.05, 4) * 3.0;
+
+    return density;
 }
+
 
 #endif

@@ -16,6 +16,7 @@
     /// </summary>
     public class DensityStage
     {
+        private readonly int generateColumnsKernel;
         private readonly int generateDensityKernel;
         private readonly int surfaceKernel;
 
@@ -44,6 +45,7 @@
 
             // Kernels
             surfaceKernel = this.densityShader.FindKernel("GenerateSurfaceMask");
+            generateColumnsKernel = this.densityShader.FindKernel("GenerateDensityColumns");
             generateDensityKernel = this.densityShader.FindKernel("GenerateDensityMap");
 
             // Constants
@@ -56,7 +58,7 @@
 
             // Stable buffers for Density.
             this.densityShader.SetBuffer(generateDensityKernel, "ChunkInputs", buffers.GenerateChunkInputBuffer);
-
+            this.densityShader.SetBuffer(generateColumnsKernel, "ChunkInputs", buffers.GenerateChunkInputBuffer);
         }
 
         /// <summary>
@@ -98,10 +100,22 @@
         /// Dispatches density generation for a <see cref="ChunkRenderBatch"/>.
         /// This writes the SDF field used by the marching-cubes and surface stages.
         /// </summary>
+        public void DispatchGenerationColumns(ChunkRenderBatch batch, int threadGroupsX, int threadGroupsZ, int offset)
+        {
+            this.densityShader.SetInt("Offset", offset); 
+            this.densityShader.SetBuffer(generateColumnsKernel, "DensityColumns", batch.DensityColumnsMap);
+            this.densityShader.Dispatch(generateColumnsKernel, threadGroupsX, threadGroupsZ, 1);
+        }
+
+        /// <summary>
+        /// Dispatches density generation for a <see cref="ChunkRenderBatch"/>.
+        /// This writes the SDF field used by the marching-cubes and surface stages.
+        /// </summary>
         public void DispatchGeneration(ChunkRenderBatch batch, int threadGroupsX, int threadGroupsY, int threadGroupsZ, int offset)
         {
-            this.densityShader.SetBuffer(generateDensityKernel, "DensityMap", batch.DensityMap);
             this.densityShader.SetInt("Offset", offset);
+            this.densityShader.SetBuffer(generateDensityKernel, "DensityMap", batch.DensityMap);
+            this.densityShader.SetBuffer(generateDensityKernel, "DensityColumns", batch.DensityColumnsMap);
             this.densityShader.Dispatch(generateDensityKernel, threadGroupsX, threadGroupsY, threadGroupsZ);
         }
     }

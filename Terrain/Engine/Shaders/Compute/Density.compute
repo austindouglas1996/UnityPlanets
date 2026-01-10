@@ -1,6 +1,7 @@
 ﻿#pragma only_renderers d3d11
 #pragma target 5.0
 
+#pragma kernel GenerateDensityColumns
 #pragma kernel GenerateDensityMap
 #pragma kernel GenerateSurfaceMask
 
@@ -12,6 +13,7 @@ uint Offset;
 StructuredBuffer<ChunkWorkDescriptor> ChunkInputs;
 
 /* Output */
+RWStructuredBuffer<float> DensityColumns;
 RWStructuredBuffer<float> DensityMap;
 RWStructuredBuffer<uint> SurfaceMask;
 
@@ -19,11 +21,43 @@ RWStructuredBuffer<uint> SurfaceMask;
 groupshared uint gHasAbove;
 groupshared uint gHasBelow;
 
+uint GetColumnIndex(ChunkCellContext context)
+{
+    // Each chunk owns a contiguous block of columns
+    uint columnsPerChunk = CellsPerAxis * CellsPerAxis;
+
+    uint x = context.CellCoord.x;
+    uint z = context.CellCoord.z;
+
+    return context.ChunkKeyIndex * columnsPerChunk + (z * CellsPerAxis + x);
+}
+
+[numthreads(8, 8, 1)]
+void GenerateDensityColumns(uint3 id : SV_DispatchThreadID)
+{
+    if (id.y >= CellsPerAxis)
+        return;
+    
+    ChunkCellContext context = GetChunkCellSamplesColumn(id, Offset, ChunkInputs);
+    
+    if (context.DensitySampleIndex == -1)
+        return;
+    
+    DensityColumns[GetColumnIndex(context)] = SampleHeight(float2(context.CellWorldPos.x, context.CellWorldPos.z));
+}
+
 [numthreads(4, 4, 4)]
 void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
 {
     ChunkCellContext context = GetChunkCellSamples(id, Offset, ChunkInputs);
-    DensityMap[context.DensitySampleIndex] = GenerateNoiseValue(context.CellWorldPos);
+
+    if (context.DensitySampleIndex == -1)
+        return;
+
+    float height = DensityColumns[GetColumnIndex(context)];
+    float density = context.CellWorldPos.y - height;
+
+    DensityMap[context.DensitySampleIndex] = density;
 }
 
 [numthreads(4, 4, 4)]
