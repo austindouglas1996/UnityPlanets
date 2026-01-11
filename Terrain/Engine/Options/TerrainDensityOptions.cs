@@ -85,6 +85,8 @@ namespace GingerVoxelSystem.Engine.Options
     [Serializable, StructLayout(LayoutKind.Sequential)]
     public struct TerrainDensityOptions
     {
+        public float debug1;
+
         [Header("Global")]
         [Tooltip("Logical voxel width of a chunk (before LOD).")]
         public int CellsPerAxis;

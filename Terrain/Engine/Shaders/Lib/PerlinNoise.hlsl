@@ -204,6 +204,32 @@ inline float Turbulence(float3 p)
     return abs(fbm3D(p, 5) * 2 -1);
 }
 
+float hash1(int3 p)
+{
+    // Large primes, no mysticism
+    uint h = uint(p.x) * 374761393u
+           + uint(p.y) * 668265263u
+           + uint(p.z) * 2147483647u;
+
+    h = (h ^ (h >> 13)) * 1274126177u;
+    h ^= (h >> 16);
+
+    return h * (1.0 / 4294967296.0); // 0..1
+}
+
+float hash1_2D(int2 p)
+{
+    // Same primes, fewer dimensions
+    uint h = uint(p.x) * 374761393u
+           + uint(p.y) * 668265263u;
+
+    h = (h ^ (h >> 13)) * 1274126177u;
+    h ^= (h >> 16);
+
+    return h * (1.0 / 4294967296.0); // 0..1
+}
+
+
 float3 hash3(int3 p)
 {
     // Large primes ensure good spatial hashing

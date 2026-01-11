@@ -71,9 +71,6 @@ float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint 
         case 5:
             result = ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeFoliage, 3);
             break;
-        case 6:
-            result = SampleBiomeNoiseMap(wp);
-            break;
         case 7:
             result = float4((vertex == 0) ? float4(tri.NormalA, 1) :
                             (vertex == 1) ? float4(tri.NormalB, 1) :

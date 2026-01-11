@@ -19,22 +19,15 @@ void RunDetailsPass(uint3 id : SV_DispatchThreadID)
     TriangleData tri = DetailTriangles[id.x];
     ChunkDetailData d = (ChunkDetailData) 0;
     
-    uint a = SampleBiomeIndex(tri.a);
-    uint b = SampleBiomeIndex(tri.b);
-    uint c = SampleBiomeIndex(tri.c);
+    uint a = SampleTerrainClass(tri.a);
+    uint b = SampleTerrainClass(tri.b);
+    uint c = SampleTerrainClass(tri.c);
     
     d.Biome = PackBiomeIndices(a, b, c, tri.LodIndex);
     
-    // Using biome blending increases the compile time
-    // of this HLSL shader to 28 seconds from 14 seconds.
-    // I don't understand why ): 
-    //d.ColorA = SampleBiomeBlended(tri.a);
-    //d.ColorB = SampleBiomeBlended(tri.b);
-    //d.ColorC = SampleBiomeBlended(tri.c);
-    
-    d.ColorA = SampleBiomeBlend(Biomes[a], tri.a);
-    d.ColorB = SampleBiomeBlend(Biomes[b], tri.b);
-    d.ColorC = SampleBiomeBlend(Biomes[c], tri.c);
+    d.ColorA = Biomes[a].MidLight; //SampleBiomeBlend(Biomes[a], tri.a);
+    d.ColorB = Biomes[b].MidLight; //SampleBiomeBlend(Biomes[a], tri.a);
+    d.ColorC = Biomes[c].MidLight; //SampleBiomeBlend(Biomes[a], tri.a);
 
     DetailBuffer[id.x] = d;
 }
