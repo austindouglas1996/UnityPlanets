@@ -45,7 +45,7 @@ void GenerateCollisionBlock(uint3 id : SV_DispatchThreadID)
         (float3(id) * VoxelSpacing - halfExtent);
 
     // Sample full terrain SDF
-    float d = GenerateNoiseValue(worldPos);
+    float d = ComputeDensity(worldPos);
 
     // Conservative bias so collision never gets thinner than visuals
     d -= CollisionBias;

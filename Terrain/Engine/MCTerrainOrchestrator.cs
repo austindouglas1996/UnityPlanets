@@ -127,7 +127,7 @@
                 int length = (end - start + 1);
 
                 // Generate density samples for all the chunks in the range.
-                density.DispatchSurfaceGeneration(job.Batch, length * genGroupSurfaceSize, genGroupSurfaceSize, start);
+                //density.DispatchSurfaceGeneration(job.Batch, length * genGroupSurfaceSize, genGroupSurfaceSize, start);
 
                 // Generate density for all chunks in the range.
                 density.DispatchGeneration(job.Batch, length * genGroupSize, genGroupSize, genGroupSize, start);

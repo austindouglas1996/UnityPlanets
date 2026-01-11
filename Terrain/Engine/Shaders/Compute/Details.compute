@@ -13,21 +13,55 @@ StructuredBuffer<TriangleData> DetailTriangles;
 /* Outputs */
 RWStructuredBuffer<ChunkDetailData> DetailBuffer;
 
+float3 BiomeMidColor(uint index)
+{
+    return Biomes[index].MidLight;
+}
+
+float3 BiomeColor(float3 wp)
+{
+    TerrainInfluence t = SampleTerrainInfluence(wp);
+    
+    float wDeep = t.deepWater;
+    float wShallow = t.shallowWater + t.river;
+    float wBeach = t.beach;
+    float wLand = t.land;
+    float wMountain = t.mountain;
+    
+    float sum = wDeep + wShallow + wBeach + wLand + wMountain;
+
+    if (sum > 0.0001)
+    {
+        float inv = 1.0 / sum;
+        wDeep *= inv;
+        wShallow *= inv;
+        wBeach *= inv;
+        wLand *= inv;
+        wMountain *= inv;
+    }
+
+    float3 color =
+      BiomeMidColor(0) * wDeep
+    + BiomeMidColor(1) * wShallow
+    + BiomeMidColor(2) * wBeach
+    + BiomeMidColor(3) * wLand
+    + BiomeMidColor(5) * wMountain;
+
+    
+    return color;
+}
+
 [numthreads(64, 1, 1)]
 void RunDetailsPass(uint3 id : SV_DispatchThreadID)
 {
     TriangleData tri = DetailTriangles[id.x];
     ChunkDetailData d = (ChunkDetailData) 0;
     
-    uint a = SampleTerrainClass(tri.a);
-    uint b = SampleTerrainClass(tri.b);
-    uint c = SampleTerrainClass(tri.c);
+    d.Biome = 0;
     
-    d.Biome = PackBiomeIndices(a, b, c, tri.LodIndex);
-    
-    d.ColorA = Biomes[a].MidLight; //SampleBiomeBlend(Biomes[a], tri.a);
-    d.ColorB = Biomes[b].MidLight; //SampleBiomeBlend(Biomes[a], tri.a);
-    d.ColorC = Biomes[c].MidLight; //SampleBiomeBlend(Biomes[a], tri.a);
+    d.ColorA = float4(BiomeColor(tri.a), 1); //SampleBiomeBlend(Biomes[a], tri.a);
+    d.ColorB = float4(BiomeColor(tri.b), 1); //SampleBiomeBlend(Biomes[a], tri.a);
+    d.ColorC = float4(BiomeColor(tri.c), 1); //SampleBiomeBlend(Biomes[a], tri.a);
 
     DetailBuffer[id.x] = d;
 }

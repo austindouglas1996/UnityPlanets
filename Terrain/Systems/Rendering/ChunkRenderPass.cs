@@ -67,16 +67,19 @@ namespace GingerVoxelSystem.Systems.Rendering
 
             var resources = frameData.Get<UniversalResourceData>();
 
-            using (var builder = renderGraph.AddRasterRenderPass<PassData>("ChunkTerrain", out var passData))
-            {
-                passData.Router = router;
+            using var builder =
+                renderGraph.AddRasterRenderPass<PassData>("ChunkTerrain", out var passData);
 
-                builder.SetRenderAttachment(resources.activeColorTexture, 0);
-                builder.SetRenderFunc((PassData data, RasterGraphContext ctx) =>
-                {
-                    data.Router.FillCommandBuffer(ctx.cmd);
-                });
-            }
+            passData.Router = router;
+
+            // Bind camera color + depth as actual render attachments
+            builder.SetRenderAttachment(resources.activeColorTexture, 0);
+            builder.SetRenderAttachmentDepth(resources.activeDepthTexture, AccessFlags.Write);
+
+            builder.SetRenderFunc((PassData data, RasterGraphContext ctx) =>
+            {
+                data.Router.FillCommandBuffer(ctx.cmd);
+            });
         }
 
         /// <summary>

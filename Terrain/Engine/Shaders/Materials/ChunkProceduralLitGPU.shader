@@ -24,6 +24,9 @@ Shader "Custom/ChunkProceduralLitGPU"
             Name "ForwardLit"
             Tags { "LightMode" = "UniversalForward" }
 
+            ZWrite On
+            ZTest LEqual
+
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
