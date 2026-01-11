@@ -161,7 +161,7 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// Draw the buckets render data.
         /// </summary>
         /// <param name="material"></param>
-        public void Draw(CommandBuffer cdb, Material material)
+        public void Draw(RasterCommandBuffer cdb, Material material)
         {
             for (int i = 0; i < buckets.Count; i++)
                 buckets[i].Draw(cdb, material);

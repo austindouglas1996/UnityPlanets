@@ -121,7 +121,7 @@
         /// Fille the <see cref="CommandBuffer"/> with our buckets chunks.
         /// </summary>
         /// <param name="cmd"></param>
-        public void FillCommandBuffer(CommandBuffer cmd)
+        public void FillCommandBuffer(RasterCommandBuffer cmd)
         {
             if (lodBuckets == null) return;
 

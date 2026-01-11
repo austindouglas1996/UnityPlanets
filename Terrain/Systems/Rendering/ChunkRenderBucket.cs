@@ -278,7 +278,7 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// Have the bucket draw the render data which includes the elements from this bucket.
         /// </summary>
         /// <param name="vertexMat"></param>
-        public void Draw(CommandBuffer cdb, Material vertexMat)
+        public void Draw(RasterCommandBuffer cdb, Material vertexMat)
         {
             if (IsEmpty) return;
 

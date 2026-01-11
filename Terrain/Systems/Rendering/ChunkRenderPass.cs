@@ -38,6 +38,7 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// Legacy URP execution path.
         /// Used when RenderGraph is disabled (Forward Renderer mode).
         /// </summary>
+        /*
         [Obsolete]
         public override void Execute(ScriptableRenderContext context, ref RenderingData data)
         {
@@ -53,7 +54,7 @@ namespace GingerVoxelSystem.Systems.Rendering
 
             // Return buffer to pool
             CommandBufferPool.Release(cmd);
-        }
+        }*/
 
         /// <summary>
         /// RenderGraph path.
@@ -64,13 +65,15 @@ namespace GingerVoxelSystem.Systems.Rendering
             if (router == null)
                 return;
 
-            using (var builder = renderGraph.AddRenderPass<PassData>("ChunkTerrain", out var passData))
+            var resources = frameData.Get<UniversalResourceData>();
+
+            using (var builder = renderGraph.AddRasterRenderPass<PassData>("ChunkTerrain", out var passData))
             {
                 passData.Router = router;
 
-                builder.SetRenderFunc((PassData data, RenderGraphContext ctx) =>
+                builder.SetRenderAttachment(resources.activeColorTexture, 0);
+                builder.SetRenderFunc((PassData data, RasterGraphContext ctx) =>
                 {
-                    // Same logic as legacy path but uses RenderGraph context command buffer
                     data.Router.FillCommandBuffer(ctx.cmd);
                 });
             }
