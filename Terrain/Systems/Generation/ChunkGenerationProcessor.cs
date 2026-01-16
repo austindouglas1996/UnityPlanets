@@ -65,13 +65,13 @@
         /// The provided callback will be invoked once the check completes.
         /// </summary>
         public void RequestSurfaceCheck(ChunkKey key, Action<ChunkKey, int, bool> onDone, int parentIndex = -1) =>
-            surfaceBatcher.Add(new ChunkGenerationJob(key,onDone, parentIndex));
+            surfaceBatcher.Add(new ChunkGenerationJob(key,onDone,parentIndex));
 
         /// <summary>
         /// Queues a chunk for full generation.
         /// The provided callback will be invoked once generation is complete.
         /// </summary>
-        public void RequestChunkGeneration(ChunkKey key, Action<ChunkKey, int, bool> onDone)
+        public void RequestChunkGeneration(ChunkKey key, Action<ChunkKey,int, bool> onDone)
         {
             if (key == ChunkKey.Invalid)
             {
@@ -96,10 +96,25 @@
         /// Removes all queued and active references to a given chunk.
         /// Call this when unloading or discarding a chunk to avoid processing it unnecessarily.
         /// </summary>
-        public void RemoveChunk(ChunkKey key, bool now = false)
+        public bool RemoveChunk(ChunkKey key, bool now = false)
         {
-            layerRenderer.Remove(key);
-            surfaceBatcher.Remove(key);
+            bool l = layerRenderer.Remove(key);
+            bool s = surfaceBatcher.Remove(key);
+
+            if (l || s)
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Returns whether a given key exists.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public bool Exists(ChunkKey key)
+        {
+            return layerRenderer.Exists(key); 
         }
 
         /// <summary>
@@ -110,6 +125,14 @@
             this.removalQueue.Clear();
             this.layerRenderer.Clear();
             this.surfaceBatcher.Clear();
+        }
+
+        /// <summary>
+        /// Mark all collections as dirty.
+        /// </summary>
+        public void Refresh()
+        {
+            this.layerRenderer.MarkAsDirty(true);
         }
 
         /// <summary>

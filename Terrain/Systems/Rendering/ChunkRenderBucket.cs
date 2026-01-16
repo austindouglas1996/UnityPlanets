@@ -4,6 +4,7 @@ namespace GingerVoxelSystem.Systems.Rendering
     using GingerVoxelSystem.Engine;
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Runtime.CompilerServices;
     using UnityEngine;
     using UnityEngine.Rendering;
@@ -47,6 +48,11 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// Tells whether this bucket should request itself to be re-generated.
         /// </summary>
         private bool IsDirty = false;
+
+        /// <summary>
+        /// Tells us if the collection was modified when generating.
+        /// </summary>
+        private bool DirtyWhileGenerating = false;
 
         /// <summary>
         /// Helper so we don't accidently requeue a generation request if the job is taking longer
@@ -123,29 +129,33 @@ namespace GingerVoxelSystem.Systems.Rendering
         {
             if (index.ContainsKey(key))
             {
-                Debug.LogError("ChunkRenderBucket tried to add an existing key.");
+                Debug.LogWarning("ChunkRenderBucket tried to add an existing key.");
                 return false;
             }
 
-            if (IsFull) return false;
+            if (IsFull)
+            {
+                Debug.LogWarning("ChunkRenderBucket tried to append in an already full bucket.");
+                return false;
+            }
 
-            int pos;
-            if (AvailableSlots.Count != 0)
+            int pos = -1;
+
+            while (AvailableSlots.Count > 0)
             {
                 int hole = AvailableSlots.Dequeue();
 
-                // Stale hole if it’s at/after the frontier. append instead
-                if (hole >= nextIndex)
-                {
-                    pos = nextIndex;
-                    nextIndex++;
-                }
-                else
+                // Hole must be within [0, nextIndex) to be meaningful
+                if (hole < nextIndex)
                 {
                     pos = hole;
+                    break;
                 }
+
+                // else: stale hole, discard it.
             }
-            else
+
+            if (pos < 0)
             {
                 pos = nextIndex;
                 nextIndex++;
@@ -155,6 +165,7 @@ namespace GingerVoxelSystem.Systems.Rendering
             index[key] = pos;
             modifications[pos] = key;
             MarkAsDirty(false);
+
             return true;
         }
 
@@ -283,7 +294,10 @@ namespace GingerVoxelSystem.Systems.Rendering
             if (IsEmpty) return;
 
             var rd = RenderData;
-            if (rd == null || rd.IsDisposed || rd.RawTriangleBuffer == null || rd.Args == null) return;
+            if (rd == null || rd.IsDisposed || rd.RawTriangleBuffer == null || rd.Args == null)
+            {
+                return;
+            }
 
             // enqueue indirect procedural draw
             cdb.DrawProceduralIndirect(
@@ -313,12 +327,23 @@ namespace GingerVoxelSystem.Systems.Rendering
         /// <param name="forceNow">The update will happen right away and not consider its options.</param>
         public void MarkAsDirty(bool forceNow)
         {
+            if (this.GenerateInProgress)
+            {
+                this.DirtyWhileGenerating = true;
+            }
+
             this.IsDirty = true;
 
             if (forceNow)
+            {
                 this.RemainingTicksToUpdate = 0;
+                for (int i = 0; i < items.Count(); i++)
+                {
+                    modifications.Add(i, items[i]);
+                }
+            }
             else
-                this.RemainingTicksToUpdate = 25;
+                this.RemainingTicksToUpdate = 5;
         }
 
         /// <summary>
@@ -329,8 +354,12 @@ namespace GingerVoxelSystem.Systems.Rendering
             while (AvailableSlots.Count > 0 && nextIndex - 1 >= 0)
             {
                 var item = items[nextIndex - 1].Value;
-                TryRemoveInternal(item, true);
-                TryAdd(item);
+
+                if (item != null)
+                {
+                    TryRemoveInternal(item, true);
+                    TryAdd(item);
+                }
             }
         }
 
@@ -359,8 +388,17 @@ namespace GingerVoxelSystem.Systems.Rendering
 
             OnGenerate?.Invoke(this, EventArgs.Empty);
 
-            this.IsDirty = false;
             this.GenerateInProgress = false;
+
+            if (this.DirtyWhileGenerating)
+            {
+                DirtyWhileGenerating = false;
+                RemainingTicksToUpdate = 0;
+            }
+            else
+            {
+                this.IsDirty = false;
+            }
         }
 
         /// <summary>

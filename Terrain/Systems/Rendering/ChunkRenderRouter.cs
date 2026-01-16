@@ -5,6 +5,7 @@
     using UnityEngine.Rendering;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Systems.Generation;
+    using UnityEngine;
 
     /// <summary>
     /// Thin “lane switch” over two <see cref="ChunkRenderBucketCollection"/>s:
@@ -72,6 +73,11 @@
         public bool Remove(ChunkKey key)
         {
             return lodBuckets[key.LODIndex == 0 ? 0 : 1].Remove(key);
+        }
+
+        public bool Exists(ChunkKey key)
+        {
+            return lodBuckets[key.LODIndex == 0 ? 0 : 1].Exists(key);
         }
 
         /// <summary>

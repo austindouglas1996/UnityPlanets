@@ -37,16 +37,7 @@ float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint 
                       (vertex == 1) ? data.ColorB :
                                       data.ColorC);
     }
-    
-    if (tri.LodIndex == 9)
-    {
-        return float4(0, 0, 0, 1);
-    }
-    
-    if (tri.LodIndex == 8)
-    {
-        return float4(119, 3, 252, 1);
-    }
+  
     
     float3 wp = (vertex == 0) ? tri.a :
                 (vertex == 1) ? tri.b :
@@ -57,7 +48,7 @@ float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint 
     switch (overlay)
     {
         case 1:
-            result = GetColorByID(UnpackLOD(data.Biome));
+            result = ColorsArray[tri.LodIndex];
             break;
         case 2:
             result = ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeHeight, 3);

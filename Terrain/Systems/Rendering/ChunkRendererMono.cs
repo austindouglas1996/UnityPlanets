@@ -83,6 +83,11 @@
             this.InitializeRootChunks();
         }
 
+        public void Refresh()
+        {
+            this.processor.Refresh();
+        }
+
         /// <summary>
         /// Refresh chunks now.
         /// </summary>

@@ -26,7 +26,7 @@ namespace GingerVoxelSystem.Engine
         {
             Keys = keys;
             KeysCount = keysCount;
-            Modifications = modifications;
+            Modifications = new (modifications);
             Batch = batch;
             OnCompleted = onCompleted;
         }

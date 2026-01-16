@@ -1,9 +1,11 @@
 ﻿namespace GingerVoxelSystem.Systems.Generation
 {
+    using DistantLands.Cozy;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Engine.Generation;
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using UnityEngine;
 
     /// <summary>
@@ -120,7 +122,6 @@
 
         private readonly List<ChunkLodTreeNode> Nodes = new();
         private readonly Dictionary<ChunkKey, int> IndexByKey = new();
-        private readonly Dictionary<Vector3Int, int> IndexByOrigin = new();
         private readonly Stack<int> FreeSingleBlocks = new();
 
         /// <summary>
@@ -177,6 +178,11 @@
                     CurrentUpdateIndex = 0;
 
                 var node = Nodes[CurrentUpdateIndex];
+
+                // Somehow this happens sometimes...even though it should not be able to happen.
+                if (node == null)
+                    continue;
+
                 if (node.State == NodeState.IdleLeaf || node.State == NodeState.Subdivided)
                 {
                     UpdateNode(CurrentUpdateIndex);
@@ -270,7 +276,6 @@
             var n = Nodes[index];
 
             IndexByKey.Remove(n.Key);
-            IndexByOrigin.Remove(n.Key.Origin);
             processor.RemoveChunk(n.Key);
 
             n.Free();
@@ -303,7 +308,7 @@
 
             if (node.State == NodeState.Subdivided)
             {
-                if (node.LODIndex < RootLOD && node.LODIndex <= desired)
+                if (node.LODIndex < RootLOD+1 && node.LODIndex <= desired)
                     return LodDecision.Merge;
 
                 return LodDecision.NoChange;
@@ -319,6 +324,11 @@
         private void PerformSubdivide(int index)
         {
             ChunkLodTreeNode node = Nodes[index];
+            if (node.State == NodeState.AwaitSubdivide)
+            {
+                throw new System.ArgumentException("ChunkLodNode tried to subdivide while already subdividing.");
+            }
+
             node.State = NodeState.AwaitSubdivide;
 
             // Handle edge case: child subdivides before generating.
@@ -412,12 +422,11 @@
                 // If we have already seen this key skip.
                 if (!IndexByKey.TryAdd(key, childIndex))
                 {
+                    Debug.LogWarning("WARNING: SurfaceCheck passed with an invalid key.");
                     FreeSingleBlock(childIndex);
                 }
                 else
                 {
-                    IndexByOrigin[key.Origin] = childIndex;
-
                     child.Key = key;
                     child.State = NodeState.IdleLeaf;
                     child.ParentIndex = parentIndex;
@@ -453,8 +462,11 @@
             node.MeshReady = true;
             node.State = NodeState.IdleLeaf;
 
-            // Handle parent relationship.
-            MarkChildResolvedIfHasParent(nodeIndex);
+            if (node.ParentIndex != -1)
+            {
+                // Handle parent relationship.
+                MarkChildResolvedIfHasParent(nodeIndex);
+            }
 
             // Have neighbors verify their edge mask.
             LodTopologyVersion++;
@@ -469,7 +481,7 @@
         private void OnRequestGenerationMergeCompleted(ChunkKey key, int parentIndex, bool success)
         {
             if (!IndexByKey.TryGetValue(key, out int nodeIndex))
-                throw new System.ArgumentNullException("Invalid key returned.");
+                throw new System.ArgumentNullException("Generation request returned completed for an invalid key.");
 
             ChunkLodTreeNode node = Nodes[nodeIndex];
             if (!success)
@@ -510,13 +522,14 @@
         {
             ChunkLodTreeNode node = Nodes[childNode];
             if (node.ParentIndex == -1)
-                return;
+            {
+                throw new System.ArgumentNullException("Tried to mark an orphan child as resolved.");
+            }
 
             ChunkLodTreeNode parent = Nodes[node.ParentIndex];
             parent.ChildrenReady++;
 
-            if (parent.ChildrenReady == parent.ChildrenExpected &&
-                parent.ChildrenChecked == 8)
+            if (parent.ChildrenReady == parent.ChildrenExpected && parent.ChildrenChecked == 8)
             {
                 parent.MeshReady = false;
                 parent.State = NodeState.Subdivided;

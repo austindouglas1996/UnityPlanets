@@ -116,18 +116,27 @@
             int genGroupSize = Mathf.CeilToInt(samplesPerAxis / 4f);
 
             // Modified chunk ranges grouped contiguously so we don't dispatch per-chunk.
-            List<(int start, int end)> ranges = chunkBuffers.GroupContiguous(job.Modifications);
+            List<(int start, int end)> ranges = chunkBuffers.GroupContiguous(job.Modifications, job.Keys, job.KeysCount);
 
             // Set buffer.
             chunkBuffers.FillGenerateChunkInputs(job.Keys, job.KeysCount);
 
             // 1) Density + ClearCount + CountTriangles
             foreach (var (start, end) in ranges)
-            {
+            {                
                 int length = (end - start + 1);
 
+                // If the start contains a removal we do not need to do anything but remove entries.
+                if (job.Keys[start] == null)
+                {
+                    // Reset old triangle counts.
+                    utility.DispatchClear(job.Batch.TriangleChunkCounts, start, length);
+
+                    continue;
+                }
+
                 // Generate density samples for all the chunks in the range.
-                //density.DispatchSurfaceGeneration(job.Batch, length * genGroupSurfaceSize, genGroupSurfaceSize, start);
+                density.DispatchSurfaceGeneration(job.Batch, length * genGroupSurfaceSize, genGroupSurfaceSize, start);
 
                 // Generate density for all chunks in the range.
                 density.DispatchGeneration(job.Batch, length * genGroupSize, genGroupSize, genGroupSize, start);
@@ -146,6 +155,15 @@
             foreach (var (start, end) in ranges)
             {
                 int length = (end - start + 1);
+
+                // If the start contains a removal we do not need to do anything but remove entries.
+                if (job.Keys[start] == null)
+                {
+                    // Reset write cursor for each chunk.
+                    utility.DispatchClear(job.Batch.TriangleWriteCursor, start, length);
+
+                    continue;
+                }
 
                 // Reset write cursor for each chunk.
                 utility.DispatchClear(job.Batch.TriangleWriteCursor, start, length);

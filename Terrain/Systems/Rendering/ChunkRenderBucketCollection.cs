@@ -70,7 +70,7 @@ namespace GingerVoxelSystem.Systems.Rendering
         {
             if (keys.ContainsKey(key))
             {
-                throw new System.ArgumentException("ChunkRenderBucketCollection tried to add an already existing key.");
+                throw new System.ArgumentException($"ChunkRenderBucketCollection tried to add an already existing key. ChunkKey: {key.ToString()}");
             }
 
             var bucket = GetOrCreateTailBucket();
@@ -121,6 +121,16 @@ namespace GingerVoxelSystem.Systems.Rendering
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Returns whether a given key exists.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public bool Exists(ChunkKey key)
+        {
+            return keys.ContainsKey(key); 
         }
 
         /// <summary>

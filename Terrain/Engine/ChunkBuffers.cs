@@ -8,6 +8,7 @@
     using System.Linq;
     using System.Runtime.InteropServices;
     using UnityEngine;
+    using UnityEngine.InputSystem;
 
     /// <summary>
     /// Central buffer container shared across all terrain-generation stages.
@@ -107,34 +108,45 @@
         /// <summary>
         /// Groups modification indices into contiguous ranges for efficient job dispatch.
         /// </summary>
-        public List<(int start, int end)> GroupContiguous(Dictionary<int, ChunkKey?> mods)
+        public List<(int start, int end)> GroupContiguous(Dictionary<int, ChunkKey?> mods,ChunkKey?[] keys,int keysCount)
         {
-            if (mods.Count == 0)
-                return new List<(int, int)>();
-
-            var sorted = mods.Keys.OrderBy(i => i);
             List<(int start, int end)> groups = new();
-            int rangeStart = -1, prev = -1;
 
-            foreach (int idx in sorted)
+            // Make sure there is modifications.
+            if (mods.Count == 0)
+                return groups;
+
+            static bool IsValid(int idx, ChunkKey?[] keys, int keysCount) => idx < keysCount && keys[idx] != null;
+
+            // Sort the keys as we want the ranges to be in order.
+            var sorted = mods.Keys.OrderBy(i => i);
+
+            using var e = sorted.GetEnumerator();
+            if (!e.MoveNext())
+                return groups;
+
+            int rangeStart = e.Current;
+            int prev = e.Current;
+
+            // An invalid is defined as null.
+            bool prevIsValid = IsValid(prev, keys, keysCount);
+
+            while (e.MoveNext())
             {
-                if (rangeStart == -1)
+                int idx = e.Current;
+                bool isValid = IsValid(idx, keys, keysCount);
+
+                // If this index is not in order OR if this
+                // entry is not the same type as the previous
+                // then this ends our current group.
+                if (idx != prev + 1 || isValid != prevIsValid)
                 {
-                    rangeStart = prev = idx;
-                    continue;
+                    groups.Add((rangeStart, prev));
+                    rangeStart = idx;
                 }
 
-                if (idx == prev + 1)
-                {
-                    // contiguous, extend current range
-                    prev = idx;
-                }
-                else
-                {
-                    // gap detected.
-                    groups.Add((rangeStart, prev));
-                    rangeStart = prev = idx;
-                }
+                prev = idx;
+                prevIsValid = isValid;
             }
 
             groups.Add((rangeStart, prev));
