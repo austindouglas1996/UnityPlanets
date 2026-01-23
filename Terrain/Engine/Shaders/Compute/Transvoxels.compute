@@ -340,7 +340,7 @@ float GetCornerValue(uint face, ChunkCellContext key, int cornerIndex, int3 samp
     else
     {
         float3 worldPos = GetCornerWorldPosition(face, key, cornerIndex);
-        return ComputeDensity(worldPos);
+        return GenerateNoiseValue(worldPos);
     }
 }
 

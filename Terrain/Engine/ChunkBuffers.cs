@@ -90,8 +90,12 @@
         {
             InputGenerate.Clear();
 
-            for (int i = 0; i < n; i++)
+            int found = 0;
+            for (int i = 0; i < keys.Length && found < n; i++)
             {
+                if (!keys[i].HasValue)
+                    continue;
+
                 var ctx = keys[i].Value;
                 InputGenerate.Add(new ChunkWorkDescriptorGPU
                 {
@@ -100,9 +104,14 @@
                     LodIndex = ctx.LODIndex,
                     LodEdgeMask = math.GetLODEdgeMask(ctx, player.position),
                 });
+
+                found++;
             }
 
-            GenerateChunkInputBuffer.SetData(InputGenerate, 0, 0, n);
+            if (found != n)
+                Debug.LogWarning("FilLGenerateChunkInputs: Found keys does not match total keys.");
+
+            GenerateChunkInputBuffer.SetData(InputGenerate, 0, 0, found);
         }
 
         /// <summary>
@@ -116,7 +125,7 @@
             if (mods.Count == 0)
                 return groups;
 
-            static bool IsValid(int idx, ChunkKey?[] keys, int keysCount) => idx < keysCount && keys[idx] != null;
+            static bool IsValid(int idx, ChunkKey?[] keys, int keysCount) => keys[idx] != null;
 
             // Sort the keys as we want the ranges to be in order.
             var sorted = mods.Keys.OrderBy(i => i);
