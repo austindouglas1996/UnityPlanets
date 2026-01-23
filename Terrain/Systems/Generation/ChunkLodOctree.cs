@@ -1,11 +1,9 @@
 ﻿namespace GingerVoxelSystem.Systems.Generation
 {
-    using DistantLands.Cozy;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Engine.Generation;
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using UnityEngine;
 
     /// <summary>

@@ -71,11 +71,6 @@ namespace GingerVoxelSystem.Systems.Rendering
         private IChunkGenerator chunkGenerator;
 
         /// <summary>
-        /// The material block used for generation.
-        /// </summary>
-        private MaterialPropertyBlock mpb = new();
-
-        /// <summary>
         /// Initializes a new instance of <see cref="ChunkRenderBucket"/>.
         /// </summary>
         /// <param name="capacity"></param>
@@ -295,18 +290,10 @@ namespace GingerVoxelSystem.Systems.Rendering
 
             var rd = RenderData;
             if (rd == null || rd.IsDisposed || rd.RawTriangleBuffer == null || rd.Args == null)
-            {
                 return;
-            }
 
             // enqueue indirect procedural draw
-            cdb.DrawProceduralIndirect(
-                Matrix4x4.identity,
-                vertexMat,
-                0,
-                MeshTopology.Triangles,
-                rd.Args,
-                0, mpb);
+            cdb.DrawProceduralIndirect(Matrix4x4.identity,vertexMat,0,MeshTopology.Triangles,rd.Args,0, rd.MPB);
         }
 
         /// <summary>
@@ -347,28 +334,11 @@ namespace GingerVoxelSystem.Systems.Rendering
         }
 
         /// <summary>
-        /// A pregeneration sort function to sort the collection before sending to dispatch.
-        /// </summary>
-        protected virtual void PreDispatchGeneration()
-        {
-            while (AvailableSlots.Count > 0 && nextIndex - 1 >= 0)
-            {
-                var item = items[nextIndex - 1].Value;
-
-                if (item != null)
-                {
-                    TryRemoveInternal(item, true);
-                    TryAdd(item);
-                }
-            }
-        }
-
-        /// <summary>
         /// Call the <see cref="IChunkGenerator"/> dispatch function to deploy this batch for generation.
         /// </summary>
         protected virtual void OnDispatchGeneration()
         {
-            DispatchJob job = new DispatchJob(items, nextIndex, modifications, this.renderData, OnDispatchGenerationCompleted);
+            DispatchJob job = new DispatchJob(items, index.Count(), modifications, this.renderData, OnDispatchGenerationCompleted);
             chunkGenerator.DispatchGeneration(job);
         }
 
@@ -382,8 +352,6 @@ namespace GingerVoxelSystem.Systems.Rendering
             if (RenderData != output)
             {
                 RenderData = output;
-                mpb.SetBuffer("_TriangleBuffer", RenderData.FlatTriangleBuffer);
-                mpb.SetBuffer("_TriangleDetailsBuffer", RenderData.Details);
             }
 
             OnGenerate?.Invoke(this, EventArgs.Empty);
@@ -409,9 +377,23 @@ namespace GingerVoxelSystem.Systems.Rendering
             if (GenerateInProgress || this.IsEmpty) return;
             GenerateInProgress = true;
 
-            PreDispatchGeneration();
-            OnDispatchGeneration();
+            // Organize the contents before dispatching
+            // we need to make sure nulls are in the back.
+            // NOTE: I think this could be better, but I really can't seem
+            // to find a solution that works for me. Reducing modifications
+            // is critical.
+            while (AvailableSlots.Count > 0 && nextIndex - 1 >= 0)
+            {
+                var item = items[nextIndex - 1].Value;
 
+                if (item != null)
+                {
+                    TryRemoveInternal(item, true);
+                    TryAdd(item);
+                }
+            }
+
+            OnDispatchGeneration();
             this.modifications.Clear();
         }
     }

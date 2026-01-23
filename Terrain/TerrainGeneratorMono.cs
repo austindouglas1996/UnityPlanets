@@ -28,7 +28,7 @@ namespace GingerVoxelSystem
             chunkRenderer = GetComponent<ChunkRendererMono>();
 
             if (ChunkConfiguration == null)
-                Debug.LogError("ChunkConfiguration not assigned.");
+                Debug.LogError("ChunkConfiguration is not assigned.");
 
             chunkRenderer.Initialize(this);
         }

@@ -78,9 +78,7 @@
                 throw new System.ArgumentException("Invalid key was provided.");
             }
 
-            var job = new ChunkGenerationJob(key,onDone);
-
-            layerRenderer.Add(job);
+            layerRenderer.Add(new ChunkGenerationJob(key, onDone));
         }
 
         /// <summary>

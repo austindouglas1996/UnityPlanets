@@ -1,10 +1,7 @@
 namespace GingerVoxelSystem.Systems.Rendering
 {
-    using GingerVoxelSystem.Engine;
     using System;
-    using System.Runtime.InteropServices;
     using UnityEngine;
-    using UnityEngine.Rendering;
 
     /// <summary>
     /// Draw-ready container for a chunk group: triangle append buffer + indirect args + culling bounds.
@@ -58,6 +55,11 @@ namespace GingerVoxelSystem.Systems.Rendering
         public ComputeBuffer Args;
 
         /// <summary>
+        /// The material block used for generation.
+        /// </summary>
+        public MaterialPropertyBlock MPB { get; private set; }
+
+        /// <summary>
         /// Has <see cref="Dispose"/> been called?
         /// </summary>
         private bool isDisposed = false;
@@ -88,6 +90,10 @@ namespace GingerVoxelSystem.Systems.Rendering
             this.DensitySurfaceMap = densityColumnMap;
             this.Args = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
             this.DispatchArgs = new ComputeBuffer(3, sizeof(uint), ComputeBufferType.IndirectArguments);
+
+            this.MPB = new MaterialPropertyBlock();
+            MPB.SetBuffer("_TriangleBuffer", this.FlatTriangleBuffer);
+            MPB.SetBuffer("_TriangleDetailsBuffer", this.Details);
         }
 
         /// <summary>
@@ -121,51 +127,7 @@ namespace GingerVoxelSystem.Systems.Rendering
             Details = null;
             DensityMap = null;
             DensitySurfaceMap = null;
-        }
-
-        /// <summary>
-        /// Asynchronously read all triangles from this batch's triangle buffer.
-        /// Useful for LOD0 collider baking.
-        /// </summary>
-        /// <param name="set">Batch whose triangle buffer will be read.</param>
-        /// <param name="onDone">Callback with the CPU-side triangle array (may be empty).</param>
-        public static void ReadTrianglesAsync(ChunkRenderBatch set, Action<TriangleDataGPU[]> onDone)
-        {
-            if (set.isDisposed)
-            {
-                throw new System.InvalidOperationException("Set has been disposed of.");
-            }
-
-            AsyncGPUReadback.Request(set.Args, (reqArgs) =>
-            {
-                if (reqArgs.hasError)
-                {
-                    onDone(Array.Empty<TriangleDataGPU>());
-                    return;
-                }
-
-                uint vertexCount = reqArgs.GetData<uint>()[0];
-                int triCount = (int)vertexCount / 3;
-
-                ReadTriangles(set, triCount, onDone);
-            });
-        }
-
-        private static void ReadTriangles(ChunkRenderBatch set, int triCount, Action<TriangleDataGPU[]> onDone)
-        {
-            int bytes = triCount * Marshal.SizeOf<TriangleDataGPU>();
-
-            AsyncGPUReadback.Request(set.FlatTriangleBuffer, bytes, 0, (reqTris) =>
-            {
-                if (reqTris.hasError)
-                {
-                    onDone(Array.Empty<TriangleDataGPU>());
-                    return;
-                }
-
-                var output = reqTris.GetData<TriangleDataGPU>().ToArray();
-                onDone(output);
-            });
+            MPB = null;
         }
     }
 }

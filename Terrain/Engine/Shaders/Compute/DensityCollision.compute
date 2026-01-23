@@ -40,12 +40,10 @@ void GenerateCollisionBlock(uint3 id : SV_DispatchThreadID)
     // Compute local offset so block is centered
     float3 halfExtent = (BlockResolution - 1) * 0.5 * VoxelSpacing;
 
-    float3 worldPos =
-        CenterPosition +
-        (float3(id) * VoxelSpacing - halfExtent);
+    float3 worldPos = CenterPosition + (float3(id) * VoxelSpacing - halfExtent);
 
     // Sample full terrain SDF
-    float d = ComputeDensity(worldPos);
+    float d = GenerateNoiseValue(worldPos);
 
     // Conservative bias so collision never gets thinner than visuals
     d -= CollisionBias;

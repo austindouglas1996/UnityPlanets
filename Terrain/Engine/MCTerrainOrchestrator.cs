@@ -148,7 +148,7 @@
                 marchingCubes.DispatchTriangleCount(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
             }
 
-            // 2) Repack prepass — builds draw args + packed offsets
+            // 2) Repack prepass - builds draw args + packed offsets
             repack.DispatchPrePass(job.Batch, job.KeysCount);
 
             // 3) Clear cursor + run marching for actual triangles

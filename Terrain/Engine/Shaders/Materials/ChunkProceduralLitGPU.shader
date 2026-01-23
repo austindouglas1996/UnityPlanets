@@ -1,4 +1,4 @@
-Shader "Custom/ChunkProceduralLitGPU"
+﻿Shader "Custom/ChunkProceduralLitGPU"
 {
     Properties
     {
@@ -70,7 +70,7 @@ Shader "Custom/ChunkProceduralLitGPU"
                 ChunkDetailData data = _TriangleDetailsBuffer[triIndex];
 
                 float3 pos    = (subIndex == 0) ? tri.a : (subIndex == 1) ? tri.b : tri.c;
-                float3 normal = (subIndex == 0) ? tri.NormalA : (subIndex == 1) ? tri.NormalB : tri.NormalC;
+                float3 normal = normalize(cross(tri.b - tri.a, tri.c - tri.a)); //(subIndex == 0) ? tri.NormalA : (subIndex == 1) ? tri.NormalB : tri.NormalC;
 
                 float3 up = abs(normal.y) < 0.999 ? float3(0,1,0) : float3(1,0,0);
 
