@@ -1,3 +1,4 @@
+
 #ifndef CHUNK_COMMON_STRUCT_INCLUDED
 #define CHUNK_COMMON_STRUCT_INCLUDED
 
@@ -18,6 +19,28 @@ struct ChunkWorkDescriptor
     uint SourceOffset;
     uint SourceCount;
     uint DestStart;
+    
+    uint EditStart;
+    uint EditCount;
+};
+
+// Must stay in sync with the C# side struct if used in a structured buffer:
+//   - Field order
+//   - Data type sizes and alignment
+//
+// Represents a single terrain edit operation applied in world space.
+// This data is consumed directly by density generation kernels.
+//
+// All values are world-space and LOD-agnostic. The GPU determines voxel
+// influence by comparing voxel world positions against these fields.
+struct ChunkWorkEdit
+{
+    float3 HitPointWP;
+    
+    float Radius;
+    float Intensity;
+    
+    int Operation;
 };
 
 // Returned by GetChunkAccess(). Holds everything needed

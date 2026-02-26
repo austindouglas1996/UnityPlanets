@@ -1,4 +1,8 @@
-﻿using System;
+﻿using GingerVoxelSystem.Core;
+using GingerVoxelSystem.Systems.Generation;
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -23,6 +27,9 @@ namespace GingerVoxelSystem.Engine.Stage
 
         private readonly ComputeShader densityShader;
         private readonly ComputeBuffer outputBuffer;
+        private readonly ComputeBuffer editBuffer;
+
+        private readonly IChunkServices chunkServices;
 
         // Prevents overlapping GPU readbacks, which would otherwise
         // reintroduce stalls and defeat the point of caching.
@@ -36,7 +43,7 @@ namespace GingerVoxelSystem.Engine.Stage
         /// Compute shader containing the <c>GenerateCollisionBlock</c> kernel.
         /// This shader is expected to evaluate the full terrain SDF.
         /// </param>
-        public DensityCollisionStage(ComputeShader densityCollision)
+        public DensityCollisionStage(ComputeShader densityCollision, IChunkServices chunkServices)
         {
             if (densityCollision == null)
             {
@@ -44,6 +51,7 @@ namespace GingerVoxelSystem.Engine.Stage
             }
 
             this.densityShader = densityCollision;
+            this.chunkServices = chunkServices;
 
             // Kernel lookup
             this.collisionKernel = this.densityShader.FindKernel("GenerateCollisionBlock");
@@ -58,7 +66,11 @@ namespace GingerVoxelSystem.Engine.Stage
             // This buffer is reused across regenerations.
             this.outputBuffer = new ComputeBuffer(32 * 32 * 32,sizeof(float),ComputeBufferType.Structured);
 
+            // Create an edit buffer.
+            this.editBuffer = new ComputeBuffer(ChunkEngineSettings.EditJobsPerJob, Marshal.SizeOf<ChunkEditData>());
+
             this.densityShader.SetBuffer(this.collisionKernel,"DensityOutput",this.outputBuffer);
+            this.densityShader.SetBuffer(this.collisionKernel, "ChunkEdits", this.editBuffer);
         }
 
         /// <summary>
@@ -72,6 +84,16 @@ namespace GingerVoxelSystem.Engine.Stage
             if (readbackInFlight)
                 return;
 
+            // Retrieve edits.
+            List<ChunkEditData> editData = new List<ChunkEditData>();
+
+            Bounds bounds = new Bounds(entityPos, Vector3.one * (32 - 1) * 3f);
+
+            this.chunkServices.EditStore.Query(bounds, ref editData);
+            this.editBuffer.SetData(editData);
+
+            this.densityShader.SetInt("EditStart", 0);
+            this.densityShader.SetInt("EditCount", editData.Count);
             this.densityShader.SetVector("CenterPosition", entityPos);
 
             // 32 / 4 = 8 thread groups per axis

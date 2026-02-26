@@ -74,6 +74,22 @@ namespace GingerVoxelSystem.Core
             obj is ChunkKey other && Equals(other);
 
         /// <summary>
+        /// Return the parent of a given child <see cref="ChunkKey"/>.
+        /// </summary>
+        /// <param name="child"></param>
+        /// <returns></returns>
+        public ChunkKey GetParent()
+        {
+            Vector3Int parentOrigin = new Vector3Int(
+                this.Origin.x >> 1,
+                this.Origin.y >> 1,
+                this.Origin.z >> 1
+            );
+
+            return new ChunkKey(parentOrigin, this.LODIndex + 1);
+        }
+
+        /// <summary>
         /// Generates a unique hash so this key works in dictionaries/sets.
         /// </summary>
         /// <remarks>While trying to resolve memory issues in <see cref="ChunkRenderBucket"/> with large item amounts

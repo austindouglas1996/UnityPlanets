@@ -199,7 +199,7 @@
             chunkMaterial.SetInt("SubVariant", (int)chunkServices.Configuration.DensityOptions.TerrainType);
 
             // Push updated biome/options tables into GPU memory.
-            chunkBuffers.Update(chunkServices);
+            chunkBuffers.UpdateConfiguration(chunkServices);
         }
 
         /// <summary>

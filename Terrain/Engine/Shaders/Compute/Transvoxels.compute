@@ -6,7 +6,7 @@
 
 #include "../Includes/TransvoxelTables.hlsl"
 #include "../ChunkFunctions.hlsl"
-#include "../WorldNoise.hlsl"
+#include "../DensityField.hlsl"
 
 /* Definitions */
 int CountTransvoxels(ChunkCellContext key);
@@ -129,7 +129,7 @@ void CreateTriangles(ChunkCellContext key, RegularCellData cell, StructuredBuffe
 
         tri.ChunkKeyIndex = key.ChunkKeyIndex;
         tri.LodIndex = key.Chunk.LodIndex;
-
+        
         // Append triangle to the output buffer for this chunk
         uint next;
         InterlockedAdd(TriangleCursor[key.ChunkKeyIndex], 1, next);
@@ -340,7 +340,7 @@ float GetCornerValue(uint face, ChunkCellContext key, int cornerIndex, int3 samp
     else
     {
         float3 worldPos = GetCornerWorldPosition(face, key, cornerIndex);
-        return GenerateNoiseValue(worldPos);
+        return SampleDensity(worldPos, key.Chunk.EditStart, key.Chunk.EditCount);
     }
 }
 

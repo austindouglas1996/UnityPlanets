@@ -5,12 +5,6 @@
 #include "ChunkCBuffer.hlsl"
 #include "MathCommon.hlsl"
 
-#define TYPE_TERRAIN 0
-#define TYPE_PLANET  1
-#define TYPE_CAVE    2
-
-//<summary>
-//</summary>
 uint GetBaseSamplesPerAxis()
 {
     return CellsPerAxis + 1;

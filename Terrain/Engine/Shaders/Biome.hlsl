@@ -37,7 +37,4 @@ int UnpackLOD(uint packed)
     return (int) ((packed >> 24) & 0x7);
 }
 
-
-
-
 #endif

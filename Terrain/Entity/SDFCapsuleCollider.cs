@@ -1,4 +1,5 @@
-﻿using GingerVoxelSystem.Engine.Stage;
+﻿using GingerVoxelSystem.Core;
+using GingerVoxelSystem.Engine.Stage;
 using UnityEngine;
 
 namespace GingerVoxelSystem.Entity
@@ -18,6 +19,16 @@ namespace GingerVoxelSystem.Entity
     {
         [SerializeField] private ComputeShader densityCollisionShader;
         private DensityCollisionStage collisionStage;
+
+        /// <summary>
+        /// This is illegal. Should be fixed someday.
+        /// </summary>
+        [SerializeField] private TerrainGeneratorMono ChunkServices;
+
+        /// <summary>
+        /// Force an update now.
+        /// </summary>
+        [SerializeField] private bool forceUpdateNow = false;
 
         /// <summary>
         /// Radius of the entity collision capsule.
@@ -67,7 +78,7 @@ namespace GingerVoxelSystem.Entity
         /// </summary>
         private void Awake()
         {
-            collisionStage = new DensityCollisionStage(densityCollisionShader);
+            collisionStage = new DensityCollisionStage(densityCollisionShader,ChunkServices);
             RequestNewBlock();
         }
 
@@ -76,6 +87,17 @@ namespace GingerVoxelSystem.Entity
             if (BlockValid)
             {
                 ResolveGroundCPU();
+            }
+
+            if (forceUpdateNow)
+            {
+                forceUpdateNow = false;
+                RequestNewBlock();
+            }
+
+            if (Input.GetKeyDown(KeyCode.J))
+            {
+                RequestNewBlock();
             }
 
             CheckBlockBounds();

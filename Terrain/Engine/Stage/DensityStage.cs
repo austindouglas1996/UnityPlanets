@@ -52,6 +52,11 @@
             this.densityShader.SetConstantBuffer("TerrainDensityOptions", buffers.DensityOptionsBuffer, 0, Marshal.SizeOf<TerrainDensityOptions>());
             this.densityShader.SetConstantBuffer("PlanetDensityOptions", buffers.PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
 
+            // Edit buffers.
+            this.densityShader.SetBuffer(surfaceKernel, "ChunkEdits", buffers.GenerateChunkEditBuffer);
+            this.densityShader.SetBuffer(generateDensityKernel, "ChunkEdits", buffers.GenerateChunkEditBuffer);
+            this.densityShader.SetBuffer(generateSurfaceKernel, "ChunkEdits", buffers.GenerateChunkEditBuffer);
+
             // Stable buffers for SurfaceMask.
             this.densityShader.SetBuffer(surfaceKernel, "ChunkInputs", buffers.SurfaceChunkInputBuffer);
             this.densityShader.SetBuffer(surfaceKernel, "SurfaceMask", buffers.SurfaceMaskBuffer);

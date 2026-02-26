@@ -13,11 +13,15 @@ namespace GingerVoxelSystem.Engine
         public uint GlobalIndex;
         public Vector3 Origin;
 
-        public int LodIndex;
+        public uint LodIndex;
         public uint LodEdgeMask;
 
+        // Used in repacking operations.
         public uint SourceOffset;
         public uint SourceCount;
         public uint DestStart;
+
+        public uint EditStart;
+        public uint EditCount;
     }
 }

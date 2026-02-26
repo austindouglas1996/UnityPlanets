@@ -31,12 +31,17 @@ float3 VertexColor(uint v)
 
 float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint overlay)
 {
-    if (overlay == 0)
+    if (tri.LodIndex == 9)
     {
-        return float4((vertex == 0) ? data.ColorA :
+        return float4(0, 0, 0, 1);
+    }
+    
+        if (overlay == 0)
+        {
+            return float4((vertex == 0) ? data.ColorA :
                       (vertex == 1) ? data.ColorB :
                                       data.ColorC);
-    }
+        }
   
     
     float3 wp = (vertex == 0) ? tri.a :

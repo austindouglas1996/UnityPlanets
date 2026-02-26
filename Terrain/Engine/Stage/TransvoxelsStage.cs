@@ -41,8 +41,10 @@
             transvoxelShader.SetConstantBuffer("PlanetDensityOptions", buffers.PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
 
             // Static bindings: chunk metadata shared across both passes
+            transvoxelShader.SetBuffer(countTrianglesKernel, "ChunkEdits", buffers.GenerateChunkEditBuffer); // Used for editing of chunks.
             transvoxelShader.SetBuffer(countTrianglesKernel, "ChunkInputs", buffers.GenerateChunkInputBuffer);
             transvoxelShader.SetBuffer(marchKernel, "ChunkInputs", buffers.GenerateChunkInputBuffer);
+            transvoxelShader.SetBuffer(marchKernel, "ChunkEdits", buffers.GenerateChunkEditBuffer); // Used for editing of chunks.
 
             TransvoxelGpuTables.SetBuffer(transvoxelShader, countTrianglesKernel);
             TransvoxelGpuTables.SetBuffer(transvoxelShader, marchKernel);

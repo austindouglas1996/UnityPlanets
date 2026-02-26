@@ -4,7 +4,7 @@
 #pragma kernel GenerateCollisionBlock
 
 #include "../ChunkFunctions.hlsl"
-#include "../WorldNoise.hlsl"
+#include "../DensityField.hlsl"
 
 /* Inputs */
 // World-space center of the block (player position)
@@ -18,6 +18,9 @@ uint BlockResolution; // 32
 
 // Conservative bias so collision is slightly thicker
 float CollisionBias; // e.g. 0.5
+
+uint EditStart;
+uint EditCount;
 
 /* Output */
 RWStructuredBuffer<float> DensityOutput;
@@ -43,7 +46,7 @@ void GenerateCollisionBlock(uint3 id : SV_DispatchThreadID)
     float3 worldPos = CenterPosition + (float3(id) * VoxelSpacing - halfExtent);
 
     // Sample full terrain SDF
-    float d = GenerateNoiseValue(worldPos);
+    float d = SampleDensity(worldPos, EditStart, EditCount);
 
     // Conservative bias so collision never gets thinner than visuals
     d -= CollisionBias;

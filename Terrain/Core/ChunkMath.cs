@@ -21,11 +21,6 @@ namespace GingerVoxelSystem.Core
         };
 
         /// <summary>
-        /// The set of LOD thresholds for chunk rendering.
-        /// </summary>
-        private int[] LODRings;
-
-        /// <summary>
         /// Configuration data for how to handle different math functions.
         /// </summary>
         private IChunkConfiguration Configuration;
@@ -37,71 +32,46 @@ namespace GingerVoxelSystem.Core
         public ChunkMath(IChunkConfiguration configuration)
         {
             this.Configuration = configuration;
-            this.LODRings = this.Configuration.LODThresholds.ToArray();
         }
 
         /// <summary>
-        /// Retrieve the expected chunk LOD level for a given coordinate.
-        /// </summary>
-        /// <param name="chunkCoordinates"></param>
-        /// <returns></returns>
-        public int GetLODForChunk(Vector3Int chunkOrigin, Vector3 playerWorldPos)
-        {
-            // Convert player position into LOD0 chunk coordinates
-            int playerChunkX = Mathf.FloorToInt(playerWorldPos.x / 16);
-            int playerChunkZ = Mathf.FloorToInt(playerWorldPos.z / 16);
-
-            int dx = Mathf.Abs(chunkOrigin.x - playerChunkX);
-            int dz = Mathf.Abs(chunkOrigin.z - playerChunkZ);
-
-            int ring = Mathf.Max(dx, dz);
-
-            for (int i = 0; i < LODRings.Length; i++)
-            {
-                if (ring < LODRings[i])
-                    return i;
-            }
-
-            return LODRings.Length - 1;
-        }
-
-        /// <summary>
-        /// Computes the LOD edge mask for a chunk, indicating which faces border
-        /// neighboring chunks of a higher-detail LOD (lower LOD index).
-        ///
-        /// A bit is set for each face where the adjacent region is represented
-        /// by a chunk with a lower LOD index, meaning the neighbor is more detailed
-        /// and requires LOD transition stitching on that face.
+        /// Retrieve the bounds for a given chunk.
         /// </summary>
         /// <param name="key"></param>
-        /// <param name="position"></param>
-        /// <returns>A 6-bit mask where each bit corresponds to a cube face that borders a
-        /// higher-detail neighboring chunk.</returns>
-        public uint GetLODEdgeMask(ChunkKey key, Vector3 position)
+        /// <returns></returns>
+        public Bounds GetBounds(ChunkKey key)
         {
-            if (key.LODIndex == 0)
-                return 0;
+            int span = 1 << key.LODIndex;
+            float chunkSize = Configuration.DensityOptions.CellsPerAxis * span;
 
-            uint mask = 0;
+            // Convert LOD0 chunk coordinates to world-space origin
+            Vector3 worldOrigin = key.BaseCenter * Configuration.DensityOptions.CellsPerAxis;
 
-            Vector3Int origin0 = key.BaseCenter;
-            int span = 1 << key.LODIndex; // how many LOD0 chunks this chunk spans
+            // Center is origin + half size
+            Vector3 center = worldOrigin + Vector3.one * (chunkSize * 0.5f);
 
-            for (int face = 0; face < 6; face++)
-            {
-                Vector3Int offset = ChunkMath.ChunkOffsets[face];
+            // The size of this can be modified to create false positives
+            // this will elimate issues with things not rendering correctly.
+            return new Bounds(center, Vector3.one * (chunkSize * ChunkEngineSettings.EditBoundsInflation));
+        }
 
-                Vector3Int neighborOrigin0 = origin0 + new Vector3Int(
-                    offset.x * span,
-                    offset.y * span,
-                    offset.z * span
-                );
 
-                if (GetLODForChunk(neighborOrigin0, position) < key.LODIndex)
-                    mask |= 1u << face;
-            }
+        /// <summary>
+        /// Converts a world-space position into the origin position of the
+        /// corresponding LOD0 chunk.
+        /// 
+        /// The returned position represents the chunk's base (min corner)
+        /// in world space.
+        /// </summary>
+        public Vector3Int WorldToChunkOriginLOD0(Vector3 worldPos)
+        {
+            int chunkSize = Configuration.DensityOptions.CellsPerAxis;
 
-            return mask;
+            int x = Mathf.FloorToInt(worldPos.x / chunkSize);
+            int y = Mathf.FloorToInt(worldPos.y / chunkSize);
+            int z = Mathf.FloorToInt(worldPos.z / chunkSize);
+
+            return new Vector3Int(x, y, z);
         }
     }
 }

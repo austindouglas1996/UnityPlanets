@@ -6,7 +6,7 @@
 #pragma kernel GenerateSurfaceMask
 
 #include "../ChunkFunctions.hlsl"
-#include "../WorldNoise.hlsl"
+#include "../DensityField.hlsl"
 
 /* Inputs */
 uint Offset;
@@ -26,7 +26,7 @@ void GenerateDensitySurface(uint3 id : SV_DispatchThreadID)
 {
     ChunkCellContext col = GetChunkCellSamplesXZ(id, Offset, ChunkInputs);
 
-    if (col.ChunkKeyIndex == -1)
+    if (col.DensitySampleIndex == -1)
         return;
 
     //DensitySurface[col.DensitySampleIndex] = GenerateNoiseValue(col.CellWorldPos);
@@ -38,10 +38,10 @@ void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
     ChunkCellContext context = GetChunkCellSamples(id, Offset, ChunkInputs);
     uint surfaceIndex = GetSurfaceIndex(context.ChunkKeyIndex, context.CellCoord.x, context.CellCoord.z);
     
-    if (context.ChunkKeyIndex == -1 || surfaceIndex == -1)
+    if (context.DensitySampleIndex == -1)
         return;
     
-    DensityMap[context.DensitySampleIndex] = GenerateNoiseValue(context.CellWorldPos);
+    DensityMap[context.DensitySampleIndex] = SampleDensity(context.CellWorldPos, context.Chunk.EditStart, context.Chunk.EditCount);
 }
 
 [numthreads(4, 4, 4)]
@@ -80,8 +80,8 @@ void GenerateSurfaceMask(uint3 groupId : SV_GroupID, uint3 tid : SV_GroupThreadI
                 const float wz = origin.z + z * step;
 
                 // Uniform branch on subvariant is fine; compiler will keep it outside inner loop
-                float v = GenerateNoiseValue(float3(wx, wy, wz));
-
+                float v = SampleDensity(float3(wx, wy, wz), chunk.EditStart, chunk.EditCount);
+                
                 // Set flags (branchless) and combine with atomics
                 // (bool → uint: (v >= iso) ? 1 : 0)
                 InterlockedOr(gHasAbove, (uint) (v >= iso));

@@ -29,5 +29,12 @@
         // Maximum number of triangles after packing/compression.
         // This represents the upper bound for GPU memory allocation.
         public const int TrianglesPerChunkPacked = 1250;
+
+        // Maximum number of edits allowed per generation job.
+        public const int EditJobsPerJob = 512;
+
+        // Edit bounds per object inflation to allow for false positives
+        // but to guarantee there is never a false negative. 
+        public const float EditBoundsInflation = 3f;
     }
 }

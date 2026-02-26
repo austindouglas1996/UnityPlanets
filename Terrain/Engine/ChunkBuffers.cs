@@ -8,7 +8,6 @@
     using System.Linq;
     using System.Runtime.InteropServices;
     using UnityEngine;
-    using UnityEngine.InputSystem;
 
     /// <summary>
     /// Central buffer container shared across all terrain-generation stages.
@@ -20,10 +19,12 @@
         // Reused staging lists -> avoids per-dispatch allocations.
         private readonly List<ChunkWorkDescriptorGPU> InputSurface = new(ChunkEngineSettings.SurfaceJobsPerBatch);
         private readonly List<ChunkWorkDescriptorGPU> InputGenerate = new(ChunkEngineSettings.GenerationJobsPerBatch);
+        private List<ChunkEditData> InputEdits = new(ChunkEngineSettings.EditJobsPerJob);
 
         // GPU buffers used by various stages.
         public ComputeBuffer SurfaceChunkInputBuffer;   // Per-chunk metadata for surface mask pass
         public ComputeBuffer GenerateChunkInputBuffer;  // Per-chunk metadata for full generation
+        public ComputeBuffer GenerateChunkEditBuffer;   // Per-chunk metadata for edit generation
 
         public int BiomesCount;
         public ComputeBuffer BiomeBuffer;               // Table of all biome definitions
@@ -32,7 +33,6 @@
 
         public ComputeBuffer SurfaceMaskBuffer;         // 1 flag per chunk from the surface check
 
-        private ChunkMath math;
         private IChunkServices chunkServices;
         private Transform player;
 
@@ -43,7 +43,6 @@
         public ChunkBuffers(IChunkServices services, Transform player)
         {
             this.chunkServices = services;
-            this.math = new ChunkMath(this.chunkServices.Configuration);
             this.player = player;
 
             BiomeBuffer = new ComputeBuffer(services.Configuration.BiomeLibrary.Biomes.Count, Marshal.SizeOf<ChunkBiomeGPU>());
@@ -54,9 +53,10 @@
 
             SurfaceChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.SurfaceJobsPerBatch, Marshal.SizeOf<ChunkWorkDescriptorGPU>());
             GenerateChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.GenerationJobsPerBatch, Marshal.SizeOf<ChunkWorkDescriptorGPU>());
+            GenerateChunkEditBuffer = new ComputeBuffer(ChunkEngineSettings.EditJobsPerJob, Marshal.SizeOf<ChunkEditData>());
             SurfaceMaskBuffer = new ComputeBuffer(ChunkEngineSettings.SurfaceJobsPerBatch, sizeof(uint));
 
-            Update(services);
+            UpdateConfiguration(services);
         }
 
         /// <summary>
@@ -67,19 +67,30 @@
         {
             int n = keys.Count;
             InputSurface.Clear();
+            InputEdits.Clear();
 
             for (int i = 0; i < n; i++)
             {
+                // Grab the edit modifications needed.
+                int start = InputEdits.Count;
+                this.chunkServices.EditStore.Query(keys[i].Key, ref InputEdits);
+                int range = InputEdits.Count - start;
+
+                Debug.Assert(range >= 0);
+
                 var ctx = keys[i];
                 InputSurface.Add(new ChunkWorkDescriptorGPU
                 {
                     Origin = ctx.Key.Origin,
-                    LodIndex = ctx.Key.LODIndex
+                    LodIndex = (uint)ctx.Key.LODIndex,
+                    EditStart = (uint)start,
+                    EditCount = (uint)range
                 });
             }
 
             // Upload only the valid range.
             SurfaceChunkInputBuffer.SetData(InputSurface, 0, 0, n);
+            GenerateChunkEditBuffer.SetData(InputEdits, 0, 0, InputEdits.Count);
         }
 
         /// <summary>
@@ -89,6 +100,7 @@
         public void FillGenerateChunkInputs(ChunkKey?[] keys, int n)
         {
             InputGenerate.Clear();
+            InputEdits.Clear();
 
             int found = 0;
             for (int i = 0; i < keys.Length && found < n; i++)
@@ -96,13 +108,22 @@
                 if (!keys[i].HasValue)
                     continue;
 
+                // Grab the edit modifications needed.
+                int start = InputEdits.Count;
+                this.chunkServices.EditStore.Query(keys[i].Value, ref InputEdits);
+                int range = InputEdits.Count - start;
+
+                Debug.Assert(range >= 0);
+
                 var ctx = keys[i].Value;
                 InputGenerate.Add(new ChunkWorkDescriptorGPU
                 {
                     GlobalIndex = (uint)i,  // Used by some kernels as an index hint
                     Origin = ctx.Origin,
-                    LodIndex = ctx.LODIndex,
-                    LodEdgeMask = math.GetLODEdgeMask(ctx, player.position),
+                    LodIndex = (uint)ctx.LODIndex,
+                    LodEdgeMask = chunkServices.Octree.GetLODEdgeMask(ctx, player.position),
+                    EditStart = (uint)start,
+                    EditCount = (uint)range
                 });
 
                 found++;
@@ -112,6 +133,7 @@
                 Debug.LogWarning("FilLGenerateChunkInputs: Found keys does not match total keys.");
 
             GenerateChunkInputBuffer.SetData(InputGenerate, 0, 0, found);
+            GenerateChunkEditBuffer.SetData(InputEdits, 0, 0, InputEdits.Count);
         }
 
         /// <summary>
@@ -182,7 +204,7 @@
         /// Updates option buffers and rebuilds the biome table.
         /// Call this whenever terrain settings or biome data change.
         /// </summary>
-        public void Update(IChunkServices services)
+        public void UpdateConfiguration(IChunkServices services)
         {
             // Options (single struct each)
             DensityOptionsBuffer.SetData(new[] { services.Configuration.DensityOptions });

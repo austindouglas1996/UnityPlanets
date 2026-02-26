@@ -2,7 +2,6 @@
 {
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Engine.Generation;
-    using System;
     using System.Collections.Generic;
     using UnityEngine;
 
@@ -113,14 +112,17 @@
         /// </summary>
         private const int UpdatePerTick = 550;
 
-        private readonly ChunkMath math;
         private readonly Transform follower;
-        private readonly IChunkConfiguration configuration;
         private readonly ChunkGenerationProcessor processor;
 
         private readonly List<ChunkLodTreeNode> Nodes = new();
         private readonly Dictionary<ChunkKey, int> IndexByKey = new();
         private readonly Stack<int> FreeSingleBlocks = new();
+
+        /// <summary>
+        /// The set of LOD thresholds for chunk rendering.
+        /// </summary>
+        private int[] LODRings;
 
         /// <summary>
         /// The current index of <see cref="Update"/> as we limit the amount of nodes updated during an
@@ -141,9 +143,10 @@
         /// <param name="processor"></param>
         public ChunkLodOctree(IChunkConfiguration configuration, Transform follower, ChunkGenerationProcessor processor)
         {
-            this.math = new ChunkMath(configuration);
             this.follower = follower;
             this.processor = processor;
+
+            this.LODRings = configuration.LODThresholds.ToArray();
         }
 
         /// <summary>
@@ -159,6 +162,45 @@
         public void AddRoot(Vector3Int coord)
         {
             TryCreateSingleNode(new ChunkKey(coord, RootLOD));
+        }
+
+        /// <summary>
+        /// Ensures that a chunk node suitabel for editing exists.
+        /// - If the node already exists, it is marked dirty for regeneration.
+        /// - If it does not exist, the nearest existing parent is found and the 
+        /// appropiate child (that was previously marked as no surface) is sent for generation.
+        /// - Returns false only if no valid ancestor exists within the node system.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public bool EnsureNodeForEdit(ChunkKey key)
+        {
+            // Already exists. Schedule modification.
+            if (IndexByKey.ContainsKey(key))
+            {
+                this.processor.RequestEdit(key);
+                return true;
+            }
+
+            ChunkKey child = key;
+            ChunkKey parent = child.GetParent();
+
+            // Walk up until we find an existing parent
+            while (!IndexByKey.ContainsKey(parent))
+            {
+                // If the parent does not exist, or if we have reached the root LOD
+                // this cannot be done.
+                if (parent == ChunkKey.Invalid || parent.LODIndex >= RootLOD)
+                    return false;
+
+                child = parent;
+                parent = child.GetParent();
+            }
+
+            // Create only the immediate child.
+            OnSurfaceCheckCompleted(child, IndexByKey[parent], true);
+
+            return true;
         }
 
         /// <summary>
@@ -225,7 +267,7 @@
                     {
                         // Check the chunk to see if it may need an 
                         // update with a new LOD edge mask being set.
-                        uint newMask = math.GetLODEdgeMask(node.Key, follower.position);
+                        uint newMask = GetLODEdgeMask(node.Key, follower.position);
                         if (newMask != node.LodEdgeMask)
                         {
                             node.LodEdgeMask = newMask;
@@ -294,7 +336,7 @@
                 return LodDecision.NoChange;
             }
 
-            int desired = math.GetLODForChunk(node.Key.BaseCenter, follower.position);
+            int desired = GetLODForChunk(node.Key.BaseCenter, follower.position);
 
             if (node.State == NodeState.IdleLeaf)
             {
@@ -382,12 +424,41 @@
         /// </summary>
         /// <param name="key"></param>
         /// <param name="parentIndex"></param>
-        private void TryCreateSingleNode(ChunkKey key, int parentIndex = -1)
+        private bool TryCreateSingleNode(ChunkKey key, int parentIndex = -1)
         {
             if (this.IndexByKey.ContainsKey(key))
-                throw new ArgumentException("Asking to create a node with an existing key.");
+                return false;
 
             this.processor.RequestSurfaceCheck(key, OnSurfaceCheckCompleted, parentIndex);
+
+            return true;
+        }
+
+        /// <summary>
+        /// Ensures a node exists in the system by creating it.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="parentIndex"></param>
+        private void EnsureNodeExists(ChunkKey key, int parentIndex)
+        {
+            if (IndexByKey.ContainsKey(key))
+                return;
+
+            int index = AllocSingleBlock();
+            IndexByKey[key] = index;
+
+            var node = Nodes[index];
+            node.Key = key;
+            node.ParentIndex = parentIndex;
+            node.State = NodeState.IdleLeaf;
+
+            if (parentIndex != -1)
+            {
+                var parentNode = Nodes[parentIndex];
+
+                parentNode.ChildrenExpected++;
+                parentNode.Children.Add(index);
+            }
         }
 
         /// <summary>
@@ -398,47 +469,17 @@
         /// <param name="hasSurface"></param>
         private void OnSurfaceCheckCompleted(ChunkKey key, int parentIndex, bool hasSurface)
         {
-            ChunkLodTreeNode parent = null;
+            ChunkLodTreeNode parent = parentIndex != -1 ? Nodes[parentIndex] : null;
 
             // Should we notify the parent this child been checked?
-            if (parentIndex != -1)
-            {
-                parent = Nodes[parentIndex];
+            if (parent != null && parent.ChildrenChecked != 8)
                 parent.ChildrenChecked++;
-            }
 
             if (hasSurface)
-            {
-                int childIndex = AllocSingleBlock();
-                var child = Nodes[childIndex];
-
-                if (key == ChunkKey.Invalid)
-                {
-                    throw new System.ArgumentException("Invalid key returned on surface check.");
-                }
-
-                // If we have already seen this key skip.
-                if (!IndexByKey.TryAdd(key, childIndex))
-                {
-                    Debug.LogWarning("WARNING: SurfaceCheck passed with an invalid key.");
-                    FreeSingleBlock(childIndex);
-                }
-                else
-                {
-                    child.Key = key;
-                    child.State = NodeState.IdleLeaf;
-                    child.ParentIndex = parentIndex;
-
-                    if (parentIndex != -1)
-                    {
-                        parent.ChildrenExpected++;
-                        parent.Children.Add(childIndex);
-                    }
-                }
-            }
+                EnsureNodeExists(key, parentIndex);
 
             // Did we complete all 8 checks with no children?
-            if (parentIndex != -1 && parent.ChildrenChecked == 8 && parent.ChildrenExpected == 0)
+            if (parent != null && parent.ChildrenChecked == 8 && parent.ChildrenExpected == 0)
                 parent.State = NodeState.IdleLeaf;
         }
 
@@ -550,6 +591,70 @@
                 (index & 1) != 0 ? 1 : 0,
                 (index & 2) != 0 ? 1 : 0,
                 (index & 4) != 0 ? 1 : 0);
+        }
+
+        /// <summary>
+        /// Retrieve the expected chunk LOD level for a given coordinate.
+        /// </summary>
+        /// <param name="chunkCoordinates"></param>
+        /// <returns></returns>
+        private int GetLODForChunk(Vector3Int chunkOrigin, Vector3 playerWorldPos)
+        {
+            // Convert player position into LOD0 chunk coordinates
+            int playerChunkX = Mathf.FloorToInt(playerWorldPos.x / 16);
+            int playerChunkZ = Mathf.FloorToInt(playerWorldPos.z / 16);
+
+            int dx = Mathf.Abs(chunkOrigin.x - playerChunkX);
+            int dz = Mathf.Abs(chunkOrigin.z - playerChunkZ);
+
+            int ring = Mathf.Max(dx, dz);
+
+            for (int i = 0; i < LODRings.Length; i++)
+            {
+                if (ring < LODRings[i])
+                    return i;
+            }
+
+            return LODRings.Length - 1;
+        }
+
+        /// <summary>
+        /// Computes the LOD edge mask for a chunk, indicating which faces border
+        /// neighboring chunks of a higher-detail LOD (lower LOD index).
+        ///
+        /// A bit is set for each face where the adjacent region is represented
+        /// by a chunk with a lower LOD index, meaning the neighbor is more detailed
+        /// and requires LOD transition stitching on that face.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="position"></param>
+        /// <returns>A 6-bit mask where each bit corresponds to a cube face that borders a
+        /// higher-detail neighboring chunk.</returns>
+        public uint GetLODEdgeMask(ChunkKey key, Vector3 position)
+        {
+            if (key.LODIndex == 0)
+                return 0;
+
+            uint mask = 0;
+
+            Vector3Int origin0 = key.BaseCenter;
+            int span = 1 << key.LODIndex; // how many LOD0 chunks this chunk spans
+
+            for (int face = 0; face < 6; face++)
+            {
+                Vector3Int offset = ChunkMath.ChunkOffsets[face];
+
+                Vector3Int neighborOrigin0 = origin0 + new Vector3Int(
+                    offset.x * span,
+                    offset.y * span,
+                    offset.z * span
+                );
+
+                if (GetLODForChunk(neighborOrigin0, position) < key.LODIndex)
+                    mask |= 1u << face;
+            }
+
+            return mask;
         }
     }
 }

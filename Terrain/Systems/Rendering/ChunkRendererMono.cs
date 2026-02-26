@@ -1,11 +1,12 @@
 ﻿namespace GingerVoxelSystem.Systems.Rendering
 {
-    using UnityEngine;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.EditorSupport;
     using GingerVoxelSystem.Engine.Generation;
     using GingerVoxelSystem.Systems.Generation;
     using System.Collections.Generic;
+    using UnityEditor;
+    using UnityEngine;
 
     /// <summary>
     /// Unity-facing host for chunk rendering:
@@ -40,6 +41,8 @@
 
         public ChunkLodOctree LODTree => lodTree;
 
+        int op = 1;
+
         /// <summary>
         /// Update the chunk layout and render any available chunks.
         /// </summary>
@@ -47,6 +50,23 @@
         {
             if (!isInitialized) return;
             lodTree.Update();
+
+            if (Input.GetKeyDown(KeyCode.J))
+            {
+                var keys = chunkServices.EditStore.Add(Follower.transform.position, op);
+                foreach (var key in keys)
+                {
+                    lodTree.EnsureNodeForEdit(key);
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.U))
+            {
+                if (op == 1)
+                    op = 0;
+                else if (op == 0)
+                    op = 1;
+            }
         }
 
         /// <summary>

@@ -18,39 +18,6 @@ float3 BiomeMidColor(uint index)
     return Biomes[index].MidLight;
 }
 
-float3 BiomeColor(float3 wp)
-{
-    TerrainInfluence t = SampleTerrainInfluence(wp);
-    
-    float wDeep = t.deepWater;
-    float wShallow = t.shallowWater;
-    float wBeach = t.beach;
-    float wLand = t.land;
-    float wMountain = t.mountain;
-    
-    float sum = wDeep + wShallow + wBeach + wLand + wMountain;
-
-    if (sum > 0.0001)
-    {
-        float inv = 1.0 / sum;
-        wDeep *= inv;
-        wShallow *= inv;
-        wBeach *= inv;
-        wLand *= inv;
-        wMountain *= inv;
-    }
-
-    float3 color =
-      BiomeMidColor(0) * wDeep
-    + BiomeMidColor(1) * wShallow
-    + BiomeMidColor(2) * wBeach
-    + BiomeMidColor(3) * wLand
-    + BiomeMidColor(5) * wMountain;
-
-    
-    return color;
-}
-
 float4 SampleBiomeColor(float3 p)
 {
     // Large-scale continent noise

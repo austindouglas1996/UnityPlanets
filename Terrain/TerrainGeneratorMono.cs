@@ -19,6 +19,9 @@ namespace GingerVoxelSystem
         protected ChunkRendererMono chunkRenderer;
         protected IChunkGenerator chunkGenerator;
 
+        private ChunkMath cmath;
+        private ChunkEditStore edits;
+
         /// <summary>
         /// Set up layout and renderer, and pick the generator backend.
         /// </summary>
@@ -31,6 +34,8 @@ namespace GingerVoxelSystem
                 Debug.LogError("ChunkConfiguration is not assigned.");
 
             chunkRenderer.Initialize(this);
+            cmath = new ChunkMath(this.ChunkConfiguration);
+            edits = new ChunkEditStore(this);
         }
 
         /// <summary>
@@ -49,5 +54,7 @@ namespace GingerVoxelSystem
         IChunkConfiguration IChunkServices.Configuration => ChunkConfiguration;
         IChunkGenerator IChunkServices.Generator => chunkGenerator;
         ChunkLodOctree IChunkServices.Octree => chunkRenderer.LODTree;
+        ChunkMath IChunkServices.CMath => cmath;
+        ChunkEditStore IChunkServices.EditStore => edits;
     }
 }
