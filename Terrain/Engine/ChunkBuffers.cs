@@ -49,7 +49,6 @@
 
             // Single struct (Structured buffer of length 1)
             DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<TerrainDensityOptions>(), ComputeBufferType.Constant);
-            PlanetOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<PlanetDensityOptions>(), ComputeBufferType.Constant);
 
             SurfaceChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.SurfaceJobsPerBatch, Marshal.SizeOf<ChunkWorkDescriptorGPU>());
             GenerateChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.GenerationJobsPerBatch, Marshal.SizeOf<ChunkWorkDescriptorGPU>());
@@ -208,7 +207,6 @@
         {
             // Options (single struct each)
             DensityOptionsBuffer.SetData(new[] { services.Configuration.DensityOptions });
-            PlanetOptionsBuffer.SetData(new[] { services.Configuration.PlanetOptions });
 
             // Biome table (small, rebuilt rarely)
             var biomes = services.Configuration.BiomeLibrary.Biomes;

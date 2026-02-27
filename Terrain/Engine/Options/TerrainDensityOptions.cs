@@ -5,27 +5,6 @@ namespace GingerVoxelSystem.Engine.Options
     using UnityEngine;
 
     /// <summary>
-    /// Subvarient types for better rendering.
-    /// </summary>
-    public enum TerrainType
-    {
-        /// <summary>
-        /// Endless land, no roof or floor.
-        /// </summary>
-        Terrain,
-
-        /// <summary>
-        /// A sphere of land, no roof but has a center.
-        /// </summary>
-        Planet,
-
-        /// <summary>
-        /// Cave systems, roof and floor.
-        /// </summary>
-        Cave
-    }
-
-    /// <summary>
     /// Global override for how cold/hot the worlds feels overall.
     /// Shifts how often colder/hotter biomes (like tundras or volcanos) appear.
     /// </summary>
@@ -85,8 +64,6 @@ namespace GingerVoxelSystem.Engine.Options
     [Serializable, StructLayout(LayoutKind.Sequential)]
     public struct TerrainDensityOptions
     {
-        public float debug1;
-
         [Header("Global")]
         [Tooltip("Logical voxel width of a chunk (before LOD).")]
         public int CellsPerAxis;
@@ -96,9 +73,6 @@ namespace GingerVoxelSystem.Engine.Options
 
         [Tooltip("The noise seed, use this to get a different set of generation")]
         public int Seed;
-
-        [Tooltip("Those chosen generation type. Each type has unique features or classification.")]
-        public TerrainType TerrainType;
 
         [Tooltip("Iso threshold used by marching. You better have a good reason for changing this.")]
         [Range(-1f, 1f)]
@@ -119,54 +93,41 @@ namespace GingerVoxelSystem.Engine.Options
         public WaterBias SeaLevelBias;
 
 
-        [Header("Continents")]
-        [Tooltip("How wide the continents are. Lower = bigger continents.")]
-        public float ContinentFreq;
+        [Header("Macro Land")]
+        [Tooltip("Controls the size of major landmasses. Lower = larger continents, higher = smaller fragmented terrain.")]
+        public float MacroFreq;
 
-        [Tooltip("How much the base layer lifts terrain up.")]
-        public float ContinentHeight;
+        [Tooltip("Overall height of large-scale terrain. Affects how tall land rises above sea level.")]
+        public float MacroHeight;
 
-        [Tooltip("Global height scale for this layer after normalization.")]
-        public float ContinentAmp;
-
-        [Tooltip("Gives each continent (on land) with its own freqency to reduce copies")]
-        public float ContinentAmpFreq;
-
-        [Tooltip("The amount of Octaves to be used in FBM (Increases details at cost of processing)"), Range(1, 12)]
-        public uint ContinentOctaves;
-
-
-        [Header("Oceans & Coasts")]
-        [Tooltip("Land/ocean split. Higher = more ocean. Typical 0.45–0.6.")]
+        [Tooltip("Normalized water threshold (0–1). Higher values create more ocean coverage.")]
         [Range(0f, 1f)]
         public float SeaLevel;
 
-        [Tooltip("Width of the coast transition. Smaller = sharper coastlines.")]
+        [Header("Hills")]
+        [Tooltip("Frequency of rolling hills layered on top of the macro terrain.")]
+        public float HillFreq;
+
+        [Tooltip("Vertical strength of hill variation.")]
+        public float HillHeight;
+
+        [Header("Mountains")]
+        [Tooltip("Frequency of mountain structures. Lower values create broader ranges.")]
+        public float MountainFreq;
+
+        [Tooltip("Maximum vertical strength of mountains.")]
+        public float MountainHeight;
+
+        [Tooltip("Controls how often mountains appear across the world.")]
         [Range(0f, 1f)]
-        public float CoastWidth;
+        public float MountainCoverage;
 
-        [Tooltip("How far below baseline oceans are carved. Negative values = carve downward.")]
-        public float OceanDepth;
-
-        /// <summary>
-        /// DETAIL & FLAT DO NOT DO ANYTHING, REWORK LATER.
-        /// </summary>
-        [Header("Broad Detail")]
-        [Tooltip("Size of large-scale bumps on top of the base.")]
+        [Header("Detail")]
+        [Tooltip("Small-scale surface variation to prevent flat areas from looking artificial.")]
         public float DetailFreq;
 
-        [Tooltip("Strength of those broad details.")]
-        public float DetailAmp;
-
-        [Header("Flatness Mask")]
-        [Tooltip("How large the flat regions run across the map.")]
-        public float FlatMaskFreq;
-
-        [Tooltip("Higher -> stronger flattening in masked zones.")]
-        public float FlatMaskAmp;
-
-        [Header("Coloring")]
-        public float ColorSampleRadius;
+        [Tooltip("Strength of fine terrain noise.")]
+        public float DetailHeight;
 
         [Header("Domain Offsets")]
         [Tooltip("XYZ offset for generation. A simple way to control the position as generation happens at 0,0,0.")]

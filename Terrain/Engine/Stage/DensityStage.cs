@@ -50,7 +50,6 @@
 
             // Constants
             this.densityShader.SetConstantBuffer("TerrainDensityOptions", buffers.DensityOptionsBuffer, 0, Marshal.SizeOf<TerrainDensityOptions>());
-            this.densityShader.SetConstantBuffer("PlanetDensityOptions", buffers.PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
 
             // Edit buffers.
             this.densityShader.SetBuffer(surfaceKernel, "ChunkEdits", buffers.GenerateChunkEditBuffer);

@@ -194,9 +194,6 @@
 
             chunkMaterial.SetFloat("_UseVertexColor", 1f);
             chunkMaterial.SetVector("PositionOffset", chunkServices.Configuration.DensityOptions.PositionOffset);
-            chunkMaterial.SetVector("PlanetCenter", chunkServices.Configuration.PlanetOptions.PlanetCenter);
-            chunkMaterial.SetFloat("PlanetRadius", chunkServices.Configuration.PlanetOptions.PlanetRadius);
-            chunkMaterial.SetInt("SubVariant", (int)chunkServices.Configuration.DensityOptions.TerrainType);
 
             // Push updated biome/options tables into GPU memory.
             chunkBuffers.UpdateConfiguration(chunkServices);

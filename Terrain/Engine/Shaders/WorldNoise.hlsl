@@ -3,7 +3,6 @@
 
 #include "ChunkFunctions.hlsl"
 #include "Lib/PerlinNoise.hlsl"
-#include "Includes/Voronoi.hlsl"
 
 float GenerateNoiseValue(float3 p)
 {

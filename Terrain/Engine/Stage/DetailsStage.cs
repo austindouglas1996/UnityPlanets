@@ -37,7 +37,6 @@
 
             // Constant buffers (shared data for biome/color generation)
             this.detailsShader.SetConstantBuffer("TerrainDensityOptions", buffers.DensityOptionsBuffer, 0, Marshal.SizeOf<TerrainDensityOptions>());
-            this.detailsShader.SetConstantBuffer("PlanetDensityOptions", buffers.PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
 
             this.detailsShader.SetBuffer(detailsPassKernel, "Biomes", buffers.BiomeBuffer);
             this.detailsShader.SetInt("_BiomesCount", buffers.BiomesCount);

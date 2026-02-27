@@ -38,7 +38,6 @@
 
             // Shared constant buffers for both kernels
             transvoxelShader.SetConstantBuffer("TerrainDensityOptions", buffers.DensityOptionsBuffer, 0, Marshal.SizeOf<TerrainDensityOptions>());
-            transvoxelShader.SetConstantBuffer("PlanetDensityOptions", buffers.PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
 
             // Static bindings: chunk metadata shared across both passes
             transvoxelShader.SetBuffer(countTrianglesKernel, "ChunkEdits", buffers.GenerateChunkEditBuffer); // Used for editing of chunks.

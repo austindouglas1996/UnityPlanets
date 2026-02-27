@@ -19,9 +19,6 @@ namespace GingerVoxelSystem.Core
         [SerializeField] private TerrainDensityOptions densityMapOptions;
         public TerrainDensityOptions DensityOptions => densityMapOptions;
 
-        [SerializeField] private PlanetDensityOptions planetMapOptions;
-        public PlanetDensityOptions PlanetOptions => planetMapOptions;
-
         [Header("Generation")]
         [SerializeField] private BiomeLibraryAsset biomeLibrary;
         public BiomeLibraryAsset BiomeLibrary => biomeLibrary;

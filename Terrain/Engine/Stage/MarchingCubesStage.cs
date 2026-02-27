@@ -48,7 +48,6 @@ namespace GingerVoxelSystem.Engine.Stage
 
             // Shared constant buffers for both kernels
             marchShader.SetConstantBuffer("TerrainDensityOptions", buffers.DensityOptionsBuffer, 0, Marshal.SizeOf<TerrainDensityOptions>());
-            marchShader.SetConstantBuffer("PlanetDensityOptions", buffers.PlanetOptionsBuffer, 0, Marshal.SizeOf<PlanetDensityOptions>());
 
             // Static bindings: chunk metadata shared across both passes
             marchShader.SetBuffer(countTrianglesKernel, "ChunkInputs", buffers.GenerateChunkInputBuffer);
