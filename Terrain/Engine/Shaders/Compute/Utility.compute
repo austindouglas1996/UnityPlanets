@@ -1,0 +1,19 @@
+#pragma only_renderers d3d11
+#pragma target 5.0
+
+#pragma kernel ClearRange
+
+/* Clear Range */
+RWStructuredBuffer<uint> ClearBuffer;
+uint ClearStart;
+uint ClearLength;
+
+[numthreads(1, 1, 1)]
+void ClearRange(uint id : SV_DispatchThreadID)
+{
+    int length = (ClearStart + ClearLength);
+    for (int i = ClearStart; i < length; i++)
+    {
+        ClearBuffer[i] = 0;
+    }
+}

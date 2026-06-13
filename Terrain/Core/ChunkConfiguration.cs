@@ -1,0 +1,26 @@
+namespace GingerVoxelSystem.Core
+{
+    using GingerVoxelSystem.EditorSupport;
+    using GingerVoxelSystem.Engine.Options;
+    using System;
+    using UnityEngine;
+
+    /// <summary>
+    /// Central configuration for how the world is generated and interpreted.
+    /// Holds all static settings the terrain system depends on: density noise,
+    /// planet shaping, biome rules, and LOD thresholds. 
+    /// This data is read by generation, LOD, and math systems to keep everything 
+    /// consistent and deterministic across the entire world.
+    /// </summary>
+    [Serializable]
+    public class ChunkConfiguration : IChunkConfiguration
+    {
+        [Header("Density")]
+        [SerializeField] private TerrainDensityOptions densityMapOptions;
+        public TerrainDensityOptions DensityOptions => densityMapOptions;
+
+        [Header("Rendering")]
+        [SerializeField] private ChunkLODThresholdAsset lodThresholds;
+        public ChunkLODThresholdAsset LODThresholds => lodThresholds;
+    }
+}
