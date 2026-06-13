@@ -1,4 +1,5 @@
 ﻿using GingerVoxelSystem.Core;
+using GingerVoxelSystem.Engine.Options;
 using GingerVoxelSystem.Systems.Generation;
 using System;
 using System.Collections.Generic;
@@ -43,7 +44,7 @@ namespace GingerVoxelSystem.Engine.Stage
         /// Compute shader containing the <c>GenerateCollisionBlock</c> kernel.
         /// This shader is expected to evaluate the full terrain SDF.
         /// </param>
-        public DensityCollisionStage(ComputeShader densityCollision, IChunkServices chunkServices)
+        public DensityCollisionStage(ComputeShader densityCollision, ChunkBuffers Buffers, IChunkServices chunkServices)
         {
             if (densityCollision == null)
             {
@@ -55,6 +56,9 @@ namespace GingerVoxelSystem.Engine.Stage
 
             // Kernel lookup
             this.collisionKernel = this.densityShader.FindKernel("GenerateCollisionBlock");
+
+            // Constant settings
+            this.densityShader.SetConstantBuffer("TerrainDensityOptions", Buffers.DensityOptionsBuffer, 0, Marshal.SizeOf<TerrainDensityOptions>());
 
             // Collision block configuration.
             // These values intentionally do not change at runtime.

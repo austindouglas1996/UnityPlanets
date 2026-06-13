@@ -1,4 +1,4 @@
-namespace GingerVoxelSystem.Systems.Rendering
+namespace Assets.Scripts.Terrain.Systems.Rendering.Unity
 {
     using System;
     using UnityEngine.Rendering;
@@ -20,7 +20,7 @@ namespace GingerVoxelSystem.Systems.Rendering
         public ChunkRenderPass(ChunkRenderRouter router)
         {
             this.router = router;
-            renderPassEvent = RenderPassEvent.AfterRenderingTransparents;
+            renderPassEvent = RenderPassEvent.AfterRenderingOpaques;
         }
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace GingerVoxelSystem.Systems.Rendering
 
             // Bind camera color + depth as actual render attachments
             builder.SetRenderAttachment(resources.activeColorTexture, 0);
-            builder.SetRenderAttachmentDepth(resources.activeDepthTexture, AccessFlags.Write);
+            builder.SetRenderAttachmentDepth(resources.activeDepthTexture, AccessFlags.ReadWrite);
 
             builder.SetRenderFunc((PassData data, RasterGraphContext ctx) =>
             {

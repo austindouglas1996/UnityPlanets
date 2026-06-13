@@ -15,11 +15,6 @@ namespace GingerVoxelSystem.Core
         TerrainDensityOptions DensityOptions { get; }
 
         /// <summary>
-        /// Biomes to use when generating chunks.
-        /// </summary>
-        BiomeLibraryAsset BiomeLibrary { get; }
-
-        /// <summary>
         /// Used for LOD thresholds on chunks for rendering.
         /// </summary>
         ChunkLODThresholdAsset LODThresholds { get; }

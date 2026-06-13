@@ -17,11 +17,6 @@ namespace GingerVoxelSystem.Core
         public readonly Vector3Int Origin;
 
         /// <summary>
-        /// Gets the center of the key in a LOD0 specification.
-        /// </summary>
-        public readonly Vector3Int BaseCenter;
-
-        /// <summary>
         /// Which LOD (Level of Detail) this chunk is at.
         /// Lower = closer / higher detail, higher = farther / less detail.
         /// </summary>
@@ -34,22 +29,6 @@ namespace GingerVoxelSystem.Core
         {
             this.Origin = Origin;
             LODIndex = lod;
-
-            int span = 1 << LODIndex;
-
-            Vector3Int corner = new Vector3Int(
-                Origin.x * span,
-                Origin.y * span,
-                Origin.z * span
-            );
-
-            int half = span >> 1;
-
-            BaseCenter = new Vector3Int(
-                corner.x + half,
-                corner.y + half,
-                corner.z + half
-            );
         }
 
         public static bool operator ==(ChunkKey a, ChunkKey b) => a.Equals(b);
@@ -87,6 +66,28 @@ namespace GingerVoxelSystem.Core
             );
 
             return new ChunkKey(parentOrigin, this.LODIndex + 1);
+        }
+
+        /// <summary>
+        /// Gets the center of the key in a LOD0 specification.
+        /// </summary>
+        public Vector3Int GetWorldCenter(int baseCellStep)
+        {
+            int span = baseCellStep << LODIndex;
+
+            Vector3Int corner = new Vector3Int(
+                Origin.x * span,
+                Origin.y * span,
+                Origin.z * span
+            );
+
+            int half = span >> 1;
+
+            return new Vector3Int(
+                corner.x + half,
+                corner.y + half,
+                corner.z + half
+            );
         }
 
         /// <summary>

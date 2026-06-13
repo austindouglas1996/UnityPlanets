@@ -68,6 +68,10 @@ namespace GingerVoxelSystem.Engine.Options
         [Tooltip("Logical voxel width of a chunk (before LOD).")]
         public int CellsPerAxis;
 
+        [Tooltip("World-space size of a voxel at LOD0. Increasing this makes triangles larger and reduces geometric detail.")]
+        [Range(1,32)]
+        public int BaseCellStep;
+
         [Tooltip("Additional voxel width given for sampling for edge smoothness.")]
         public int BorderSamplesPerAxis;
 
@@ -77,6 +81,9 @@ namespace GingerVoxelSystem.Engine.Options
         [Tooltip("Iso threshold used by marching. You better have a good reason for changing this.")]
         [Range(-1f, 1f)]
         public float ISOLevel;
+
+        [Tooltip("Controls the additional space given to each world unit.")]
+        public float WorldHeightAmplitude;
 
 
         [Header("Climate")]

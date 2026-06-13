@@ -161,7 +161,8 @@
         {
             List<ChunkKey> keys = new();
 
-            int chunkSize = chunkServices.Configuration.DensityOptions.CellsPerAxis;
+            int chunkSize = chunkServices.Configuration.DensityOptions.CellsPerAxis
+                          * chunkServices.Configuration.DensityOptions.BaseCellStep;
 
             Vector3 min = b.min;
             Vector3 max = b.max;

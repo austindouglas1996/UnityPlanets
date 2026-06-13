@@ -172,7 +172,7 @@ ChunkCellContext GetChunkCellSamples(uint3 id, uint offset, StructuredBuffer<Chu
     int3 logicalCoord = int3(r.CellCoord) - BorderSamplesPerAxis;
     ChunkWorkDescriptor key = keys[r.ChunkKeyIndex];
     r.Chunk = key;
-    r.CellWorldPos = ChunkOriginToWorld(key) + (float3(logicalCoord) * GetCellStep(key.LodIndex));
+    r.CellWorldPos = (ChunkOriginToWorld(key) + float3(logicalCoord) * GetCellStep(key.LodIndex));
 
     return r;
 }
@@ -230,7 +230,7 @@ ChunkCellContext GetChunkCellSamplesXZ(uint3 id, uint offset, StructuredBuffer<C
     r.Chunk = key;
 
     int3 logicalCoord = int3(r.CellCoord) - BorderSamplesPerAxis;
-    r.CellWorldPos = ChunkOriginToWorld(key) + float3(logicalCoord) * GetCellStep(key.LodIndex);
+    r.CellWorldPos = (ChunkOriginToWorld(key) + float3(logicalCoord) * GetCellStep(key.LodIndex));
 
     return r;
 }

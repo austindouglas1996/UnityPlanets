@@ -26,10 +26,7 @@
         public ComputeBuffer GenerateChunkInputBuffer;  // Per-chunk metadata for full generation
         public ComputeBuffer GenerateChunkEditBuffer;   // Per-chunk metadata for edit generation
 
-        public int BiomesCount;
-        public ComputeBuffer BiomeBuffer;               // Table of all biome definitions
         public ComputeBuffer DensityOptionsBuffer;      // Single density-options struct
-        public ComputeBuffer PlanetOptionsBuffer;       // Single planet-options struct
 
         public ComputeBuffer SurfaceMaskBuffer;         // 1 flag per chunk from the surface check
 
@@ -44,8 +41,6 @@
         {
             this.chunkServices = services;
             this.player = player;
-
-            BiomeBuffer = new ComputeBuffer(services.Configuration.BiomeLibrary.Biomes.Count, Marshal.SizeOf<ChunkBiomeGPU>());
 
             // Single struct (Structured buffer of length 1)
             DensityOptionsBuffer = new ComputeBuffer(1, Marshal.SizeOf<TerrainDensityOptions>(), ComputeBufferType.Constant);
@@ -80,7 +75,9 @@
                 var ctx = keys[i];
                 InputSurface.Add(new ChunkWorkDescriptorGPU
                 {
-                    Origin = ctx.Key.Origin,
+                    OriginX = ctx.Key.Origin.x,
+                    OriginY = ctx.Key.Origin.y,
+                    OriginZ = ctx.Key.Origin.z,
                     LodIndex = (uint)ctx.Key.LODIndex,
                     EditStart = (uint)start,
                     EditCount = (uint)range
@@ -118,7 +115,9 @@
                 InputGenerate.Add(new ChunkWorkDescriptorGPU
                 {
                     GlobalIndex = (uint)i,  // Used by some kernels as an index hint
-                    Origin = ctx.Origin,
+                    OriginX = ctx.Origin.x,
+                    OriginY = ctx.Origin.y,
+                    OriginZ = ctx.Origin.z,
                     LodIndex = (uint)ctx.LODIndex,
                     LodEdgeMask = chunkServices.Octree.GetLODEdgeMask(ctx, player.position),
                     EditStart = (uint)start,
@@ -193,9 +192,8 @@
 
             SurfaceChunkInputBuffer.Dispose();
             GenerateChunkInputBuffer.Dispose();
-            BiomeBuffer.Dispose();
+            GenerateChunkEditBuffer.Dispose();
             DensityOptionsBuffer.Dispose();
-            PlanetOptionsBuffer.Dispose();
             SurfaceMaskBuffer.Dispose();
         }
 
@@ -207,32 +205,6 @@
         {
             // Options (single struct each)
             DensityOptionsBuffer.SetData(new[] { services.Configuration.DensityOptions });
-
-            // Biome table (small, rebuilt rarely)
-            var biomes = services.Configuration.BiomeLibrary.Biomes;
-            BiomesCount = biomes.Count;
-
-            var biomeData = new ChunkBiomeGPU[BiomesCount];
-
-            for (int i = 0; i < BiomesCount; i++)
-            {
-                biomeData[i] = new ChunkBiomeGPU
-                {
-                    Height = (uint)biomes[i].Height,
-                    Temperature = (uint)biomes[i].Temperature,
-                    Humidity = (uint)biomes[i].Humidity,
-                    Foliage = (uint)biomes[i].Foliage,
-
-                    Highlight = biomes[i].Highlight,
-                    Light = biomes[i].Light,
-                    MidLight = biomes[i].MidLight,
-                    Mid = biomes[i].Mid,
-                    Dark = biomes[i].Dark,
-                    Shadow = biomes[i].Shadow
-                };
-            }
-
-            BiomeBuffer.SetData(biomeData);
         }
     }
 }

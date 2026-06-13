@@ -4,8 +4,8 @@
 #pragma kernel RunDetailsPass
 
 #include "../ChunkFunctions.hlsl"
-#include "../Biome.hlsl"
 #include "../ChunkColoring.hlsl"
+#include "../Lib/PerlinNoise.hlsl"
 
 /* Inputs */
 StructuredBuffer<TriangleData> DetailTriangles;
@@ -13,33 +13,109 @@ StructuredBuffer<TriangleData> DetailTriangles;
 /* Outputs */
 RWStructuredBuffer<ChunkDetailData> DetailBuffer;
 
-float3 BiomeMidColor(uint index)
+// ─────────────────────────────────────────────────────────────────────────────
+// SampleBiomeMasks
+//
+// Reconstructs the same geographic masks used in GenerateNoiseValue so that
+// coloring is driven by terrain *type* rather than absolute world height.
+//
+// Returns a float4 packing the four masks:
+//   .x = landMask       (0 = ocean,     1 = land)
+//   .y = mountainMask   (0 = flat land, 1 = mountain region)
+//   .z = coastMask      (0 = deep sea,  1 = near/on shore)
+//   .w = unused (reserved)
+//
+// SYNC CONTRACT:
+// The noise calls here must exactly mirror GenerateNoiseValue layers 1 and 2.
+// Same frequencies, same seed offsets, same smoothstep ranges.
+// If you change the density function, update this to match.
+// ─────────────────────────────────────────────────────────────────────────────
+float4 SampleBiomeMasks(float2 uv)
 {
-    return Biomes[index].MidLight;
+    // ── Continent (mirrors Layer 1) ───────────────────────────────────────
+    // Fixed: was using MacroFreq * 0.20 which no longer matches the density
+    // function. Density now uses MacroFreq directly.
+    float continent = N01(fbm2D(uv * MacroFreq, 5));
+    float landMask = smoothstep(0.42, 0.58, continent);
+    float coastMask = smoothstep(0.30, 0.50, continent);
+
+    // ── Mountain region (mirrors Layer 2) ────────────────────────────────
+    // Fixed: was using MacroFreq * 0.55 with a hardcoded smoothstep range.
+    // Density now uses MountainFreq and MountainCoverage from the cbuffer.
+    float regionNoise = N01(fbm2D(uv * MountainFreq + float2(47.3, 91.7), 4));
+    float coverageThresh = 1.0 - saturate(MountainCoverage);
+    float mountainMask = smoothstep(coverageThresh, coverageThresh + 0.20, regionNoise);
+    mountainMask = mountainMask * mountainMask;
+    mountainMask *= landMask;
+
+    return float4(landMask, mountainMask, coastMask, 0.0);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SampleBiomeColor
+//
+// Determines vertex color by combining geographic masks with a normalized
+// local height within the terrain band.
+//
+// Color logic:
+//   Ocean      — coastMask drives deep→shallow water tint
+//   Beach      — narrow coastal strip just above sea level
+//   Grass      — low-altitude land
+//   Dirt       — mid-altitude, climbing out of plains
+//   Rock       — high-altitude in mountain regions
+//   Snow       — peaks, threshold shifts lower inside mountain zones
+// ─────────────────────────────────────────────────────────────────────────────
 float4 SampleBiomeColor(float3 p)
 {
-    // Large-scale continent noise
-    float continent = fbm2D(p.xz * 0.0005, 4);
-    continent = continent * 0.5 + 0.5; // normalize to 0..1
+    float2 uv = p.xz;
+    float y = p.y;
 
-    // Height bands (tune numbers freely)
-    float oceanW = 1.0 - smoothstep(0.45, 0.50, continent);
-    float landW = smoothstep(0.45, 0.55, continent);
-    float mountainW = smoothstep(0.65, 0.75, continent);
+    float4 masks = SampleBiomeMasks(uv);
+    float landMask = masks.x;
+    float mountainMask = masks.y;
+    float coastMask = masks.z;
 
-    // Loud debug colors
-    float3 oceanColor = Biomes[1].Mid; // blue
-    float3 landColor = Biomes[3].Mid; // green
-    float3 mountainColor = Biomes[5].Mid; // gray
+    // ── Palette ───────────────────────────────────────────────────────────
+    float3 deepOcean = float3(0.10, 0.25, 0.55);
+    float3 shallowSea = float3(0.22, 0.48, 0.72);
+    float3 beach = float3(0.92, 0.84, 0.62);
+    float3 grass = float3(0.34, 0.64, 0.30);
+    float3 dirt = float3(0.52, 0.42, 0.28);
+    float3 rock = float3(0.45, 0.44, 0.43);
+    float3 snow = float3(0.95, 0.95, 0.97);
 
-    float3 color =
-        oceanColor * oceanW +
-        landColor * landW +
-        mountainColor * mountainW;
+    // ── Normalized height ─────────────────────────────────────────────────
+    //
+    // Fixed: was normalizing against WorldHeightAmplitude, which is now 1.0
+    // and no longer represents actual world height. MountainHeight is the
+    // true world-unit ceiling of the terrain, so heightT=1 at a mountain peak.
+    float heightT = saturate(y / max(MountainHeight, 0.001));
 
-    return float4(saturate(color), 1.0);
+    // ── Ocean ─────────────────────────────────────────────────────────────
+    float3 oceanColor = lerp(deepOcean, shallowSea, coastMask);
+
+    // ── Land ──────────────────────────────────────────────────────────────
+    // Grass → dirt as we climb. The fraction thresholds (0.20, 0.45 etc.)
+    // are relative to MountainHeight so they remain correct regardless of
+    // how tall mountains are set.
+    float3 landColor = lerp(grass, dirt, smoothstep(0.20, 0.45, heightT));
+
+    float rockBlend = mountainMask * smoothstep(0.35, 0.60, heightT);
+    landColor = lerp(landColor, rock, rockBlend);
+
+    float snowThreshold = lerp(0.82, 0.72, mountainMask);
+    landColor = lerp(landColor, snow, smoothstep(snowThreshold, snowThreshold + 0.10, heightT));
+
+    // ── Beach strip ───────────────────────────────────────────────────────
+    // Tight height gate keeps beach near sea level.
+    // At MountainHeight=350: beach covers roughly y=0..21 near coastlines.
+    float beachBlend = (1.0 - smoothstep(0.01, 0.06, heightT)) * coastMask * landMask;
+    landColor = lerp(landColor, beach, beachBlend);
+
+    // ── Final blend ───────────────────────────────────────────────────────
+    float3 finalColor = lerp(oceanColor, landColor, landMask);
+
+    return float4(finalColor, 1.0);
 }
 
 float4 DebugColorFromIndex(uint i)
@@ -52,19 +128,17 @@ float4 DebugColorFromIndex(uint i)
     return float4(c, 1);
 }
 
-
 [numthreads(64, 1, 1)]
 void RunDetailsPass(uint3 id : SV_DispatchThreadID)
 {
     TriangleData tri = DetailTriangles[id.x];
     ChunkDetailData d = (ChunkDetailData) 0;
-    
-    d.Biome = 0;
+
     //float4 debug = DebugColorFromIndex(tri.ChunkKeyIndex);
-    
-    d.ColorA = SampleBiomeColor(tri.a); //SampleBiomeBlend(Biomes[a], tri.a);
-    d.ColorB = SampleBiomeColor(tri.b); //SampleBiomeBlend(Biomes[a], tri.a);
-    d.ColorC = SampleBiomeColor(tri.c); //SampleBiomeBlend(Biomes[a], tri.a);
+
+    d.ColorA = SampleBiomeColor(tri.a);
+    d.ColorB = SampleBiomeColor(tri.b);
+    d.ColorC = SampleBiomeColor(tri.c);
 
     DetailBuffer[id.x] = d;
 }

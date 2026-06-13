@@ -14,9 +14,11 @@ cbuffer TerrainDensityOptions
 { 
     // Global
     uint CellsPerAxis;
+    uint BaseCellStep;
     uint BorderSamplesPerAxis;
     int Seed;
     float ISOLevel;
+    float WorldHeightAmplitude;
 
     // Climate
     int TemperatureBias;

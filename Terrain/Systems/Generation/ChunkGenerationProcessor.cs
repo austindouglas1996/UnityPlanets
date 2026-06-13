@@ -5,7 +5,7 @@
     using UnityEngine;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.Systems.Generation;
-    using GingerVoxelSystem.Systems.Rendering;
+    using Assets.Scripts.Terrain.Systems.Rendering.Unity;
 
     /// <summary>
     /// Coordinates the asynchronous-like generation and modification of terrain chunks.

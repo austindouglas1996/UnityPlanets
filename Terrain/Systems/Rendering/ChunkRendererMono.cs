@@ -1,11 +1,10 @@
 ﻿namespace GingerVoxelSystem.Systems.Rendering
 {
+    using Assets.Scripts.Terrain.Systems.Rendering.Unity;
     using GingerVoxelSystem.Core;
     using GingerVoxelSystem.EditorSupport;
     using GingerVoxelSystem.Engine.Generation;
     using GingerVoxelSystem.Systems.Generation;
-    using System.Collections.Generic;
-    using UnityEditor;
     using UnityEngine;
 
     /// <summary>
@@ -51,7 +50,7 @@
             if (!isInitialized) return;
             lodTree.Update();
 
-            if (Input.GetKeyDown(KeyCode.J))
+            if (Input.GetKeyDown(KeyCode.Mouse0))
             {
                 var keys = chunkServices.EditStore.Add(Follower.transform.position, op);
                 foreach (var key in keys)

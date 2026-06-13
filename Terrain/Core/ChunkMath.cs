@@ -41,37 +41,15 @@ namespace GingerVoxelSystem.Core
         /// <returns></returns>
         public Bounds GetBounds(ChunkKey key)
         {
-            int span = 1 << key.LODIndex;
-            float chunkSize = Configuration.DensityOptions.CellsPerAxis * span;
+            int baseCellStep = Configuration.DensityOptions.BaseCellStep;
+            int span = baseCellStep << key.LODIndex;
+            float chunkWorldSize = Configuration.DensityOptions.CellsPerAxis * span;
 
-            // Convert LOD0 chunk coordinates to world-space origin
-            Vector3 worldOrigin = key.BaseCenter * Configuration.DensityOptions.CellsPerAxis;
+            // Origin is in LOD-local chunk coords. Convert directly to world space.
+            Vector3 worldCorner = new Vector3(key.Origin.x, key.Origin.y, key.Origin.z) * chunkWorldSize;
+            Vector3 center = worldCorner + Vector3.one * (chunkWorldSize * 0.5f);
 
-            // Center is origin + half size
-            Vector3 center = worldOrigin + Vector3.one * (chunkSize * 0.5f);
-
-            // The size of this can be modified to create false positives
-            // this will elimate issues with things not rendering correctly.
-            return new Bounds(center, Vector3.one * (chunkSize * ChunkEngineSettings.EditBoundsInflation));
-        }
-
-
-        /// <summary>
-        /// Converts a world-space position into the origin position of the
-        /// corresponding LOD0 chunk.
-        /// 
-        /// The returned position represents the chunk's base (min corner)
-        /// in world space.
-        /// </summary>
-        public Vector3Int WorldToChunkOriginLOD0(Vector3 worldPos)
-        {
-            int chunkSize = Configuration.DensityOptions.CellsPerAxis;
-
-            int x = Mathf.FloorToInt(worldPos.x / chunkSize);
-            int y = Mathf.FloorToInt(worldPos.y / chunkSize);
-            int z = Mathf.FloorToInt(worldPos.z / chunkSize);
-
-            return new Vector3Int(x, y, z);
+            return new Bounds(center, Vector3.one * (chunkWorldSize * ChunkEngineSettings.EditBoundsInflation));
         }
     }
 }

@@ -1,7 +1,6 @@
 namespace GingerVoxelSystem.Engine
 {
     using System.Runtime.InteropServices;
-    using UnityEngine;
 
     /// <summary>
     /// Struct that matches GPU memory layout for HLSL. 
@@ -11,7 +10,9 @@ namespace GingerVoxelSystem.Engine
     public struct ChunkWorkDescriptorGPU
     {
         public uint GlobalIndex;
-        public Vector3 Origin;
+        public int OriginX;
+        public int OriginY;
+        public int OriginZ;
 
         public uint LodIndex;
         public uint LodEdgeMask;

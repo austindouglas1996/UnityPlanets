@@ -29,12 +29,12 @@ uint3 GetPaddedSamplesGridSize()
 
 int GetChunkCellSpan(uint lodIndex)
 {
-    return CellsPerAxis << lodIndex;
+    return CellsPerAxis * (BaseCellStep << lodIndex);
 }
 
 int GetCellStep(uint lodIndex)
 {
-    return 1 << lodIndex;
+    return (BaseCellStep << lodIndex);
 }
 
 float3 ChunkOriginToWorld(int3 Origin, uint lodIndex)

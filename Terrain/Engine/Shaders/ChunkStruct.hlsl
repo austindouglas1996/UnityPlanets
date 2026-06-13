@@ -11,9 +11,9 @@
 struct ChunkWorkDescriptor
 {
     uint GlobalIndex;
-    float3 Origin;
-    
-    uint LodIndex;  
+    int3 Origin;
+
+    uint LodIndex;
     uint LodEdgeMask;
     
     uint SourceOffset;
@@ -51,7 +51,7 @@ struct ChunkCellContext
     uint ChunkKeyIndex; // Index of the key this belongs to.
     uint DensitySampleIndex; // Position in a flattened density map.
     
-    uint3 CellCoord; // [0..15]³ cell in chunk
+    uint3 CellCoord; // [0..15]^3 cell in chunk
     float3 CellWorldPos; // world-space origin
     
     ChunkWorkDescriptor Chunk;
@@ -78,29 +78,10 @@ struct TriangleData
 // into issues with trying to calculate normals in the March kernel.
 struct ChunkDetailData
 {
-    uint Biome;
     uint Foliage;
     float4 ColorA;
     float4 ColorB;
     float4 ColorC;
-};
-
-// Biome data table entry.
-// Defines the classification (height/temp/humidity/foliage)
-// and the color palette for that biome.
-struct ChunkBiomeData
-{
-    uint BiomeHeight;
-    uint BiomeTemperature;
-    uint BiomeHumidty;
-    uint BiomeFoliage;
-
-    float4 Highlight;
-    float4 Light;
-    float4 MidLight;
-    float4 Mid;
-    float4 Dark;
-    float4 Shadow;
 };
 
 #endif

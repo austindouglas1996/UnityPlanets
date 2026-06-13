@@ -1,5 +1,4 @@
-﻿using GingerVoxelSystem.Core;
-using GingerVoxelSystem.Engine.Stage;
+﻿using GingerVoxelSystem.Engine;
 using UnityEngine;
 
 namespace GingerVoxelSystem.Entity
@@ -17,13 +16,10 @@ namespace GingerVoxelSystem.Entity
     /// </summary>
     public class SDFCapsuleCollider : MonoBehaviour
     {
-        [SerializeField] private ComputeShader densityCollisionShader;
-        private DensityCollisionStage collisionStage;
-
         /// <summary>
         /// This is illegal. Should be fixed someday.
         /// </summary>
-        [SerializeField] private TerrainGeneratorMono ChunkServices;
+        [SerializeField] private MCTerrainOrchestrator ChunkServices;
 
         /// <summary>
         /// Force an update now.
@@ -76,9 +72,8 @@ namespace GingerVoxelSystem.Entity
         /// Initializes the collision stage and immediately requests
         /// an initial SDF block centered on the entity.
         /// </summary>
-        private void Awake()
+        private void Start()
         {
-            collisionStage = new DensityCollisionStage(densityCollisionShader,ChunkServices);
             RequestNewBlock();
         }
 
@@ -105,7 +100,7 @@ namespace GingerVoxelSystem.Entity
 
         private void OnDestroy()
         {
-            collisionStage?.Dispose();
+            ChunkServices.densityCollision?.Dispose();
         }
 
         /// <summary>
@@ -203,8 +198,8 @@ namespace GingerVoxelSystem.Entity
 
             Vector3 center = transform.position;
 
-            collisionStage.DispatchCollision(center);
-            collisionStage.RequestOutput(data =>
+            ChunkServices.densityCollision.DispatchCollision(center);
+            ChunkServices.densityCollision.RequestOutput(data =>
             {
                 const int RES = 32;
                 const float SPACING = 3.0f;

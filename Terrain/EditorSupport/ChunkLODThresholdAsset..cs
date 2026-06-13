@@ -37,8 +37,7 @@ namespace GingerVoxelSystem.EditorSupport
         /// </summary>
         public int[] ToArray()
         {
-            int[] counts = { LOD0, LOD1, LOD2, LOD3, LOD4, LOD5, LOD6 };
-            return counts;
+            return new int[] { LOD0, LOD1, LOD2, LOD3, LOD4, LOD5, LOD6 };
         }
     }
 }

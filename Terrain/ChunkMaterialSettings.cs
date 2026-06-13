@@ -13,21 +13,6 @@
         // Visualize chunks by their LOD level.
         LOD = 1,
 
-        // Color vertices based on their world-space height.
-        Height = 2,
-
-        // Color vertices based on temperature values.
-        Temperature = 3,
-
-        // Color vertices based on humidity values.
-        Humidity = 4,
-
-        // Show foliage coverage using grayscale values.
-        Foliage = 5,
-
-        // Visualize the vertex direction vector.
-        Direction = 6,
-
         // The calculated normal lighting.
         Normals = 7,
 

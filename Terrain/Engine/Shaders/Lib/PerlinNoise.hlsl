@@ -268,7 +268,6 @@ float worley(float3 p)
 
 float worleyWarped(float3 p)
 {
-    // --- Apply domain warp ---
     float warpStrength = 1.5;
 
     float3 warp = float3(

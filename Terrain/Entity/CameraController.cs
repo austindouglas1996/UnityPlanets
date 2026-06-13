@@ -25,7 +25,7 @@ namespace GingerVoxelSystem.Player
         float yaw;
         float pitch;
 
-        void Awake()
+        private void Awake()
         {
             // Lock and hide the cursor for FPS-style mouse look
             Cursor.lockState = CursorLockMode.Locked;
@@ -36,7 +36,7 @@ namespace GingerVoxelSystem.Player
             pitch = transform.localEulerAngles.x;
         }
 
-        void Update()
+        private void Update()
         {
             // Raw mouse input for direct, no-frills control
             float mouseX = Input.GetAxisRaw("Mouse X") * mouseSensitivity * 100f * Time.deltaTime;

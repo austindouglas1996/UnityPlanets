@@ -13,7 +13,7 @@ float3 CenterPosition;
 // Distance between samples in world units (e.g. 3.0)
 float VoxelSpacing;
 
-// Resolution (must be 32 for now, but passed for flexibility)
+// Resolution
 uint BlockResolution; // 32
 
 // Conservative bias so collision is slightly thicker
@@ -35,10 +35,7 @@ void GenerateCollisionBlock(uint3 id : SV_DispatchThreadID)
         return;
 
     // Convert 3D index to linear index
-    uint idx =
-        id.x +
-        id.y * BlockResolution +
-        id.z * BlockResolution * BlockResolution;
+    uint idx = id.x + id.y * BlockResolution + id.z * BlockResolution * BlockResolution;
 
     // Compute local offset so block is centered
     float3 halfExtent = (BlockResolution - 1) * 0.5 * VoxelSpacing;

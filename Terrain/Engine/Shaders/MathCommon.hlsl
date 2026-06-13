@@ -16,7 +16,6 @@
 //   - Using this split keeps compile-time sane while still running fast.
 // --------------------------------------------
 
-static const float PI = 3.14159265359;
 static const float TAU = 6.28318530718;
 static const float INV_9 = 1.0 / 9.0;
 

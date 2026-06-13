@@ -114,6 +114,7 @@
 
         private readonly Transform follower;
         private readonly ChunkGenerationProcessor processor;
+        private readonly IChunkConfiguration configuration;
 
         private readonly List<ChunkLodTreeNode> Nodes = new();
         private readonly Dictionary<ChunkKey, int> IndexByKey = new();
@@ -143,6 +144,7 @@
         /// <param name="processor"></param>
         public ChunkLodOctree(IChunkConfiguration configuration, Transform follower, ChunkGenerationProcessor processor)
         {
+            this.configuration = configuration;
             this.follower = follower;
             this.processor = processor;
 
@@ -336,7 +338,7 @@
                 return LodDecision.NoChange;
             }
 
-            int desired = GetLODForChunk(node.Key.BaseCenter, follower.position);
+            int desired = GetLODForChunk(node.Key.GetWorldCenter(configuration.DensityOptions.BaseCellStep), follower.position);
 
             if (node.State == NodeState.IdleLeaf)
             {
@@ -601,8 +603,8 @@
         private int GetLODForChunk(Vector3Int chunkOrigin, Vector3 playerWorldPos)
         {
             // Convert player position into LOD0 chunk coordinates
-            int playerChunkX = Mathf.FloorToInt(playerWorldPos.x / 16);
-            int playerChunkZ = Mathf.FloorToInt(playerWorldPos.z / 16);
+            int playerChunkX = Mathf.FloorToInt(playerWorldPos.x / configuration.DensityOptions.CellsPerAxis);
+            int playerChunkZ = Mathf.FloorToInt(playerWorldPos.z / configuration.DensityOptions.CellsPerAxis);
 
             int dx = Mathf.Abs(chunkOrigin.x - playerChunkX);
             int dz = Mathf.Abs(chunkOrigin.z - playerChunkZ);
@@ -637,8 +639,8 @@
 
             uint mask = 0;
 
-            Vector3Int origin0 = key.BaseCenter;
-            int span = 1 << key.LODIndex; // how many LOD0 chunks this chunk spans
+            Vector3Int origin0 = key.GetWorldCenter(configuration.DensityOptions.BaseCellStep);
+            int span = configuration.DensityOptions.BaseCellStep << key.LODIndex; // how many LOD0 chunks this chunk spans
 
             for (int face = 0; face < 6; face++)
             {

@@ -31,6 +31,7 @@
 
         [Header("Shaders")]
         [SerializeField] private ComputeShader DensityShader;
+        [SerializeField] private ComputeShader DensityCollisionShader;
         [SerializeField] private ComputeShader MarchingCubesShader;
         [SerializeField] private ComputeShader TransvoxelShader;
         [SerializeField] private ComputeShader RepackShader;
@@ -38,6 +39,7 @@
         [SerializeField] private ComputeShader UtilityShader;
 
         private DensityStage density;
+        public DensityCollisionStage densityCollision;
         private IMarchingShader marchingCubes;
         private RepackStage repack;
         private DetailsStage details;
@@ -65,6 +67,7 @@
 
             // Load compute stages. Each stage wires buffers/kernels internally.
             density = new DensityStage(DensityShader, chunkBuffers);
+            densityCollision = new DensityCollisionStage(DensityCollisionShader, chunkBuffers, this.chunkServices);
 
             marchingCubes = new TransVoxelsStage(TransvoxelShader, chunkBuffers);
 
@@ -156,17 +159,14 @@
             {
                 int length = (end - start + 1);
 
+                // Reset write cursor for each chunk.
+                utility.DispatchClear(job.Batch.TriangleWriteCursor, start, length);
+
                 // If the start contains a removal we do not need to do anything but remove entries.
                 if (job.Keys[start] == null)
                 {
-                    // Reset write cursor for each chunk.
-                    utility.DispatchClear(job.Batch.TriangleWriteCursor, start, length);
-
                     continue;
                 }
-
-                // Reset write cursor for each chunk.
-                utility.DispatchClear(job.Batch.TriangleWriteCursor, start, length);
 
                 // Emit triangles.
                 marchingCubes.DispatchMarching(job.Batch, length * marchGroupSize, marchGroupSize, marchGroupSize, start);
@@ -188,8 +188,6 @@
         public void UpdateOptions()
         {
             // Update render material properties
-            chunkMaterial.SetBuffer("Biomes", chunkBuffers.BiomeBuffer);
-            chunkMaterial.SetInt("_BiomesCount", chunkBuffers.BiomesCount);
             chunkMaterial.SetInt("Seed", chunkServices.Configuration.DensityOptions.Seed);
 
             chunkMaterial.SetFloat("_UseVertexColor", 1f);

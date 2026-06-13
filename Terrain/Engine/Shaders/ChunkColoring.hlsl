@@ -2,7 +2,6 @@
 #define CHUNK_COMMON_COLORING_INCLUDED
 
 #include "ChunkFunctions.hlsl"
-#include "Biome.hlsl"
 
 static const float4 ColorsArray[8] =
 {
@@ -54,18 +53,6 @@ float4 GetVertexColor(TriangleData tri, ChunkDetailData data, uint vertex, uint 
     {
         case 1:
             result = ColorsArray[tri.LodIndex];
-            break;
-        case 2:
-            result = ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeHeight, 3);
-            break;
-        case 3:
-            result = ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeTemperature, 4);
-            break;
-        case 4:
-            result = ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeHumidty, 3);
-            break;
-        case 5:
-            result = ReverseQuantizeN(UnpackBiome(data.Biome, vertex).BiomeFoliage, 3);
             break;
         case 7:
             result = float4((vertex == 0) ? float4(tri.NormalA, 1) :

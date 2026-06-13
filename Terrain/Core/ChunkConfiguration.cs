@@ -19,10 +19,6 @@ namespace GingerVoxelSystem.Core
         [SerializeField] private TerrainDensityOptions densityMapOptions;
         public TerrainDensityOptions DensityOptions => densityMapOptions;
 
-        [Header("Generation")]
-        [SerializeField] private BiomeLibraryAsset biomeLibrary;
-        public BiomeLibraryAsset BiomeLibrary => biomeLibrary;
-
         [Header("Rendering")]
         [SerializeField] private ChunkLODThresholdAsset lodThresholds;
         public ChunkLODThresholdAsset LODThresholds => lodThresholds;
