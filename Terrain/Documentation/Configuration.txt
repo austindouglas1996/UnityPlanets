@@ -1,0 +1,19 @@
+A good example of terrain generation
+
+Cells per axis: 16
+Base Cell Step: 1
+ISO Level: 0.5
+World Height Amplitude: 1
+
+Macro Freq: 4e-05
+Macro Height: 5
+
+Hill Freq: 0.0004
+Hill Height: 200
+
+Mountain Freq: 0.0001
+Mountain Height: 850
+Mountain Coverage: 0.505
+
+Detail Freq: 0.001
+Detail Height: 10
