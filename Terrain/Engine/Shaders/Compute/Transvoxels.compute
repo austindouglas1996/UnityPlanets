@@ -226,7 +226,7 @@ void March(ChunkCellContext key)
         float d0 = corner[v.Corner0] - ISOLevel;
         float d1 = corner[v.Corner1] - ISOLevel;
 
-        float t = (corner[v.Corner0] - ISOLevel) * rcp(corner[v.Corner0] - corner[v.Corner1]);
+        float t = (-d0) / (d1 - d0);
 
         cellPos[i] = lerp(cornerPos[v.Corner0], cornerPos[v.Corner1], t);
         cellNormal[i] = normalize(lerp(cornerNormal[v.Corner0], cornerNormal[v.Corner1], t));
@@ -394,8 +394,7 @@ uint GetTransitionCase(uint face, ChunkCellContext key)
     for (uint i = 0; i < 9; i++)
     {
         uint cornerIndex = TransitionCaseCornerMap[i];
-        float value;
-        
+
         if (GetCornerValue(face, key, cornerIndex, samplePadded) - ISOLevel > 0.0)
             caseCode |= (1u << i);
     }

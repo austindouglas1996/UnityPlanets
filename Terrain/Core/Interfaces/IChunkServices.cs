@@ -1,7 +1,7 @@
-using GingerVoxelSystem.Systems.Generation;
-
 namespace GingerVoxelSystem.Core
 {
+    using GingerVoxelSystem.Systems.Generation;
+
     /// <summary>
     /// Runtime facade for chunk world state and generation.
     /// Provides configuration, layout, and generation services used by

@@ -244,6 +244,11 @@
         public void Dispose()
         {
             this.marchingCubes.Dispose();
+
+            // Owned here (created in Awake), so it is released here too. The SDF
+            // collider only borrows this stage for queries and must never dispose it.
+            this.densityCollision?.Dispose();
+
             this.chunkBuffers.Dispose();
         }
 

@@ -5,12 +5,13 @@
  * The goal here is not to re-invent Transvoxel, but to adapt the tables and data
  * into a GPU-friendly format that works cleanly with Unity compute shaders.
  */
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using UnityEngine;
-
 namespace GingerVoxelSystem.Engine.Helpers
 {
+    using System.Collections.Generic;
+    using System.Runtime.CompilerServices;
+    using System.Runtime.InteropServices;
+    using UnityEngine;
+
     /// <summary>
     /// GPU-friendly version of regular cell data.
     /// This mirrors the CPU-side Transvoxel tables as closely as possible,
@@ -1080,6 +1081,7 @@ namespace GingerVoxelSystem.Engine.Helpers
             ReleaseBuffer(ref TransitionCellIndices);
             ReleaseBuffer(ref TransitionVertexRanges);
             ReleaseBuffer(ref TransitionVertexData);
+            isInitialized = false;
         }
 
         #region Regular

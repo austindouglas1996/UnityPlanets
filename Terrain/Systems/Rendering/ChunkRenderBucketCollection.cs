@@ -110,6 +110,7 @@ namespace GingerVoxelSystem.Systems.Rendering
                     if (bucketsWithSpace.Contains(bucket))
                         bucketsWithSpace.Remove(bucket);
 
+                    bucket.Dispose();
                     this.buckets.Remove(bucket);
 
                     this.BucketRemoved?.Invoke(bucket, EventArgs.Empty);

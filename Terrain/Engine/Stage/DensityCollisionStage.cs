@@ -1,14 +1,14 @@
-﻿using GingerVoxelSystem.Core;
-using GingerVoxelSystem.Engine.Options;
-using GingerVoxelSystem.Systems.Generation;
-using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using UnityEngine;
-using UnityEngine.Rendering;
-
-namespace GingerVoxelSystem.Engine.Stage
+﻿namespace GingerVoxelSystem.Engine.Stage
 {
+    using GingerVoxelSystem.Core;
+    using GingerVoxelSystem.Engine.Options;
+    using GingerVoxelSystem.Systems.Generation;
+    using System;
+    using System.Collections.Generic;
+    using System.Runtime.InteropServices;
+    using UnityEngine;
+    using UnityEngine.Rendering;
+
     /// <summary>
     /// Generates a localized volumetric SDF block used for entity collision.
     /// 
@@ -136,6 +136,7 @@ namespace GingerVoxelSystem.Engine.Stage
         public void Dispose()
         {
             outputBuffer?.Release();
+            editBuffer?.Release();
         }
     }
 }

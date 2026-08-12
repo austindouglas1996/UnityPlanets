@@ -1,9 +1,9 @@
-﻿using GingerVoxelSystem.Engine.Stage;
-using GingerVoxelSystem.Entity;
-using UnityEngine;
-
-namespace GingerVoxelSystem.Player
+﻿namespace GingerVoxelSystem.Player
 {
+    using GingerVoxelSystem.Engine.Stage;
+    using GingerVoxelSystem.Entity;
+    using UnityEngine;
+
     /// <summary>
     /// Simple first-person style controller backed by a cached SDF collision volume.
     /// 

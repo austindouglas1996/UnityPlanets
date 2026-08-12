@@ -21,6 +21,10 @@
         private readonly List<ChunkWorkDescriptorGPU> InputGenerate = new(ChunkEngineSettings.GenerationJobsPerBatch);
         private List<ChunkEditData> InputEdits = new(ChunkEngineSettings.EditJobsPerJob);
 
+        // Reused scratch for GroupContiguous -> avoids a List + a LINQ OrderBy per dispatch.
+        private readonly List<int> sortedModIndices = new(ChunkEngineSettings.GenerationJobsPerBatch);
+        private readonly List<(int start, int end)> contiguousGroups = new(ChunkEngineSettings.GenerationJobsPerBatch);
+
         // GPU buffers used by various stages.
         public ComputeBuffer SurfaceChunkInputBuffer;   // Per-chunk metadata for surface mask pass
         public ComputeBuffer GenerateChunkInputBuffer;  // Per-chunk metadata for full generation
@@ -137,32 +141,38 @@
         /// <summary>
         /// Groups modification indices into contiguous ranges for efficient job dispatch.
         /// </summary>
+        /// <remarks>
+        /// The returned list is REUSED between calls to avoid per-dispatch allocations.
+        /// Consume it before calling this again; never cache or store it.
+        /// </remarks>
         public List<(int start, int end)> GroupContiguous(Dictionary<int, ChunkKey?> mods,ChunkKey?[] keys,int keysCount)
         {
-            List<(int start, int end)> groups = new();
+            contiguousGroups.Clear();
 
             // Make sure there is modifications.
             if (mods.Count == 0)
-                return groups;
+                return contiguousGroups;
 
             static bool IsValid(int idx, ChunkKey?[] keys, int keysCount) => keys[idx] != null;
 
-            // Sort the keys as we want the ranges to be in order.
-            var sorted = mods.Keys.OrderBy(i => i);
+            // Snapshot + sort the modified indices. Done without LINQ because OrderBy
+            // allocates an enumerator and a buffer on every dispatch. Copying here also
+            // decouples us from `mods`, which the caller clears right after dispatching.
+            sortedModIndices.Clear();
+            foreach (int index in mods.Keys)
+                sortedModIndices.Add(index);
 
-            using var e = sorted.GetEnumerator();
-            if (!e.MoveNext())
-                return groups;
+            sortedModIndices.Sort();
 
-            int rangeStart = e.Current;
-            int prev = e.Current;
+            int rangeStart = sortedModIndices[0];
+            int prev = rangeStart;
 
             // An invalid is defined as null.
             bool prevIsValid = IsValid(prev, keys, keysCount);
 
-            while (e.MoveNext())
+            for (int i = 1; i < sortedModIndices.Count; i++)
             {
-                int idx = e.Current;
+                int idx = sortedModIndices[i];
                 bool isValid = IsValid(idx, keys, keysCount);
 
                 // If this index is not in order OR if this
@@ -170,7 +180,7 @@
                 // then this ends our current group.
                 if (idx != prev + 1 || isValid != prevIsValid)
                 {
-                    groups.Add((rangeStart, prev));
+                    contiguousGroups.Add((rangeStart, prev));
                     rangeStart = idx;
                 }
 
@@ -178,8 +188,8 @@
                 prevIsValid = isValid;
             }
 
-            groups.Add((rangeStart, prev));
-            return groups;
+            contiguousGroups.Add((rangeStart, prev));
+            return contiguousGroups;
         }
 
         /// <summary>

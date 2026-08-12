@@ -1,7 +1,7 @@
-﻿using UnityEngine;
-
-namespace GingerVoxelSystem.Engine.Stage
+﻿namespace GingerVoxelSystem.Engine.Stage
 {
+    using UnityEngine;
+
     /// <summary>
     /// Small utility stage for running generic compute kernels that don't belong
     /// to the main terrain pipeline. Right now this only handles buffer clearing.

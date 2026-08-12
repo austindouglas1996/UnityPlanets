@@ -247,8 +247,12 @@ namespace GingerVoxelSystem.Systems.Rendering
             Array.Clear(items, 0, nextIndex);
             nextIndex = 0;
 
+            this.renderData?.Dispose();
+            this.renderData = null;        // force a fresh batch on the next generation
+
             this.index.Clear();
             this.AvailableSlots.Clear();
+            this.modifications.Clear();     // also stale after a clear
         }
 
         /// <summary>

@@ -1,8 +1,8 @@
-﻿using GingerVoxelSystem.Engine;
-using UnityEngine;
-
-namespace GingerVoxelSystem.Entity
+﻿namespace GingerVoxelSystem.Entity
 {
+    using GingerVoxelSystem.Engine;
+    using UnityEngine;
+
     /// <summary>
     /// Entity-level collision component backed by a cached SDF volume.
     /// 
@@ -100,7 +100,10 @@ namespace GingerVoxelSystem.Entity
 
         private void OnDestroy()
         {
-            ChunkServices.densityCollision?.Dispose();
+            // densityCollision is owned by MCTerrainOrchestrator, which disposes it.
+            // This collider only borrows it for queries, so it must NOT dispose it here:
+            // doing so frees a shared GPU stage the terrain still uses (breaks on player
+            // respawn, and double-disposes when more than one collider exists).
         }
 
         /// <summary>

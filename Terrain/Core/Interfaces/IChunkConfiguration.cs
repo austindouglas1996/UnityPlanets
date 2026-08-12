@@ -1,8 +1,8 @@
-using GingerVoxelSystem.EditorSupport;
-using GingerVoxelSystem.Engine.Options;
-
 namespace GingerVoxelSystem.Core
 {
+    using GingerVoxelSystem.EditorSupport;
+    using GingerVoxelSystem.Engine.Options;
+
     /// <summary>
     /// Contains config data for how chunks are sized, typed, and generated.
     /// Passed into generators and factories.

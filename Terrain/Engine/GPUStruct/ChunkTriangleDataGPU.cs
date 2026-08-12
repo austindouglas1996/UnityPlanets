@@ -23,7 +23,6 @@ namespace GingerVoxelSystem.Engine
     [StructLayout(LayoutKind.Sequential)]
     public struct ChunkDetailDataGPU
     {
-        public uint Biome;
         public uint Foliage;
         public Vector4 a;
         public Vector4 b;

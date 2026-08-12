@@ -223,7 +223,10 @@
 
                 // Somehow this happens sometimes...even though it should not be able to happen.
                 if (node == null)
+                {
+                    CurrentUpdateIndex++;
                     continue;
+                }
 
                 if (node.State == NodeState.IdleLeaf || node.State == NodeState.Subdivided)
                 {

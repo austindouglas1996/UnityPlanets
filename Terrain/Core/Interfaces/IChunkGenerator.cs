@@ -1,11 +1,11 @@
-using GingerVoxelSystem.Engine;
-using GingerVoxelSystem.Systems.Generation;
-using System;
-using System.Collections.Generic;
-using UnityEngine;
-
 namespace GingerVoxelSystem.Core
 {
+    using GingerVoxelSystem.Engine;
+    using GingerVoxelSystem.Systems.Generation;
+    using System;
+    using System.Collections.Generic;
+    using UnityEngine;
+
     /// <summary>
     /// GPU-driven pipeline for generating chunk surface data and meshes.
     /// Provides batched compute-dispatch operations for surface checks,

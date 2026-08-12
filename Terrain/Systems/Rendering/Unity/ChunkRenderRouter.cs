@@ -1,7 +1,6 @@
-﻿using GingerVoxelSystem.Systems.Rendering;
-
-namespace Assets.Scripts.Terrain.Systems.Rendering.Unity
+﻿namespace Assets.Scripts.Terrain.Systems.Rendering.Unity
 {
+    using GingerVoxelSystem.Systems.Rendering;
     using System;
     using System.Collections.Generic;
     using UnityEngine.Rendering;

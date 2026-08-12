@@ -29,7 +29,7 @@ void GenerateDensitySurface(uint3 id : SV_DispatchThreadID)
     if (col.DensitySampleIndex == -1)
         return;
 
-    //DensitySurface[col.DensitySampleIndex] = GenerateNoiseValue(col.CellWorldPos);
+    DensitySurface[col.DensitySampleIndex] = GenerateNoiseValue(col.CellWorldPos);
 }
 
 [numthreads(4, 4, 4)]

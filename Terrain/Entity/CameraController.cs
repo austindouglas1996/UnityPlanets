@@ -1,7 +1,7 @@
-﻿using UnityEngine;
-
-namespace GingerVoxelSystem.Player
+﻿namespace GingerVoxelSystem.Player
 {
+    using UnityEngine;
+
     /// <summary>
     /// Very basic FPS-style camera controller.
     ///

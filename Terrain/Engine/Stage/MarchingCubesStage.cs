@@ -1,12 +1,12 @@
-﻿using GingerVoxelSystem.Engine.Helpers;
-using GingerVoxelSystem.Engine.Options;
-using GingerVoxelSystem.Systems.Rendering;
-using System;
-using System.Runtime.InteropServices;
-using UnityEngine;
-
-namespace GingerVoxelSystem.Engine.Stage
+﻿namespace GingerVoxelSystem.Engine.Stage
 {
+    using GingerVoxelSystem.Engine.Helpers;
+    using GingerVoxelSystem.Engine.Options;
+    using GingerVoxelSystem.Systems.Rendering;
+    using System;
+    using System.Runtime.InteropServices;
+    using UnityEngine;
+
     /// <summary>
     /// Handles both marching-cubes passes:
     /// 1) PrePass: counts triangles per chunk

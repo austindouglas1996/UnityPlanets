@@ -1,8 +1,8 @@
-﻿using GingerVoxelSystem.Systems.Rendering;
-using UnityEngine;
-
-namespace GingerVoxelSystem.Engine.Stage
+﻿namespace GingerVoxelSystem.Engine.Stage
 {
+    using GingerVoxelSystem.Systems.Rendering;
+    using UnityEngine;
+
     /// <summary>
     /// Handles the repack phase of the pipeline. 
     /// The prepass computes packed triangle ranges and writes draw args.

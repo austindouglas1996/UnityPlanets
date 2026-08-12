@@ -162,7 +162,14 @@
             SurfaceBusy = true;
 
             int n = surfaceBatcher.TryBatch(ChunkEngineSettings.SurfaceJobsPerBatch, tmpSurfaceJobs);
-            if (n == 0) return;
+            if (n == 0)
+            {
+                // Nothing was batched, so no dispatch will fire and nothing will ever
+                // clear the busy flag. Release it here or surface checks stall forever
+                // and the world silently stops loading.
+                SurfaceBusy = false;
+                return;
+            }
 
             chunkServices.Generator.DispatchSurfaceCheck(tmpSurfaceJobs, (uint[] surfaceResults) =>
             {

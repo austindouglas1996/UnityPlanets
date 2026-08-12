@@ -80,7 +80,7 @@
                 ChunkDetailData data = _TriangleDetailsBuffer[triIndex];
 
                 float3 pos    = (subIndex == 0) ? tri.a : (subIndex == 1) ? tri.b : tri.c;
-                float3 normal = normalize(cross(tri.b - tri.a, tri.c - tri.a));
+                float3 normal = (subIndex == 0) ? tri.NormalA : (subIndex == 1) ? tri.NormalB : tri.NormalC; //normalize(cross(tri.b - tri.a, tri.c - tri.a));
 
                 OUT.color      = GetVertexColor(tri, data, subIndex, Overlay);
                 OUT.positionCS = TransformWorldToHClip(pos);

@@ -85,18 +85,17 @@
                 // Copy into the existing array (no new allocations)
                 src.Slice(0, count).CopyTo(surfaceMaskCache);
 
-                // Now process or invoke the callback on a background thread
-                System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+                // AsyncGPUReadback callbacks already run on the main thread. onSuccess
+                // mutates shared octree state (Nodes / IndexByKey), so it MUST stay on
+                // the main thread — do not offload it to a ThreadPool.
+                try
                 {
-                    try
-                    {
-                        onSuccess?.Invoke(surfaceMaskCache);
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogError(e);
-                    }
-                });
+                    onSuccess?.Invoke(surfaceMaskCache);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                }
             });
         }
 

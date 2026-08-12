@@ -1,10 +1,10 @@
-﻿using GingerVoxelSystem.Core;
-using GingerVoxelSystem.Systems.Rendering;
-using System;
-using System.Collections.Generic;
-
-namespace GingerVoxelSystem.Engine
+﻿namespace GingerVoxelSystem.Engine
 {
+    using GingerVoxelSystem.Core;
+    using GingerVoxelSystem.Systems.Rendering;
+    using System;
+    using System.Collections.Generic;
+
     public struct DispatchJob
     {
         public readonly ChunkKey?[] Keys;
@@ -26,7 +26,12 @@ namespace GingerVoxelSystem.Engine
         {
             Keys = keys;
             KeysCount = keysCount;
-            Modifications = new (modifications);
+            // Aliased, not copied, to avoid a Dictionary allocation per dispatch.
+            // Safe because the only consumer (ChunkBuffers.GroupContiguous) snapshots
+            // the keys synchronously at the start of DispatchGeneration, before the
+            // owning bucket clears this dictionary.
+            // If generation ever becomes async/deferred, restore the defensive copy.
+            Modifications = modifications;
             Batch = batch;
             OnCompleted = onCompleted;
         }
