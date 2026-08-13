@@ -63,6 +63,11 @@
             // Stable buffers for Density.
             this.densityShader.SetBuffer(generateDensityKernel, "ChunkInputs", buffers.GenerateChunkInputBuffer);
             this.densityShader.SetBuffer(generateSurfaceKernel, "ChunkInputs", buffers.GenerateChunkInputBuffer);
+
+            // Perlin permutation table (shared, read-only). Only the kernels that sample noise.
+            this.densityShader.SetBuffer(generateSurfaceKernel, "perm", buffers.PermBuffer);
+            this.densityShader.SetBuffer(generateDensityKernel, "perm", buffers.PermBuffer);
+            this.densityShader.SetBuffer(surfaceKernel, "perm", buffers.PermBuffer);
         }
 
         /// <summary>

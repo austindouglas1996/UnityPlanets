@@ -93,7 +93,7 @@ float3 GetNormalFast(int3 p, int ChunkKeyIndex, uint3 sampleSize)
 // Triangle indices are taken from the TransitionCellIndices table.
 // The `flip` flag comes from the transition class and determines
 // whether triangle winding must be reversed to match orientation.
-void CreateTriangles(ChunkCellContext key, RegularCellData cell, StructuredBuffer<uint> indices, in float3 cellPos[16], in float3 cellNormal[16], bool flip = true)
+void CreateTriangles(ChunkCellContext key, RegularCellData cell, StructuredBuffer<uint> indices, in float3 cellPos[16], in float3 cellNormal[16], bool flip = true, bool isTransition = false)
 {
     [loop]
     for (uint i = 0; i < cell.IndicesCount; i += 3)
@@ -128,6 +128,10 @@ void CreateTriangles(ChunkCellContext key, RegularCellData cell, StructuredBuffe
         }
 
         tri.ChunkKeyIndex = key.ChunkKeyIndex;
+
+        // DIAGNOSTIC: transition triangles are tagged LOD 9 so GetVertexColor
+        // paints them pure black. Revert isTransition to drop the tagging.
+        //tri.LodIndex = isTransition ? 9 : key.Chunk.LodIndex;
         tri.LodIndex = key.Chunk.LodIndex;
         
         // Append triangle to the output buffer for this chunk
@@ -226,7 +230,7 @@ void March(ChunkCellContext key)
         float d0 = corner[v.Corner0] - ISOLevel;
         float d1 = corner[v.Corner1] - ISOLevel;
 
-        float t = (-d0) / (d1 - d0);
+        float t = d0 * rcp(corner[v.Corner0] - corner[v.Corner1]);
 
         cellPos[i] = lerp(cornerPos[v.Corner0], cornerPos[v.Corner1], t);
         cellNormal[i] = normalize(lerp(cornerNormal[v.Corner0], cornerNormal[v.Corner1], t));
@@ -492,7 +496,7 @@ void MarchTransitionFace(uint face, ChunkCellContext key)
     uint transitionClass = TransitionCellClass[transitionCase];
     bool flip = (transitionClass & 0x80) != 0;
 
-    CreateTriangles(key, tcell, TransitionCellIndices, cellPos, cellNormal, !flip);
+    CreateTriangles(key, tcell, TransitionCellIndices, cellPos, cellNormal, flip, true);
 }
 
 [numthreads(4, 4, 4)]

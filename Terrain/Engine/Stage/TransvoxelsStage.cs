@@ -47,6 +47,10 @@
 
             TransvoxelGpuTables.SetBuffer(transvoxelShader, countTrianglesKernel);
             TransvoxelGpuTables.SetBuffer(transvoxelShader, marchKernel);
+
+            // Perlin permutation table (transition corners re-sample noise off the density map).
+            transvoxelShader.SetBuffer(countTrianglesKernel, "perm", buffers.PermBuffer);
+            transvoxelShader.SetBuffer(marchKernel, "perm", buffers.PermBuffer);
         }
 
         /// <summary>

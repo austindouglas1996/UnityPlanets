@@ -37,6 +37,9 @@
 
             // Constant buffers (shared data for biome/color generation)
             this.detailsShader.SetConstantBuffer("TerrainDensityOptions", buffers.DensityOptionsBuffer, 0, Marshal.SizeOf<TerrainDensityOptions>());
+
+            // Perlin permutation table (used by the biome noise in SampleBiomeMasks).
+            this.detailsShader.SetBuffer(detailsPassKernel, "perm", buffers.PermBuffer);
         }
 
         /// <summary>

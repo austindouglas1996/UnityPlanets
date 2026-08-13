@@ -8,7 +8,7 @@
 #include "../ChunkFunctions.hlsl"
 #include "../DensityField.hlsl"
 
-/* Inputs */
+/* InputsA */
 uint Offset;
 StructuredBuffer<ChunkWorkDescriptor> ChunkInputs;
 

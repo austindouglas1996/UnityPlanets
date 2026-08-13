@@ -75,6 +75,7 @@
 
             this.densityShader.SetBuffer(this.collisionKernel,"DensityOutput",this.outputBuffer);
             this.densityShader.SetBuffer(this.collisionKernel, "ChunkEdits", this.editBuffer);
+            this.densityShader.SetBuffer(this.collisionKernel, "perm", Buffers.PermBuffer);
         }
 
         /// <summary>

@@ -34,6 +34,8 @@
 
         public ComputeBuffer SurfaceMaskBuffer;         // 1 flag per chunk from the surface check
 
+        public ComputeBuffer PermBuffer;                // Perlin permutation table (moved off the shader static const)
+
         private IChunkServices chunkServices;
         private Transform player;
 
@@ -53,6 +55,7 @@
             GenerateChunkInputBuffer = new ComputeBuffer(ChunkEngineSettings.GenerationJobsPerBatch, Marshal.SizeOf<ChunkWorkDescriptorGPU>());
             GenerateChunkEditBuffer = new ComputeBuffer(ChunkEngineSettings.EditJobsPerJob, Marshal.SizeOf<ChunkEditData>());
             SurfaceMaskBuffer = new ComputeBuffer(ChunkEngineSettings.SurfaceJobsPerBatch, sizeof(uint));
+            PermBuffer = Helpers.PerlinPermTable.CreateBuffer();
 
             UpdateConfiguration(services);
         }
@@ -116,6 +119,7 @@
                 Debug.Assert(range >= 0);
 
                 var ctx = keys[i].Value;
+
                 InputGenerate.Add(new ChunkWorkDescriptorGPU
                 {
                     GlobalIndex = (uint)i,  // Used by some kernels as an index hint
@@ -205,6 +209,7 @@
             GenerateChunkEditBuffer.Dispose();
             DensityOptionsBuffer.Dispose();
             SurfaceMaskBuffer.Dispose();
+            PermBuffer.Dispose();
         }
 
         /// <summary>
