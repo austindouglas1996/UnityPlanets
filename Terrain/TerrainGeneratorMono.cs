@@ -51,6 +51,42 @@ namespace GingerVoxelSystem
             chunkRenderer.RefreshChunks();
         }
 
+        /// <summary>
+        /// Inspector helper: repopulates the density options with the recommended
+        /// "ordinary land + gentle hills" preset. Right-click the component header (or use the
+        /// ⋮ menu) → "Reset To Ordinary Land". Engine dimensions and tuned globals (Seed,
+        /// ISOLevel, WorldHeightAmplitude, PositionOffset) are preserved; only the shaping
+        /// layers are reset. Pushes the change live when playing.
+        /// </summary>
+        [ContextMenu("Reset To Ordinary Land")]
+        private void ResetToOrdinaryLand()
+        {
+            if (ChunkConfiguration == null)
+            {
+                Debug.LogWarning("ChunkConfiguration is not assigned; nothing to reset.");
+                return;
+            }
+
+#if UNITY_EDITOR
+            // Record before mutating so the reset is undoable in the editor.
+            UnityEditor.Undo.RecordObject(this, "Reset To Ordinary Land");
+#endif
+
+            ChunkConfiguration.ResetDensityToOrdinaryLand();
+
+            // Push the change live if we're already generating.
+            if (Application.isPlaying && chunkGenerator != null)
+            {
+                chunkGenerator.UpdateOptions();
+                chunkRenderer.RefreshChunks();
+            }
+
+#if UNITY_EDITOR
+            // Mark dirty so the scene saves the reset when edited outside play mode.
+            UnityEditor.EditorUtility.SetDirty(this);
+#endif
+        }
+
         IChunkConfiguration IChunkServices.Configuration => ChunkConfiguration;
         IChunkGenerator IChunkServices.Generator => chunkGenerator;
         ChunkLodOctree IChunkServices.Octree => chunkRenderer.LODTree;

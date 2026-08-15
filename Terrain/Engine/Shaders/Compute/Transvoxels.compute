@@ -67,24 +67,22 @@ bool IsFaceAnEdge(uint face, ChunkCellContext key)
 // Returns a normal for a triangle based on neighbor density values.
 // This is much faster than calculating on the fly, but does require
 // valid values and may not work well with transvoxels.
-float3 GetNormalFast(int3 p, int ChunkKeyIndex, uint3 sampleSize)
+float3 GetNormalFast(int3 p, int chunkKeyIndex, uint3 sampleSize)
 {
-    // Precompute strides in the flattened density buffer
     const int strideX = 1;
     const int strideY = sampleSize.x;
     const int strideZ = sampleSize.x * sampleSize.y;
 
-    // Convert center sample position to flat index (handles borders)
-    int centerIndex = GetDensitySampleIndexPadded(p, ChunkKeyIndex, sampleSize);
+    int centerIndex = GetDensitySampleIndexPadded(p, chunkKeyIndex, sampleSize);
 
-    // Central differences
     float dx = DensityMap[centerIndex + strideX] - DensityMap[centerIndex - strideX];
     float dy = DensityMap[centerIndex + strideY] - DensityMap[centerIndex - strideY];
     float dz = DensityMap[centerIndex + strideZ] - DensityMap[centerIndex - strideZ];
 
-    float3 n = -float3(dx, dy, dz);
-   
-    return n;
+    float3 gradient = float3(dx, dy, dz);
+    float lengthSquared = dot(gradient, gradient);
+
+    return lengthSquared > 0.000001 ? gradient * rsqrt(lengthSquared) : float3(0, 1, 0);
 }
 
 // CreateTriangles

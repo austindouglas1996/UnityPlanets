@@ -1,138 +1,102 @@
-﻿#ifndef SIMPLEDENSITY_INCLUDED
+#ifndef SIMPLEDENSITY_INCLUDED
 #define SIMPLEDENSITY_INCLUDED
 
-#include "ChunkFunctions.hlsl"
-#include "Lib/PerlinNoise.hlsl"
+#include "WorldShaping.hlsl"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GenerateNoiseValue
 //
-// Returns a signed density value for a given world-space position.
+// Returns a signed density value for a world-space position:
 //
-//   positive → air (above the surface)
-//   negative → solid (below the surface)
+//   positive → air    (above the surface)
+//   negative → solid  (below the surface)
 //
-// All feature heights are now driven directly by cbuffer parameters,
-// so each value represents actual world units:
+// The terrain is a HEIGHT FIELD: we build a surface height H(x,z) from a stack of
+// independent layers, then return  p.y - H.  This form (unchanged from before)
+// keeps marching cubes, normals, and collision behaving exactly as they always
+// have — the surface is wherever p.y == H.
 //
-//   MacroHeight     — vertical range of plains variation (e.g. 20)
-//   HillHeight      — max height of hills in world units (e.g. 80)
-//   MountainHeight  — max height of mountains in world units (e.g. 300)
-//   MountainCoverage— 0..1 fraction of land that becomes mountainous (e.g. 0.25)
+// Layer stack (each optional layer can be toggled off with zero effect):
 //
-// Frequencies are also driven by cbuffer:
-//   MacroFreq       — continent scale (very low, e.g. 0.0004)
-//   HillFreq        — hill detail scale (e.g. 0.002)
-//   MountainFreq    — mountain region and ridge scale (e.g. 0.0015)
-//   DetailFreq      — fine surface variation (e.g. 0.005)
+//   Base land  (always on)  H  = BaseElevation + noise*BaseAmplitude
+//   Hills      (+, ≥0)      H += hillMask   * HillHeight
+//   Mountains  (+, ≥0)      H += regionMask * peaks * MountainHeight
+//   Lakes      (−)          H -= basin      * LakeDepth
+//   Oceans                  H  = lerp(H, OceanFloorHeight, seaMask)
 //
-// WorldHeightAmplitude acts as a final global multiplier.
-// With per-feature heights in world units, set this to 1.0 for direct
-// control, or use it as a global vertical scale override.
-//
+// Design rules that keep terrain controllable and river-free:
+//   • Base land never thresholds anything, so with every optional layer off you
+//     still get ordinary, gently uneven ground — not a flat plane, never sunken.
+//   • Hills and mountains are ADDITIVE and non-negative: they can only raise the
+//     ground, so they cannot carve the winding trenches the old mask-lerp did.
+//   • Lakes threshold noise near its HIGH end, which selects isolated round blobs
+//     (basins) instead of the long winding contours a mid threshold produces.
+//   • Oceans are the ONLY layer that lowers terrain below zero, and only through a
+//     broad, low-frequency continental mask — so land never floods on its own.
 // ─────────────────────────────────────────────────────────────────────────────
 float GenerateNoiseValue(float3 p)
 {
     float2 uv = p.xz;
 
-    // ── 1. Continental shelf ──────────────────────────────────────────────────
-    //
-    // MacroFreq drives continent scale directly. At typical terrain scales
-    // this should be much lower than HillFreq or DetailFreq so that
-    // landmasses span many chunks.
-    float continent = N01(fbm2D(uv * MacroFreq, 5));
+    // ── Base land (always on) ─────────────────────────────────────────────────
+    // Low-frequency, low-octave undulation around BaseElevation. Signed noise
+    // (~[-1,1]) so the ground gently rises and dips a little around the reference
+    // level. This is the stable foundation every other layer sits on.
+    float baseN  = fbm2D(LayerCoord(uv, BaseFrequency, DOMAIN_BASE, BaseSeedOffset), 3);
+    float height = BaseElevation + baseN * BaseAmplitude;
 
-    // landMask:  0 = open ocean, 1 = land interior
-    // coastMask: wider taper for blending ocean floor depth near shorelines
-    float landMask = smoothstep(0.42, 0.58, continent);
-    float coastMask = smoothstep(0.30, 0.50, continent);
+    // ── Hills (optional, additive) ────────────────────────────────────────────
+    // smoothstep(HillThreshold, 1) keeps most ground flat and only lets the upper
+    // range of the noise rise into hills, giving occasional broad mounds instead
+    // of uniform waviness. Raising HillThreshold makes hills rarer and flatter land
+    // more common.
+    if (HillsEnabled != 0)
+    {
+        float h = N01(fbm2D(LayerCoord(uv, HillFrequency, DOMAIN_HILL, HillSeedOffset), 3));
+        h = smoothstep(HillThreshold, 1.0, h);
+        height += h * HillHeight;
+    }
 
+    // ── Mountains (optional, additive) ────────────────────────────────────────
+    // Two parts: a low-frequency REGION mask decides *where* ranges are (rare),
+    // and a higher-frequency detail field shapes the peaks inside those regions.
+    // pow(peaks, MountainSharpness) lifts summits and rounds the valleys WITHOUT
+    // the knife-edge ridges/ravines that abs()-style ridged noise creates.
+    if (MountainsEnabled != 0)
+    {
+        float mask  = MountainRegionMask(uv);
+        float peaks = N01(fbm2D(LayerCoord(uv, MountainDetailFrequency, DOMAIN_MTN_DETAIL, MountainSeedOffset), 4));
+        peaks = pow(peaks, MountainSharpness);
+        height += mask * peaks * MountainHeight;
+    }
 
-    // ── 2. Mountain region mask ───────────────────────────────────────────────
-    //
-    // MountainFreq controls the spatial scale of mountain ranges.
-    // MountainCoverage [0..1] drives how much of the land becomes mountainous:
-    //   0.0 = no mountains
-    //   0.5 = mountains on roughly half the land
-    //   1.0 = mountains nearly everywhere
-    //
-    // The threshold is inverted (1 - coverage) so higher coverage = lower bar
-    // to qualify as a mountain region.
-    float regionNoise = N01(fbm2D(uv * MountainFreq + float2(47.3, 91.7), 4));
-    float coverageThresh = 1.0 - saturate(MountainCoverage);
-    float mountainMask = smoothstep(coverageThresh, coverageThresh + 0.20, regionNoise);
-    mountainMask = mountainMask * mountainMask; // square: makes mountain regions rarer and more defined
-    mountainMask *= landMask; // mountains never appear in the ocean
+    // ── Lakes (optional, subtractive) ─────────────────────────────────────────
+    // A HIGH threshold selects only the isolated peaks of the noise field — round
+    // blobs, not the winding contours you get near a mid threshold. That is what
+    // keeps lakes as localized basins rather than rivers. LakeDepth is how far the
+    // basin carves down; LakeEdgeSoftness is the shore blend.
+    if (LakesEnabled != 0)
+    {
+        float l = N01(fbm2D(LayerCoord(uv, LakeFrequency, DOMAIN_LAKE, LakeSeedOffset), 2));
+        float basin = smoothstep(LakeThreshold, LakeThreshold + LakeEdgeSoftness, l);
+        height -= basin * LakeDepth;
+    }
 
+    // ── Oceans (optional) ─────────────────────────────────────────────────────
+    // Where the broad continental field falls below sea level, blend the whole
+    // surface down toward OceanFloorHeight. A little of the base undulation is kept
+    // so the sea floor isn't dead flat. This is the only layer that can take the
+    // surface below zero, so plains never turn into water by accident.
+    if (OceansEnabled != 0)
+    {
+        float seaMask = OceanMask(uv);
+        float floorH  = OceanFloorHeight + baseN * (BaseAmplitude * 0.25);
+        height = lerp(height, floorH, seaMask);
+    }
 
-    // ── 3. Plains base ────────────────────────────────────────────────────────
-    //
-    // DetailFreq adds fine-scale rolling variation to flat land.
-    // MacroHeight sets the vertical range in world units — keep this small
-    // (e.g. 10..30) for subtle plains undulation.
-    float plainsNoise = N01(fbm2D(uv * DetailFreq + float2(13.1, 37.4), 3));
-    float plainsHeight = landMask
-                       * (1.0 - mountainMask)
-                       * lerp(0.0, MacroHeight, plainsNoise);
-
-
-    // ── 4. Hills ─────────────────────────────────────────────────────────────
-    //
-    // HillFreq and HillHeight both come from the cbuffer.
-    // HillHeight is in world units (e.g. 80 = hills up to 80 units tall).
-    // Squaring hillNoise biases toward flat ground with occasional bumps.
-    // Partially suppressed in mountain zones (0.7 factor) so hill detail
-    // can still bleed into mountain bases.
-    float hillNoise = N01(fbm2D(uv * HillFreq + float2(72.8, 5.3), 4));
-    hillNoise = hillNoise * hillNoise;
-    float hillHeight = landMask
-                     * (1.0 - mountainMask * 0.7)
-                     * hillNoise * HillHeight;
-
-
-    // ── 5. Mountains ──────────────────────────────────────────────────────────
-    //
-    // MountainHeight is in world units (e.g. 300 = mountains up to 300 units).
-    // Domain warping uses MountainFreq scale for consistency with the region mask.
-    // pow(1.8) sharpens peaks: values near 1 stay near 1, mid-range drops off,
-    // producing distinct summits rather than smooth domes.
-    float2 warpA = float2(
-        fbm2D(uv * MountainFreq + float2(3.2, 88.1), 3),
-        fbm2D(uv * MountainFreq + float2(55.6, 19.4), 3)
-    );
-    float2 warpedUV = uv + warpA * 0.35;
-
-    float mountainNoise = N01(fbm2D(warpedUV * (MountainFreq * 0.75), 6));
-    mountainNoise = pow(mountainNoise, 1.8);
-    float mountainHeight = mountainMask * mountainNoise * MountainHeight;
-
-
-    // ── 6. Ocean floor ────────────────────────────────────────────────────────
-    //
-    // Depth is proportional to MacroHeight so oceans scale with land.
-    // coastMask tapers depth to zero near shorelines to avoid a hard cliff
-    // at the waterline.
-    float oceanNoise = N01(fbm2D(uv * MacroFreq + float2(28.4, 66.2), 3));
-    float oceanFloor = lerp(-MacroHeight * 2.0, -MacroHeight * 0.5, oceanNoise);
-    float oceanHeight = (1.0 - coastMask) * oceanFloor;
-
-
-    // ── Combine ───────────────────────────────────────────────────────────────
-    //
-    // Each feature contributes in world units via its cbuffer height parameter.
-    // WorldHeightAmplitude is a final global scale — set to 1.0 to use feature
-    // heights directly, or tune it as a single vertical override across all features.
-    //
-    // Suggested starting values:
-    //   MacroHeight       = 20    (plains vary 0..20 units)
-    //   HillHeight        = 80    (hills up to 80 units)
-    //   MountainHeight    = 300   (mountains up to 300 units)
-    //   MountainCoverage  = 0.25  (mountains on ~25% of land)
-    //   WorldHeightAmplitude = 1.0
-    float landHeight = plainsHeight + hillHeight + mountainHeight;
-    float finalHeight = lerp(oceanHeight, landHeight, landMask);
-
-    return p.y - (finalHeight * WorldHeightAmplitude);
+    // Height-field density. WorldHeightAmplitude is a single global vertical scale
+    // (1.0 = use the per-layer heights directly). Sign/form unchanged from before.
+    return p.y - height * WorldHeightAmplitude;
 }
 
 #endif

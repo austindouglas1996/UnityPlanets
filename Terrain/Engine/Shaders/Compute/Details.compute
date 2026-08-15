@@ -6,6 +6,7 @@
 #include "../ChunkFunctions.hlsl"
 #include "../ChunkColoring.hlsl"
 #include "../Lib/PerlinNoise.hlsl"
+#include "../WorldShaping.hlsl"   // shared ocean/mountain masks (single source of truth)
 
 /* Inputs */
 StructuredBuffer<TriangleData> DetailTriangles;
@@ -16,37 +17,29 @@ RWStructuredBuffer<ChunkDetailData> DetailBuffer;
 // ─────────────────────────────────────────────────────────────────────────────
 // SampleBiomeMasks
 //
-// Reconstructs the same geographic masks used in GenerateNoiseValue so that
-// coloring is driven by terrain *type* rather than absolute world height.
+// Reconstructs the geographic masks used by the density field so coloring is
+// driven by terrain *type* rather than absolute world height.
 //
-// Returns a float4 packing the four masks:
+// Returns a float4 packing:
 //   .x = landMask       (0 = ocean,     1 = land)
 //   .y = mountainMask   (0 = flat land, 1 = mountain region)
 //   .z = coastMask      (0 = deep sea,  1 = near/on shore)
 //   .w = unused (reserved)
 //
-// SYNC CONTRACT:
-// The noise calls here must exactly mirror GenerateNoiseValue layers 1 and 2.
-// Same frequencies, same seed offsets, same smoothstep ranges.
-// If you change the density function, update this to match.
+// The masks come straight from WorldShaping.hlsl — the SAME code the density
+// field uses — so coloring can no longer drift out of sync with terrain shape.
 // ─────────────────────────────────────────────────────────────────────────────
 float4 SampleBiomeMasks(float2 uv)
 {
-    // ── Continent (mirrors Layer 1) ───────────────────────────────────────
-    // Fixed: was using MacroFreq * 0.20 which no longer matches the density
-    // function. Density now uses MacroFreq directly.
-    float continent = N01(fbm2D(uv * MacroFreq, 5));
-    float landMask = smoothstep(0.42, 0.58, continent);
-    float coastMask = smoothstep(0.30, 0.50, continent);
+    float oceanMask = OceanMask(uv);              // 1 = sea, 0 = land (0 if oceans disabled)
+    float landMask = 1.0 - oceanMask;
+    float mountainMask = MountainRegionMask(uv) * landMask;
 
-    // ── Mountain region (mirrors Layer 2) ────────────────────────────────
-    // Fixed: was using MacroFreq * 0.55 with a hardcoded smoothstep range.
-    // Density now uses MountainFreq and MountainCoverage from the cbuffer.
-    float regionNoise = N01(fbm2D(uv * MountainFreq + float2(47.3, 91.7), 4));
-    float coverageThresh = 1.0 - saturate(MountainCoverage);
-    float mountainMask = smoothstep(coverageThresh, coverageThresh + 0.20, regionNoise);
-    mountainMask = mountainMask * mountainMask;
-    mountainMask *= landMask;
+    // coastMask: 1 near/above the shore fading to 0 in deep water, for the water
+    // tint gradient. With oceans disabled everything is treated as on-shore land.
+    float coastMask = (OceansEnabled != 0)
+        ? smoothstep(SeaLevelThreshold - CoastSoftness * 2.0, SeaLevelThreshold, ContinentValue(uv))
+        : 1.0;
 
     return float4(landMask, mountainMask, coastMask, 0.0);
 }
@@ -86,18 +79,20 @@ float4 SampleBiomeColor(float3 p)
 
     // ── Normalized height ─────────────────────────────────────────────────
     //
-    // Fixed: was normalizing against WorldHeightAmplitude, which is now 1.0
-    // and no longer represents actual world height. MountainHeight is the
-    // true world-unit ceiling of the terrain, so heightT=1 at a mountain peak.
-    float heightT = saturate(y / max(MountainHeight, 0.001));
+    // Normalize world height into 0..1 across the terrain band. The ceiling is
+    // BaseElevation (where plains sit) plus MountainHeight (the tallest peaks),
+    // so grass/dirt/rock/snow bands stay correct no matter how the base or
+    // mountains are tuned. heightT ~= 0 at sea level, ~= 1 at a mountain summit.
+    float ceiling = max(BaseElevation + MountainHeight, 0.001);
+    float heightT = saturate(y / ceiling);
 
     // ── Ocean ─────────────────────────────────────────────────────────────
     float3 oceanColor = lerp(deepOcean, shallowSea, coastMask);
 
     // ── Land ──────────────────────────────────────────────────────────────
-    // Grass → dirt as we climb. The fraction thresholds (0.20, 0.45 etc.)
-    // are relative to MountainHeight so they remain correct regardless of
-    // how tall mountains are set.
+    // Grass → dirt as we climb. The fraction thresholds (0.20, 0.45 etc.) are
+    // relative to the normalized terrain band (heightT), so they remain correct
+    // regardless of how tall the base or mountains are set.
     float3 landColor = lerp(grass, dirt, smoothstep(0.20, 0.45, heightT));
 
     float rockBlend = mountainMask * smoothstep(0.35, 0.60, heightT);
@@ -107,8 +102,8 @@ float4 SampleBiomeColor(float3 p)
     landColor = lerp(landColor, snow, smoothstep(snowThreshold, snowThreshold + 0.10, heightT));
 
     // ── Beach strip ───────────────────────────────────────────────────────
-    // Tight height gate keeps beach near sea level.
-    // At MountainHeight=350: beach covers roughly y=0..21 near coastlines.
+    // Tight height gate (low heightT) keeps the beach to a thin band just above
+    // sea level along coastlines.
     float beachBlend = (1.0 - smoothstep(0.01, 0.06, heightT)) * coastMask * landMask;
     landColor = lerp(landColor, beach, beachBlend);
 

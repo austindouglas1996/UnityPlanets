@@ -187,16 +187,12 @@
         /// </summary>
         public void UpdateOptions()
         {
-            // Update render material properties
             chunkMaterial.SetInt("Seed", chunkServices.Configuration.DensityOptions.Seed);
-
-            chunkMaterial.SetFloat("_UseVertexColor", 1f);
             chunkMaterial.SetVector("PositionOffset", chunkServices.Configuration.DensityOptions.PositionOffset);
 
             // Push updated biome/options tables into GPU memory.
             chunkBuffers.UpdateConfiguration(chunkServices);
         }
-
         /// <summary>
         /// Allocates a new render batch with all dynamic buffers.
         /// </summary>

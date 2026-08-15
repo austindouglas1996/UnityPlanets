@@ -28,7 +28,7 @@ void RunRepackPrePass(uint id : SV_DispatchThreadID)
         uint count = TriangleCount[i];
 
         key.SourceCount = count;
-        key.SourceOffset = 1500 * i;
+        key.SourceOffset = 2500 * i;
         key.DestStart = baseIndex;
 
         // write back
