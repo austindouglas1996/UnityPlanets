@@ -1,4 +1,4 @@
-namespace GingerVoxelSystem.Systems.Rendering
+namespace MarchingTerrain.Systems.Rendering
 {
     using System;
     using UnityEngine;

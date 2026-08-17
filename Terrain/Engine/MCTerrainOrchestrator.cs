@@ -1,11 +1,11 @@
-﻿namespace GingerVoxelSystem.Engine
+﻿namespace MarchingTerrain.Engine
 {
-    using GingerVoxelSystem;
-    using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.Engine.Options;
-    using GingerVoxelSystem.Engine.Stage;
-    using GingerVoxelSystem.Systems.Generation;
-    using GingerVoxelSystem.Systems.Rendering;
+    using MarchingTerrain;
+    using MarchingTerrain.Core;
+    using MarchingTerrain.Engine.Options;
+    using MarchingTerrain.Engine.Stage;
+    using MarchingTerrain.Systems.Generation;
+    using MarchingTerrain.Systems.Rendering;
     using System;
     using System.Collections.Generic;
     using System.Runtime.InteropServices;
@@ -92,6 +92,12 @@
             get => chunkMaterial;
             private set => chunkMaterial = value;
         }
+
+        /// <summary>
+        /// The chunk buffers used to control buffering for HLSL's this is made public
+        /// so extension kernels may use it.
+        /// </summary>
+        public ChunkBuffers Buffers => chunkBuffers;
 
         /// <summary>
         /// Runs the cheap surface mask pass to quickly reject empty chunks.

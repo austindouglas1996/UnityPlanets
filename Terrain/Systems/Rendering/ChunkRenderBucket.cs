@@ -1,7 +1,7 @@
-namespace GingerVoxelSystem.Systems.Rendering
+namespace MarchingTerrain.Systems.Rendering
 {
-    using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.Engine;
+    using MarchingTerrain.Core;
+    using MarchingTerrain.Engine;
     using System;
     using System.Collections.Generic;
     using System.Linq;

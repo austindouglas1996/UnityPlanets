@@ -1,15 +1,14 @@
-namespace GingerVoxelSystem
+namespace MarchingTerrain
 {
-    using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.Systems.Generation;
-    using GingerVoxelSystem.Systems.Rendering;
+    using MarchingTerrain.Core;
+    using MarchingTerrain.Systems.Generation;
+    using MarchingTerrain.Systems.Rendering;
     using UnityEngine;
 
     /// <summary>
     /// Unity-facing entry point for terrain generation.
     /// Ties together chunk layout, rendering, and a chosen generator (default: marching cubes).
     /// </summary>
-    [RequireComponent(typeof(IChunkGenerator))]
     [RequireComponent(typeof(ChunkRendererMono))]
     public class TerrainGeneratorMono : MonoBehaviour, IChunkServices
     {

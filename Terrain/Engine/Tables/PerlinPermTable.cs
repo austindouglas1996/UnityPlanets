@@ -1,4 +1,4 @@
-namespace GingerVoxelSystem.Engine.Helpers
+namespace MarchingTerrain.Engine.Helpers
 {
     using UnityEngine;
 

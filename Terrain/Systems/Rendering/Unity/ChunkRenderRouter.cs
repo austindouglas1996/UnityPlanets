@@ -1,11 +1,11 @@
-﻿namespace Assets.Scripts.Terrain.Systems.Rendering.Unity
+﻿namespace MarchingTerrain.Systems.Rendering.Unity
 {
-    using GingerVoxelSystem.Systems.Rendering;
+    using MarchingTerrain.Core;
+    using MarchingTerrain.Systems.Generation;
+    using MarchingTerrain.Systems.Rendering;
     using System;
     using System.Collections.Generic;
     using UnityEngine.Rendering;
-    using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.Systems.Generation;
 
     /// <summary>
     /// Thin “lane switch” over two <see cref="ChunkRenderBucketCollection"/>s:

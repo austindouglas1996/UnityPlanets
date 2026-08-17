@@ -1,4 +1,4 @@
-namespace GingerVoxelSystem.Engine.Options
+namespace MarchingTerrain.Engine.Options
 {
     using System;
     using System.Runtime.InteropServices;

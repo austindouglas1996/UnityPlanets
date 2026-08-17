@@ -1,7 +1,8 @@
-﻿namespace GingerVoxelSystem.Entity
+﻿namespace MarchingTerrain.Entity
 {
-    using GingerVoxelSystem.Engine;
+    using MarchingTerrain.Engine;
     using UnityEngine;
+    using UnityEngine.InputSystem;
 
     /// <summary>
     /// Entity-level collision component backed by a cached SDF volume.
@@ -90,7 +91,7 @@
                 RequestNewBlock();
             }
 
-            if (Input.GetKeyDown(KeyCode.J))
+            if (Keyboard.current.jKey.IsPressed())
             {
                 RequestNewBlock();
             }

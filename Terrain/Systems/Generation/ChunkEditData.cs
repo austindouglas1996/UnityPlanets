@@ -1,4 +1,4 @@
-﻿namespace GingerVoxelSystem.Systems.Generation
+﻿namespace MarchingTerrain.Systems.Generation
 {
     using UnityEngine;
 

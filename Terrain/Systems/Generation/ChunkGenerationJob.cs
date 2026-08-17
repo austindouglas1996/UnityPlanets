@@ -1,7 +1,7 @@
-namespace GingerVoxelSystem.Systems.Generation
+namespace MarchingTerrain.Systems.Generation
 {
     using System;
-    using GingerVoxelSystem.Core;
+    using MarchingTerrain.Core;
 
     /// <summary>
     /// Represents a single chunk generation request, containing its unique key 

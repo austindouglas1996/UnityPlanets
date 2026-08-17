@@ -1,10 +1,10 @@
-namespace GingerVoxelSystem.Systems.Rendering
+namespace MarchingTerrain.Systems.Rendering
 {
+    using MarchingTerrain.Core;
     using System;
     using System.Collections.Generic;
     using UnityEngine;
     using UnityEngine.Rendering;
-    using GingerVoxelSystem.Core;
 
     /// <summary>
     /// A collection container for <see cref="ChunkRenderBucket"/> that can grow as needed

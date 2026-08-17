@@ -1,7 +1,7 @@
-namespace GingerVoxelSystem.Core
+namespace MarchingTerrain.Core
 {
-    using GingerVoxelSystem.Engine;
-    using GingerVoxelSystem.Systems.Generation;
+    using MarchingTerrain.Engine;
+    using MarchingTerrain.Systems.Generation;
     using System;
     using System.Collections.Generic;
     using UnityEngine;

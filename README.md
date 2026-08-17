@@ -1,11 +1,11 @@
-<h1>UnityPlanets</h1> 
+<h1>MarchingTerrain</h1> 
 
 ![image](https://github.com/user-attachments/assets/77e1c11f-2f27-44c7-aa58-3d1e1cc8996c)
 
-UnityPlanets is a lightweight and approachable Marching Cubes implementation designed to make procedural, fully editable terrain easy to understand and extend. Modern, beginner-friendly examples of Marching Cubes can be complex to come by. 
-This project aims to fill that gap by providing a clean and modular starting point for learning, experimenting, and building custom voxel terrain systems in Unity.
+MarchingTerrain is a lightweight and approachable Marching Cubes implementation designed to make procedural, fully editable terrain easy to understand and extend. Modern, beginner-friendly examples of Marching Cubes can be hard to come by.
+This project aims to fill that gap by providing a clean, modular starting point for learning, experimenting, and building your own smooth, editable terrain in Unity.
 
-Using Perlin noise for basic terrain shaping, UnityPlanets supports multiple types of terrain generation, including spherical planets, endless flat landscapes, and cave systems. The system is built with an endless chunk architecture in mind, providing clean examples for managing active chunks, applying detail levels, and customizing terrain on the fly.
+It started out chasing full spherical planets. the math turned out to be gloriously over my head, so these days it focuses on what actually works well: smooth, endless landscapes and cave systems, shaped with Perlin noise and driven on the GPU. The system is built around an endless chunk architecture, with clean examples for managing active chunks, applying LODs, and editing terrain on the fly.
 
 - Apply different sets of layered noise for terrain variety.
 - Add procedural foliage through a FoliageGenerator system.

@@ -1,4 +1,4 @@
-namespace GingerVoxelSystem.Core
+namespace MarchingTerrain.Core
 {
     using UnityEngine;
 

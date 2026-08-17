@@ -1,4 +1,4 @@
-namespace GingerVoxelSystem.EditorSupport
+namespace MarchingTerrain.EditorSupport
 {
     using UnityEngine;
 

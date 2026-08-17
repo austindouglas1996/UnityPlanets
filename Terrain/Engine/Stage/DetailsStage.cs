@@ -1,8 +1,8 @@
-﻿namespace GingerVoxelSystem.Engine.Stage
+﻿namespace MarchingTerrain.Engine.Stage
 {
-    using GingerVoxelSystem.Engine;
-    using GingerVoxelSystem.Engine.Options;
-    using GingerVoxelSystem.Systems.Rendering;
+    using MarchingTerrain.Engine;
+    using MarchingTerrain.Engine.Options;
+    using MarchingTerrain.Systems.Rendering;
     using System.Runtime.InteropServices;
     using UnityEngine;
 

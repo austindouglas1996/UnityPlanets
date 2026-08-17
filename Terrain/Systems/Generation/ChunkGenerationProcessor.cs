@@ -1,11 +1,11 @@
-﻿namespace GingerVoxelSystem.Engine.Generation
+﻿namespace MarchingTerrain.Engine.Generation
 {
+    using MarchingTerrain.Core;
+    using MarchingTerrain.Systems.Generation;
+    using MarchingTerrain.Systems.Rendering.Unity;
     using System;
     using System.Collections.Generic;
     using UnityEngine;
-    using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.Systems.Generation;
-    using Assets.Scripts.Terrain.Systems.Rendering.Unity;
 
     /// <summary>
     /// Coordinates the asynchronous-like generation and modification of terrain chunks.
@@ -49,14 +49,16 @@
 
             this.layerRenderer = new ChunkRenderRouter(services, services.Generator, ChunkEngineSettings.GenerationJobsPerBatch);
 
-            if (renderFeature != null)
+            // Router is shared statically across every ChunkRenderFeature instance, so
+            // terrain draws on any renderer that includes the feature — not only the one
+            // currently marked Default.
+            ChunkRenderFeature.Router = layerRenderer;
+
+            if (renderFeature == null)
             {
-                renderFeature.Router = layerRenderer;
-                renderFeature.Create(); // rebuild the pass with new router
-            }
-            else
-            {
-                Debug.LogError("ChunkRenderFeature not assigned in the inspector. The terrain will not render.");
+                Debug.LogWarning("No ChunkRenderFeature was found on the assigned renderer. " +
+                    "Add one to the renderer your camera renders through (the Default renderer if " +
+                    "your camera's Renderer is set to Default), or terrain will not appear.");
             }
         }
 
@@ -148,7 +150,15 @@
         /// <summary>
         /// Releases any GPU resources held by the render region manager.
         /// </summary>
-        public void Dispose() => layerRenderer.Dispose();
+        public void Dispose()
+        {
+            // Clear the shared router so a disposed instance isn't referenced across play
+            // sessions (relevant when Enter Play Mode domain reload is disabled).
+            if (ChunkRenderFeature.Router == layerRenderer)
+                ChunkRenderFeature.Router = null;
+
+            layerRenderer.Dispose();
+        }
 
         /// <summary>
         /// Processes a batch of surface-check jobs.

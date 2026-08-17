@@ -1,4 +1,4 @@
-namespace Assets.Scripts.Terrain.Systems.Rendering.Unity
+namespace MarchingTerrain.Systems.Rendering.Unity
 {
     using System;
     using UnityEngine.Rendering;
@@ -7,31 +7,31 @@ namespace Assets.Scripts.Terrain.Systems.Rendering.Unity
 
     /// <summary>
     /// Custom render pass for terrain chunks.
-    /// Injected into URP after transparents so it lines up with shaders using queue ~3000.
+    /// Injected into URP after opaques so it composites with the active renderer.
     /// Works under both legacy and RenderGraph pipelines.
     /// </summary>
     public class ChunkRenderPass : ScriptableRenderPass, IDisposable
     {
-        private ChunkRenderRouter router;
+        /// <summary>
+        /// Live router, assigned by the feature each frame. Shared across every renderer
+        /// so terrain draws regardless of which renderer is the active/default one.
+        /// </summary>
+        public ChunkRenderRouter Router;
 
         /// <summary>
-        /// Sets the router reference and when this pass should run.
+        /// Configures when this pass runs. The router is supplied per-frame by the feature.
         /// </summary>
-        public ChunkRenderPass(ChunkRenderRouter router)
+        public ChunkRenderPass()
         {
-            this.router = router;
             renderPassEvent = RenderPassEvent.AfterRenderingOpaques;
         }
 
         /// <summary>
-        /// Dispose of the element.
+        /// The router is owned by the terrain system, not the pass, so there is nothing
+        /// to release here.
         /// </summary>
         public void Dispose()
         {
-            if (router != null)
-            {
-                router = null;
-            }
         }
 
         /// <summary>
@@ -42,14 +42,14 @@ namespace Assets.Scripts.Terrain.Systems.Rendering.Unity
         [Obsolete]
         public override void Execute(ScriptableRenderContext context, ref RenderingData data)
         {
-            if (router == null)
+            if (Router == null)
                 return;
 
             // Pull a pooled command buffer and fill it with draw calls from the router
             var cmd = CommandBufferPool.Get("ChunkTerrain");
-            router.FillCommandBuffer(cmd);
+            Router.FillCommandBuffer(cmd);
 
-            // Submit to GPU as part of URP’s render sequence
+            // Submit to GPU as part of URP's render sequence
             context.ExecuteCommandBuffer(cmd);
 
             // Return buffer to pool
@@ -62,7 +62,7 @@ namespace Assets.Scripts.Terrain.Systems.Rendering.Unity
         /// </summary>
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
-            if (router == null)
+            if (Router == null)
                 return;
 
             var resources = frameData.Get<UniversalResourceData>();
@@ -70,7 +70,7 @@ namespace Assets.Scripts.Terrain.Systems.Rendering.Unity
             using var builder =
                 renderGraph.AddRasterRenderPass<PassData>("ChunkTerrain", out var passData);
 
-            passData.Router = router;
+            passData.Router = Router;
 
             // Bind camera color + depth as actual render attachments
             builder.SetRenderAttachment(resources.activeColorTexture, 0);

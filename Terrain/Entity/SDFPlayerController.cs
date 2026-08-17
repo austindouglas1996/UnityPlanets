@@ -1,8 +1,9 @@
-﻿namespace GingerVoxelSystem.Player
+﻿namespace MarchingTerrain.Player
 {
-    using GingerVoxelSystem.Engine.Stage;
-    using GingerVoxelSystem.Entity;
+    using MarchingTerrain.Engine.Stage;
+    using MarchingTerrain.Entity;
     using UnityEngine;
+    using UnityEngine.InputSystem;
 
     /// <summary>
     /// Simple first-person style controller backed by a cached SDF collision volume.
@@ -87,34 +88,34 @@
         /// </summary>
         private void ApplyMovement(float dt)
         {
-            float h = Input.GetAxisRaw("Horizontal");
-            float v = Input.GetAxisRaw("Vertical");
+            Keyboard keyboard = Keyboard.current;
 
-            Vector3 wish =
-                transform.right * h +
-                transform.forward * v;
+            float h = 0f;
+            float v = 0f;
 
+            if (keyboard != null)
+            {
+                h = (keyboard.dKey.isPressed ? 1f : 0f) - (keyboard.aKey.isPressed ? 1f : 0f);
+                v = (keyboard.wKey.isPressed ? 1f : 0f) - (keyboard.sKey.isPressed ? 1f : 0f);
+            }
+
+            Vector3 wish = transform.right * h + transform.forward * v;
             wish = Vector3.ClampMagnitude(wish, 1f);
 
             velocity.x = wish.x * moveSpeed;
             velocity.z = wish.z * moveSpeed;
 
             if (sdfCollider.Grounded && !wasGrounded)
-            {
                 jumpsRemaining = jumpCount;
-            }
 
-            // Jump input
-            if (Input.GetKeyDown(KeyCode.Space) && jumpsRemaining > 0)
+            if (keyboard != null && keyboard.spaceKey.wasPressedThisFrame && jumpsRemaining > 0)
             {
                 velocity.y = jumpVelocity;
                 jumpsRemaining--;
             }
 
             if (!sdfCollider.Grounded)
-            {
                 velocity.y -= gravity * dt;
-            }
 
             transform.position += velocity * dt;
             wasGrounded = sdfCollider.Grounded;

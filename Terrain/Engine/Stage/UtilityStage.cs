@@ -1,4 +1,4 @@
-﻿namespace GingerVoxelSystem.Engine.Stage
+﻿namespace MarchingTerrain.Engine.Stage
 {
     using UnityEngine;
 

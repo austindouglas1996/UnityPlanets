@@ -5,7 +5,7 @@
  * The goal here is not to re-invent Transvoxel, but to adapt the tables and data
  * into a GPU-friendly format that works cleanly with Unity compute shaders.
  */
-namespace GingerVoxelSystem.Engine.Helpers
+namespace MarchingTerrain.Engine.Helpers
 {
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;

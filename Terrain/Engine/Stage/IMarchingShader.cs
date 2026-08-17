@@ -1,6 +1,6 @@
-﻿namespace GingerVoxelSystem.Engine.Stage
+﻿namespace MarchingTerrain.Engine.Stage
 {
-    using GingerVoxelSystem.Systems.Rendering;
+    using MarchingTerrain.Systems.Rendering;
     using System;
 
     public interface IMarchingShader : IDisposable

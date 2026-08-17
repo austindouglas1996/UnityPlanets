@@ -1,6 +1,6 @@
-namespace GingerVoxelSystem.Core
+namespace MarchingTerrain.Core
 {
-    using GingerVoxelSystem.Systems.Generation;
+    using MarchingTerrain.Systems.Generation;
 
     /// <summary>
     /// Runtime facade for chunk world state and generation.

@@ -1,8 +1,8 @@
-namespace GingerVoxelSystem.Systems.Generation
+namespace MarchingTerrain.Systems.Generation
 {
     using System;
     using System.Collections.Generic;
-    using GingerVoxelSystem.Core;
+    using MarchingTerrain.Core;
 
     /// <summary>
     /// Queues <see cref="ChunkGenerationJob"/> instances for later processing, 

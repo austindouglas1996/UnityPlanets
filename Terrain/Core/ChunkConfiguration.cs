@@ -1,7 +1,7 @@
-namespace GingerVoxelSystem.Core
+namespace MarchingTerrain.Core
 {
-    using GingerVoxelSystem.EditorSupport;
-    using GingerVoxelSystem.Engine.Options;
+    using MarchingTerrain.EditorSupport;
+    using MarchingTerrain.Engine.Options;
     using System;
     using UnityEngine;
 

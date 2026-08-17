@@ -1,0 +1,10 @@
+{
+  "name": "com.austindouglas.marchingterrain",
+  "version": "0.1.0",
+  "displayName": "MarchingTerrain",
+  "description": "Smooth, GPU-driven Marching Cubes terrain for Unity URP. It started life as planets — the math had other ideas — so now it just makes honest, endless, editable terrain you can drop into any project.",
+  "unity": "6000.0",
+  "author": {
+    "name": "Austin Douglas"
+  }
+}

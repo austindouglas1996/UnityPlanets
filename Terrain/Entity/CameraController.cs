@@ -1,6 +1,7 @@
-﻿namespace GingerVoxelSystem.Player
+﻿namespace MarchingTerrain.Player
 {
     using UnityEngine;
+    using UnityEngine.InputSystem;
 
     /// <summary>
     /// Very basic FPS-style camera controller.
@@ -33,23 +34,32 @@
 
             // Initialize rotation values from the current transforms
             yaw = playerBody.eulerAngles.y;
+
             pitch = transform.localEulerAngles.x;
+            if (pitch > 180f)
+                pitch -= 360f;
         }
 
         private void Update()
         {
-            // Raw mouse input for direct, no-frills control
-            float mouseX = Input.GetAxisRaw("Mouse X") * mouseSensitivity * 100f * Time.deltaTime;
-            float mouseY = Input.GetAxisRaw("Mouse Y") * mouseSensitivity * 100f * Time.deltaTime;
+            Mouse mouse = Mouse.current;
+
+            if (mouse == null)
+                return;
+
+            Vector2 mouseDelta = mouse.delta.ReadValue();
+
+            float mouseX = mouseDelta.x * mouseSensitivity;
+            float mouseY = mouseDelta.y * mouseSensitivity;
 
             yaw += mouseX;
             pitch -= mouseY;
             pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
 
-            // Rotate the player body on the Y axis (left/right)
+            // Rotate the player body on the Y axis.
             playerBody.rotation = Quaternion.Euler(0f, yaw, 0f);
 
-            // Rotate the camera on the X axis (up/down)
+            // Rotate the camera on the X axis.
             transform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
         }
     }

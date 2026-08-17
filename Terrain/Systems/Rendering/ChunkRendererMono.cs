@@ -1,11 +1,14 @@
-﻿namespace GingerVoxelSystem.Systems.Rendering
+﻿namespace MarchingTerrain.Systems.Rendering
 {
-    using Assets.Scripts.Terrain.Systems.Rendering.Unity;
-    using GingerVoxelSystem.Core;
-    using GingerVoxelSystem.EditorSupport;
-    using GingerVoxelSystem.Engine.Generation;
-    using GingerVoxelSystem.Systems.Generation;
+    using MarchingTerrain.Core;
+    using MarchingTerrain.EditorSupport;
+    using MarchingTerrain.Engine.Generation;
+    using MarchingTerrain.Systems.Generation;
+    using MarchingTerrain.Systems.Rendering.Unity;
+    using System.Linq;
     using UnityEngine;
+    using UnityEngine.InputSystem;
+    using UnityEngine.Rendering.Universal;
 
     /// <summary>
     /// Unity-facing host for chunk rendering:
@@ -23,8 +26,10 @@
         public Transform Follower;
 
         [Header("Rendering")]
-        [Tooltip("Assign the ChunkRenderFeature from your URP Renderer asset.")]
-        [SerializeField] private ChunkRenderFeature renderFeature;
+        [Tooltip("A URP Renderer that has the ChunkRenderFeature. Terrain renders on ANY renderer " +
+                 "that includes the feature, so also add the feature to the renderer your camera " +
+                 "actually uses (e.g. a third-party renderer you keep as Default).")]
+        [SerializeField] private UniversalRendererData rendererData;
 
         [Header("Debug")]
         [HideInInspector] private bool isInitialized = false;
@@ -34,6 +39,7 @@
         [SerializeField]
         private ChunkRenderDistance RootRange = new ChunkRenderDistance();
 
+        private ChunkRenderFeature renderFeature;
         private IChunkServices chunkServices;
         private ChunkGenerationProcessor processor;
         private ChunkLodOctree lodTree;
@@ -50,22 +56,18 @@
             if (!isInitialized) return;
             lodTree.Update();
 
-            if (Input.GetKeyDown(KeyCode.Mouse0))
+            /*
+            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
             {
                 var keys = chunkServices.EditStore.Add(Follower.transform.position, op);
+
                 foreach (var key in keys)
-                {
                     lodTree.EnsureNodeForEdit(key);
-                }
             }
 
-            if (Input.GetKeyDown(KeyCode.U))
-            {
-                if (op == 1)
-                    op = 0;
-                else if (op == 0)
-                    op = 1;
-            }
+            if (Keyboard.current != null && Keyboard.current.uKey.wasPressedThisFrame)
+                op = op == 1 ? 0 : 1;
+            */
         }
 
         /// <summary>
@@ -94,6 +96,14 @@
         /// <param name="services"></param>
         public void Initialize(IChunkServices services)
         {
+            renderFeature = rendererData.rendererFeatures.OfType<ChunkRenderFeature>().FirstOrDefault();
+
+            if (renderFeature == null)
+            {
+                Debug.LogError($"The renderer '{rendererData.name}' does not contain a {nameof(ChunkRenderFeature)}.", this);
+                return;
+            }
+
             this.chunkServices = services;
             this.processor = new ChunkGenerationProcessor(this.chunkServices, this.renderFeature);
 

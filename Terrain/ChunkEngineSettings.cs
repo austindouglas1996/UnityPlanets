@@ -1,4 +1,4 @@
-﻿namespace GingerVoxelSystem
+﻿namespace MarchingTerrain
 {
     /// <summary>
     /// Global tuning constants for the voxel terrain engine.
@@ -24,11 +24,11 @@
         // Maximum number of raw triangles produced per chunk
         // before packing or LOD filtering is applied.
         // See <see cref="MarchingCubesChunkGenerator"/>.
-        public const int RawTrianglesPerChunk = 2500;
+        public const int RawTrianglesPerChunk = 1500;
 
         // Maximum number of triangles after packing/compression.
         // This represents the upper bound for GPU memory allocation.
-        public const int TrianglesPerChunkPacked = 2250;
+        public const int TrianglesPerChunkPacked = 1250;
 
         // Maximum number of edits allowed per generation job.
         public const int EditJobsPerJob = 512;
